@@ -1,6 +1,7 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-19";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261013-19";
-import { fetchLatestOFP } from "./simbrief.js?v=20261013-19";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-20";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261013-20";
+import { fetchLatestOFP } from "./simbrief.js?v=20261013-20";
+import { buildRouteGeometry, layoutRouteLabels, pointAlongPolyline } from "./route-map.js?v=20261013-20";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -124,21 +125,18 @@ function renderPerformanceChart(results,recommended,selectedResult) {
 }
 
 function renderRouteMap(plan,result,navigation) {
-  const fixes=plan.waypoints.filter((fix)=>Number.isFinite(fix.lat)&&Number.isFinite(fix.lon));
-  const width=860,height=320,padX=58,padY=48,lats=fixes.map((w)=>w.lat),lons=fixes.map((w)=>w.lon),minLat=Math.min(...lats),maxLat=Math.max(...lats),minLon=Math.min(...lons),maxLon=Math.max(...lons),latSpan=maxLat-minLat||1,lonSpan=maxLon-minLon||1;
-  const project=(fix)=>({x:padX+((fix.lon-minLon)/lonSpan)*(width-padX*2),y:height-padY-((fix.lat-minLat)/latSpan)*(height-padY*2)});
-  const points=fixes.map(project),path=points.map((p,i)=>`${i?"L":"M"}${p.x},${p.y}`).join(" ");
-  const pointAtFraction=(fraction)=>{
-    const lengths=points.slice(1).map((point,index)=>Math.hypot(point.x-points[index].x,point.y-points[index].y));
-    const total=lengths.reduce((sum,value)=>sum+value,0)||1;
-    let target=Math.max(0,Math.min(1,fraction))*total;
-    for(let index=0;index<lengths.length;index+=1){if(target<=lengths[index]){const ratio=lengths[index]?target/lengths[index]:0;return{x:points[index].x+(points[index+1].x-points[index].x)*ratio,y:points[index].y+(points[index+1].y-points[index].y)*ratio};}target-=lengths[index];}
-    return points.at(-1);
-  };
-  const stride=Math.max(1,Math.ceil(fixes.length/5));
-  const dots=fixes.filter((_,i)=>i===0||i===fixes.length-1||i%stride===0).map((fix)=>{ const p=project(fix),endpoint=fix===fixes[0]||fix===fixes.at(-1); return `<g><circle cx="${p.x}" cy="${p.y}" r="${endpoint?7:4}" fill="${endpoint?"#52a964":"#fff"}" stroke="${endpoint?"#52a964":"#1976d2"}" stroke-width="2"/><text x="${p.x}" y="${p.y-14}" text-anchor="middle" fill="#62717f" font-size="9" font-weight="600">${escapeHtml(fix.ident)}</text></g>`; }).join("");
-  const navMarkers=[{label:"ETP",point:pointAtFraction(navigation.etp.fraction),color:"#1976d2"},{label:"PNR",point:pointAtFraction(navigation.pnr.fraction),color:"#d98b34"}].map(({label,point,color},index)=>`<g><circle cx="${point.x}" cy="${point.y}" r="7" fill="#fff" stroke="${color}" stroke-width="3"/><rect x="${point.x-18}" y="${point.y+(index?-36:13)}" width="36" height="18" rx="9" fill="${color}"/><text x="${point.x}" y="${point.y+(index?-24:25)}" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">${label}</text></g>`).join("");
-  $("#routeMap").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="routeLine"><stop stop-color="#1976d2"/><stop offset="1" stop-color="#52a964"/></linearGradient></defs><path d="${path}" fill="none" stroke="#edf3f7" stroke-width="12"/><path d="${path}" fill="none" stroke="url(#routeLine)" stroke-width="2" stroke-dasharray="5 5"/>${dots}${navMarkers}</svg>`;
+  const geometry=buildRouteGeometry(plan),{width,height,points,path}=geometry;
+  if(!points.length){$("#routeMap").innerHTML="";return;}
+  const tocInOFP=points.some((point)=>point.ident==="TOC"),todInOFP=points.some((point)=>point.ident==="TOD");
+  const labeled=layoutRouteLabels(points.map((point,index)=>({...point,endpoint:index===0||index===points.length-1,special:point.ident==="TOC"||point.ident==="TOD"})),width,height);
+  const dots=labeled.map((fix)=>{const radius=fix.endpoint?7:fix.special?5:3.5,color=fix.endpoint?"#52a964":fix.special?"#d98b34":"#1976d2",fill=fix.endpoint||fix.special?color:"#fff",leader=Math.hypot(fix.labelX-fix.x,fix.labelY-fix.y)>20?`<line x1="${fix.x}" y1="${fix.y}" x2="${fix.labelX}" y2="${fix.labelY-4}" stroke="#cbd5dd" stroke-width="1"/>`:"";return `<g class="route-waypoint"><title>${escapeHtml(fix.ident)} · ${number(fix.distanceNm)} NM</title>${leader}<circle cx="${fix.x}" cy="${fix.y}" r="${radius}" fill="${fill}" stroke="${color}" stroke-width="2"/><text class="route-waypoint-label" x="${fix.labelX}" y="${fix.labelY}" text-anchor="${fix.labelAnchor}" fill="${fix.special?"#b36c22":"#62717f"}" font-weight="600">${escapeHtml(fix.ident)}</text></g>`;}).join("");
+  const computedMarkers=[
+    ...(!tocInOFP?[{label:"TOC",fraction:result.climb.distanceNm/Math.max(1,plan.distanceNm),color:"#52a964"}]:[]),
+    ...(!todInOFP?[{label:"TOD",fraction:1-result.descent.distanceNm/Math.max(1,plan.distanceNm),color:"#d98b34"}]:[]),
+  ];
+  const flightMarkers=computedMarkers.map(({label,fraction,color})=>{const point=pointAlongPolyline(points,fraction);return `<g class="route-flight-marker"><circle cx="${point.x}" cy="${point.y}" r="5" fill="#fff" stroke="${color}" stroke-width="2.5"/><rect x="${point.x-17}" y="${point.y-30}" width="34" height="17" rx="8.5" fill="${color}"/><text x="${point.x}" y="${point.y-18.5}" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">${label}</text></g>`;}).join("");
+  const navMarkers=[{label:"ETP",point:pointAlongPolyline(points,navigation.etp.fraction),color:"#1976d2"},{label:"PNR",point:pointAlongPolyline(points,navigation.pnr.fraction),color:"#d98b34"}].map(({label,point,color},index)=>`<g><circle cx="${point.x}" cy="${point.y}" r="7" fill="#fff" stroke="${color}" stroke-width="3"/><rect x="${point.x-18}" y="${point.y+(index?-36:13)}" width="36" height="18" rx="9" fill="${color}"/><text x="${point.x}" y="${point.y+(index?-24:25)}" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">${label}</text></g>`).join("");
+  $("#routeMap").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(plan.origin.icao)} ${escapeHtml(plan.destination.icao)} · ${points.length} waypoints"><defs><linearGradient id="routeLine"><stop stop-color="#1976d2"/><stop offset="1" stop-color="#52a964"/></linearGradient></defs><path d="${path}" fill="none" stroke="#edf3f7" stroke-width="12"/><path d="${path}" fill="none" stroke="url(#routeLine)" stroke-width="2" stroke-dasharray="5 5"/>${dots}${flightMarkers}${navMarkers}</svg>`;
 }
 
 function renderVerticalProfile(plan,result,stepPlan) {
