@@ -31,6 +31,42 @@ export function windComponentKt(trackDeg, windFromDeg, windSpeedKt) {
   return -windSpeedKt * Math.cos(toRad(windFromDeg - trackDeg));
 }
 
+function interpolateDirectionDeg(fromDeg, toDegValue, ratio) {
+  const delta = ((toDegValue - fromDeg + 540) % 360) - 180;
+  return (fromDeg + delta * ratio + 360) % 360;
+}
+
+export function weatherAtAltitude(fix, altitudeFt) {
+  const levels = Array.isArray(fix.windLevels)
+    ? fix.windLevels.filter((level) => Number.isFinite(level.altitudeFt)).sort((a, b) => a.altitudeFt - b.altitudeFt)
+    : [];
+
+  if (!levels.length) {
+    return {
+      windDir: Number.isFinite(Number(fix.windDir)) ? Number(fix.windDir) : 0,
+      windSpd: Number.isFinite(Number(fix.windSpd)) ? Number(fix.windSpd) : 0,
+      oatC: Number.isFinite(Number(fix.oatC)) ? Number(fix.oatC) : isaTemperatureC(altitudeFt),
+    };
+  }
+
+  const upperIndex = levels.findIndex((level) => level.altitudeFt >= altitudeFt);
+  const lower = upperIndex <= 0 ? levels[0] : levels[upperIndex - 1];
+  const upper = upperIndex === -1 ? levels.at(-1) : levels[upperIndex];
+  const span = upper.altitudeFt - lower.altitudeFt;
+  const ratio = span > 0 ? clamp((altitudeFt - lower.altitudeFt) / span, 0, 1) : 0;
+  const lowerDir = Number.isFinite(lower.windDir) ? lower.windDir : 0;
+  const upperDir = Number.isFinite(upper.windDir) ? upper.windDir : lowerDir;
+  const lowerSpd = Number.isFinite(lower.windSpd) ? lower.windSpd : 0;
+  const upperSpd = Number.isFinite(upper.windSpd) ? upper.windSpd : lowerSpd;
+  const lowerOat = Number.isFinite(lower.oatC) ? lower.oatC : isaTemperatureC(lower.altitudeFt);
+  const upperOat = Number.isFinite(upper.oatC) ? upper.oatC : isaTemperatureC(upper.altitudeFt);
+  return {
+    windDir: interpolateDirectionDeg(lowerDir, upperDir, ratio),
+    windSpd: lowerSpd + (upperSpd - lowerSpd) * ratio,
+    oatC: lowerOat + (upperOat - lowerOat) * ratio,
+  };
+}
+
 function averageRouteWeather(plan, altitudeFt) {
   const fixes = plan.waypoints?.filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) || [];
   if (fixes.length < 2) {
@@ -50,12 +86,10 @@ function averageRouteWeather(plan, altitudeFt) {
     const to = fixes[index + 1];
     const segmentNm = greatCircleNm(from, to);
     const track = bearingDeg(from, to);
-    const windDirCandidate = Number(from.windDir ?? to.windDir ?? 0);
-    const windSpdCandidate = Number(from.windSpd ?? to.windSpd ?? 0);
-    const oatCandidate = Number(from.oatC ?? to.oatC);
-    const windDir = Number.isFinite(windDirCandidate) ? windDirCandidate : 0;
-    const windSpd = Number.isFinite(windSpdCandidate) ? windSpdCandidate : 0;
-    const oat = Number.isFinite(oatCandidate) ? oatCandidate : isaTemperatureC(altitudeFt);
+    const weather = weatherAtAltitude(from, altitudeFt);
+    const windDir = weather.windDir;
+    const windSpd = weather.windSpd;
+    const oat = weather.oatC;
     const component = windComponentKt(track, windDir, windSpd);
     distance += segmentNm;
     weightedComponent += component * segmentNm;

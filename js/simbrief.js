@@ -14,11 +14,22 @@ function arrayOf(value) {
   return [];
 }
 
-function windForAltitude(fix, altitudeFt) {
-  const levels = arrayOf(fix.wind_data?.level || fix.wind_data || fix.wind);
+function parseWindLevels(fix) {
+  return arrayOf(fix.wind_data?.level || fix.wind_data || fix.wind)
+    .map((level) => ({
+      altitudeFt: number(level.altitude, NaN),
+      windDir: number(level.wind_dir, NaN),
+      windSpd: number(level.wind_spd, NaN),
+      oatC: number(level.oat, NaN),
+    }))
+    .filter((level) => Number.isFinite(level.altitudeFt))
+    .sort((a, b) => a.altitudeFt - b.altitudeFt);
+}
+
+function windForAltitude(fix, altitudeFt, levels) {
   if (levels.length) {
     return levels.reduce((closest, level) => {
-      const distance = Math.abs(number(level.altitude) - altitudeFt);
+      const distance = Math.abs(level.altitudeFt - altitudeFt);
       return distance < closest.distance ? { level, distance } : closest;
     }, { level: levels[0], distance: Infinity }).level;
   }
@@ -45,15 +56,17 @@ export function parseSimBrief(data) {
   const rawFixes = arrayOf(data.navlog);
   let cumulativeNm = 0;
   const waypoints = rawFixes.map((fix, index) => {
-    const weather = windForAltitude(fix, plannedAltitudeFt);
+    const windLevels = parseWindLevels(fix);
+    const weather = windForAltitude(fix, plannedAltitudeFt, windLevels);
     const waypoint = {
       ident: first(fix.ident, `WPT${index + 1}`),
       lat: number(first(fix.pos_lat, fix.latitude), NaN),
       lon: number(first(fix.pos_long, fix.longitude), NaN),
       distanceNm: number(first(fix.cum_distance, fix.distance), cumulativeNm),
-      windDir: number(first(weather.wind_dir, fix.wind_dir), 0),
-      windSpd: number(first(weather.wind_spd, fix.wind_spd), 0),
-      oatC: number(first(weather.oat, fix.oat), NaN),
+      windDir: number(first(weather.windDir, weather.wind_dir, fix.wind_dir), 0),
+      windSpd: number(first(weather.windSpd, weather.wind_spd, fix.wind_spd), 0),
+      oatC: number(first(weather.oatC, weather.oat, fix.oat), NaN),
+      windLevels,
     };
     if (index > 0 && Number.isFinite(waypoint.lat) && Number.isFinite(waypoint.lon)) {
       const previous = rawFixes[index - 1];
@@ -65,8 +78,8 @@ export function parseSimBrief(data) {
   }).filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon));
 
   if (!waypoints.length) waypoints.push(
-    { ident: origin.icao, lat: origin.lat, lon: origin.lon, distanceNm: 0, windDir: 0, windSpd: 0, oatC: NaN },
-    { ident: destination.icao, lat: destination.lat, lon: destination.lon, distanceNm: 0, windDir: 0, windSpd: 0, oatC: NaN },
+    { ident: origin.icao, lat: origin.lat, lon: origin.lon, distanceNm: 0, windDir: 0, windSpd: 0, oatC: NaN, windLevels: [] },
+    { ident: destination.icao, lat: destination.lat, lon: destination.lon, distanceNm: 0, windDir: 0, windSpd: 0, oatC: NaN, windLevels: [] },
   );
 
   const distanceNm = number(first(data.general?.route_distance, data.general?.air_distance, cumulativeNm), cumulativeNm);

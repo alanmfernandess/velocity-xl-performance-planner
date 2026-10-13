@@ -50,22 +50,9 @@
           <h1 id="routeTitle">SBSP <span>→</span> SBGL</h1>
           <p id="planTimestamp">246 NM · FL180</p>
         </div>
-        <form class="plan-form" id="quickPlanForm">
-          <label class="field id-field"><span data-i18n="pilotId">Pilot ID</span><input id="quickPilotId" inputmode="numeric" autocomplete="off" placeholder="123456" /></label>
-          <label class="field"><span data-i18n="origin">Origem</span><input id="manualOrigin" maxlength="4" autocomplete="off" value="SBSP" /></label>
-          <span class="route-arrow" aria-hidden="true">→</span>
-          <label class="field"><span data-i18n="destination">Destino</span><input id="manualDestination" maxlength="4" autocomplete="off" value="SBGL" /></label>
-          <label class="field compact-field"><span data-i18n="distance">Distância</span><div><input id="manualDistance" type="number" min="30" max="5000" value="246" /><small>NM</small></div></label>
-          <label class="field compact-field"><span data-i18n="plannedFl">FL planejado</span><div><input id="manualFl" type="number" min="100" max="250" step="10" value="180" /><small>FL</small></div></label>
-          <button class="icon-button" id="importLatest" type="button" data-i18n-title="importLatest" title="Importar último OFP" aria-label="Importar último OFP">↓</button>
-          <button class="primary-button" type="submit" data-i18n="createFlight">Criar voo</button>
-          <details class="weather-fields">
-            <summary data-i18n="options">Opções</summary>
-            <label class="field"><span data-i18n="windDirection">Direção</span><div><input id="manualWindDir" type="number" min="0" max="360" value="260" /><small>°</small></div></label>
-            <label class="field"><span data-i18n="windSpeed">Vento</span><div><input id="manualWindSpd" type="number" min="0" max="150" value="25" /><small>KT</small></div></label>
-            <label class="field"><span>OAT</span><div><input id="manualOat" type="number" min="-80" max="50" value="-20" /><small>°C</small></div></label>
-            <label class="field simbrief-aircraft"><span data-i18n="aircraftProfile">Perfil SimBrief</span><input id="simbriefAircraft" autocomplete="off" value="SR22" /></label>
-          </details>
+        <form class="plan-form" id="simbriefImportForm">
+          <label class="field id-field"><span data-i18n="pilotId">Pilot ID / Alias</span><input id="quickPilotId" autocomplete="off" placeholder="123456" /></label>
+          <button class="primary-button" id="importLatest" type="submit" data-i18n="importLatest">Importar OFP</button>
         </form>
       </section>
 

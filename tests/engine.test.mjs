@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateAtAltitude, calculatePlan, isaTemperatureC, windComponentKt } from "../js/engine.js";
+import { calculateAtAltitude, calculatePlan, isaTemperatureC, weatherAtAltitude, windComponentKt } from "../js/engine.js";
 import { DEMO_PLAN } from "../js/config.js";
 
 test("ISA temperature follows standard lapse rate", () => {
@@ -11,6 +11,16 @@ test("ISA temperature follows standard lapse rate", () => {
 test("tailwind component is positive and headwind negative", () => {
   assert.ok(windComponentKt(90, 270, 20) > 19.9);
   assert.ok(windComponentKt(90, 90, 20) < -19.9);
+});
+
+test("interpolates SimBrief wind and temperature levels", () => {
+  const weather = weatherAtAltitude({ windLevels: [
+    { altitudeFt: 18000, windDir: 350, windSpd: 20, oatC: -20 },
+    { altitudeFt: 24000, windDir: 10, windSpd: 32, oatC: -32 },
+  ] }, 21000);
+  assert.ok(weather.windDir < 1 || weather.windDir > 359);
+  assert.equal(weather.windSpd, 26);
+  assert.equal(weather.oatC, -26);
 });
 
 test("performance result includes all major phases and fuel", () => {

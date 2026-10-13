@@ -8,17 +8,17 @@ const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (char) => ({ "&"
 
 const COPY = {
   "pt-BR": {
-    pilotId:"Pilot ID / Alias", origin:"Origem", destination:"Destino", distance:"Distância", plannedFl:"FL planejado", createFlight:"Criar voo", options:"Opções", aircraftProfile:"Perfil SimBrief", windDirection:"Direção", windSpeed:"Vento", importLatest:"Importar último OFP",
+    pilotId:"Pilot ID / Alias", importLatest:"Importar OFP",
     bestLevel:"Melhor nível", fuelRequired:"Combustível requerido", estimatedTime:"Tempo estimado", maximumRange:"Alcance máximo", performance:"Performance", route:"Rota", profile:"Perfil", altitudeComparison:"Comparação por altitude", selectedLevel:"Selecionado", recommendedLevel:"Recomendado", windComponent:"Componente", alternate:"Alternativa", flightProfile:"Perfil de voo",
     objective:"Objetivo", bestOverall:"Melhor conjunto", lowestFuel:"Menor consumo", fastest:"Mais rápido", maxRange:"Maior alcance", payload:"Carga útil", fuelOnboard:"Combustível a bordo", reserve:"Reserva", takeoffWeight:"Peso de decolagem", fuel:"Combustível", allLevels:"Todos os níveis", climb:"SUBIDA", cruise:"CRUZEIRO", descent:"DESCIDA", disclaimer:"Simulação somente · Modelo não certificado · Sem telemetria",
-    demo:"DEMO", simbrief:"SIMBRIEF", manual:"MANUAL", fuelHint:"Menor valor", timeHint:"Menor valor", efficiencyHint:"Maior valor", margin:"de margem", belowMax:"abaixo do máximo", aboveMax:"acima do máximo", imported:"OFP importado", manualApplied:"Rota calculada", missingId:"Informe o Pilot ID ou Alias.", invalidRoute:"Preencha origem, destino e distância.", importError:"Não foi possível importar o OFP.", dispatchOpened:"Finalize o OFP na janela do SimBrief. A importação será automática.", popupBlocked:"Permita a abertura da janela do SimBrief.", syncTimeout:"O OFP ainda não apareceu. Use ↓ para tentar novamente.",
+    demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Menor valor", timeHint:"Menor valor", efficiencyHint:"Maior valor", margin:"de margem", belowMax:"abaixo do máximo", aboveMax:"acima do máximo", missingId:"Informe o Pilot ID ou Alias.", importError:"Não foi possível importar o OFP.",
     fuelRank:(rank)=>`${rank}º em consumo`, timeRank:(rank,gs)=>`${rank}º em tempo · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingência", taxi:"Taxi",
   },
   "en-US": {
-    pilotId:"Pilot ID / Alias", origin:"Origin", destination:"Destination", distance:"Distance", plannedFl:"Planned FL", createFlight:"Create flight", options:"Options", aircraftProfile:"SimBrief profile", windDirection:"Direction", windSpeed:"Wind", importLatest:"Import latest OFP",
+    pilotId:"Pilot ID / Alias", importLatest:"Import OFP",
     bestLevel:"Best level", fuelRequired:"Fuel required", estimatedTime:"Estimated time", maximumRange:"Maximum range", performance:"Performance", route:"Route", profile:"Profile", altitudeComparison:"Altitude comparison", selectedLevel:"Selected", recommendedLevel:"Recommended", windComponent:"Component", alternate:"Alternate", flightProfile:"Flight profile",
     objective:"Objective", bestOverall:"Best Overall", lowestFuel:"Lowest Fuel", fastest:"Fastest", maxRange:"Maximum Range", payload:"Payload", fuelOnboard:"Fuel onboard", reserve:"Reserve", takeoffWeight:"Takeoff weight", fuel:"Fuel", allLevels:"All levels", climb:"CLIMB", cruise:"CRUISE", descent:"DESCENT", disclaimer:"Simulation only · Non-certified model · No telemetry",
-    demo:"DEMO", simbrief:"SIMBRIEF", manual:"MANUAL", fuelHint:"Lower is better", timeHint:"Lower is better", efficiencyHint:"Higher is better", margin:"margin", belowMax:"below maximum", aboveMax:"above maximum", imported:"OFP imported", manualApplied:"Route calculated", missingId:"Enter a Pilot ID or Alias.", invalidRoute:"Enter origin, destination and distance.", importError:"Could not import the OFP.", dispatchOpened:"Finish the OFP in the SimBrief window. It will import automatically.", popupBlocked:"Allow the SimBrief window to open.", syncTimeout:"The OFP is not available yet. Use ↓ to try again.",
+    demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Lower is better", timeHint:"Lower is better", efficiencyHint:"Higher is better", margin:"margin", belowMax:"below maximum", aboveMax:"above maximum", missingId:"Enter a Pilot ID or Alias.", importError:"Could not import the OFP.",
     fuelRank:(rank)=>`#${rank} fuel`, timeRank:(rank,gs)=>`#${rank} time · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingency", taxi:"Taxi",
   },
 };
@@ -103,24 +103,10 @@ function renderFuel(result) {
   $("#fuelLegend").innerHTML=pieces.map((p)=>`<div><i style="background:${p.color}"></i><span>${p.label}</span><b>${formatFuel(p.value,1)}</b></div>`).join("");
 }
 
-function updatePlanFields(plan) {
-  $("#manualOrigin").value=plan.origin.icao; $("#manualDestination").value=plan.destination.icao; $("#manualDistance").value=Math.round(plan.distanceNm); $("#manualFl").value=Math.round(plan.plannedAltitudeFt/100);
-  const weatherFixes=plan.waypoints.filter((fix)=>Number.isFinite(fix.windSpd)||Number.isFinite(fix.oatC));
-  const sample=weatherFixes[Math.floor(weatherFixes.length/2)]||{}; if(Number.isFinite(sample.windDir))$("#manualWindDir").value=Math.round(sample.windDir); if(Number.isFinite(sample.windSpd))$("#manualWindSpd").value=Math.round(sample.windSpd); if(Number.isFinite(sample.oatC))$("#manualOat").value=Math.round(sample.oatC);
-}
-
-function createManualPlan() {
-  const originIcao=$("#manualOrigin").value.trim().toUpperCase(),destinationIcao=$("#manualDestination").value.trim().toUpperCase(),distanceNm=Number($("#manualDistance").value),plannedAltitudeFt=Number($("#manualFl").value)*100,windDir=Number($("#manualWindDir").value),windSpd=Number($("#manualWindSpd").value),oatC=Number($("#manualOat").value);
-  if(!/^[A-Z0-9]{3,4}$/.test(originIcao)||!/^[A-Z0-9]{3,4}$/.test(destinationIcao)||!Number.isFinite(distanceNm)||distanceNm<30) throw new Error(t("invalidRoute"));
-  const matchOrigin=state.plan.origin.icao===originIcao?state.plan.origin:null,matchDestination=state.plan.destination.icao===destinationIcao?state.plan.destination:null;
-  const origin=matchOrigin||{icao:originIcao,name:originIcao,lat:0,lon:0},destination=matchDestination||{icao:destinationIcao,name:destinationIcao,lat:.4,lon:Math.max(.5,distanceNm/60)};
-  return {source:"MANUAL",origin,destination,alternate:"—",route:"DCT",distanceNm,plannedAltitudeFt,generatedAt:"",waypoints:[{ident:originIcao,lat:origin.lat,lon:origin.lon,distanceNm:0,windDir,windSpd,oatC},{ident:"DCT",lat:(origin.lat+destination.lat)/2,lon:(origin.lon+destination.lon)/2,distanceNm:distanceNm/2,windDir,windSpd,oatC},{ident:destinationIcao,lat:destination.lat,lon:destination.lon,distanceNm,windDir,windSpd,oatC}]};
-}
-
 function render() {
   applyTranslations();
   const analysis=calculatePlan(state),recommended=analysis.winners[state.criterion],selected=analysis.results.find((r)=>r.altitudeFt===state.selectedAltitudeFt)||recommended,plan=state.plan;
-  $("#routeTitle").innerHTML=`${escapeHtml(plan.origin.icao)} <span>→</span> ${escapeHtml(plan.destination.icao)}`; $("#routeSource").textContent=t(plan.source==="SIMBRIEF"?"simbrief":plan.source==="MANUAL"?"manual":"demo"); $("#planTimestamp").textContent=`${number(plan.distanceNm)} NM · FL${Math.round(plan.plannedAltitudeFt/100)}`;
+  $("#routeTitle").innerHTML=`${escapeHtml(plan.origin.icao)} <span>→</span> ${escapeHtml(plan.destination.icao)}`; $("#routeSource").textContent=t(plan.source==="SIMBRIEF"?"simbrief":"demo"); $("#planTimestamp").textContent=`${number(plan.distanceNm)} NM · FL${Math.round(plan.plannedAltitudeFt/100)}`;
   $("#routeFrom").textContent=plan.origin.icao; $("#routeTo").textContent=plan.destination.icao;
   $("#kpiAltitude").textContent=`FL${recommended.fl}`; $("#kpiScore").textContent=recommended.score; $("#kpiFuel").innerHTML=`${number(fuelValue(recommended.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-recommended.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(recommended.tripTimeHr); $("#kpiGs").textContent=`${Math.round(recommended.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(recommended.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?recommended.specificRangeNmGal/3.785411784:recommended.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
   renderPerformanceChart(analysis.results,recommended); renderRouteMap(plan,selected); renderVerticalProfile(plan,selected); renderLevelCards(analysis.results,recommended); renderFuel(selected);
@@ -142,29 +128,7 @@ $$('[data-metric]').forEach((button)=>button.addEventListener("click",()=>{state
 $$('[data-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-view-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.viewPanel===button.dataset.view));}));
 $("#criterionSelect").addEventListener("change",(event)=>{state.criterion=event.target.value;state.selectedAltitudeFt=null;render();}); $("#payloadInput").addEventListener("input",(event)=>{state.payloadLb=Number(event.target.value);render();}); $("#fuelInput").addEventListener("input",(event)=>{state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{state.reserveMinutes=Number(event.target.value);render();});
 
-function dispatchUrl(identifier) {
-  const origin=$("#manualOrigin").value.trim().toUpperCase(),destination=$("#manualDestination").value.trim().toUpperCase(),profile=$("#simbriefAircraft").value.trim()||"SR22",fl=Math.round(Number($("#manualFl").value));
-  const params=new URLSearchParams({newflight:"1",orig:origin,dest:destination,type:profile,fl:`FL${fl}`,pid:identifier,units:state.weightUnit==="kg"?"KGS":"LBS",find_sidstar:"1"});
-  return `https://www.simbrief.com/system/dispatch.php?${params}`;
-}
-
-async function watchGeneratedPlan(identifier,origin,destination,popup,baseline) {
-  for(let attempt=0;attempt<60;attempt+=1) {
-    await new Promise((resolve)=>setTimeout(resolve,4000));
-    try {
-      let plan; try { plan=await fetchLatestOFP(identifier,"userid"); } catch { plan=await fetchLatestOFP(identifier,"username"); }
-      const matches=plan.origin.icao===origin&&plan.destination.icao===destination;
-      const changed=baseline?plan.generatedAt!==baseline:attempt>=4;
-      if(matches&&(changed||attempt>=2)) {
-        state.plan=plan; state.selectedAltitudeFt=null; updatePlanFields(plan); render(); showToast(`${origin} → ${destination} · ${t("imported")}`); try{popup?.close();}catch{} return;
-      }
-    } catch {}
-  }
-  showToast(t("syncTimeout"),true);
-}
-
-$("#quickPlanForm").addEventListener("submit",(event)=>{event.preventDefault();try{const manualPlan=createManualPlan(),identifier=$("#quickPilotId").value.trim(),baseline=state.plan.source==="SIMBRIEF"?state.plan.generatedAt:null;state.plan=manualPlan;state.selectedAltitudeFt=null;render();if(!identifier){showToast(t("manualApplied"));return;}localStorage.setItem("velocityxl.simbriefIdentifier",identifier);const popup=window.open(dispatchUrl(identifier),"simbriefDispatch","popup,width=1120,height=820");if(!popup){showToast(t("popupBlocked"),true);return;}showToast(t("dispatchOpened"));watchGeneratedPlan(identifier,manualPlan.origin.icao,manualPlan.destination.icao,popup,baseline);}catch(error){showToast(error.message,true);}});
-$("#importLatest").addEventListener("click",async()=>{const input=$("#quickPilotId"),identifier=input.value.trim();if(!identifier){showToast(t("missingId"),true);input.focus();return;}const button=$("#importLatest"),previous=button.textContent;try{button.disabled=true;button.textContent="…";let plan;try{plan=await fetchLatestOFP(identifier,"userid");}catch(firstError){plan=await fetchLatestOFP(identifier,"username");}state.plan=plan;state.selectedAltitudeFt=null;localStorage.setItem("velocityxl.simbriefIdentifier",identifier);updatePlanFields(plan);render();showToast(`${plan.origin.icao} → ${plan.destination.icao} · ${t("imported")}`);}catch(error){showToast(error.message||t("importError"),true);}finally{button.disabled=false;button.textContent=previous;}});
+$("#simbriefImportForm").addEventListener("submit",async(event)=>{event.preventDefault();const input=$("#quickPilotId"),identifier=input.value.trim();if(!identifier){showToast(t("missingId"),true);input.focus();return;}const button=$("#importLatest");try{button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="…";let plan;try{plan=await fetchLatestOFP(identifier,"userid");}catch(firstError){plan=await fetchLatestOFP(identifier,"username");}state.plan=plan;state.selectedAltitudeFt=null;localStorage.setItem("velocityxl.simbriefIdentifier",identifier);render();}catch(error){showToast(error.message||t("importError"),true);}finally{button.disabled=false;button.removeAttribute("aria-busy");button.textContent=t("importLatest");}});
 
 const savedIdentifier=localStorage.getItem("velocityxl.simbriefIdentifier"); if(savedIdentifier)$("#quickPilotId").value=savedIdentifier;
-updatePlanFields(state.plan); render();
+render();

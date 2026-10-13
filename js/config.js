@@ -33,19 +33,16 @@ export const PERFORMANCE = {
       label: "ECON",
       tasAt10kKt: 215,
       fuelFlowGph: 14.6,
-      description: "Máxima autonomia",
     },
     NORMAL: {
       label: "NORMAL",
       tasAt10kKt: 236,
       fuelFlowGph: 18.2,
-      description: "Equilíbrio recomendado",
     },
     FAST: {
       label: "FAST",
       tasAt10kKt: 254,
       fuelFlowGph: 23.8,
-      description: "Menor tempo de voo",
     },
   },
 };
@@ -60,11 +57,19 @@ export const DEMO_PLAN = {
   route: "DCT KOVBI UZ10 OPALA DCT",
   distanceNm: 246,
   plannedAltitudeFt: 18000,
-  generatedAt: "Plano demonstrativo",
+  generatedAt: "",
   waypoints: [
-    { ident: "SBSP", lat: -23.6261, lon: -46.6566, distanceNm: 0, windDir: 110, windSpd: 10, oatC: 17 },
-    { ident: "KOVBI", lat: -23.48, lon: -45.88, distanceNm: 45, windDir: 245, windSpd: 22, oatC: -7 },
-    { ident: "OPALA", lat: -23.02, lon: -44.56, distanceNm: 132, windDir: 257, windSpd: 31, oatC: -18 },
-    { ident: "SBGL", lat: -22.8099, lon: -43.2506, distanceNm: 246, windDir: 268, windSpd: 26, oatC: 22 },
+    { ident: "SBSP", lat: -23.6261, lon: -46.6566, distanceNm: 0, windDir: 245, windSpd: 22, oatC: -7, windLevels: [
+      { altitudeFt: 10000, windDir: 235, windSpd: 15, oatC: -5 }, { altitudeFt: 18000, windDir: 245, windSpd: 22, oatC: -20 }, { altitudeFt: 25000, windDir: 255, windSpd: 31, oatC: -34 },
+    ] },
+    { ident: "KOVBI", lat: -23.48, lon: -45.88, distanceNm: 45, windDir: 249, windSpd: 25, oatC: -19, windLevels: [
+      { altitudeFt: 10000, windDir: 238, windSpd: 17, oatC: -4 }, { altitudeFt: 18000, windDir: 249, windSpd: 25, oatC: -19 }, { altitudeFt: 25000, windDir: 261, windSpd: 35, oatC: -33 },
+    ] },
+    { ident: "OPALA", lat: -23.02, lon: -44.56, distanceNm: 132, windDir: 257, windSpd: 31, oatC: -18, windLevels: [
+      { altitudeFt: 10000, windDir: 244, windSpd: 20, oatC: -3 }, { altitudeFt: 18000, windDir: 257, windSpd: 31, oatC: -18 }, { altitudeFt: 25000, windDir: 270, windSpd: 42, oatC: -32 },
+    ] },
+    { ident: "SBGL", lat: -22.8099, lon: -43.2506, distanceNm: 246, windDir: 262, windSpd: 28, oatC: -17, windLevels: [
+      { altitudeFt: 10000, windDir: 248, windSpd: 18, oatC: -2 }, { altitudeFt: 18000, windDir: 262, windSpd: 28, oatC: -17 }, { altitudeFt: 25000, windDir: 275, windSpd: 38, oatC: -31 },
+    ] },
   ],
 };
