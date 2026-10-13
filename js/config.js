@@ -49,6 +49,12 @@ export const PERFORMANCE = {
     tasFactor: [0.85, 1.15],
     fuelFlowFactor: [0.75, 1.3],
   },
+  viability: {
+    minimumFuelMarginGal: 5,
+    minimumWeightMarginLb: 75,
+    minimumCruiseSegmentNm: 10,
+    marginalCruiseSegmentNm: 30,
+  },
   stepClimb: {
     weightLossLbPerStep: 90,
     minimumRemainingNm: 110,

@@ -1,6 +1,6 @@
-import { AIRCRAFT, PERFORMANCE, DEMO_PLAN, ALTITUDES_FT } from "./config.js?v=20261013-4";
-import { calculateEtpPnr, calculatePlan, calculateStepClimbs, deriveCalibration } from "./engine.js?v=20261013-4";
-import { fetchLatestOFP } from "./simbrief.js?v=20261013-4";
+import { AIRCRAFT, PERFORMANCE, DEMO_PLAN, ALTITUDES_FT } from "./config.js?v=20261013-5";
+import { calculateEtpPnr, calculatePlan, calculateStepClimbs, deriveCalibration } from "./engine.js?v=20261013-5";
+import { fetchLatestOFP } from "./simbrief.js?v=20261013-5";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -10,7 +10,7 @@ const COPY = {
   "pt-BR": {
     pilotId:"Pilot ID / Alias", importLatest:"Importar OFP",
     bestLevel:"Melhor nível", fuelRequired:"Combustível requerido", estimatedTime:"Tempo estimado", maximumRange:"Alcance máximo", performance:"Performance", route:"Rota", profile:"Perfil", altitudeComparison:"Comparação por altitude", selectedLevel:"Selecionado", recommendedLevel:"Recomendado", windComponent:"Componente", alternate:"Alternativa", flightProfile:"Perfil de voo",
-    objective:"Objetivo", bestOverall:"Melhor conjunto", lowestFuel:"Menor consumo", fastest:"Mais rápido", maxRange:"Maior alcance", payload:"Carga útil", fuelOnboard:"Combustível a bordo", reserve:"Reserva", takeoffWeight:"Peso de decolagem", fuel:"Combustível", allLevels:"Todos os níveis", climb:"SUBIDA", cruise:"CRUZEIRO", descent:"DESCIDA", power:"Potência", automatic:"Automático", disclaimer:"Simulação somente · Modelo não certificado · Sem telemetria",
+    payload:"Carga útil", fuelOnboard:"Combustível a bordo", reserve:"Reserva", takeoffWeight:"Peso de decolagem", fuel:"Combustível", allLevels:"Todos os níveis", climb:"SUBIDA", cruise:"CRUZEIRO", descent:"DESCIDA", power:"Potência", automatic:"Automático", viable:"VIÁVEL", marginalStatus:"MARGINAL", notViable:"NÃO VIÁVEL", profileLimit:"PERFIL", ceilingLimit:"TETO", disclaimer:"Simulação somente · Modelo não certificado · Sem telemetria",
     demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Menor valor", timeHint:"Menor valor", efficiencyHint:"Maior valor", margin:"de margem", belowMax:"abaixo do máximo", aboveMax:"acima do máximo", missingId:"Informe o Pilot ID ou Alias.", importError:"Não foi possível importar o OFP.",
     fuelRank:(rank)=>`${rank}º em consumo`, timeRank:(rank,gs)=>`${rank}º em tempo · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingência", taxi:"Taxi",
     manualUpdate:"Atualização manual", continueLabel:"Continuar", returnLabel:"Retornar", position:"Posição", fuelRemaining:"Combustível restante", update:"Atualizar", calibration:"Calibração", observedTas:"TAS observada", observedFuelFlow:"Fuel flow observado", calibrate:"Calibrar", reset:"Redefinir", beyondDestination:"Além do destino", noStep:"Sem step climb", nextStep:"Próximo", updated:"MANUAL", preflight:"PRÉ-VOO",
@@ -19,7 +19,7 @@ const COPY = {
   "en-US": {
     pilotId:"Pilot ID / Alias", importLatest:"Import OFP",
     bestLevel:"Best level", fuelRequired:"Fuel required", estimatedTime:"Estimated time", maximumRange:"Maximum range", performance:"Performance", route:"Route", profile:"Profile", altitudeComparison:"Altitude comparison", selectedLevel:"Selected", recommendedLevel:"Recommended", windComponent:"Component", alternate:"Alternate", flightProfile:"Flight profile",
-    objective:"Objective", bestOverall:"Best Overall", lowestFuel:"Lowest Fuel", fastest:"Fastest", maxRange:"Maximum Range", payload:"Payload", fuelOnboard:"Fuel onboard", reserve:"Reserve", takeoffWeight:"Takeoff weight", fuel:"Fuel", allLevels:"All levels", climb:"CLIMB", cruise:"CRUISE", descent:"DESCENT", power:"Power", automatic:"Automatic", disclaimer:"Simulation only · Non-certified model · No telemetry",
+    payload:"Payload", fuelOnboard:"Fuel onboard", reserve:"Reserve", takeoffWeight:"Takeoff weight", fuel:"Fuel", allLevels:"All levels", climb:"CLIMB", cruise:"CRUISE", descent:"DESCENT", power:"Power", automatic:"Automatic", viable:"VIABLE", marginalStatus:"MARGINAL", notViable:"NOT VIABLE", profileLimit:"PROFILE", ceilingLimit:"CEILING", disclaimer:"Simulation only · Non-certified model · No telemetry",
     demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Lower is better", timeHint:"Lower is better", efficiencyHint:"Higher is better", margin:"margin", belowMax:"below maximum", aboveMax:"above maximum", missingId:"Enter a Pilot ID or Alias.", importError:"Could not import the OFP.",
     fuelRank:(rank)=>`#${rank} fuel`, timeRank:(rank,gs)=>`#${rank} time · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingency", taxi:"Taxi",
     manualUpdate:"Manual update", continueLabel:"Continue", returnLabel:"Return", position:"Position", fuelRemaining:"Fuel remaining", update:"Update", calibration:"Calibration", observedTas:"Observed TAS", observedFuelFlow:"Observed fuel flow", calibrate:"Calibrate", reset:"Reset", beyondDestination:"Beyond destination", noStep:"No step climb", nextStep:"Next", updated:"MANUAL", preflight:"PREFLIGHT",
@@ -33,7 +33,7 @@ function storedJson(key, fallback) {
 
 const state = {
   plan: structuredClone(DEMO_PLAN), mode:"NORMAL", payloadLb:520, fuelOnboardGal:77, reserveMinutes:45,
-  metric:"fuel", criterion:"overall", selectedAltitudeFt:null, language:localStorage.getItem("velocityxl.language") || "pt-BR",
+  metric:"fuel", selectedAltitudeFt:null, language:localStorage.getItem("velocityxl.language") || "pt-BR",
   weightUnit:localStorage.getItem("velocityxl.weightUnit") || "lb", fuelUnit:localStorage.getItem("velocityxl.fuelUnit") || "gal", fontSize:localStorage.getItem("velocityxl.fontSize") || "medium",
   calibration:storedJson("velocityxl.calibration", {}),
   powerSetting:storedJson("velocityxl.powerSetting", { type:"AUTO", mapInHg:24, rpm:2450 }),
@@ -42,6 +42,7 @@ const state = {
 const t = (key, ...args) => typeof COPY[state.language][key] === "function" ? COPY[state.language][key](...args) : COPY[state.language][key] || key;
 const number = (value, digits = 0) => Number(value).toLocaleString(state.language, { minimumFractionDigits:digits, maximumFractionDigits:digits });
 const signed = (value, suffix="") => `${value >= 0 ? "+" : "−"}${number(Math.abs(Math.round(value)))}${suffix}`;
+const signedNumber = (value, digits, suffix="") => `${value >= 0 ? "+" : "−"}${number(Math.abs(value),digits)}${suffix}`;
 const formatTime = (hours) => { const minutes=Math.max(0,Math.round(hours*60)); return `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`; };
 const weightValue=(lb)=>state.weightUnit==="kg"?lb*.45359237:lb;
 const fuelValue=(gal)=>state.fuelUnit==="l"?gal*3.785411784:gal;
@@ -77,17 +78,17 @@ function metricConfig() {
   return { get:(result)=>fuelValue(result.fuelRequiredGal), unit:state.fuelUnit==="l"?"L":"GAL", hint:t("fuelHint"), value:(v)=>number(v,1) };
 }
 
-function renderPerformanceChart(results,recommended) {
+function renderPerformanceChart(results,recommended,selectedResult) {
   const config=metricConfig(), values=results.map((r)=>config.get(r));
   const width=860,height=330,left=48,right=18,top=34,bottom=48,min=Math.min(...values),max=Math.max(...values),spread=max-min||1;
   const x=(i)=>left+(i/(results.length-1))*(width-left-right), y=(value)=>top+((max-value)/spread)*(height-top-bottom-18)+9;
   const points=results.map((r,i)=>`${x(i)},${y(config.get(r))}`).join(" ");
   const area=`${left},${height-bottom} ${points} ${x(results.length-1)},${height-bottom}`;
   const grid=[0,.25,.5,.75,1].map((ratio)=>{ const yy=top+ratio*(height-top-bottom),value=max-ratio*spread; return `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" stroke="#edf0f3"/><text x="${left-10}" y="${yy+3}" fill="#8b98a4" font-size="8" text-anchor="end">${config.value(value)}</text>`; }).join("");
-  const dots=results.map((r,i)=>{ const value=config.get(r),best=r.altitudeFt===recommended.altitudeFt,selected=r.altitudeFt===(state.selectedAltitudeFt||recommended.altitudeFt); return `<g class="chart-point" data-altitude="${r.altitudeFt}" tabindex="0" role="button"><circle cx="${x(i)}" cy="${y(value)}" r="${selected?10:6}" fill="${best?"#edf8ef":"#e9f3fd"}"/><circle cx="${x(i)}" cy="${y(value)}" r="${best?5:4}" fill="${best?"#52a964":"#1976d2"}" stroke="#fff" stroke-width="2"/>${best?`<g transform="translate(${x(i)-27},${y(value)-35})"><rect width="54" height="19" rx="9" fill="#52a964"/><text x="27" y="12.5" fill="#fff" text-anchor="middle" font-size="7" font-weight="700">${config.value(value)}</text></g>`:""}<text x="${x(i)}" y="${height-19}" fill="${best?"#438b52":"#84929e"}" font-size="8" text-anchor="middle">FL${r.fl}</text></g>`; }).join("");
+  const dots=results.map((r,i)=>{ const value=config.get(r),unavailable=r.feasibility.status==="unavailable",best=r.altitudeFt===recommended.altitudeFt&&!unavailable,selected=r.altitudeFt===selectedResult.altitudeFt,dotColor=unavailable?"#aeb8c1":best?"#52a964":"#1976d2",softColor=unavailable?"#f0f2f4":best?"#edf8ef":"#e9f3fd"; return `<g class="chart-point ${unavailable?"unavailable":""}" data-altitude="${r.altitudeFt}" data-unavailable="${unavailable}" tabindex="${unavailable?"-1":"0"}" role="button" aria-disabled="${unavailable}"><circle cx="${x(i)}" cy="${y(value)}" r="${selected?10:6}" fill="${softColor}"/><circle cx="${x(i)}" cy="${y(value)}" r="${best?5:4}" fill="${dotColor}" stroke="#fff" stroke-width="2"/>${best?`<g transform="translate(${x(i)-27},${y(value)-35})"><rect width="54" height="19" rx="9" fill="#52a964"/><text x="27" y="12.5" fill="#fff" text-anchor="middle" font-size="7" font-weight="700">${config.value(value)}</text></g>`:""}<text x="${x(i)}" y="${height-19}" fill="${unavailable?"#aeb8c1":best?"#438b52":"#84929e"}" font-size="8" text-anchor="middle">FL${r.fl}</text></g>`; }).join("");
   $("#performanceChart").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="chartArea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1976d2" stop-opacity=".13"/><stop offset="1" stop-color="#1976d2" stop-opacity="0"/></linearGradient></defs>${grid}<polygon points="${area}" fill="url(#chartArea)"/><polyline points="${points}" fill="none" stroke="#1976d2" stroke-width="2" stroke-linejoin="round"/>${dots}<text x="${left}" y="14" fill="#8794a0" font-size="7" letter-spacing="1">${config.unit}</text></svg>`;
   $("#chartHint").textContent=config.hint;
-  $$(".chart-point").forEach((point)=>{ const choose=()=>{state.selectedAltitudeFt=Number(point.dataset.altitude);render();}; point.addEventListener("click",choose); point.addEventListener("keydown",(event)=>{if(event.key==="Enter"||event.key===" ")choose();}); });
+  $$(".chart-point").filter((point)=>point.dataset.unavailable!=="true").forEach((point)=>{ const choose=()=>{state.selectedAltitudeFt=Number(point.dataset.altitude);render();}; point.addEventListener("click",choose); point.addEventListener("keydown",(event)=>{if(event.key==="Enter"||event.key===" ")choose();}); });
 }
 
 function renderRouteMap(plan,result,navigation) {
@@ -119,10 +120,20 @@ function renderVerticalProfile(plan,result,stepPlan) {
   $("#verticalProfile").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img">${[10000,15000,20000,25000].map((alt)=>{const y=yForAltitude(alt);return `<line x1="${left}" y1="${y}" x2="${width-right}" y2="${y}" stroke="#eef1f4"/><text x="${left-8}" y="${y+3}" text-anchor="end" fill="#8a97a2" font-size="8">FL${alt/100}</text>`;}).join("")}<path d="${profilePath}" fill="none" stroke="#1976d2" stroke-width="2" stroke-linejoin="round"/><text x="${tocX}" y="${yForAltitude(startAltitude)-10}" text-anchor="middle" fill="#8794a0" font-size="8">TOC</text><text x="${todX}" y="${lastY-10}" text-anchor="middle" fill="#8794a0" font-size="8">TOD</text>${stepLabels}<text x="${left}" y="${base+25}" fill="#43515d" font-size="9" font-weight="700">${escapeHtml(plan.origin.icao)}</text><text x="${width-right}" y="${base+25}" text-anchor="end" fill="#43515d" font-size="9" font-weight="700">${escapeHtml(plan.destination.icao)}</text></svg>`;
 }
 
-function renderLevelCards(results,recommended) {
+function levelFeasibilityLabel(result) {
+  const feasibility=result.feasibility;
+  if(feasibility.status==="viable") return "";
+  if(feasibility.status==="marginal") return t("marginalStatus");
+  if(feasibility.primaryReason==="FUEL") return signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`);
+  if(feasibility.primaryReason==="WEIGHT") return `+${formatWeight(Math.abs(feasibility.weightMarginLb))}`;
+  if(feasibility.primaryReason==="ALTITUDE") return t("ceilingLimit");
+  return t("profileLimit");
+}
+
+function renderLevelCards(results,recommended,selected) {
   const unit=state.fuelUnit==="l"?"L":"GAL";
-  $("#levelCards").innerHTML=results.map((r)=>`<button class="level-card ${r.altitudeFt===recommended.altitudeFt?"recommended":""} ${r.altitudeFt===(state.selectedAltitudeFt||recommended.altitudeFt)?"selected":""}" data-level="${r.altitudeFt}" type="button"><b>FL${r.fl}</b><span>${unit} · ETE · GS</span><strong>${number(fuelValue(r.fuelRequiredGal),1)} · ${formatTime(r.tripTimeHr)} · ${Math.round(r.gsKt)}</strong></button>`).join("");
-  $$(".level-card").forEach((card)=>card.addEventListener("click",()=>{state.selectedAltitudeFt=Number(card.dataset.level);render();}));
+  $("#levelCards").innerHTML=results.map((r)=>{const status=r.feasibility.status,label=levelFeasibilityLabel(r),recommendedClass=r.altitudeFt===recommended.altitudeFt&&status!=="unavailable"?"recommended":"";return `<button class="level-card ${status} ${recommendedClass} ${r.altitudeFt===selected.altitudeFt?"selected":""}" data-level="${r.altitudeFt}" type="button" ${status==="unavailable"?"disabled aria-disabled=\"true\"":""}><b>FL${r.fl}</b><span>${unit} · ETE · GS</span><strong>${number(fuelValue(r.fuelRequiredGal),1)} · ${formatTime(r.tripTimeHr)} · ${Math.round(r.gsKt)}</strong><em>${label?escapeHtml(label):"&nbsp;"}</em></button>`;}).join("");
+  $$(".level-card:not(:disabled)").forEach((card)=>card.addEventListener("click",()=>{state.selectedAltitudeFt=Number(card.dataset.level);render();}));
 }
 
 function renderFuel(result) {
@@ -167,10 +178,13 @@ function renderFlightTools(plan,navigation,stepPlan,selected) {
 
 function render() {
   applyTranslations();
-  const analysis=calculatePlan(state),recommended=analysis.winners[state.criterion],selected=analysis.results.find((r)=>r.altitudeFt===state.selectedAltitudeFt)||recommended,plan=state.plan;
+  const analysis=calculatePlan(state),recommended=analysis.winners.overall,selectedCandidate=analysis.results.find((r)=>r.altitudeFt===state.selectedAltitudeFt),selected=selectedCandidate&&selectedCandidate.feasibility.status!=="unavailable"?selectedCandidate:recommended,plan=state.plan;
   const navigation=calculateEtpPnr({...state,altitudeFt:selected.altitudeFt});
   const stepPlan=calculateStepClimbs({...state,initialAltitudeFt:selected.altitudeFt,manual:state.manual.active?state.manual:null});
   $("#routeTitle").innerHTML=`${escapeHtml(plan.origin.icao)} <span>→</span> ${escapeHtml(plan.destination.icao)}`; $("#routeSource").textContent=t(plan.source==="SIMBRIEF"?"simbrief":"demo"); $("#planTimestamp").textContent=`${number(plan.distanceNm)} NM · FL${Math.round(plan.plannedAltitudeFt/100)}`;
+  const feasibility=selected.feasibility,feasibilityKey=feasibility.status==="viable"?"viable":feasibility.status==="marginal"?"marginalStatus":"notViable",feasibilityBadge=$("#feasibilityBadge");
+  feasibilityBadge.textContent=t(feasibilityKey); feasibilityBadge.className=`feasibility-badge ${feasibility.status}`;
+  $("#feasibilityMeta").textContent=`${analysis.feasibility.availableCount}/${analysis.results.length} FL · ${signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`)} · ${signedNumber(weightValue(feasibility.weightMarginLb),0,` ${weightLabel()}`)}`;
   $("#routeFrom").textContent=plan.origin.icao; $("#routeTo").textContent=plan.destination.icao;
   const power=selected.power,mapLabel=power.turboLimited?`${number(power.targetMapInHg,1)}→${number(power.availableMapInHg,1)}\"`:`${number(power.availableMapInHg,1)}\"`;
   $("#powerSettingValue").textContent=`${mapLabel} · ${number(power.rpm)} RPM`;
@@ -179,12 +193,12 @@ function render() {
   if(document.activeElement!==$("#manualMap")) $("#manualMap").value=Number(state.powerSetting.mapInHg).toFixed(1);
   if(document.activeElement!==$("#manualRpm")) $("#manualRpm").value=String(Math.round(state.powerSetting.rpm));
   $("#kpiAltitude").textContent=`FL${recommended.fl}`; $("#kpiScore").textContent=recommended.score; $("#kpiFuel").innerHTML=`${number(fuelValue(recommended.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-recommended.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(recommended.tripTimeHr); $("#kpiGs").textContent=`${Math.round(recommended.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(recommended.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?recommended.specificRangeNmGal/3.785411784:recommended.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
-  renderPerformanceChart(analysis.results,recommended); renderRouteMap(plan,selected,navigation); renderVerticalProfile(plan,selected,stepPlan); renderLevelCards(analysis.results,recommended); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected);
+  renderPerformanceChart(analysis.results,recommended,selected); renderRouteMap(plan,selected,navigation); renderVerticalProfile(plan,selected,stepPlan); renderLevelCards(analysis.results,recommended,selected); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected);
   $("#avgWind").textContent=`${String(Math.round(selected.weather.windDir)).padStart(3,"0")}° / ${Math.round(selected.weather.windSpeedKt)} kt`; $("#isaDeviation").textContent=signed(selected.weather.isaDeviationC,"°C"); $("#windComponent").textContent=signed(selected.weather.componentKt," kt"); $("#cruiseOat").textContent=`${Math.round(selected.weather.oatC)}°C`; $("#alternate").textContent=plan.alternate||"—";
   $("#tocTodNote").textContent=`TOC ${Math.round(selected.climb.distanceNm)} NM · TOD ${Math.round(selected.descent.distanceNm)} NM`; $("#climbStats").textContent=`${Math.round(selected.climb.timeHr*60)} min · ${formatFuel(selected.climb.fuelGal,1)} · ${number(selected.climb.power.availableMapInHg,1)}\" / ${number(selected.climb.power.rpm)}`; $("#cruiseStats").textContent=`${Math.round(selected.cruiseTimeHr*60)} min · ${formatFuel(selected.cruiseFuelGal,1)} · ${number(selected.power.availableMapInHg,1)}\" / ${number(selected.power.rpm)}`; $("#descentStats").textContent=`${Math.round(selected.descent.timeHr*60)} min · ${formatFuel(selected.descent.fuelGal,1)} · ${number(PERFORMANCE.powerModel.phases.descent.mapInHg,1)}\" / ${number(PERFORMANCE.powerModel.phases.descent.rpm)}`;
   const fuelRank=[...analysis.results].sort((a,b)=>a.fuelRequiredGal-b.fuelRequiredGal).findIndex((r)=>r.altitudeFt===recommended.altitudeFt)+1,timeRank=[...analysis.results].sort((a,b)=>a.tripTimeHr-b.tripTimeHr).findIndex((r)=>r.altitudeFt===recommended.altitudeFt)+1;
   $("#whyTitle").textContent=`FL${recommended.fl}`; $("#scoreRing").textContent=recommended.score; $("#whyList").innerHTML=[t("fuelRank",fuelRank),t("timeRank",timeRank,Math.round(recommended.gsKt)),t("windLine",signed(recommended.weather.componentKt),signed(recommended.weather.isaDeviationC,"°C")),`${number(recommended.power.availableMapInHg,1)}\" · ${number(recommended.power.rpm)} RPM · ${number(recommended.power.percentPower)}%`].map((line)=>`<li>${escapeHtml(line)}</li>`).join("");
-  $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1); $("#selectionNote").textContent=`FL${selected.fl} · ${formatFuel(selected.fuelRequiredGal,1)} · ${formatTime(selected.tripTimeHr)}`;
+  $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1); $("#selectionNote").textContent=`FL${selected.fl} · ${formatFuel(selected.fuelRequiredGal,1)} · ${formatTime(selected.tripTimeHr)} · ${t(feasibilityKey)}`;
   $("#payloadOutput").textContent=formatWeight(state.payloadLb); $("#fuelOutput").textContent=formatFuel(state.fuelOnboardGal,0);
   const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal,delta=AIRCRAFT.maxGrossWeightLb-weight; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")}`; $("#weightNote").style.color=delta<0?"var(--red)":"";
 }
@@ -200,7 +214,7 @@ $("#manualRpm").addEventListener("input",(event)=>{state.powerSetting.rpm=Math.m
 $$('[data-metric]').forEach((button)=>button.addEventListener("click",()=>{state.metric=button.dataset.metric;$$('[data-metric]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
 $$('[data-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-view-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.viewPanel===button.dataset.view));}));
 $$('[data-tool-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-tool-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-tool-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.toolPanel===button.dataset.toolView));}));
-$("#criterionSelect").addEventListener("change",(event)=>{state.criterion=event.target.value;state.selectedAltitudeFt=null;render();}); $("#payloadInput").addEventListener("input",(event)=>{state.payloadLb=Number(event.target.value);render();}); $("#fuelInput").addEventListener("input",(event)=>{state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{state.reserveMinutes=Number(event.target.value);render();});
+$("#payloadInput").addEventListener("input",(event)=>{state.payloadLb=Number(event.target.value);render();}); $("#fuelInput").addEventListener("input",(event)=>{state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{state.reserveMinutes=Number(event.target.value);render();});
 
 $("#manualUpdateForm").addEventListener("submit",(event)=>{
   event.preventDefault();

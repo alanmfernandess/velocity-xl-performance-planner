@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-4";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-5";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -269,28 +269,72 @@ function normalize(values, value, lowerIsBetter = false) {
   return lowerIsBetter ? 1 - score : score;
 }
 
+export function assessFeasibility(result, { plan, fuelOnboardGal }) {
+  const fuelMarginGal = fuelOnboardGal - result.fuelRequiredGal;
+  const weightMarginLb = AIRCRAFT.maxGrossWeightLb - result.takeoffWeightLb;
+  const profileMarginNm = plan.distanceNm - result.climb.distanceNm - result.descent.distanceNm;
+  const altitudeMarginFt = AIRCRAFT.serviceCeilingFt - result.altitudeFt;
+  const hardReasons = [];
+  const marginalReasons = [];
+
+  if (weightMarginLb < 0) hardReasons.push("WEIGHT");
+  if (fuelMarginGal < 0) hardReasons.push("FUEL");
+  if (altitudeMarginFt < 0) hardReasons.push("ALTITUDE");
+  if (profileMarginNm < PERFORMANCE.viability.minimumCruiseSegmentNm) hardReasons.push("PROFILE");
+
+  if (!hardReasons.length) {
+    if (fuelMarginGal < PERFORMANCE.viability.minimumFuelMarginGal) marginalReasons.push("FUEL_MARGIN");
+    if (weightMarginLb < PERFORMANCE.viability.minimumWeightMarginLb) marginalReasons.push("WEIGHT_MARGIN");
+    if (profileMarginNm < PERFORMANCE.viability.marginalCruiseSegmentNm) marginalReasons.push("PROFILE_MARGIN");
+  }
+
+  return {
+    status: hardReasons.length ? "unavailable" : marginalReasons.length ? "marginal" : "viable",
+    primaryReason: hardReasons[0] || marginalReasons[0] || "OK",
+    reasons: [...hardReasons, ...marginalReasons],
+    fuelMarginGal,
+    weightMarginLb,
+    profileMarginNm,
+    altitudeMarginFt,
+  };
+}
+
 export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
   const results = ALTITUDES_FT.map((altitudeFt) => calculateAtAltitude({
     plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting,
   }));
+  results.forEach((item) => { item.feasibility = assessFeasibility(item, { plan, fuelOnboardGal }); });
   const fuels = results.map((item) => item.fuelRequiredGal);
   const times = results.map((item) => item.tripTimeHr);
   const ranges = results.map((item) => item.maxRangeNm);
   results.forEach((item) => {
-    item.score = Math.round(100 * (
+    const baseScore = 100 * (
       normalize(fuels, item.fuelRequiredGal, true) * 0.42 +
       normalize(times, item.tripTimeHr, true) * 0.33 +
       normalize(ranges, item.maxRangeNm) * 0.25
-    ));
+    );
+    const feasibilityPenalty = item.feasibility.status === "unavailable" ? 50 : item.feasibility.status === "marginal" ? 8 : 0;
+    item.score = Math.max(0, Math.round(baseScore - feasibilityPenalty));
   });
 
+  const available = results.filter((item) => item.feasibility.status !== "unavailable");
+  const winnerPool = available.length ? available : results;
   const winners = {
-    overall: [...results].sort((a, b) => b.score - a.score)[0],
-    fuel: [...results].sort((a, b) => a.fuelRequiredGal - b.fuelRequiredGal)[0],
-    fastest: [...results].sort((a, b) => a.tripTimeHr - b.tripTimeHr)[0],
-    range: [...results].sort((a, b) => b.maxRangeNm - a.maxRangeNm)[0],
+    overall: [...winnerPool].sort((a, b) => b.score - a.score)[0],
+    fuel: [...winnerPool].sort((a, b) => a.fuelRequiredGal - b.fuelRequiredGal)[0],
+    fastest: [...winnerPool].sort((a, b) => a.tripTimeHr - b.tripTimeHr)[0],
+    range: [...winnerPool].sort((a, b) => b.maxRangeNm - a.maxRangeNm)[0],
   };
-  return { results, winners };
+  return {
+    results,
+    winners,
+    feasibility: {
+      availableCount: available.length,
+      viableCount: results.filter((item) => item.feasibility.status === "viable").length,
+      marginalCount: results.filter((item) => item.feasibility.status === "marginal").length,
+      unavailableCount: results.filter((item) => item.feasibility.status === "unavailable").length,
+    },
+  };
 }
 
 function nearestWaypoint(plan, distanceNm) {

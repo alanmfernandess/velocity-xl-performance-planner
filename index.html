@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-4" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-5" />
   </head>
   <body>
     <header class="topbar">
@@ -46,7 +46,7 @@
     <main id="top" class="shell">
       <section class="plan-bar" aria-label="Flight plan">
         <div class="plan-identity">
-          <span class="route-source" id="routeSource">DEMO</span>
+          <div class="plan-status-row"><span class="route-source" id="routeSource">DEMO</span><strong class="feasibility-badge viable" id="feasibilityBadge">VIÁVEL</strong><small id="feasibilityMeta">9/9 FL · +44 gal · +118 lb</small></div>
           <h1 id="routeTitle">SBSP <span>→</span> SBGL</h1>
           <p id="planTimestamp">246 NM · FL180</p>
         </div>
@@ -104,7 +104,6 @@
                 <label><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label>
               </div>
             </div>
-            <label class="select-control"><span data-i18n="objective">Objetivo</span><select id="criterionSelect"><option value="overall" data-i18n="bestOverall">Best Overall</option><option value="fuel" data-i18n="lowestFuel">Lowest Fuel</option><option value="fastest" data-i18n="fastest">Fastest</option><option value="range" data-i18n="maxRange">Maximum Range</option></select></label>
             <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="100" max="900" value="520" step="10" /></label>
             <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="15" max="87" value="77" step="1" /></label>
             <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
@@ -167,6 +166,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-4"></script>
+    <script type="module" src="./js/app.js?v=20261013-5"></script>
   </body>
 </html>

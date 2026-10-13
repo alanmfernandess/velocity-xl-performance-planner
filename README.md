@@ -14,7 +14,8 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Manifesto instalável com apresentação standalone, semelhante a um aplicativo.
 - Comparação de FL100 a FL250 nos modos ECON, NORMAL e FAST.
 - Potência automática por modo ou ajuste manual de MAP/RPM, refletida em TAS, fuel flow, tempo, combustível e alcance.
-- Best Overall, Lowest Fuel, Fastest e Maximum Range.
+- Indicador explícito de viabilidade usando combustível, peso, teto e espaço disponível para subida/cruzeiro/descida.
+- Níveis de cruzeiro inviáveis são desabilitados automaticamente e excluídos da recomendação.
 - TAS, GS, ISA deviation, componente de vento, climb/cruise/descent, combustível, endurance e alcance.
 - ETP e PNR calculados com velocidades de continuação e retorno corrigidas pelo vento.
 - Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
@@ -46,6 +47,8 @@ npm test
 O manual informa 400 hp, twin turbo, altitude crítica de 24.000 ft, teto de serviço de 25.000 ft, 92 gal totais/87 úteis, peso vazio de 1.900 lb e peso máximo de 3.000 lb. Também informa 32 inHg e 2.700 RPM como limites, Maximum Continuous em subida, 2.650 RPM na subida inicial, 2.600 RPM em enroute climb e 2.450 RPM em cruzeiro. O controlador absoluto é modelado mantendo aproximadamente 29,6 inHg até a altitude crítica de densidade, com redução de MAP disponível acima dela.
 
 Os presets estimados são ECON 20 inHg/2.300 RPM, NORMAL 24 inHg/2.450 RPM e FAST 28 inHg/2.500 RPM. No modo manual, MAP e RPM modificam a potência estimada; a TAS varia pela aproximação de potência cúbica e o fuel flow acompanha a potência. Esses coeficientes não substituem uma tabela MAP/RPM do fabricante e continuam centralizados em `js/config.js` para calibração. ETP, PNR e step climbs são referências de planejamento para simulação e não procedimentos certificados.
+
+A viabilidade considera o combustível requerido completo, peso máximo, teto de serviço e a distância necessária para subida e descida. Um nível marginal continua selecionável; um nível inviável é desabilitado e não participa da recomendação. Os limites de margem permanecem centralizados em `js/config.js`.
 
 A calibração é separada por ECON, NORMAL e FAST. O usuário seleciona posição, FL e combustível restante, informa TAS e fuel flow estabilizados vistos no Xbox e aplica dois fatores limitados de correção. Nenhum dado é transmitido; a calibração usa `localStorage` no navegador.
 

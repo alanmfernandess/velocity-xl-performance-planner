@@ -65,6 +65,29 @@ test("plan evaluates FL100 through FL250 and selects winners", () => {
   assert.equal(analysis.results[0].altitudeFt, 10000);
   assert.equal(analysis.results.at(-1).altitudeFt, 25000);
   assert.ok(analysis.winners.overall.score >= 0);
+  assert.equal(analysis.feasibility.availableCount, 9);
+  assert.ok(analysis.results.every((result) => result.feasibility.status === "viable"));
+});
+
+test("unavailable cruise levels are excluded from recommendations", () => {
+  const analysis = calculatePlan({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 33, reserveMinutes: 45 });
+  assert.ok(analysis.feasibility.availableCount > 0);
+  assert.ok(analysis.feasibility.availableCount < analysis.results.length);
+  assert.notEqual(analysis.winners.overall.feasibility.status, "unavailable");
+  assert.ok(analysis.results.some((result) => result.feasibility.primaryReason === "FUEL"));
+});
+
+test("overweight configuration makes every cruise level unavailable", () => {
+  const analysis = calculatePlan({ plan: DEMO_PLAN, mode: "FAST", payloadLb: 900, fuelOnboardGal: 87, reserveMinutes: 45 });
+  assert.equal(analysis.feasibility.availableCount, 0);
+  assert.ok(analysis.results.every((result) => result.feasibility.status === "unavailable"));
+  assert.ok(analysis.results.every((result) => result.feasibility.reasons.includes("WEIGHT")));
+});
+
+test("route too short for climb and descent disables incompatible levels", () => {
+  const shortPlan = { ...DEMO_PLAN, distanceNm: 30 };
+  const analysis = calculatePlan({ plan: shortPlan, mode: "NORMAL", payloadLb: 300, fuelOnboardGal: 50, reserveMinutes: 45 });
+  assert.ok(analysis.results.some((result) => result.feasibility.reasons.includes("PROFILE")));
 });
 
 test("ETP equalizes continue and return times and PNR respects route bounds", () => {
