@@ -12,6 +12,19 @@ export const AIRCRAFT = {
   maxManifoldInHg: 32,
   maxRpm: 2700,
   maxContinuousRpm: 2650,
+  seats: 5,
+  crewSeats: 2,
+  pressurized: false,
+};
+
+// Full-system figures from the Aerox Sky-Ox portable system capacity table.
+export const OXYGEN_CYLINDERS = {
+  "SK-12-6": { label: "SK-12-6", capacityLiters: 164, fullWeightLb: 6, outlets: 4 },
+  "SK-12-9": { label: "SK-12-9", capacityLiters: 248, fullWeightLb: 7, outlets: 4 },
+  "SK-12-15": { label: "SK-12-15", capacityLiters: 415, fullWeightLb: 11, outlets: 4 },
+  "SK-12-24": { label: "SK-12-24", capacityLiters: 682, fullWeightLb: 14, outlets: 4 },
+  "SK-11-20": { label: "SK-11-20", capacityLiters: 566, fullWeightLb: 15, outlets: 4 },
+  "SK-11-40": { label: "SK-11-40", capacityLiters: 1132, fullWeightLb: 28, outlets: 4 },
 };
 
 // Estimated coefficients are intentionally centralized for future manual calibration.
@@ -81,6 +94,51 @@ export const PERFORMANCE = {
     visibleMoistureFactor: 0.9,
     watchBasePenalty: 4,
     cautionBasePenalty: 18,
+  },
+  oxygen: {
+    usableCapacityFraction: 0.9,
+    reserveMinutes: 15,
+    crewThresholdFt: 12500,
+    crewImmediateFt: 14000,
+    occupantsThresholdFt: 15000,
+    maskThresholdFt: 18000,
+    marginalCapacityRatio: 1.2,
+    cannulaFlow: [[10000, 0.3], [12000, 0.4], [15000, 0.5], [18000, 0.6]],
+    maskFlow: [[18000, 1.8], [20000, 2], [25000, 2.5]],
+  },
+  turbulence: {
+    lightScore: 20,
+    moderateScore: 45,
+    severeScore: 75,
+    lightPenalty: 4,
+    moderatePenalty: 16,
+    severePenalty: 100,
+    moderateVerticalShearKtPer1000Ft: 6,
+    moderateHorizontalShearKtPer150Nm: 18,
+  },
+  confidence: {
+    baseTasUncertainty: 0.08,
+    minimumTasUncertainty: 0.025,
+    baseFuelUncertainty: 0.12,
+    minimumFuelUncertainty: 0.04,
+    weatherTimeUncertainty: 0.06,
+    debriefReductionPerFlight: 0.012,
+  },
+  missionRisk: {
+    feasibilityMarginal: 14,
+    feasibilityUnavailable: 35,
+    fuelMarginWeight: 18,
+    icingWeight: 0.2,
+    turbulenceWeight: 0.2,
+    oxygenMarginal: 10,
+    oxygenInsufficient: 30,
+    confidenceWeight: 0.12,
+    alternateMarginal: 6,
+    alternateUnavailable: 14,
+  },
+  debrief: {
+    learningRate: 0.2,
+    maximumHistory: 20,
   },
   glide: {
     ratio: 12.15,

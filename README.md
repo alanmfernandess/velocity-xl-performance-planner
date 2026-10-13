@@ -23,6 +23,11 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Comparador A/B de modo, nível, payload e combustível, com deltas de consumo, tempo, GS e margem.
 - Preflight Load Optimizer por preset: procura automaticamente um FL viável, combustível e payload para ECON, NORMAL ou FAST.
 - Engine-Out Glide Corridor usando razão de planeio 12,15:1 e 90 KIAS, com alcance corrigido pelo vento ao longo do perfil.
+- Cabin Altitude & Oxygen Planner para a configuração personalizada de cinco assentos, com ocupação individual, consumo por altitude, autonomia, saídas disponíveis, recomendação de garrafas e peso dos sistemas no peso de decolagem.
+- Mission Risk Score consolidando viabilidade, margem de combustível, gelo, turbulência, oxigênio, confiança do modelo e situação do alternado.
+- Performance Confidence Envelope com faixas baixa/esperada/alta para combustível, ETE, TAS e alcance.
+- Flight Debrief & Model Accuracy, que compara tempo e combustível reais com a previsão e refina gradualmente os fatores de TAS e fuel flow de cada preset.
+- Turbulence & Ride Comfort Optimizer usando avisos meteorológicos do OFP e gradientes de vento por nível/trecho para comparar conforto entre FLs.
 - Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
 - Calibração local por modo usando somente TAS e fuel flow observados no Xbox; os fatores ficam salvos no dispositivo.
 - Gráficos de performance, perfil vertical, representação de rota e perfil de combustível organizados em abas.
@@ -48,6 +53,10 @@ npm test
 - [Documentação oficial do SimBrief — Fetching OFP Data](https://developers.navigraph.com/docs/simbrief/fetching-ofp-data)
 - [Documentação oficial do SimBrief — Using the API](https://developers.navigraph.com/docs/simbrief/using-the-api)
 - [Manual Black Square Velocity XL](https://downloads.justflight.com/products/JFF003720/BKSQ_VelocityManual.pdf)
+- [FAA AIM — Hypoxia and supplemental oxygen](https://www.faa.gov/Air_traffic/publications/atpubs/aim_html/chap8_section_1.html)
+- [Aerox Sky-Ox — Use and Care](https://www.aerox.com/content/2022%20Use%20and%20care%20-%20Sky-ox.pdf)
+- [FAA AIM — Turbulence reporting criteria](https://www.faa.gov/air_traffic/publications/atpubs/aim/aim0701.html)
+- [FAA Aviation Weather Handbook](https://www.faa.gov/regulationspolicies/handbooksmanuals/aviation/faa-h-8083-28b-aviation-weather-handbook)
 
 O manual informa 400 hp, twin turbo, altitude crítica de 24.000 ft, teto de serviço de 25.000 ft, 92 gal totais/87 úteis, peso vazio de 1.900 lb e peso máximo de 3.000 lb. Também informa 32 inHg e 2.700 RPM como limites, Maximum Continuous em subida, 2.650 RPM na subida inicial, 2.600 RPM em enroute climb e 2.450 RPM em cruzeiro. O controlador absoluto é modelado mantendo aproximadamente 29,6 inHg até a altitude crítica de densidade, com redução de MAP disponível acima dela.
 
@@ -60,6 +69,10 @@ A viabilidade considera o combustível requerido completo, peso máximo, teto de
 O Icing-Aware Level Optimizer mantém separado o ótimo puro de performance do nível recomendado pela meteorologia. Indicações explícitas de gelo ou precipitação congelante tornam incompatíveis os níveis afetados e também consideram a passagem pela camada durante subida e descida. Quando há apenas OAT sem confirmação de umidade, o resultado é marcado como dado limitado e recebe somente uma penalização conservadora; nunca é apresentado como garantia de ausência de gelo. A diferença de combustível, tempo, GS e alcance é recalculada pelo modelo no FL alternativo, sem simular voo deliberado com gelo acumulado.
 
 O Load Optimizer testa FL100–FL250 com a potência automática do preset selecionado, preserva o máximo de payload possível e aplica nível, combustível e carga com margem-alvo de 6 gal sobre o requerido e 80 lb abaixo do peso máximo. A aplicação só fica indisponível quando nenhuma combinação física entre zero payload e 87 gal torna a missão viável.
+
+O Oxygen Planner usa como base internacional o FAA 14 CFR §91.211: tripulação acima de 12.500 ft por mais de 30 minutos, uso contínuo da tripulação acima de 14.000 ft e oxigênio disponibilizado a todos os ocupantes acima de 15.000 ft. A configuração solicitada tem cinco assentos — piloto, copiloto e três passageiros traseiros — e é independente da configuração descrita pelo fabricante do addon. Vazões, capacidades, número de saídas e pesos cheios vêm da documentação Aerox Sky-Ox; cânulas são limitadas a 18.000 ft e o modelo passa a considerar máscaras acima desse nível. A reserva de oxigênio é estimada em 15 minutos. Os valores servem somente para o simulador.
+
+O Ride Comfort Optimizer interpreta menções explícitas a TURB/CAT, AIRMET Tango, SIGMET, tempestades e wind shear quando presentes no texto meteorológico importado, e complementa isso com uma estimativa baseada na mudança vetorial do vento entre níveis e trechos. O Mission Risk Score e o Performance Confidence Envelope são índices próprios, não probabilidades certificadas. Debriefs ficam apenas no `localStorage`, são separados por preset e aplicam uma correção conservadora de 20% do erro observado por voo.
 
 A calibração é separada por ECON, NORMAL e FAST. O usuário seleciona posição, FL e combustível restante, informa TAS e fuel flow estabilizados vistos no Xbox e aplica dois fatores limitados de correção. Nenhum dado é transmitido; a calibração usa `localStorage` no navegador.
 

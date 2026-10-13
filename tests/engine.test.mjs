@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateModeLoadOptimization, calculatePlan, calculateStepClimbs, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, powerAtAltitude, weatherAtAltitude, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, turbulenceWeatherEvidence, weatherAtAltitude, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE } from "../js/config.js";
+
+const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
 
 test("ISA temperature follows standard lapse rate", () => {
   assert.equal(isaTemperatureC(0), 15);
@@ -77,7 +79,7 @@ test("icing evidence recognizes freezing precipitation, cloud, and clear weather
 
 test("icing-aware optimizer changes level when OFP weather favors a lower-risk band", () => {
   const plan = { ...DEMO_PLAN, meteorology: { originText: "", destinationText: "", enrouteText: "BKN030 -RA" } };
-  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, oxygen: FULL_OXYGEN });
   assert.equal(analysis.winners.performance.fl, 140);
   assert.ok(analysis.winners.overall.fl >= 240);
   assert.equal(analysis.icing.cost.changedAltitude, true);
@@ -184,7 +186,7 @@ test("scenario comparison returns operational deltas", () => {
 });
 
 test("load optimizer respects useful load, fuel capacity, and required fuel", () => {
-  const optimizer = calculateLoadOptimization({ plan: DEMO_PLAN, altitudeFt: 14000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const optimizer = calculateLoadOptimization({ plan: DEMO_PLAN, altitudeFt: 14000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, oxygen: FULL_OXYGEN });
   assert.ok(optimizer.recommendedFuelGal > 0 && optimizer.recommendedFuelGal <= 87);
   assert.ok(optimizer.maxFuelByWeightGal <= 87);
   assert.ok(optimizer.optimizedWeightLb <= 2920.01);
@@ -194,7 +196,7 @@ test("load optimizer respects useful load, fuel capacity, and required fuel", ()
 });
 
 test("load optimizer computes payload reduction when fuel and load cannot coexist", () => {
-  const optimizer = calculateLoadOptimization({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "FAST", payloadLb: 1100, fuelOnboardGal: 87, reserveMinutes: 60 });
+  const optimizer = calculateLoadOptimization({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "FAST", payloadLb: 1100, fuelOnboardGal: 87, reserveMinutes: 60, oxygen: FULL_OXYGEN });
   assert.equal(optimizer.feasible, true);
   assert.ok(optimizer.payloadReductionLb > 0);
   assert.ok(optimizer.recommendedPayloadLb < 1100);
@@ -239,4 +241,49 @@ test("engine-out glide corridor uses 12.15 to 1 at 90 KIAS", () => {
   assert.equal(glide.bestGlideKias, 90);
   assert.ok(Math.abs(glide.cruiseRangeNm - 35.99) < 0.1);
   assert.ok(glide.samples.length >= 2);
+});
+
+test("oxygen planner applies international crew and passenger thresholds", () => {
+  const fl140 = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 14000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const fl160 = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 16000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const at140 = calculateOxygenPlan({ result: fl140, oxygen: { ...FULL_OXYGEN, bottles: 0 } });
+  const at160 = calculateOxygenPlan({ result: fl160, oxygen: { ...FULL_OXYGEN, bottles: 0 } });
+  assert.equal(at140.maximumUsers, 2);
+  assert.equal(at160.maximumUsers, 5);
+  assert.equal(at160.status, "insufficient");
+  assert.ok(at160.recommendedBottles >= 2);
+});
+
+test("oxygen bottle weight is included in takeoff weight", () => {
+  const oxygenWeightLb = oxygenSystemWeightLb(FULL_OXYGEN);
+  const result = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, oxygenWeightLb, reserveMinutes: 45 });
+  assert.equal(oxygenWeightLb, 28);
+  assert.equal(result.takeoffWeightLb, 1900 + 520 + 77 * 6 + 28);
+});
+
+test("turbulence optimizer combines explicit reports and wind shear", () => {
+  assert.ok(turbulenceWeatherEvidence("AIRMET TANGO MOD TURB FL160/220").score >= 55);
+  const result = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const risk = calculateTurbulenceRisk({ plan: { ...DEMO_PLAN, meteorology: { enrouteText: "MOD TURB FL160/220" } }, result });
+  assert.equal(risk.status, "moderate");
+  assert.equal(risk.confidence, "weather");
+});
+
+test("performance confidence narrows with calibrated debrief history", () => {
+  const result = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const baseline = calculatePerformanceConfidence({ plan: DEMO_PLAN, result, mode: "NORMAL" });
+  const learned = calculatePerformanceConfidence({ plan: DEMO_PLAN, result, mode: "NORMAL", calibration: { NORMAL: { tasFactor: 1.02, fuelFlowFactor: .98 } }, debriefs: Array.from({ length: 5 }, () => ({ mode: "NORMAL" })) });
+  assert.ok(learned.score > baseline.score);
+  assert.ok(learned.fuel.high - learned.fuel.low < baseline.fuel.high - baseline.fuel.low);
+});
+
+test("debrief updates calibration and mission risk reflects operational hazards", () => {
+  const analysis = calculatePlan({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, oxygen: { ...FULL_OXYGEN, bottles: 0 } });
+  const result = analysis.results.find((item) => item.altitudeFt === 18000);
+  const debrief = calculateDebrief({ result, actualTimeMinutes: result.tripTimeHr * 60 * 1.08, actualFuelGal: result.tripFuelGal * 1.1 });
+  assert.ok(debrief.accuracyScore < 100);
+  assert.ok(debrief.calibration.tasFactor < 1);
+  assert.ok(debrief.calibration.fuelFlowFactor > 1);
+  const risk = calculateMissionRisk({ result, confidence: result.confidence });
+  assert.ok(risk.score >= 30);
 });

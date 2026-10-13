@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-11" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-12" />
   </head>
   <body>
     <header class="topbar">
@@ -62,6 +62,13 @@
         <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
         <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
         <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
+      </section>
+
+      <section class="mission-strip" aria-label="Mission status">
+        <div><span data-i18n="missionRisk">Risco da missão</span><strong id="missionRiskValue">—</strong><small id="missionRiskStatus">—</small></div>
+        <div><span data-i18n="confidence">Confiança</span><strong id="confidenceValue">—</strong><small id="confidenceMeta">—</small></div>
+        <div><span data-i18n="rideComfort">Conforto</span><strong id="rideValue">—</strong><small id="rideMeta">—</small></div>
+        <div><span data-i18n="oxygen">Oxigênio</span><strong id="oxygenValue">—</strong><small id="oxygenMeta">—</small></div>
       </section>
 
       <section class="dashboard-grid">
@@ -123,6 +130,10 @@
           <button data-tool-view="compare" type="button">A / B</button>
           <button data-tool-view="load" type="button">LOAD</button>
           <button data-tool-view="glide" type="button">GLIDE</button>
+          <button data-tool-view="oxygen" type="button">O₂</button>
+          <button data-tool-view="confidence" type="button">CONF</button>
+          <button data-tool-view="ride" type="button">RIDE</button>
+          <button data-tool-view="debrief" type="button">DEBRIEF</button>
           <button data-tool-view="steps" type="button">STEP CLIMB</button>
           <button data-tool-view="update" type="button" data-i18n="manualUpdate">Atualização manual</button>
         </div>
@@ -206,6 +217,53 @@
             <div class="glide-wind" id="glideWind"></div>
           </div>
         </div>
+        <div class="tool-view" data-tool-panel="oxygen">
+          <div class="oxygen-layout">
+            <div class="oxygen-controls">
+              <label><span data-i18n="cabinAltitude">Altitude cabine</span><select id="oxygenAltitude"></select></label>
+              <label><span data-i18n="bottle">Garrafa</span><select id="oxygenBottle"></select></label>
+              <label><span data-i18n="quantity">Quantidade</span><select id="oxygenBottleCount"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+              <button class="text-button" id="applyOxygenRecommendation" type="button" data-i18n="applyOxygen">Aplicar recomendação</button>
+            </div>
+            <div class="seat-map" aria-label="5 seats">
+              <label class="seat crew"><input type="checkbox" data-oxygen-seat="0" checked disabled /><span data-i18n="pilot">Piloto</span></label>
+              <label class="seat crew"><input type="checkbox" data-oxygen-seat="1" checked /><span data-i18n="copilot">Copiloto</span></label>
+              <label class="seat"><input type="checkbox" data-oxygen-seat="2" checked /><span data-i18n="rearLeft">Traseiro E</span></label>
+              <label class="seat"><input type="checkbox" data-oxygen-seat="3" checked /><span data-i18n="rearCenter">Traseiro C</span></label>
+              <label class="seat"><input type="checkbox" data-oxygen-seat="4" checked /><span data-i18n="rearRight">Traseiro D</span></label>
+            </div>
+            <div class="oxygen-stats">
+              <span><b data-i18n="oxygenRequired">Requerido</b><strong id="oxygenRequired">—</strong></span>
+              <span><b data-i18n="oxygenInstalled">Disponível</b><strong id="oxygenInstalled">—</strong></span>
+              <span><b data-i18n="oxygenEndurance">Autonomia</b><strong id="oxygenEndurance">—</strong></span>
+              <span><b data-i18n="oxygenWeight">Peso O₂</b><strong id="oxygenWeight">—</strong></span>
+            </div>
+            <div class="oxygen-status"><b class="status-pill" id="oxygenStatus">—</b><span id="oxygenRecommendation">—</span><small><a href="https://www.faa.gov/Air_traffic/publications/atpubs/aim_html/chap8_section_1.html" target="_blank" rel="noreferrer">FAA 91.211</a> · <a href="https://www.aerox.com/content/2022%20Use%20and%20care%20-%20Sky-ox.pdf" target="_blank" rel="noreferrer">Aerox Sky-Ox</a></small></div>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="confidence">
+          <div class="confidence-layout">
+            <div class="confidence-score"><strong id="confidenceScore">—</strong><span data-i18n="modelConfidence">Confiança do modelo</span><small id="confidenceSamples">—</small></div>
+            <div class="envelope-grid" id="confidenceEnvelope"></div>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="ride">
+          <div class="ride-layout">
+            <div class="ride-summary"><strong id="rideHeadline">—</strong><span id="rideSummaryMeta">—</span></div>
+            <div class="ride-levels" id="rideLevels"></div>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="debrief">
+          <div class="debrief-layout">
+            <form id="debriefForm" class="debrief-form">
+              <label><span data-i18n="actualTime">Tempo real</span><span class="input-with-unit"><input id="debriefTime" type="number" min="1" step="1" required /><small>min</small></span></label>
+              <label><span data-i18n="actualFuel">Combustível usado</span><span class="input-with-unit"><input id="debriefFuel" type="number" min="0.1" step="0.1" required /><small id="debriefFuelUnit">gal</small></span></label>
+              <button class="primary-button" type="submit" data-i18n="saveDebrief">Salvar debrief</button>
+            </form>
+            <div class="debrief-result" id="debriefResult"><strong>—</strong><span>—</span></div>
+            <div class="debrief-history" id="debriefHistory"></div>
+          </div>
+        </div>
         <div class="tool-view" data-tool-panel="steps">
           <div class="step-summary"><strong id="stepHeadline">FL120</strong><span id="stepMeta">—</span></div>
           <div class="step-track" id="stepTrack"></div>
@@ -237,6 +295,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-11"></script>
+    <script type="module" src="./js/app.js?v=20261013-12"></script>
   </body>
 </html>

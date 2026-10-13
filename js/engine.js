@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-10";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-12";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -266,6 +266,273 @@ export function calculateIcingRisk({ plan, result }) {
   };
 }
 
+function vectorWindDifferenceKt(first, second) {
+  const firstX = Math.sin(toRad(first.windDir || 0)) * (first.windSpd || 0);
+  const firstY = Math.cos(toRad(first.windDir || 0)) * (first.windSpd || 0);
+  const secondX = Math.sin(toRad(second.windDir || 0)) * (second.windSpd || 0);
+  const secondY = Math.cos(toRad(second.windDir || 0)) * (second.windSpd || 0);
+  return Math.hypot(secondX - firstX, secondY - firstY);
+}
+
+export function turbulenceWeatherEvidence(text = "") {
+  const source = String(text).toUpperCase();
+  const noTurbulence = /\b(?:NO|NIL)\s+(?:TURB|TURBULENCE|CAT)\b/.test(source);
+  const bands = [];
+  const patterns = [
+    /(?:TURB(?:ULENCE)?|CAT)[^.\n]{0,50}?\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})\b/g,
+    /\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})[^.\n]{0,50}?(?:TURB(?:ULENCE)?|CAT)\b/g,
+  ];
+  patterns.forEach((pattern) => {
+    for (const match of source.matchAll(pattern)) {
+      const firstFt = Number(match[1]) * 100;
+      const secondFt = Number(match[2]) * 100;
+      bands.push({ baseFt: Math.min(firstFt, secondFt), topFt: Math.max(firstFt, secondFt) });
+    }
+  });
+  let score = 0;
+  if (!noTurbulence) {
+    if (/\b(?:EXTRM|EXTREME)\s+(?:TURB|TURBULENCE|CAT)\b/.test(source)) score = 100;
+    else if (/\b(?:SEV|SEVERE)(?:\s*[-\/]\s*EXTREME)?\s+(?:TURB|TURBULENCE|CAT)\b/.test(source)) score = 90;
+    else if (/\b(?:MOD|MODERATE)\s*[-\/]\s*(?:SEV|SEVERE)\s+(?:TURB|TURBULENCE|CAT)\b/.test(source)) score = 82;
+    else if (/\b(?:MOD|MODERATE)\s+(?:TURB|TURBULENCE|CAT|CHOP)\b/.test(source)) score = 60;
+    else if (/\b(?:LGT|LIGHT)\s*[-\/]\s*(?:MOD|MODERATE)\s+(?:TURB|TURBULENCE|CAT|CHOP)\b/.test(source)) score = 45;
+    else if (/\b(?:LGT|LIGHT)\s+(?:TURB|TURBULENCE|CAT|CHOP)\b/.test(source)) score = 30;
+  }
+  if (/\bAIRMET\s+TANGO\b/.test(source)) score = Math.max(score, 55);
+  if (/\b(?:CONVECTIVE\s+SIGMET|SIGMET[^.\n]{0,40}(?:TURB|CAT)|TSRA|TS|CB)\b/.test(source)) score = Math.max(score, 85);
+  if (/\b(?:LLWS|WIND\s*SHEAR|WS\d{3})\b/.test(source)) score = Math.max(score, 60);
+  return { available: Boolean(source.trim()), noTurbulence, score, bands };
+}
+
+function turbulenceEvidenceAtAltitude(evidence, altitudeFt) {
+  if (!evidence.bands.length || evidence.bands.some((band) => altitudeFt >= band.baseFt && altitudeFt <= band.topFt)) return evidence;
+  return { ...evidence, score: 0 };
+}
+
+export function calculateTurbulenceRisk({ plan, result }) {
+  const fixes = plan.waypoints?.filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) || [];
+  const globalText = plan.meteorology?.enrouteText || "";
+  let maximumScore = 0;
+  let maximumVerticalShear = 0;
+  let maximumHorizontalShear = 0;
+  let evidenceSamples = 0;
+  const segments = [];
+  for (let index = 0; index < Math.max(1, fixes.length - 1); index += 1) {
+    const from = fixes[index] || plan.origin;
+    const to = fixes[index + 1] || plan.destination;
+    const terminalText = index === 0 ? plan.meteorology?.originText || "" : index === fixes.length - 2 ? plan.meteorology?.destinationText || "" : "";
+    const evidence = turbulenceEvidenceAtAltitude(turbulenceWeatherEvidence(`${globalText} ${from?.weatherText || ""} ${terminalText}`), result.altitudeFt);
+    if (evidence.available) evidenceSamples += 1;
+    let verticalShear = 0;
+    const levels = (from?.windLevels || []).filter((level) => Number.isFinite(level.altitudeFt)).sort((a, b) => a.altitudeFt - b.altitudeFt);
+    for (let levelIndex = 0; levelIndex < levels.length - 1; levelIndex += 1) {
+      const lower = levels[levelIndex];
+      const upper = levels[levelIndex + 1];
+      if (result.altitudeFt < lower.altitudeFt - 3000 || result.altitudeFt > upper.altitudeFt + 3000) continue;
+      const separationThousands = Math.max(0.1, (upper.altitudeFt - lower.altitudeFt) / 1000);
+      verticalShear = Math.max(verticalShear, vectorWindDifferenceKt(lower, upper) / separationThousands);
+    }
+    const segmentNm = from && to && [from.lat, from.lon, to.lat, to.lon].every(Number.isFinite) ? greatCircleNm(from, to) : 0;
+    const fromWeather = weatherAtAltitude(from || {}, result.altitudeFt);
+    const toWeather = weatherAtAltitude(to || from || {}, result.altitudeFt);
+    const horizontalShear = segmentNm > 0 ? vectorWindDifferenceKt(fromWeather, toWeather) / segmentNm * 150 : 0;
+    maximumVerticalShear = Math.max(maximumVerticalShear, verticalShear);
+    maximumHorizontalShear = Math.max(maximumHorizontalShear, horizontalShear);
+    const shearRatio = Math.max(
+      verticalShear / PERFORMANCE.turbulence.moderateVerticalShearKtPer1000Ft,
+      horizontalShear / PERFORMANCE.turbulence.moderateHorizontalShearKtPer150Nm,
+    );
+    const shearScore = shearRatio >= 1.7 ? 82 : shearRatio >= 1 ? 55 : shearRatio >= 0.55 ? 28 : 8 * shearRatio;
+    const riskScore = Math.round(Math.max(evidence.score, shearScore));
+    maximumScore = Math.max(maximumScore, riskScore);
+    segments.push({
+      from: from?.ident || from?.icao || "—",
+      to: to?.ident || to?.icao || "—",
+      riskScore,
+      verticalShear,
+      horizontalShear,
+    });
+  }
+  const status = maximumScore >= PERFORMANCE.turbulence.severeScore
+    ? "severe"
+    : maximumScore >= PERFORMANCE.turbulence.moderateScore
+      ? "moderate"
+      : maximumScore >= PERFORMANCE.turbulence.lightScore ? "light" : "smooth";
+  const penalty = status === "severe"
+    ? PERFORMANCE.turbulence.severePenalty
+    : status === "moderate"
+      ? PERFORMANCE.turbulence.moderatePenalty
+      : status === "light" ? PERFORMANCE.turbulence.lightPenalty : 0;
+  return {
+    status,
+    riskScore: maximumScore,
+    penalty,
+    confidence: evidenceSamples ? "weather" : fixes.some((fix) => (fix.windLevels || []).length > 1) ? "wind" : "limited",
+    maximumVerticalShear,
+    maximumHorizontalShear,
+    segments,
+  };
+}
+
+function interpolateFlowRate(table, altitudeFt) {
+  if (altitudeFt <= table[0][0]) return table[0][1];
+  const upperIndex = table.findIndex(([altitude]) => altitude >= altitudeFt);
+  if (upperIndex < 0) return table.at(-1)[1];
+  const lower = table[Math.max(0, upperIndex - 1)];
+  const upper = table[upperIndex];
+  const ratio = upper[0] === lower[0] ? 0 : (altitudeFt - lower[0]) / (upper[0] - lower[0]);
+  return lower[1] + (upper[1] - lower[1]) * ratio;
+}
+
+export function oxygenSystemWeightLb(oxygen = {}) {
+  const cylinder = OXYGEN_CYLINDERS[oxygen.bottleModel] || OXYGEN_CYLINDERS["SK-12-24"];
+  return Math.max(0, Math.round(Number(oxygen.bottles) || 0)) * cylinder.fullWeightLb;
+}
+
+export function calculateOxygenPlan({ result, oxygen = {} }) {
+  const cylinder = OXYGEN_CYLINDERS[oxygen.bottleModel] || OXYGEN_CYLINDERS["SK-12-24"];
+  const bottles = clamp(Math.round(Number(oxygen.bottles) || 0), 0, 6);
+  const seats = Array.from({ length: AIRCRAFT.seats }, (_, index) => index === 0 || oxygen.seats?.[index] !== false);
+  const occupiedCrew = seats.slice(0, AIRCRAFT.crewSeats).filter(Boolean).length;
+  const occupiedPassengers = seats.slice(AIRCRAFT.crewSeats).filter(Boolean).length;
+  const samples = [];
+  const appendPhase = (phase, durationHr, altitudeAtFraction) => {
+    const count = 24;
+    for (let index = 0; index < count; index += 1) {
+      const fraction = (index + 0.5) / count;
+      samples.push({ phase, minutes: durationHr * 60 / count, altitudeFt: altitudeAtFraction(fraction) });
+    }
+  };
+  appendPhase("climb", result.climb.timeHr, (fraction) => result.altitudeFt * fraction);
+  appendPhase("cruise", result.cruiseTimeHr, () => result.altitudeFt);
+  appendPhase("descent", result.descent.timeHr, (fraction) => result.altitudeFt * (1 - fraction));
+  const lowerBandMinutes = samples.filter((sample) => sample.altitudeFt > PERFORMANCE.oxygen.crewThresholdFt && sample.altitudeFt <= PERFORMANCE.oxygen.crewImmediateFt).reduce((sum, sample) => sum + sample.minutes, 0);
+  let requiredLiters = 0;
+  let requiredMinutes = 0;
+  let maximumUsers = 0;
+  let maskRequired = false;
+  for (const sample of samples) {
+    let users = 0;
+    if (sample.altitudeFt > PERFORMANCE.oxygen.occupantsThresholdFt) users = occupiedCrew + occupiedPassengers;
+    else if (sample.altitudeFt > PERFORMANCE.oxygen.crewImmediateFt) users = occupiedCrew;
+    else if (sample.altitudeFt > PERFORMANCE.oxygen.crewThresholdFt && lowerBandMinutes > 30) users = occupiedCrew;
+    if (!users) continue;
+    const usesMask = sample.altitudeFt > PERFORMANCE.oxygen.maskThresholdFt;
+    const flow = interpolateFlowRate(usesMask ? PERFORMANCE.oxygen.maskFlow : PERFORMANCE.oxygen.cannulaFlow, sample.altitudeFt);
+    requiredLiters += users * flow * sample.minutes;
+    requiredMinutes += sample.minutes;
+    maximumUsers = Math.max(maximumUsers, users);
+    maskRequired ||= usesMask;
+  }
+  if (maximumUsers) {
+    const reserveFlow = interpolateFlowRate(maskRequired ? PERFORMANCE.oxygen.maskFlow : PERFORMANCE.oxygen.cannulaFlow, result.altitudeFt);
+    requiredLiters += maximumUsers * reserveFlow * PERFORMANCE.oxygen.reserveMinutes;
+  }
+  const installedLiters = bottles * cylinder.capacityLiters * PERFORMANCE.oxygen.usableCapacityFraction;
+  const installedOutlets = bottles * cylinder.outlets;
+  const capacityRatio = requiredLiters > 0 ? installedLiters / requiredLiters : Infinity;
+  const recommendedBottles = requiredLiters > 0
+    ? Math.max(Math.ceil(requiredLiters / (cylinder.capacityLiters * PERFORMANCE.oxygen.usableCapacityFraction)), Math.ceil(maximumUsers / cylinder.outlets))
+    : 0;
+  const capacityOkay = installedLiters >= requiredLiters;
+  const outletsOkay = installedOutlets >= maximumUsers;
+  const status = requiredLiters <= 0
+    ? "not-required"
+    : !capacityOkay || !outletsOkay
+      ? "insufficient"
+      : capacityRatio < PERFORMANCE.oxygen.marginalCapacityRatio ? "marginal" : "compliant";
+  const cruiseUsers = result.altitudeFt > PERFORMANCE.oxygen.occupantsThresholdFt
+    ? occupiedCrew + occupiedPassengers
+    : result.altitudeFt > PERFORMANCE.oxygen.crewImmediateFt
+      ? occupiedCrew
+      : result.altitudeFt > PERFORMANCE.oxygen.crewThresholdFt && lowerBandMinutes > 30 ? occupiedCrew : 0;
+  const cruiseFlow = cruiseUsers ? interpolateFlowRate(maskRequired ? PERFORMANCE.oxygen.maskFlow : PERFORMANCE.oxygen.cannulaFlow, result.altitudeFt) * cruiseUsers : 0;
+  return {
+    status,
+    requiredLiters,
+    installedLiters,
+    capacityRatio,
+    capacityOkay,
+    outletsOkay,
+    installedOutlets,
+    maximumUsers,
+    occupiedCrew,
+    occupiedPassengers,
+    requiredMinutes,
+    lowerBandMinutes,
+    maskRequired,
+    bottles,
+    bottleModel: cylinder.label,
+    bottleWeightLb: oxygenSystemWeightLb({ ...oxygen, bottles }),
+    recommendedBottles,
+    recommendedWeightLb: recommendedBottles * cylinder.fullWeightLb,
+    enduranceMinutes: cruiseFlow > 0 ? installedLiters / cruiseFlow : Infinity,
+    penalty: status === "insufficient" ? 100 : status === "marginal" ? 12 : 0,
+  };
+}
+
+export function calculatePerformanceConfidence({ plan, result, calibration = {}, debriefs = [], mode }) {
+  const modeDebriefs = debriefs.filter((entry) => entry.mode === mode);
+  const factors = calibrationForMode(calibration, mode);
+  const calibrated = Math.abs(factors.tasFactor - 1) > 0.001 || Math.abs(factors.fuelFlowFactor - 1) > 0.001;
+  const temperatureSamples = (plan.waypoints || []).filter((fix) => Number.isFinite(fix.oatC) || (fix.windLevels || []).some((level) => Number.isFinite(level.oatC))).length;
+  const weatherCoverage = (plan.waypoints || []).length ? temperatureSamples / plan.waypoints.length : 0;
+  const learnedReduction = Math.min(0.05, modeDebriefs.length * PERFORMANCE.confidence.debriefReductionPerFlight);
+  const tasUncertainty = Math.max(PERFORMANCE.confidence.minimumTasUncertainty, PERFORMANCE.confidence.baseTasUncertainty - learnedReduction - (calibrated ? 0.01 : 0));
+  const fuelUncertainty = Math.max(PERFORMANCE.confidence.minimumFuelUncertainty, PERFORMANCE.confidence.baseFuelUncertainty - learnedReduction - (calibrated ? 0.015 : 0));
+  const timeUncertainty = tasUncertainty + (1 - weatherCoverage) * PERFORMANCE.confidence.weatherTimeUncertainty;
+  const score = clamp(Math.round(100 - tasUncertainty * 260 - fuelUncertainty * 220 - (1 - weatherCoverage) * 22), 0, 100);
+  return {
+    score,
+    sampleCount: modeDebriefs.length,
+    weatherCoverage,
+    tasUncertainty,
+    fuelUncertainty,
+    timeUncertainty,
+    fuel: { low: result.fuelRequiredGal * (1 - fuelUncertainty), nominal: result.fuelRequiredGal, high: result.fuelRequiredGal * (1 + fuelUncertainty) },
+    time: { low: result.tripTimeHr * (1 - timeUncertainty), nominal: result.tripTimeHr, high: result.tripTimeHr * (1 + timeUncertainty) },
+    tas: { low: result.tasKt * (1 - tasUncertainty), nominal: result.tasKt, high: result.tasKt * (1 + tasUncertainty) },
+    range: { low: result.maxRangeNm * (1 - fuelUncertainty - tasUncertainty / 2), nominal: result.maxRangeNm, high: result.maxRangeNm * (1 + fuelUncertainty + tasUncertainty / 2) },
+  };
+}
+
+export function calculateMissionRisk({ result, confidence, alternateAdvice = null }) {
+  let score = result.feasibility.status === "unavailable"
+    ? PERFORMANCE.missionRisk.feasibilityUnavailable
+    : result.feasibility.status === "marginal" ? PERFORMANCE.missionRisk.feasibilityMarginal : 0;
+  const fuelMargin = result.feasibility.fuelMarginGal;
+  score += fuelMargin < 0 ? PERFORMANCE.missionRisk.fuelMarginWeight : clamp((10 - fuelMargin) / 10, 0, 1) * PERFORMANCE.missionRisk.fuelMarginWeight;
+  score += result.icing.riskScore * PERFORMANCE.missionRisk.icingWeight;
+  score += result.turbulence.riskScore * PERFORMANCE.missionRisk.turbulenceWeight;
+  score += result.oxygen.status === "insufficient"
+    ? PERFORMANCE.missionRisk.oxygenInsufficient
+    : result.oxygen.status === "marginal" ? PERFORMANCE.missionRisk.oxygenMarginal : 0;
+  score += (100 - confidence.score) * PERFORMANCE.missionRisk.confidenceWeight;
+  const alternateStatus = alternateAdvice?.destination?.status;
+  if (alternateStatus === "unavailable" || alternateStatus === "unknown") score += PERFORMANCE.missionRisk.alternateUnavailable;
+  else if (alternateStatus === "marginal") score += PERFORMANCE.missionRisk.alternateMarginal;
+  score = clamp(Math.round(score), 0, 100);
+  return { score, status: score >= 75 ? "critical" : score >= 50 ? "high" : score >= 25 ? "moderate" : "low" };
+}
+
+export function calculateDebrief({ result, actualTimeMinutes, actualFuelGal, currentCalibration = {} }) {
+  const actualTimeHr = Math.max(1, Number(actualTimeMinutes)) / 60;
+  const actualFuel = Math.max(0.1, Number(actualFuelGal));
+  const timeErrorPct = (actualTimeHr - result.tripTimeHr) / result.tripTimeHr * 100;
+  const fuelErrorPct = (actualFuel - result.tripFuelGal) / result.tripFuelGal * 100;
+  const accuracyScore = clamp(Math.round(100 - Math.abs(timeErrorPct) * 0.45 - Math.abs(fuelErrorPct) * 0.55), 0, 100);
+  const learningRate = PERFORMANCE.debrief.learningRate;
+  const tasFactor = clamp(
+    (Number(currentCalibration.tasFactor) || 1) * (1 + learningRate * (result.tripTimeHr / actualTimeHr - 1)),
+    ...PERFORMANCE.calibrationLimits.tasFactor,
+  );
+  const fuelFlowFactor = clamp(
+    (Number(currentCalibration.fuelFlowFactor) || 1) * (1 + learningRate * (actualFuel / result.tripFuelGal - 1)),
+    ...PERFORMANCE.calibrationLimits.fuelFlowFactor,
+  );
+  return { accuracyScore, timeErrorPct, fuelErrorPct, actualTimeHr, actualFuelGal: actualFuel, calibration: { tasFactor, fuelFlowFactor } };
+}
+
 export function powerAtAltitude({ altitudeFt, oatC, mapInHg, rpm, source = "AUTO" }) {
   const densityAltitude = densityAltitudeFt(altitudeFt, oatC);
   const aboveCriticalFt = Math.max(0, densityAltitude - AIRCRAFT.criticalAltitudeFt);
@@ -330,10 +597,10 @@ function calibrationForMode(calibration, mode) {
   };
 }
 
-export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, calibration = {}, powerSetting = {} }) {
+export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, calibration = {}, powerSetting = {} }) {
   const modeData = PERFORMANCE.modes[mode];
   const factors = calibrationForMode(calibration, mode);
-  const weightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal;
+  const weightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const weather = averageRouteWeather(plan, altitudeFt);
   const selectedPower = modePowerSetting(mode, powerSetting);
   const power = powerAtAltitude({ altitudeFt, oatC: weather.oatC, mapInHg: selectedPower.mapInHg, rpm: selectedPower.rpm, source: selectedPower.source });
@@ -363,9 +630,9 @@ function descentProfile(altitudeFt) {
   return { timeHr, distanceNm: timeHr * PERFORMANCE.descentSpeedKt, fuelGal: timeHr * PERFORMANCE.descentFuelFlowGph };
 }
 
-export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
-  const takeoffWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal;
-  const cruise = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, calibration, powerSetting });
+export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {} }) {
+  const takeoffWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
+  const cruise = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, calibration, powerSetting });
   const { weather, tasKt, gsKt, fuelFlowGph } = cruise;
 
   const climb = climbProfile(altitudeFt, takeoffWeightLb, weather);
@@ -406,6 +673,7 @@ export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnb
     maxRangeNm,
     enduranceHr,
     takeoffWeightLb,
+    oxygenWeightLb,
     overweight: takeoffWeightLb > AIRCRAFT.maxGrossWeightLb,
   };
 }
@@ -448,13 +716,18 @@ export function assessFeasibility(result, { plan, fuelOnboardGal }) {
   };
 }
 
-export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
+export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {}, oxygen = {}, debriefs = [] }) {
+  const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
   const results = ALTITUDES_FT.map((altitudeFt) => calculateAtAltitude({
-    plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting,
+    plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting,
   }));
   results.forEach((item) => {
     item.feasibility = assessFeasibility(item, { plan, fuelOnboardGal });
     item.icing = calculateIcingRisk({ plan, result: item });
+    item.turbulence = calculateTurbulenceRisk({ plan, result: item });
+    item.oxygen = calculateOxygenPlan({ result: item, oxygen });
+    item.confidence = calculatePerformanceConfidence({ plan, result: item, calibration, debriefs, mode });
+    item.missionRisk = calculateMissionRisk({ result: item, confidence: item.confidence });
   });
   const fuels = results.map((item) => item.fuelRequiredGal);
   const times = results.map((item) => item.tripTimeHr);
@@ -467,16 +740,18 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
     );
     const feasibilityPenalty = item.feasibility.status === "unavailable" ? 50 : item.feasibility.status === "marginal" ? 8 : 0;
     item.performanceScore = Math.max(0, Math.round(baseScore - feasibilityPenalty));
-    item.score = Math.max(0, Math.round(item.performanceScore - item.icing.penalty));
+    item.score = Math.max(0, Math.round(item.performanceScore - item.icing.penalty - item.turbulence.penalty - item.oxygen.penalty));
   });
 
   const available = results.filter((item) => item.feasibility.status !== "unavailable");
-  const weatherAvailable = available.filter((item) => item.icing.status !== "avoid");
-  const riskRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
-  const hasWeatherEvidence = weatherAvailable.some((item) => item.icing.confidence === "weather");
-  const safestRank = weatherAvailable.length ? Math.min(...weatherAvailable.map((item) => riskRank[item.icing.status])) : 3;
+  const weatherAvailable = available.filter((item) => item.icing.status !== "avoid" && item.turbulence.status !== "severe" && item.oxygen.status !== "insufficient");
+  const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
+  const turbulenceRank = { smooth: 0, light: 1, moderate: 2, severe: 3 };
+  const riskRank = (item) => Math.max(icingRank[item.icing.status], turbulenceRank[item.turbulence.status]);
+  const hasWeatherEvidence = weatherAvailable.some((item) => item.icing.confidence === "weather" || item.turbulence.confidence !== "limited");
+  const safestRank = weatherAvailable.length ? Math.min(...weatherAvailable.map(riskRank)) : 3;
   const weatherWinnerPool = hasWeatherEvidence
-    ? weatherAvailable.filter((item) => riskRank[item.icing.status] === safestRank)
+    ? weatherAvailable.filter((item) => riskRank(item) === safestRank)
     : weatherAvailable;
   const winnerPool = weatherWinnerPool.length ? weatherWinnerPool : available.length ? available : results;
   const performancePool = available.length ? available : results;
@@ -503,6 +778,14 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
         gsKt: overallWinner.gsKt - performanceWinner.gsKt,
         rangeNm: overallWinner.maxRangeNm - performanceWinner.maxRangeNm,
       },
+    },
+    turbulence: {
+      acceptableCount: results.filter((item) => item.turbulence.status !== "severe").length,
+      confidence: results.some((item) => item.turbulence.confidence !== "limited") ? "weather" : "limited",
+    },
+    oxygen: {
+      installedWeightLb: oxygenWeightLb,
+      acceptableCount: results.filter((item) => item.oxygen.status !== "insufficient").length,
     },
     feasibility: {
       availableCount: available.length,
@@ -544,10 +827,10 @@ function diversionLeg({ from, to, result, fallbackDistanceNm = NaN }) {
 }
 
 export function calculateAlternateDiversion({
-  plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {},
+  plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {},
   waypointIndex = 0, manual = null,
 }) {
-  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting });
+  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting });
   const alternate = plan.alternates?.[0] || (plan.alternate ? { icao: plan.alternate } : null);
   if (!alternate) return { available: false, ident: "—" };
 
@@ -622,9 +905,10 @@ export function compareScenarios({ plan, scenarioA, scenarioB, calibration = {} 
   };
 }
 
-export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {} }) {
+export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {} }) {
   const requestedPayloadLb = Math.max(0, payloadLb);
-  const currentWeightLb = AIRCRAFT.emptyWeightLb + requestedPayloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal;
+  const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
+  const currentWeightLb = AIRCRAFT.emptyWeightLb + requestedPayloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const payloadStepLb = 10;
   let bestAttempt = null;
 
@@ -639,6 +923,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
         mode,
         payloadLb: candidatePayloadLb,
         fuelOnboardGal: candidateFuelGal,
+        oxygenWeightLb,
         reserveMinutes,
         calibration,
         powerSetting: { type: "AUTO" },
@@ -658,16 +943,19 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
       mode,
       payloadLb: candidatePayloadLb,
       fuelOnboardGal: recommendedFuelGal,
+      oxygenWeightLb,
       reserveMinutes,
       calibration,
       powerSetting: { type: "AUTO" },
     });
     result.feasibility = assessFeasibility(result, { plan, fuelOnboardGal: recommendedFuelGal });
     result.icing = calculateIcingRisk({ plan, result });
-    const optimizedWeightLb = AIRCRAFT.emptyWeightLb + candidatePayloadLb + recommendedFuelGal * AIRCRAFT.fuelDensityLbGal;
+    result.turbulence = calculateTurbulenceRisk({ plan, result });
+    result.oxygen = calculateOxygenPlan({ result, oxygen });
+    const optimizedWeightLb = AIRCRAFT.emptyWeightLb + candidatePayloadLb + recommendedFuelGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
     const weightMarginLb = AIRCRAFT.maxGrossWeightLb - optimizedWeightLb;
     const maxFuelByWeightGal = clamp(
-      (AIRCRAFT.maxGrossWeightLb - PERFORMANCE.loadOptimizer.targetWeightMarginLb - AIRCRAFT.emptyWeightLb - candidatePayloadLb) / AIRCRAFT.fuelDensityLbGal,
+      (AIRCRAFT.maxGrossWeightLb - PERFORMANCE.loadOptimizer.targetWeightMarginLb - AIRCRAFT.emptyWeightLb - oxygenWeightLb - candidatePayloadLb) / AIRCRAFT.fuelDensityLbGal,
       0,
       AIRCRAFT.usableFuelGal,
     );
@@ -675,14 +963,16 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
       feasible: rawRecommendedFuelGal <= AIRCRAFT.usableFuelGal
         && weightMarginLb >= PERFORMANCE.loadOptimizer.targetWeightMarginLb
         && result.feasibility.status === "viable"
-        && result.icing.status !== "avoid",
+        && result.icing.status !== "avoid"
+        && result.turbulence.status !== "severe"
+        && result.oxygen.status !== "insufficient",
       altitudeFt,
       mode,
       result,
       recommendedFuelGal,
       rawRecommendedFuelGal,
       maxFuelByWeightGal,
-      maxPayloadLb: Math.max(0, AIRCRAFT.maxGrossWeightLb - AIRCRAFT.emptyWeightLb - recommendedFuelGal * AIRCRAFT.fuelDensityLbGal),
+      maxPayloadLb: Math.max(0, AIRCRAFT.maxGrossWeightLb - AIRCRAFT.emptyWeightLb - oxygenWeightLb - recommendedFuelGal * AIRCRAFT.fuelDensityLbGal),
       recommendedPayloadLb: candidatePayloadLb,
       payloadReductionLb: Math.max(0, requestedPayloadLb - candidatePayloadLb),
       currentWeightLb,
@@ -696,7 +986,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
   return bestAttempt;
 }
 
-export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {} }) {
+export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {} }) {
   const candidates = ALTITUDES_FT.map((altitudeFt) => calculateLoadOptimization({
     plan,
     altitudeFt,
@@ -705,6 +995,7 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
     fuelOnboardGal,
     reserveMinutes,
     calibration,
+    oxygen,
   }));
   const viable = candidates.filter((candidate) => candidate?.feasible);
   if (!viable.length) {
@@ -712,10 +1003,12 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
     return { ...bestAttempt, feasible: false, recommendedAltitudeFt: bestAttempt?.altitudeFt ?? null, candidates };
   }
 
-  const riskRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
-  const hasWeatherEvidence = viable.some((candidate) => candidate.result.icing.confidence === "weather");
-  const safestRank = Math.min(...viable.map((candidate) => riskRank[candidate.result.icing.status]));
-  const weatherPool = hasWeatherEvidence ? viable.filter((candidate) => riskRank[candidate.result.icing.status] === safestRank) : viable;
+  const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
+  const turbulenceRank = { smooth: 0, light: 1, moderate: 2, severe: 3 };
+  const riskRank = (candidate) => Math.max(icingRank[candidate.result.icing.status], turbulenceRank[candidate.result.turbulence.status]);
+  const hasWeatherEvidence = viable.some((candidate) => candidate.result.icing.confidence === "weather" || candidate.result.turbulence.confidence !== "limited");
+  const safestRank = Math.min(...viable.map(riskRank));
+  const weatherPool = hasWeatherEvidence ? viable.filter((candidate) => riskRank(candidate) === safestRank) : viable;
   const maximumRetainedPayloadLb = Math.max(...weatherPool.map((candidate) => candidate.recommendedPayloadLb));
   const payloadPool = weatherPool.filter((candidate) => candidate.recommendedPayloadLb === maximumRetainedPayloadLb);
   const fuels = payloadPool.map((candidate) => candidate.result.fuelRequiredGal);
@@ -726,7 +1019,7 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
       normalize(fuels, candidate.result.fuelRequiredGal, true) * 0.42
       + normalize(times, candidate.result.tripTimeHr, true) * 0.33
       + normalize(ranges, candidate.result.maxRangeNm) * 0.25
-    ) - candidate.result.icing.penalty;
+    ) - candidate.result.icing.penalty - candidate.result.turbulence.penalty - candidate.result.oxygen.penalty;
   });
   const winner = [...payloadPool].sort((a, b) => b.optimizationScore - a.optimizationScore)[0];
   return { ...winner, recommendedAltitudeFt: winner.altitudeFt, candidates };
@@ -785,8 +1078,8 @@ function nearestWaypoint(plan, distanceNm) {
   }, points[0]);
 }
 
-export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
-  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting });
+export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {} }) {
+  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting });
   const outboundGsKt = result.gsKt;
   const returnGsKt = clamp(result.tasKt - result.weather.componentKt, 110, 360);
   const etpDistanceNm = plan.distanceNm * returnGsKt / (outboundGsKt + returnGsKt);
@@ -820,7 +1113,7 @@ export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboard
 }
 
 export function calculateStepClimbs({
-  plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {}, initialAltitudeFt,
+  plan, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {}, initialAltitudeFt,
   manual = null,
 }) {
   const startDistanceNm = clamp(Number(manual?.distanceNm) || 0, 0, plan.distanceNm);
@@ -829,7 +1122,7 @@ export function calculateStepClimbs({
   let currentAltitudeFt = startingAltitudeFt;
   let currentFuelGal = startFuelGal;
   let currentDistanceNm = startDistanceNm;
-  const startWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal;
+  const startWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const candidates = (plan.waypoints || [])
     .map((point) => ({ ...point, distanceNm: Number(point.distanceNm) }))
     .filter((point) => Number.isFinite(point.distanceNm) && point.distanceNm > startDistanceNm + 5 && point.distanceNm < plan.distanceNm - 10)
@@ -837,18 +1130,18 @@ export function calculateStepClimbs({
   const steps = [];
 
   for (const point of candidates) {
-    const current = cruiseSnapshot({ plan, altitudeFt: currentAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, calibration, powerSetting });
+    const current = cruiseSnapshot({ plan, altitudeFt: currentAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, oxygenWeightLb, calibration, powerSetting });
     const segmentNm = point.distanceNm - currentDistanceNm;
     currentFuelGal = Math.max(0, currentFuelGal - segmentNm / current.gsKt * current.fuelFlowGph);
     currentDistanceNm = point.distanceNm;
-    const weightLb = AIRCRAFT.emptyWeightLb + payloadLb + currentFuelGal * AIRCRAFT.fuelDensityLbGal;
+    const weightLb = AIRCRAFT.emptyWeightLb + payloadLb + currentFuelGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
     const weightLossLb = startWeightLb - weightLb;
     const unlockedSteps = Math.floor(weightLossLb / PERFORMANCE.stepClimb.weightLossLbPerStep);
     const targetAltitudeFt = Math.min(AIRCRAFT.serviceCeilingFt, startingAltitudeFt + unlockedSteps * 2000);
     if (targetAltitudeFt < currentAltitudeFt + 2000 || plan.distanceNm - currentDistanceNm < PERFORMANCE.stepClimb.minimumRemainingNm) continue;
 
     const candidateAltitudeFt = Math.min(targetAltitudeFt, currentAltitudeFt + 2000);
-    const candidate = cruiseSnapshot({ plan, altitudeFt: candidateAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, calibration, powerSetting });
+    const candidate = cruiseSnapshot({ plan, altitudeFt: candidateAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, oxygenWeightLb, calibration, powerSetting });
     const remainingNm = plan.distanceNm - currentDistanceNm;
     const deltaAltitudeFt = candidateAltitudeFt - currentAltitudeFt;
     const candidateWeather = averageRouteWeather(plan, candidateAltitudeFt);
@@ -883,8 +1176,8 @@ export function calculateStepClimbs({
   };
 }
 
-export function deriveCalibration({ plan, mode, payloadLb, fuelRemainingGal, altitudeFt, observedTasKt, observedFuelFlowGph, positionFix = null, powerSetting = {} }) {
-  const baseline = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: fuelRemainingGal, calibration: {}, powerSetting });
+export function deriveCalibration({ plan, mode, payloadLb, fuelRemainingGal, oxygenWeightLb = 0, altitudeFt, observedTasKt, observedFuelFlowGph, positionFix = null, powerSetting = {} }) {
+  const baseline = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: fuelRemainingGal, oxygenWeightLb, calibration: {}, powerSetting });
   const localWeather = positionFix ? weatherAtAltitude(positionFix, altitudeFt) : baseline.weather;
   const localIsaDeviationC = localWeather.oatC - isaTemperatureC(altitudeFt);
   const localTasKt = baseline.tasKt + (localIsaDeviationC - baseline.weather.isaDeviationC) * PERFORMANCE.isaTasGainKtPerC;
