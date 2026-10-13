@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-20" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-21" />
   </head>
   <body>
     <header class="topbar">
@@ -58,14 +58,14 @@
 
       <div id="plannerContent" hidden>
       <section class="kpi-grid" aria-label="Performance summary">
-        <article class="kpi featured"><span data-i18n="bestLevel">Melhor nível</span><strong id="kpiAltitude">FL120</strong><small><b id="kpiScore">77</b>/100</small></article>
+        <article class="kpi featured"><span data-i18n="bestLevel">Melhor nível</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="recommendedLevel">Recomendado</small></article>
         <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
         <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
         <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
       </section>
 
       <section class="mission-strip" aria-label="Mission status">
-        <div><span data-i18n="missionRisk">Risco da missão</span><strong id="missionRiskValue">—</strong><small id="missionRiskStatus">—</small></div>
+        <div><span data-i18n="missionScore">Score da missão</span><strong id="missionRiskValue">—</strong><small id="missionRiskStatus">—</small></div>
         <div><span data-i18n="confidence">Confiança</span><strong id="confidenceValue">—</strong><small id="confidenceMeta">—</small></div>
         <div><span data-i18n="rideComfort">Conforto</span><strong id="rideValue">—</strong><small id="rideMeta">—</small></div>
         <div><span data-i18n="oxygen">Oxigênio</span><strong id="oxygenValue">—</strong><small id="oxygenMeta">—</small></div>
@@ -119,7 +119,20 @@
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
             <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
           </article>
-          <article class="panel insight-panel"><div class="insight-title"><strong id="whyTitle">FL120</strong><span><b id="scoreRing">77</b>/100</span></div><ul id="whyList"></ul></article>
+          <article class="panel insight-panel mission-score-panel">
+            <div class="mission-score-heading">
+              <div><span data-i18n="missionScore">Score da missão</span><strong id="missionScoreLevel">FL120</strong></div>
+              <small id="missionScoreMode">NORMAL</small>
+            </div>
+            <div class="mission-score-summary">
+              <div class="mission-score-dial" id="missionScoreDial" role="img" aria-label="Score 0 de 100"><span><strong id="missionScoreValue">0</strong><small>/100</small></span></div>
+              <div class="mission-score-copy"><strong id="missionScoreStatus">—</strong><p id="missionScoreSummary">—</p></div>
+            </div>
+            <div class="mission-score-scale" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="mission-score-thresholds"><span>0</span><span>40</span><span>60</span><span>80</span><span>100</span></div>
+            <div class="mission-score-reasons" id="missionScoreReasons"></div>
+            <p class="mission-score-action"><span data-i18n="mainAdjustment">Ajuste principal</span><strong id="missionScoreAction">—</strong></p>
+          </article>
           <article class="panel fuel-panel"><div class="compact-heading"><span data-i18n="fuel">Combustível</span><strong id="fuelRequiredSide">33,2 gal</strong></div><div class="fuel-bar" id="fuelBar"></div><div class="fuel-legend" id="fuelLegend"></div></article>
         </aside>
       </section>
@@ -324,6 +337,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-20"></script>
+    <script type="module" src="./js/app.js?v=20261013-21"></script>
   </body>
 </html>

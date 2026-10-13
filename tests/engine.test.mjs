@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -521,13 +521,24 @@ test("performance confidence narrows with calibrated debrief history", () => {
   assert.ok(learned.fuel.high - learned.fuel.low < baseline.fuel.high - baseline.fuel.low);
 });
 
-test("debrief updates calibration and mission risk reflects operational hazards", () => {
+test("debrief updates calibration and mission score blocks mandatory hazards", () => {
   const analysis = calculatePlan({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, oxygen: { ...FULL_OXYGEN, bottles: 0 } });
   const result = analysis.results.find((item) => item.altitudeFt === 18000);
   const debrief = calculateDebrief({ result, actualTimeMinutes: result.tripTimeHr * 60 * 1.08, actualFuelGal: result.tripFuelGal * 1.1 });
   assert.ok(debrief.accuracyScore < 100);
   assert.ok(debrief.calibration.tasFactor < 1);
   assert.ok(debrief.calibration.fuelFlowFactor > 1);
-  const risk = calculateMissionRisk({ result, confidence: result.confidence });
-  assert.ok(risk.score >= 30);
+  const score = calculateMissionScore({ result, confidence: result.confidence });
+  assert.ok(score.score < 40);
+  assert.equal(score.status, "not-viable");
+  assert.equal(score.blocked, true);
+  assert.ok(score.reasons.some((reason) => reason.code === "oxygen" && reason.blocking));
+});
+
+test("mission score uses one ascending 0-100 viability scale", () => {
+  const analysis = calculatePlan({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: weightBalancePayloadLb(FIVE_SEAT_LOAD), fuelOnboardGal: 77, reserveMinutes: 45, oxygen: FULL_OXYGEN, weightBalance: FIVE_SEAT_LOAD });
+  const result = analysis.results.find((item) => item.altitudeFt === 10000);
+  const score = calculateMissionScore({ result, confidence: result.confidence });
+  assert.ok(score.score >= 0 && score.score <= 100);
+  assert.equal(score.status, score.score < 40 ? "not-viable" : score.score < 60 ? "marginal" : score.score < 80 ? "attention" : "viable");
 });

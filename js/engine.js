@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-20";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-21";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -663,26 +663,71 @@ export function calculatePerformanceConfidence({ plan, result, calibration = {},
   };
 }
 
-export function calculateMissionRisk({ result, confidence, alternateAdvice = null }) {
-  let score = result.feasibility.status === "unavailable"
-    ? PERFORMANCE.missionRisk.feasibilityUnavailable
-    : result.feasibility.status === "marginal" ? PERFORMANCE.missionRisk.feasibilityMarginal : 0;
-  const fuelMargin = result.feasibility.fuelMarginGal;
-  score += fuelMargin < 0 ? PERFORMANCE.missionRisk.fuelMarginWeight : clamp((10 - fuelMargin) / 10, 0, 1) * PERFORMANCE.missionRisk.fuelMarginWeight;
-  score += result.icing.riskScore * PERFORMANCE.missionRisk.icingWeight;
-  score += result.turbulence.riskScore * PERFORMANCE.missionRisk.turbulenceWeight;
-  score += result.oxygen.status === "insufficient"
-    ? PERFORMANCE.missionRisk.oxygenInsufficient
-    : result.oxygen.status === "marginal" ? PERFORMANCE.missionRisk.oxygenMarginal : 0;
-  score += result.weightBalance?.status === "unavailable"
-    ? PERFORMANCE.missionRisk.weightBalanceUnavailable
-    : result.weightBalance?.status === "marginal" ? PERFORMANCE.missionRisk.weightBalanceMarginal : 0;
-  score += (100 - confidence.score) * PERFORMANCE.missionRisk.confidenceWeight;
+export function calculateMissionScore({ result, confidence, alternateAdvice = null }) {
+  const reasons = [];
+  const addReason = (code, impact, blocking = false, detail = null) => {
+    if (impact <= 0) return;
+    const existing = reasons.find((reason) => reason.code === code);
+    if (existing) {
+      existing.impact = Math.max(existing.impact, Math.round(impact));
+      existing.blocking ||= blocking;
+      existing.detail ||= detail;
+      return;
+    }
+    reasons.push({ code, impact: Math.round(impact), blocking, detail });
+  };
+
+  const feasibilityReasons = result.feasibility.reasons || [];
+  const fuelMarginGal = result.feasibility.fuelMarginGal;
+  if (feasibilityReasons.includes("FUEL") || fuelMarginGal < 0) {
+    addReason("fuel", 48 + Math.min(12, Math.abs(fuelMarginGal) * 1.5), true, fuelMarginGal);
+  } else {
+    addReason("fuel", clamp((10 - fuelMarginGal) / 10, 0, 1) * PERFORMANCE.missionRisk.fuelMarginWeight, false, fuelMarginGal);
+  }
+  if (feasibilityReasons.includes("ALTITUDE") || feasibilityReasons.includes("PROFILE")) {
+    addReason("flight-profile", 48, true, result.feasibility.profileMarginNm);
+  } else if (feasibilityReasons.includes("PROFILE_MARGIN")) {
+    addReason("flight-profile", PERFORMANCE.missionRisk.feasibilityMarginal, false, result.feasibility.profileMarginNm);
+  }
+
+  const weightBalanceUnavailable = result.weightBalance?.status === "unavailable";
+  if (feasibilityReasons.includes("WEIGHT") || weightBalanceUnavailable) {
+    addReason("weight-balance", 52, true, result.weightBalance?.primaryReason || "WEIGHT");
+  } else if (feasibilityReasons.includes("WEIGHT_MARGIN") || result.weightBalance?.status === "marginal") {
+    addReason("weight-balance", PERFORMANCE.missionRisk.weightBalanceMarginal, false, result.weightBalance?.primaryReason || "MARGIN");
+  }
+
+  const icingBlocking = result.icing.status === "avoid";
+  addReason("icing", icingBlocking ? 52 : result.icing.riskScore * PERFORMANCE.missionRisk.icingWeight, icingBlocking, result.icing.riskScore);
+  addReason("turbulence", result.turbulence.riskScore * PERFORMANCE.missionRisk.turbulenceWeight, Boolean(result.turbulence.blocking), result.turbulence.riskScore);
+
+  if (result.oxygen.status === "insufficient") {
+    addReason("oxygen", 48, true, result.oxygen.requiredLiters);
+  } else if (result.oxygen.status === "marginal") {
+    addReason("oxygen", PERFORMANCE.missionRisk.oxygenMarginal, false, result.oxygen.requiredLiters);
+  }
+
+  addReason("confidence", (100 - confidence.score) * PERFORMANCE.missionRisk.confidenceWeight, false, confidence.score);
   const alternateStatus = alternateAdvice?.destination?.status;
-  if (alternateStatus === "unavailable" || alternateStatus === "unknown") score += PERFORMANCE.missionRisk.alternateUnavailable;
-  else if (alternateStatus === "marginal") score += PERFORMANCE.missionRisk.alternateMarginal;
-  score = clamp(Math.round(score), 0, 100);
-  return { score, status: score >= 75 ? "critical" : score >= 50 ? "high" : score >= 25 ? "moderate" : "low" };
+  if (alternateStatus === "unavailable" || alternateStatus === "unknown") {
+    addReason("alternate", PERFORMANCE.missionRisk.alternateUnavailable, false, alternateStatus);
+  } else if (alternateStatus === "marginal") {
+    addReason("alternate", PERFORMANCE.missionRisk.alternateMarginal, false, alternateStatus);
+  }
+
+  reasons.sort((a, b) => Number(b.blocking) - Number(a.blocking) || b.impact - a.impact);
+  const penalty = reasons.reduce((sum, reason) => sum + reason.impact, 0);
+  const blocked = reasons.some((reason) => reason.blocking);
+  let score = clamp(Math.round(100 - penalty), 0, 100);
+  if (blocked) score = Math.min(score, 39);
+  const status = score < 40 ? "not-viable" : score < 60 ? "marginal" : score < 80 ? "attention" : "viable";
+  return { score, status, blocked, penalty: 100 - score, reasons };
+}
+
+// Retained for compatibility with saved integrations; the returned value is now
+// the mission viability score (higher is better), not an inverted risk index.
+export function calculateMissionRisk(options) {
+  return calculateMissionScore(options);
 }
 
 export function calculateDebrief({ result, actualTimeMinutes, actualFuelGal, currentCalibration = {} }) {
@@ -903,7 +948,7 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
       oxygenWeightLb,
     }) : null;
     item.confidence = calculatePerformanceConfidence({ plan, result: item, calibration, debriefs, mode });
-    item.missionRisk = calculateMissionRisk({ result: item, confidence: item.confidence });
+    item.missionScore = calculateMissionScore({ result: item, confidence: item.confidence });
   });
   const fuels = results.map((item) => item.fuelRequiredGal);
   const times = results.map((item) => item.tripTimeHr);
