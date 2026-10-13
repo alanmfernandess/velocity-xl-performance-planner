@@ -1,6 +1,6 @@
-import { AIRCRAFT, PERFORMANCE, DEMO_PLAN, ALTITUDES_FT } from "./config.js?v=20261013-2";
-import { calculateEtpPnr, calculatePlan, calculateStepClimbs, deriveCalibration } from "./engine.js?v=20261013-2";
-import { fetchLatestOFP } from "./simbrief.js?v=20261013-2";
+import { AIRCRAFT, PERFORMANCE, DEMO_PLAN, ALTITUDES_FT } from "./config.js?v=20261013-3";
+import { calculateEtpPnr, calculatePlan, calculateStepClimbs, deriveCalibration } from "./engine.js?v=20261013-3";
+import { fetchLatestOFP } from "./simbrief.js?v=20261013-3";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];

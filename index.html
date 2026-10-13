@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-2" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-3" />
   </head>
   <body>
     <header class="topbar">
@@ -139,12 +139,11 @@
               <button class="primary-button" type="submit" data-i18n="update">Atualizar</button>
             </form>
             <form id="calibrationForm" class="compact-form calibration-form">
-              <div class="calibration-head"><span data-i18n="calibration">Calibração</span><strong id="calibrationMode">NORMAL</strong></div>
+              <div class="calibration-head"><span data-i18n="calibration">Calibração</span><div class="calibration-value"><strong id="calibrationMode">NORMAL</strong><output id="calibrationFactors">TAS ×1,00 · FF ×1,00</output></div></div>
               <label><span data-i18n="observedTas">TAS observada</span><span class="input-with-unit"><input id="observedTas" type="number" min="100" max="350" step="1" required /><small>kt</small></span></label>
               <label><span data-i18n="observedFuelFlow">Fuel flow observado</span><span class="input-with-unit"><input id="observedFuelFlow" type="number" min="1" step="0.1" required /><small id="observedFuelFlowUnit">gal/h</small></span></label>
               <button class="primary-button" type="submit" data-i18n="calibrate">Calibrar</button>
               <button class="text-button" id="resetCalibration" type="button" data-i18n="reset">Redefinir</button>
-              <output id="calibrationFactors">TAS ×1,00 · FF ×1,00</output>
             </form>
           </div>
         </div>
@@ -157,6 +156,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-2"></script>
+    <script type="module" src="./js/app.js?v=20261013-3"></script>
   </body>
 </html>
