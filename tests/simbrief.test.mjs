@@ -11,6 +11,7 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
     fuel: { plan_takeoff: "999999", reserve: "999999" },
     origin: { icao_code: "SBSP", name: "Congonhas", pos_lat: "-23.626", pos_long: "-46.657" },
     destination: { icao_code: "SBGL", name: "Galeão", pos_lat: "-22.810", pos_long: "-43.251" },
+    weather: { orig_metar: "SBSP 121200Z BKN020", dest_taf: "TAF SBGL 121100Z OVC030", sigmets: ["MOD ICE FL120/180"] },
     alternate: [{ icao_code: "SBRJ", name: "Santos Dumont", pos_lat: "-22.9105", pos_long: "-43.1631", route_distance: "12" }],
     navlog: [
       { ident: "SBSP", pos_lat: "-23.626", pos_long: "-46.657", wind_dir: "250", wind_spd: "20", oat: "-20", wind_data: [
@@ -31,6 +32,9 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
   assert.equal(result.waypoints.length, 2);
   assert.equal(result.waypoints[0].windLevels.length, 2);
   assert.equal(result.waypoints[0].windLevels[1].altitudeFt, 24000);
+  assert.match(result.meteorology.originText, /BKN020/);
+  assert.match(result.meteorology.destinationText, /OVC030/);
+  assert.match(result.meteorology.enrouteText, /MOD ICE/);
   assert.equal(Object.hasOwn(result, "aircraft"), false);
   assert.equal(Object.hasOwn(result, "fuel"), false);
   assert.match(result.generatedAt, /12\/10\/2026/);

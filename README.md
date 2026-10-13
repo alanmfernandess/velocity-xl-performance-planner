@@ -9,6 +9,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Importação por SimBrief Pilot ID ou Navigraph Alias usando o endpoint oficial `xml.fetcher.php` com `json=v2`.
 - Uso exclusivo da rota, dos waypoints e dos dados atmosféricos do OFP; o tipo e os cálculos de aeronave do SimBrief são ignorados.
 - Interpolação de vento e OAT por waypoint para comparar FL100 a FL250.
+- Icing-Aware Level Optimizer usando OAT por waypoint/nível e evidências meteorológicas presentes no OFP para evitar ou penalizar faixas com risco de gelo.
 - Interface clara e minimalista em português do Brasil e inglês americano.
 - Escala de tipografia ajustável e unidades selecionáveis LB/KG e GAL/L.
 - Manifesto instalável com apresentação standalone, semelhante a um aplicativo.
@@ -55,6 +56,8 @@ Os presets estimados são ECON 20 inHg/2.300 RPM, NORMAL 24 inHg/2.450 RPM e FAS
 O Alternate & Diversion Advisor usa as coordenadas do alternado quando fornecidas pelo OFP; sem coordenadas, o cálculo fica indisponível. O combustível até o alternado inclui estimativas centralizadas de arremetida e aproximação. O Glide Corridor assume altitude sobre o nível do mar, não considera relevo, obstáculos, razão de planeio degradada, configuração, falhas adicionais ou locais de pouso; serve exclusivamente como referência visual para o simulador.
 
 A viabilidade considera o combustível requerido completo, peso máximo, teto de serviço e a distância necessária para subida e descida. Um nível marginal continua selecionável; um nível inviável é desabilitado e não participa da recomendação. Os limites de margem permanecem centralizados em `js/config.js`.
+
+O Icing-Aware Level Optimizer mantém separado o ótimo puro de performance do nível recomendado pela meteorologia. Indicações explícitas de gelo ou precipitação congelante tornam incompatíveis os níveis afetados e também consideram a passagem pela camada durante subida e descida. Quando há apenas OAT sem confirmação de umidade, o resultado é marcado como dado limitado e recebe somente uma penalização conservadora; nunca é apresentado como garantia de ausência de gelo. A diferença de combustível, tempo, GS e alcance é recalculada pelo modelo no FL alternativo, sem simular voo deliberado com gelo acumulado.
 
 O Load Optimizer testa FL100–FL250 com a potência automática do preset selecionado, preserva o máximo de payload possível e aplica nível, combustível e carga com margem-alvo de 6 gal sobre o requerido e 80 lb abaixo do peso máximo. A aplicação só fica indisponível quando nenhuma combinação física entre zero payload e 87 gal torna a missão viável.
 

@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-9";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-10";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -114,6 +114,155 @@ export function averageRouteWeather(plan, altitudeFt) {
     oatC,
     isaDeviationC: oatC - isaTemperatureC(altitudeFt),
     samples,
+  };
+}
+
+export function icingWeatherEvidence(text = "") {
+  const source = String(text).toUpperCase();
+  const noIcing = /\b(?:NO|NIL)\s+(?:ICE|ICING)\b/.test(source);
+  const explicitIcing = !noIcing && /\b(?:SEV(?:ERE)?|MOD(?:ERATE)?|LGT|LIGHT)?\s*(?:ICE|ICING)\b/.test(source);
+  const icingBandsFt = [];
+  const bandPatterns = [
+    /(?:ICE|ICING)[^.\n]{0,50}?\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})\b/g,
+    /\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})[^.\n]{0,50}?(?:ICE|ICING)\b/g,
+  ];
+  bandPatterns.forEach((pattern) => {
+    for (const match of source.matchAll(pattern)) {
+      const firstFt = Number(match[1]) * 100;
+      const secondFt = Number(match[2]) * 100;
+      icingBandsFt.push({ baseFt: Math.min(firstFt, secondFt), topFt: Math.max(firstFt, secondFt) });
+    }
+  });
+  const freezingPrecipitation = /\b(?:FZRA|FZDZ|FZFG|PL)\b/.test(source);
+  const precipitation = /(?:^|\s)(?:[-+]?RA|[-+]?DZ|[-+]?SN|SHRA|SHSN|SG)(?:\s|$)/.test(source);
+  const cloudLayer = /\b(?:BKN|OVC|VV)\d{3}\b/.test(source);
+  const clear = /\b(?:CAVOK|SKC|CLR|NSC)\b/.test(source) && !precipitation;
+  return {
+    explicitIcing,
+    icingBandsFt,
+    freezingPrecipitation,
+    visibleMoisture: freezingPrecipitation || precipitation || cloudLayer,
+    clear,
+    available: Boolean(source.trim()),
+  };
+}
+
+function evidenceAtAltitude(evidence, altitudeFt) {
+  const explicitIcing = evidence.explicitIcing && (
+    !evidence.icingBandsFt.length
+    || evidence.icingBandsFt.some((band) => altitudeFt >= band.baseFt && altitudeFt <= band.topFt)
+  );
+  return { ...evidence, explicitIcing };
+}
+
+function icingTemperatureFactor(oatC) {
+  if (!Number.isFinite(oatC) || oatC > PERFORMANCE.icing.warmBoundaryC || oatC <= PERFORMANCE.icing.coldBoundaryC) return 0;
+  if (oatC > 2) return (PERFORMANCE.icing.warmBoundaryC - oatC) / 3 * 0.35;
+  if (oatC >= -10) return 1;
+  if (oatC >= -20) return 1 - (Math.abs(oatC + 10) / 10) * 0.2;
+  if (oatC >= -30) return 0.8 - (Math.abs(oatC + 20) / 10) * 0.45;
+  return 0.35 - (Math.abs(oatC + 30) / 10) * 0.25;
+}
+
+function moistureFactor(evidence) {
+  if (evidence.explicitIcing || evidence.freezingPrecipitation) return 1;
+  if (evidence.visibleMoisture) return PERFORMANCE.icing.visibleMoistureFactor;
+  if (evidence.clear) return PERFORMANCE.icing.clearWeatherFactor;
+  return PERFORMANCE.icing.unknownMoistureFactor;
+}
+
+export function calculateIcingRisk({ plan, result }) {
+  const fixes = plan.waypoints?.filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) || [];
+  const enrouteText = plan.meteorology?.enrouteText || "";
+  const globalEvidence = icingWeatherEvidence(enrouteText);
+  let maximumRisk = 0;
+  let temperatureExposureMinutes = 0;
+  let cruiseExposureMinutes = 0;
+  let observedTemperatureSamples = 0;
+  let evidenceSamples = globalEvidence.available ? 1 : 0;
+  let hardHazard = false;
+  const segments = [];
+
+  for (let index = 0; index < fixes.length - 1; index += 1) {
+    const from = fixes[index];
+    const to = fixes[index + 1];
+    const segmentNm = greatCircleNm(from, to);
+    const segmentMinutes = segmentNm / Math.max(1, result.gsKt) * 60;
+    const weather = weatherAtAltitude(from, result.altitudeFt);
+    const hasTemperature = Number.isFinite(from.oatC) || (from.windLevels || []).some((level) => Number.isFinite(level.oatC));
+    if (hasTemperature) observedTemperatureSamples += 1;
+    const terminalText = index === 0
+      ? plan.meteorology?.originText || ""
+      : index === fixes.length - 2
+        ? plan.meteorology?.destinationText || ""
+        : "";
+    const evidence = evidenceAtAltitude(icingWeatherEvidence(`${enrouteText} ${from.weatherText || ""} ${terminalText}`), result.altitudeFt);
+    if (evidence.available) evidenceSamples += 1;
+    const temperatureFactor = hasTemperature
+      ? icingTemperatureFactor(weather.oatC)
+      : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0;
+    const risk = temperatureFactor * moistureFactor(evidence);
+    maximumRisk = Math.max(maximumRisk, risk);
+    if (temperatureFactor >= 0.3) temperatureExposureMinutes += segmentMinutes;
+    cruiseExposureMinutes += segmentMinutes * risk;
+    const segmentHardHazard = evidence.explicitIcing || evidence.freezingPrecipitation;
+    hardHazard ||= segmentHardHazard;
+    segments.push({
+      from: from.ident,
+      to: to.ident,
+      startNm: Number(from.distanceNm) || 0,
+      endNm: Number(to.distanceNm) || Math.min(plan.distanceNm, (Number(from.distanceNm) || 0) + segmentNm),
+      oatC: weather.oatC,
+      riskScore: Math.round(risk * 100),
+      status: segmentHardHazard ? "avoid" : risk * 100 >= PERFORMANCE.icing.cautionScore ? "caution" : risk * 100 >= PERFORMANCE.icing.watchScore ? "watch" : "low",
+    });
+  }
+
+  const transitionExposure = (fix, durationHr, text) => {
+    if (!fix || durationHr <= 0) return 0;
+    const rawEvidence = icingWeatherEvidence(`${enrouteText} ${fix.weatherText || ""} ${text || ""}`);
+    const hasTemperature = Number.isFinite(fix.oatC) || (fix.windLevels || []).some((level) => Number.isFinite(level.oatC));
+    let weighted = 0;
+    const samples = 10;
+    for (let index = 1; index <= samples; index += 1) {
+      const altitudeFt = result.altitudeFt * (index / samples);
+      const evidence = evidenceAtAltitude(rawEvidence, altitudeFt);
+      const temperatureFactor = hasTemperature
+        ? icingTemperatureFactor(weatherAtAltitude(fix, altitudeFt).oatC)
+        : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0;
+      hardHazard ||= evidence.explicitIcing || evidence.freezingPrecipitation;
+      weighted += temperatureFactor * moistureFactor(evidence);
+    }
+    return durationHr * 60 * weighted / samples;
+  };
+  const transitionRiskMinutes = transitionExposure(fixes[0], result.climb.timeHr, plan.meteorology?.originText)
+    + transitionExposure(fixes.at(-1), result.descent.timeHr, plan.meteorology?.destinationText);
+  const exposureMinutes = cruiseExposureMinutes + transitionRiskMinutes;
+  const rawRiskScore = Math.round(maximumRisk * 100);
+  const status = hardHazard
+    ? "avoid"
+    : rawRiskScore >= PERFORMANCE.icing.cautionScore
+      ? "caution"
+      : rawRiskScore >= PERFORMANCE.icing.watchScore
+        ? "watch"
+        : "low";
+  const penalty = status === "avoid"
+    ? 100
+    : status === "caution"
+      ? Math.min(40, PERFORMANCE.icing.cautionBasePenalty + exposureMinutes / 4)
+      : status === "watch"
+        ? Math.min(14, PERFORMANCE.icing.watchBasePenalty + exposureMinutes / 15)
+        : 0;
+  return {
+    status,
+    riskScore: status === "avoid" ? 100 : rawRiskScore,
+    penalty,
+    exposureMinutes,
+    temperatureExposureMinutes,
+    transitionRiskMinutes,
+    confidence: evidenceSamples > 1 ? "weather" : "limited",
+    temperatureCoverage: fixes.length > 1 ? observedTemperatureSamples / (fixes.length - 1) : 0,
+    segments,
   };
 }
 
@@ -303,7 +452,10 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
   const results = ALTITUDES_FT.map((altitudeFt) => calculateAtAltitude({
     plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting,
   }));
-  results.forEach((item) => { item.feasibility = assessFeasibility(item, { plan, fuelOnboardGal }); });
+  results.forEach((item) => {
+    item.feasibility = assessFeasibility(item, { plan, fuelOnboardGal });
+    item.icing = calculateIcingRisk({ plan, result: item });
+  });
   const fuels = results.map((item) => item.fuelRequiredGal);
   const times = results.map((item) => item.tripTimeHr);
   const ranges = results.map((item) => item.maxRangeNm);
@@ -314,13 +466,25 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
       normalize(ranges, item.maxRangeNm) * 0.25
     );
     const feasibilityPenalty = item.feasibility.status === "unavailable" ? 50 : item.feasibility.status === "marginal" ? 8 : 0;
-    item.score = Math.max(0, Math.round(baseScore - feasibilityPenalty));
+    item.performanceScore = Math.max(0, Math.round(baseScore - feasibilityPenalty));
+    item.score = Math.max(0, Math.round(item.performanceScore - item.icing.penalty));
   });
 
   const available = results.filter((item) => item.feasibility.status !== "unavailable");
-  const winnerPool = available.length ? available : results;
+  const weatherAvailable = available.filter((item) => item.icing.status !== "avoid");
+  const riskRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
+  const hasWeatherEvidence = weatherAvailable.some((item) => item.icing.confidence === "weather");
+  const safestRank = weatherAvailable.length ? Math.min(...weatherAvailable.map((item) => riskRank[item.icing.status])) : 3;
+  const weatherWinnerPool = hasWeatherEvidence
+    ? weatherAvailable.filter((item) => riskRank[item.icing.status] === safestRank)
+    : weatherAvailable;
+  const winnerPool = weatherWinnerPool.length ? weatherWinnerPool : available.length ? available : results;
+  const performancePool = available.length ? available : results;
+  const performanceWinner = [...performancePool].sort((a, b) => b.performanceScore - a.performanceScore)[0];
+  const overallWinner = [...winnerPool].sort((a, b) => b.score - a.score)[0];
   const winners = {
-    overall: [...winnerPool].sort((a, b) => b.score - a.score)[0],
+    overall: overallWinner,
+    performance: performanceWinner,
     fuel: [...winnerPool].sort((a, b) => a.fuelRequiredGal - b.fuelRequiredGal)[0],
     fastest: [...winnerPool].sort((a, b) => a.tripTimeHr - b.tripTimeHr)[0],
     range: [...winnerPool].sort((a, b) => b.maxRangeNm - a.maxRangeNm)[0],
@@ -328,6 +492,18 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
   return {
     results,
     winners,
+    icing: {
+      acceptableCount: weatherAvailable.length,
+      hasAcceptableProfile: weatherAvailable.length > 0,
+      confidence: hasWeatherEvidence ? "weather" : "limited",
+      cost: {
+        changedAltitude: overallWinner.altitudeFt !== performanceWinner.altitudeFt,
+        fuelGal: overallWinner.fuelRequiredGal - performanceWinner.fuelRequiredGal,
+        timeHr: overallWinner.tripTimeHr - performanceWinner.tripTimeHr,
+        gsKt: overallWinner.gsKt - performanceWinner.gsKt,
+        rangeNm: overallWinner.maxRangeNm - performanceWinner.maxRangeNm,
+      },
+    },
     feasibility: {
       availableCount: available.length,
       viableCount: results.filter((item) => item.feasibility.status === "viable").length,
@@ -487,6 +663,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
       powerSetting: { type: "AUTO" },
     });
     result.feasibility = assessFeasibility(result, { plan, fuelOnboardGal: recommendedFuelGal });
+    result.icing = calculateIcingRisk({ plan, result });
     const optimizedWeightLb = AIRCRAFT.emptyWeightLb + candidatePayloadLb + recommendedFuelGal * AIRCRAFT.fuelDensityLbGal;
     const weightMarginLb = AIRCRAFT.maxGrossWeightLb - optimizedWeightLb;
     const maxFuelByWeightGal = clamp(
@@ -497,7 +674,8 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
     const candidate = {
       feasible: rawRecommendedFuelGal <= AIRCRAFT.usableFuelGal
         && weightMarginLb >= PERFORMANCE.loadOptimizer.targetWeightMarginLb
-        && result.feasibility.status === "viable",
+        && result.feasibility.status === "viable"
+        && result.icing.status !== "avoid",
       altitudeFt,
       mode,
       result,
@@ -534,8 +712,12 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
     return { ...bestAttempt, feasible: false, recommendedAltitudeFt: bestAttempt?.altitudeFt ?? null, candidates };
   }
 
-  const maximumRetainedPayloadLb = Math.max(...viable.map((candidate) => candidate.recommendedPayloadLb));
-  const payloadPool = viable.filter((candidate) => candidate.recommendedPayloadLb === maximumRetainedPayloadLb);
+  const riskRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
+  const hasWeatherEvidence = viable.some((candidate) => candidate.result.icing.confidence === "weather");
+  const safestRank = Math.min(...viable.map((candidate) => riskRank[candidate.result.icing.status]));
+  const weatherPool = hasWeatherEvidence ? viable.filter((candidate) => riskRank[candidate.result.icing.status] === safestRank) : viable;
+  const maximumRetainedPayloadLb = Math.max(...weatherPool.map((candidate) => candidate.recommendedPayloadLb));
+  const payloadPool = weatherPool.filter((candidate) => candidate.recommendedPayloadLb === maximumRetainedPayloadLb);
   const fuels = payloadPool.map((candidate) => candidate.result.fuelRequiredGal);
   const times = payloadPool.map((candidate) => candidate.result.tripTimeHr);
   const ranges = payloadPool.map((candidate) => candidate.result.maxRangeNm);
@@ -544,7 +726,7 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
       normalize(fuels, candidate.result.fuelRequiredGal, true) * 0.42
       + normalize(times, candidate.result.tripTimeHr, true) * 0.33
       + normalize(ranges, candidate.result.maxRangeNm) * 0.25
-    );
+    ) - candidate.result.icing.penalty;
   });
   const winner = [...payloadPool].sort((a, b) => b.optimizationScore - a.optimizationScore)[0];
   return { ...winner, recommendedAltitudeFt: winner.altitudeFt, candidates };

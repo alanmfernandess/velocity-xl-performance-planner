@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-9" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-10" />
   </head>
   <body>
     <header class="topbar">
@@ -77,6 +77,7 @@
               <div class="chart-tabs" role="tablist"><button class="active" data-metric="fuel" type="button">Fuel</button><button data-metric="time" type="button">Time</button><button data-metric="efficiency" type="button">Efficiency</button></div>
             </div>
             <div class="chart-wrap" id="performanceChart"></div>
+            <div class="icing-summary" id="icingSummary"><b id="icingStatus">—</b><span id="icingDelta">—</span><small id="icingSource">—</small></div>
             <div class="chart-foot"><span><i class="blue-dot"></i><span data-i18n="selectedLevel">Nível selecionado</span></span><span><i class="green-dot"></i><span data-i18n="recommendedLevel">Recomendado</span></span><span id="chartHint"></span></div>
           </div>
           <div class="view" data-view-panel="route">
@@ -236,6 +237,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-9"></script>
+    <script type="module" src="./js/app.js?v=20261013-10"></script>
   </body>
 </html>

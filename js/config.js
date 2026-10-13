@@ -71,6 +71,17 @@ export const PERFORMANCE = {
     targetWeightMarginLb: 80,
     fuelIncrementGal: 0.5,
   },
+  icing: {
+    warmBoundaryC: 5,
+    coldBoundaryC: -40,
+    cautionScore: 45,
+    watchScore: 12,
+    unknownMoistureFactor: 0.25,
+    clearWeatherFactor: 0.08,
+    visibleMoistureFactor: 0.9,
+    watchBasePenalty: 4,
+    cautionBasePenalty: 18,
+  },
   glide: {
     ratio: 12.15,
     bestGlideKias: 90,

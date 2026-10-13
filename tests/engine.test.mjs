@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateModeLoadOptimization, calculatePlan, calculateStepClimbs, compareScenarios, densityAltitudeFt, deriveCalibration, isaTemperatureC, powerAtAltitude, weatherAtAltitude, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateModeLoadOptimization, calculatePlan, calculateStepClimbs, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, powerAtAltitude, weatherAtAltitude, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE } from "../js/config.js";
 
 test("ISA temperature follows standard lapse rate", () => {
@@ -67,6 +67,48 @@ test("plan evaluates FL100 through FL250 and selects winners", () => {
   assert.ok(analysis.winners.overall.score >= 0);
   assert.equal(analysis.feasibility.availableCount, 9);
   assert.ok(analysis.results.every((result) => result.feasibility.status === "viable"));
+});
+
+test("icing evidence recognizes freezing precipitation, cloud, and clear weather", () => {
+  assert.equal(icingWeatherEvidence("SPECI SBSP 121200Z FZRA BKN008").freezingPrecipitation, true);
+  assert.equal(icingWeatherEvidence("TAF SBGL OVC020 -RA").visibleMoisture, true);
+  assert.equal(icingWeatherEvidence("METAR SBRJ CAVOK").clear, true);
+});
+
+test("icing-aware optimizer changes level when OFP weather favors a lower-risk band", () => {
+  const plan = { ...DEMO_PLAN, meteorology: { originText: "", destinationText: "", enrouteText: "BKN030 -RA" } };
+  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  assert.equal(analysis.winners.performance.fl, 140);
+  assert.ok(analysis.winners.overall.fl >= 240);
+  assert.equal(analysis.icing.cost.changedAltitude, true);
+  assert.equal(analysis.icing.confidence, "weather");
+  assert.notEqual(analysis.winners.overall.icing.status, "caution");
+});
+
+test("explicit enroute icing leaves no acceptable cruise profile", () => {
+  const plan = { ...DEMO_PLAN, meteorology: { originText: "", destinationText: "", enrouteText: "MOD ICE" } };
+  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  assert.equal(analysis.icing.hasAcceptableProfile, false);
+  assert.equal(analysis.icing.acceptableCount, 0);
+  assert.ok(analysis.results.every((result) => result.icing.status === "avoid"));
+});
+
+test("an OFP icing altitude band blocks the band and levels that require crossing it", () => {
+  const plan = { ...DEMO_PLAN, meteorology: { originText: "", destinationText: "", enrouteText: "MOD ICE FL120/180" } };
+  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  assert.equal(analysis.winners.overall.fl, 100);
+  assert.equal(analysis.results.find((result) => result.fl === 100).icing.status, "watch");
+  assert.equal(analysis.results.find((result) => result.fl === 140).icing.status, "avoid");
+  assert.equal(analysis.results.find((result) => result.fl === 240).icing.status, "avoid");
+});
+
+test("missing OFP temperature data is not treated as an icing forecast", () => {
+  const waypoints = DEMO_PLAN.waypoints.map(({ windLevels, oatC, ...waypoint }) => ({ ...waypoint, windLevels: [] }));
+  const plan = { ...DEMO_PLAN, waypoints, meteorology: { originText: "", destinationText: "", enrouteText: "" } };
+  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  assert.ok(analysis.results.every((result) => result.icing.status === "low"));
+  assert.equal(analysis.icing.confidence, "limited");
+  assert.equal(analysis.winners.overall.altitudeFt, analysis.winners.performance.altitudeFt);
 });
 
 test("unavailable cruise levels are excluded from recommendations", () => {
