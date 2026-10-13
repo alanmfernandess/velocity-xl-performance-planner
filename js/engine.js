@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-5";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-6";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -334,6 +334,189 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
       marginalCount: results.filter((item) => item.feasibility.status === "marginal").length,
       unavailableCount: results.filter((item) => item.feasibility.status === "unavailable").length,
     },
+  };
+}
+
+function fuelUsedToDistance(result, distanceNm) {
+  if (distanceNm <= 0) return PERFORMANCE.taxiFuelGal;
+  if (distanceNm <= result.climb.distanceNm) {
+    const ratio = clamp(distanceNm / Math.max(1, result.climb.distanceNm), 0, 1);
+    return PERFORMANCE.taxiFuelGal + result.climb.fuelGal * ratio;
+  }
+  const cruiseDistanceNm = Math.min(result.cruiseDistanceNm, Math.max(0, distanceNm - result.climb.distanceNm));
+  return PERFORMANCE.taxiFuelGal + result.climb.fuelGal + cruiseDistanceNm / result.gsKt * result.fuelFlowGph;
+}
+
+function diversionLeg({ from, to, result, fallbackDistanceNm = NaN }) {
+  const hasCoordinates = [from?.lat, from?.lon, to?.lat, to?.lon].every(Number.isFinite);
+  const distanceNm = hasCoordinates ? greatCircleNm(from, to) : Number(fallbackDistanceNm);
+  if (!Number.isFinite(distanceNm) || distanceNm <= 0) return null;
+  const trackDeg = hasCoordinates ? bearingDeg(from, to) : 0;
+  const componentKt = hasCoordinates
+    ? windComponentKt(trackDeg, result.weather.windDir, result.weather.windSpeedKt)
+    : 0;
+  const gsKt = clamp(result.tasKt + componentKt, 90, 360);
+  const timeHr = distanceNm / gsKt;
+  return {
+    distanceNm,
+    trackDeg,
+    componentKt,
+    gsKt,
+    timeHr,
+    fuelGal: timeHr * result.fuelFlowGph + PERFORMANCE.diversion.approachFuelGal,
+  };
+}
+
+export function calculateAlternateDiversion({
+  plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {},
+  waypointIndex = 0, manual = null,
+}) {
+  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting });
+  const alternate = plan.alternates?.[0] || (plan.alternate ? { icao: plan.alternate } : null);
+  if (!alternate) return { available: false, ident: "—" };
+
+  const destinationLeg = diversionLeg({
+    from: plan.destination,
+    to: alternate,
+    result,
+    fallbackDistanceNm: alternate.distanceNm,
+  });
+  const selectedIndex = clamp(Math.round(Number(waypointIndex) || 0), 0, Math.max(0, plan.waypoints.length - 1));
+  const position = plan.waypoints[selectedIndex] || plan.origin;
+  const routeDistanceNm = Number(position.distanceNm) || 0;
+  const fuelAtPositionGal = manual?.active && Number(manual.waypointIndex) === selectedIndex
+    ? Number(manual.fuelRemainingGal)
+    : Math.max(0, fuelOnboardGal - fuelUsedToDistance(result, routeDistanceNm));
+  const diversion = diversionLeg({ from: position, to: alternate, result });
+  const fuelAtDestinationGal = Math.max(0, fuelOnboardGal - PERFORMANCE.taxiFuelGal - result.tripFuelGal);
+  const alternateFuelGal = destinationLeg
+    ? PERFORMANCE.diversion.missedApproachFuelGal + destinationLeg.fuelGal
+    : NaN;
+  const alternateLandingFuelGal = Number.isFinite(alternateFuelGal) ? fuelAtDestinationGal - alternateFuelGal : NaN;
+  const alternateMarginGal = alternateLandingFuelGal - result.reserveFuelGal;
+  const diversionLandingFuelGal = diversion ? fuelAtPositionGal - diversion.fuelGal : NaN;
+  const diversionMarginGal = diversionLandingFuelGal - result.reserveFuelGal;
+  const statusFor = (marginGal) => !Number.isFinite(marginGal)
+    ? "unknown"
+    : marginGal < 0
+      ? "unavailable"
+      : marginGal < PERFORMANCE.diversion.marginalFuelMarginGal
+        ? "marginal"
+        : "viable";
+
+  return {
+    available: Boolean(destinationLeg || diversion),
+    alternate,
+    position,
+    fuelAtDestinationGal,
+    destination: destinationLeg ? {
+      ...destinationLeg,
+      fuelGal: alternateFuelGal,
+      landingFuelGal: alternateLandingFuelGal,
+      marginGal: alternateMarginGal,
+      status: statusFor(alternateMarginGal),
+    } : null,
+    diversion: diversion ? {
+      ...diversion,
+      fuelAtPositionGal,
+      landingFuelGal: diversionLandingFuelGal,
+      marginGal: diversionMarginGal,
+      status: statusFor(diversionMarginGal),
+    } : null,
+  };
+}
+
+export function compareScenarios({ plan, scenarioA, scenarioB, calibration = {} }) {
+  const calculate = (scenario) => {
+    const result = calculateAtAltitude({ plan, calibration, ...scenario });
+    result.feasibility = assessFeasibility(result, { plan, fuelOnboardGal: scenario.fuelOnboardGal });
+    return result;
+  };
+  const a = calculate(scenarioA);
+  const b = calculate(scenarioB);
+  return {
+    a,
+    b,
+    delta: {
+      fuelGal: b.fuelRequiredGal - a.fuelRequiredGal,
+      timeHr: b.tripTimeHr - a.tripTimeHr,
+      gsKt: b.gsKt - a.gsKt,
+      marginGal: b.feasibility.fuelMarginGal - a.feasibility.fuelMarginGal,
+    },
+  };
+}
+
+export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
+  const maxFuelByWeightGal = clamp(
+    (AIRCRAFT.maxGrossWeightLb - AIRCRAFT.emptyWeightLb - payloadLb) / AIRCRAFT.fuelDensityLbGal,
+    0,
+    AIRCRAFT.usableFuelGal,
+  );
+  let candidateFuelGal = Math.min(fuelOnboardGal, maxFuelByWeightGal);
+  let result;
+  for (let index = 0; index < 5; index += 1) {
+    result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: candidateFuelGal, reserveMinutes, calibration, powerSetting });
+    const rawTarget = result.fuelRequiredGal + PERFORMANCE.loadOptimizer.dispatchBufferGal;
+    candidateFuelGal = Math.ceil(rawTarget / PERFORMANCE.loadOptimizer.fuelIncrementGal) * PERFORMANCE.loadOptimizer.fuelIncrementGal;
+  }
+  const recommendedFuelGal = Math.min(AIRCRAFT.usableFuelGal, candidateFuelGal);
+  const maxPayloadLb = Math.max(0, AIRCRAFT.maxGrossWeightLb - AIRCRAFT.emptyWeightLb - recommendedFuelGal * AIRCRAFT.fuelDensityLbGal);
+  const payloadReductionLb = Math.max(0, payloadLb - maxPayloadLb);
+  const currentWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal;
+  const optimizedWeightLb = AIRCRAFT.emptyWeightLb + Math.min(payloadLb, maxPayloadLb) + recommendedFuelGal * AIRCRAFT.fuelDensityLbGal;
+  const feasible = recommendedFuelGal <= maxFuelByWeightGal + 0.01 && recommendedFuelGal <= AIRCRAFT.usableFuelGal;
+  return {
+    feasible,
+    recommendedFuelGal,
+    maxFuelByWeightGal,
+    maxPayloadLb,
+    payloadReductionLb,
+    currentWeightLb,
+    optimizedWeightLb,
+    weightMarginLb: AIRCRAFT.maxGrossWeightLb - optimizedWeightLb,
+  };
+}
+
+export function calculateGlideCorridor({ plan, result }) {
+  const ratio = PERFORMANCE.glide.ratio;
+  const bestGlideKias = PERFORMANCE.glide.bestGlideKias;
+  const sinkFpm = bestGlideKias * PERFORMANCE.glide.feetPerNm / 60 / ratio;
+  const altitudeAtDistance = (distanceNm) => {
+    if (distanceNm <= result.climb.distanceNm) return result.altitudeFt * clamp(distanceNm / Math.max(1, result.climb.distanceNm), 0, 1);
+    const descentStartNm = Math.max(result.climb.distanceNm, plan.distanceNm - result.descent.distanceNm);
+    if (distanceNm >= descentStartNm) return result.altitudeFt * clamp((plan.distanceNm - distanceNm) / Math.max(1, result.descent.distanceNm), 0, 1);
+    return result.altitudeFt;
+  };
+  const basePoints = (plan.waypoints || []).map((point) => ({ ...point, distanceNm: Number(point.distanceNm) }))
+    .filter((point) => Number.isFinite(point.distanceNm));
+  const points = basePoints.length >= 2 ? basePoints : [
+    { ...plan.origin, ident: plan.origin.icao, distanceNm: 0 },
+    { ...plan.destination, ident: plan.destination.icao, distanceNm: plan.distanceNm },
+  ];
+  const samples = points.map((point) => {
+    const altitudeFt = altitudeAtDistance(point.distanceNm);
+    const stillAirRangeNm = altitudeFt * ratio / PERFORMANCE.glide.feetPerNm;
+    const glideMinutes = altitudeFt / sinkFpm;
+    const windRatio = result.weather.componentKt / bestGlideKias;
+    return {
+      ...point,
+      altitudeFt,
+      stillAirRangeNm,
+      forwardRangeNm: Math.max(0, stillAirRangeNm * (1 + windRatio)),
+      reverseRangeNm: Math.max(0, stillAirRangeNm * (1 - windRatio)),
+      glideMinutes,
+    };
+  });
+  const cruiseRangeNm = result.altitudeFt * ratio / PERFORMANCE.glide.feetPerNm;
+  return {
+    ratio,
+    bestGlideKias,
+    sinkFpm,
+    cruiseRangeNm,
+    cruiseMinutes: result.altitudeFt / sinkFpm,
+    forwardRangeNm: Math.max(0, cruiseRangeNm * (1 + result.weather.componentKt / bestGlideKias)),
+    reverseRangeNm: Math.max(0, cruiseRangeNm * (1 - result.weather.componentKt / bestGlideKias)),
+    samples,
   };
 }
 

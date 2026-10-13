@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-5" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-6" />
   </head>
   <body>
     <header class="topbar">
@@ -104,8 +104,8 @@
                 <label><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label>
               </div>
             </div>
-            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="100" max="900" value="520" step="10" /></label>
-            <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="15" max="87" value="77" step="1" /></label>
+            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /></label>
+            <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="1" /></label>
             <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
           </article>
@@ -117,6 +117,10 @@
       <section class="panel flight-tools-panel" aria-label="Flight tools">
         <div class="tool-tabs" role="tablist">
           <button class="active" data-tool-view="etp" type="button">ETP / PNR</button>
+          <button data-tool-view="alternate" type="button">ALT / DIV</button>
+          <button data-tool-view="compare" type="button">A / B</button>
+          <button data-tool-view="load" type="button">LOAD</button>
+          <button data-tool-view="glide" type="button">GLIDE</button>
           <button data-tool-view="steps" type="button">STEP CLIMB</button>
           <button data-tool-view="update" type="button" data-i18n="manualUpdate">Atualização manual</button>
         </div>
@@ -134,6 +138,69 @@
               <small id="pnrDetails">Além do destino</small>
             </div>
             <div class="navigation-speeds"><span><b data-i18n="continueLabel">Continuar</b><strong id="outboundGs">256 kt</strong></span><span><b data-i18n="returnLabel">Retornar</b><strong id="returnGs">218 kt</strong></span></div>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="alternate">
+          <div class="advisor-grid alternate-grid">
+            <article class="advisor-card">
+              <span data-i18n="destinationAlternate">Destino → alternado</span>
+              <strong id="alternateRoute">SBGL → SBRJ</strong>
+              <small id="alternateLegMeta">—</small>
+              <b class="status-pill" id="alternateStatus">—</b>
+            </article>
+            <article class="advisor-card">
+              <label class="inline-select"><span data-i18n="diversionFrom">Desvio a partir de</span><select id="diversionWaypoint"></select></label>
+              <strong id="diversionRoute">SBSP → SBRJ</strong>
+              <small id="diversionLegMeta">—</small>
+              <b class="status-pill" id="diversionStatus">—</b>
+            </article>
+            <div class="advisor-strip">
+              <span><b data-i18n="fuelAtDestination">Combustível no destino</b><strong id="fuelAtDestination">—</strong></span>
+              <span><b data-i18n="alternateFuel">Combustível até alternado</b><strong id="alternateFuel">—</strong></span>
+              <span><b data-i18n="alternateLanding">Pouso no alternado</b><strong id="alternateLandingFuel">—</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="compare">
+          <div class="scenario-grid">
+            <article class="scenario-card">
+              <div class="scenario-head"><strong>A</strong><span data-i18n="currentScenario">ATUAL</span></div>
+              <div class="scenario-name" id="scenarioAName">NORMAL · FL140</div>
+              <div class="scenario-stats" id="scenarioAStats"></div>
+            </article>
+            <article class="scenario-card scenario-editable">
+              <div class="scenario-head"><strong>B</strong><span data-i18n="comparisonScenario">COMPARAÇÃO</span></div>
+              <div class="scenario-inputs">
+                <label><span>MODE</span><select id="scenarioBMode"><option>ECON</option><option>NORMAL</option><option>FAST</option></select></label>
+                <label><span>FL</span><select id="scenarioBAltitude"></select></label>
+                <label><span data-i18n="payload">Carga útil</span><span class="input-with-unit"><input id="scenarioBPayload" type="number" min="0" step="10" /><small id="scenarioBWeightUnit">lb</small></span></label>
+                <label><span data-i18n="fuelOnboard">Combustível a bordo</span><span class="input-with-unit"><input id="scenarioBFuel" type="number" min="0" step="1" /><small id="scenarioBFuelUnit">gal</small></span></label>
+              </div>
+              <div class="scenario-stats" id="scenarioBStats"></div>
+            </article>
+            <div class="scenario-delta" id="scenarioDelta"></div>
+            <button class="text-button compact-action" id="applyScenarioB" type="button" data-i18n="applyScenario">Aplicar B</button>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="load">
+          <div class="load-grid">
+            <article><span data-i18n="recommendedFuel">Combustível recomendado</span><strong id="loadRecommendedFuel">—</strong></article>
+            <article><span data-i18n="maximumFuelByWeight">Máximo pelo peso</span><strong id="loadMaxFuel">—</strong></article>
+            <article><span data-i18n="maximumPayload">Payload máximo</span><strong id="loadMaxPayload">—</strong></article>
+            <article><span data-i18n="optimizedWeight">Peso otimizado</span><strong id="loadOptimizedWeight">—</strong></article>
+            <div class="load-status"><b class="status-pill" id="loadStatus">—</b><span id="loadAdjustment">—</span></div>
+            <button class="text-button compact-action" id="applyLoadOptimization" type="button" data-i18n="applyOptimization">Aplicar otimização</button>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="glide">
+          <div class="glide-layout">
+            <div class="glide-kpis">
+              <span><b data-i18n="glideRatio">Razão de planeio</b><strong id="glideRatio">12,15:1</strong></span>
+              <span><b data-i18n="bestGlide">Melhor planeio</b><strong id="bestGlide">90 KIAS</strong></span>
+              <span><b data-i18n="glideRange">Alcance sem vento</b><strong id="glideRange">—</strong></span>
+              <span><b data-i18n="glideTime">Tempo estimado</b><strong id="glideTime">—</strong></span>
+            </div>
+            <div class="glide-chart" id="glideChart"></div>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="steps">
@@ -166,6 +233,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-5"></script>
+    <script type="module" src="./js/app.js?v=20261013-6"></script>
   </body>
 </html>

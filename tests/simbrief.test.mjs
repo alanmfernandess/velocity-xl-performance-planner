@@ -11,7 +11,7 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
     fuel: { plan_takeoff: "999999", reserve: "999999" },
     origin: { icao_code: "SBSP", name: "Congonhas", pos_lat: "-23.626", pos_long: "-46.657" },
     destination: { icao_code: "SBGL", name: "Galeão", pos_lat: "-22.810", pos_long: "-43.251" },
-    alternate: [{ icao_code: "SBRJ" }],
+    alternate: [{ icao_code: "SBRJ", name: "Santos Dumont", pos_lat: "-22.9105", pos_long: "-43.1631", route_distance: "12" }],
     navlog: [
       { ident: "SBSP", pos_lat: "-23.626", pos_long: "-46.657", wind_dir: "250", wind_spd: "20", oat: "-20", wind_data: [
         { altitude: "18000", wind_dir: "240", wind_spd: "18", oat: "-19" },
@@ -23,6 +23,9 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
   assert.equal(result.origin.icao, "SBSP");
   assert.equal(result.destination.icao, "SBGL");
   assert.equal(result.alternate, "SBRJ");
+  assert.equal(result.alternates[0].icao, "SBRJ");
+  assert.equal(result.alternates[0].distanceNm, 12);
+  assert.ok(Number.isFinite(result.alternates[0].lat));
   assert.equal(result.plannedAltitudeFt, 22000);
   assert.equal(result.distanceNm, 420);
   assert.equal(result.waypoints.length, 2);

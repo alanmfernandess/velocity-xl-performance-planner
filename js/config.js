@@ -61,6 +61,20 @@ export const PERFORMANCE = {
     minimumFuelSavingGal: 0.35,
     maximumSteps: 3,
   },
+  diversion: {
+    missedApproachFuelGal: 2.2,
+    approachFuelGal: 1,
+    marginalFuelMarginGal: 3,
+  },
+  loadOptimizer: {
+    dispatchBufferGal: 1,
+    fuelIncrementGal: 0.5,
+  },
+  glide: {
+    ratio: 12.15,
+    bestGlideKias: 90,
+    feetPerNm: 6076.12,
+  },
   modes: {
     ECON: {
       label: "ECON",
@@ -93,6 +107,9 @@ export const DEMO_PLAN = {
   origin: { icao: "SBSP", name: "Congonhas", lat: -23.6261, lon: -46.6566 },
   destination: { icao: "SBGL", name: "Galeão", lat: -22.8099, lon: -43.2506 },
   alternate: "SBRJ",
+  alternates: [
+    { icao: "SBRJ", name: "Santos Dumont", lat: -22.9105, lon: -43.1631 },
+  ],
   route: "DCT KOVBI UZ10 OPALA DCT",
   distanceNm: 246,
   plannedAltitudeFt: 18000,

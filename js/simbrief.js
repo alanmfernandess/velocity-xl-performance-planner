@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261013-5";
+import { greatCircleNm } from "./engine.js?v=20261013-6";
 
 const number = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -85,12 +85,21 @@ export function parseSimBrief(data) {
   const distanceNm = number(first(data.general?.route_distance, data.general?.air_distance, cumulativeNm), cumulativeNm);
   const rawGenerated = first(data.params?.time_generated, data.times?.sched_out);
   const generatedDate = rawGenerated && Number.isNaN(Number(rawGenerated)) ? new Date(rawGenerated) : new Date(number(rawGenerated) * 1000);
-  const alternate = Array.isArray(data.alternate) ? data.alternate[0] : data.alternate;
+  const rawAlternates = Array.isArray(data.alternate) ? data.alternate : data.alternate ? [data.alternate] : [];
+  const alternates = rawAlternates.map((alternate) => ({
+    icao: first(alternate?.icao_code, alternate?.icao, alternate?.ident, "—"),
+    name: first(alternate?.name, alternate?.airport_name, ""),
+    lat: number(first(alternate?.pos_lat, alternate?.latitude, alternate?.lat), NaN),
+    lon: number(first(alternate?.pos_long, alternate?.longitude, alternate?.lon), NaN),
+    distanceNm: number(first(alternate?.route_distance, alternate?.distance), NaN),
+  }));
+  const alternate = alternates[0];
   return {
     source: "SIMBRIEF",
     origin,
     destination,
-    alternate: first(alternate?.icao_code, alternate?.icao, "—"),
+    alternate: first(alternate?.icao, "—"),
+    alternates,
     route: first(data.general?.route, data.atc?.route, waypoints.map((fix) => fix.ident).join(" ")),
     distanceNm,
     plannedAltitudeFt,
