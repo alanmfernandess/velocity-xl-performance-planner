@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-2" />
   </head>
   <body>
     <header class="topbar">
@@ -104,6 +104,52 @@
         </aside>
       </section>
 
+      <section class="panel flight-tools-panel" aria-label="Flight tools">
+        <div class="tool-tabs" role="tablist">
+          <button class="active" data-tool-view="etp" type="button">ETP / PNR</button>
+          <button data-tool-view="steps" type="button">STEP CLIMB</button>
+          <button data-tool-view="update" type="button" data-i18n="manualUpdate">Atualização manual</button>
+        </div>
+        <div class="tool-view active" data-tool-panel="etp">
+          <div class="navigation-grid">
+            <div class="navigation-point etp-point">
+              <span>ETP</span>
+              <strong id="etpDistance">123 NM</strong>
+              <small id="etpDetails">OPALA · 00:32 · 64 gal</small>
+            </div>
+            <div class="navigation-scale" aria-hidden="true"><i id="etpScaleMarker"></i><i id="pnrScaleMarker"></i></div>
+            <div class="navigation-point pnr-point">
+              <span>PNR</span>
+              <strong id="pnrDistance">DEST + 214 NM</strong>
+              <small id="pnrDetails">Além do destino</small>
+            </div>
+            <div class="navigation-speeds"><span><b data-i18n="continueLabel">Continuar</b><strong id="outboundGs">256 kt</strong></span><span><b data-i18n="returnLabel">Retornar</b><strong id="returnGs">218 kt</strong></span></div>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="steps">
+          <div class="step-summary"><strong id="stepHeadline">FL120</strong><span id="stepMeta">—</span></div>
+          <div class="step-track" id="stepTrack"></div>
+        </div>
+        <div class="tool-view" data-tool-panel="update">
+          <div class="update-grid">
+            <form id="manualUpdateForm" class="compact-form">
+              <label><span data-i18n="position">Posição</span><select id="manualWaypoint"></select></label>
+              <label><span>FL</span><select id="manualAltitude"></select></label>
+              <label><span data-i18n="fuelRemaining">Combustível restante</span><span class="input-with-unit"><input id="manualFuel" type="number" min="0" step="0.1" required /><small id="manualFuelUnit">gal</small></span></label>
+              <button class="primary-button" type="submit" data-i18n="update">Atualizar</button>
+            </form>
+            <form id="calibrationForm" class="compact-form calibration-form">
+              <div class="calibration-head"><span data-i18n="calibration">Calibração</span><strong id="calibrationMode">NORMAL</strong></div>
+              <label><span data-i18n="observedTas">TAS observada</span><span class="input-with-unit"><input id="observedTas" type="number" min="100" max="350" step="1" required /><small>kt</small></span></label>
+              <label><span data-i18n="observedFuelFlow">Fuel flow observado</span><span class="input-with-unit"><input id="observedFuelFlow" type="number" min="1" step="0.1" required /><small id="observedFuelFlowUnit">gal/h</small></span></label>
+              <button class="primary-button" type="submit" data-i18n="calibrate">Calibrar</button>
+              <button class="text-button" id="resetCalibration" type="button" data-i18n="reset">Redefinir</button>
+              <output id="calibrationFactors">TAS ×1,00 · FF ×1,00</output>
+            </form>
+          </div>
+        </div>
+      </section>
+
       <section class="levels-section">
         <div class="section-heading"><h2 data-i18n="allLevels">Todos os níveis</h2><span id="selectionNote"></span></div>
         <div class="levels-grid" id="levelCards"></div>
@@ -111,6 +157,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js"></script>
+    <script type="module" src="./js/app.js?v=20261013-2"></script>
   </body>
 </html>

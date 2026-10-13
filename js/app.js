@@ -1,6 +1,6 @@
-import { AIRCRAFT, PERFORMANCE, DEMO_PLAN } from "./config.js";
-import { calculatePlan } from "./engine.js";
-import { fetchLatestOFP } from "./simbrief.js";
+import { AIRCRAFT, PERFORMANCE, DEMO_PLAN, ALTITUDES_FT } from "./config.js?v=20261013-2";
+import { calculateEtpPnr, calculatePlan, calculateStepClimbs, deriveCalibration } from "./engine.js?v=20261013-2";
+import { fetchLatestOFP } from "./simbrief.js?v=20261013-2";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -13,6 +13,8 @@ const COPY = {
     objective:"Objetivo", bestOverall:"Melhor conjunto", lowestFuel:"Menor consumo", fastest:"Mais rápido", maxRange:"Maior alcance", payload:"Carga útil", fuelOnboard:"Combustível a bordo", reserve:"Reserva", takeoffWeight:"Peso de decolagem", fuel:"Combustível", allLevels:"Todos os níveis", climb:"SUBIDA", cruise:"CRUZEIRO", descent:"DESCIDA", disclaimer:"Simulação somente · Modelo não certificado · Sem telemetria",
     demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Menor valor", timeHint:"Menor valor", efficiencyHint:"Maior valor", margin:"de margem", belowMax:"abaixo do máximo", aboveMax:"acima do máximo", missingId:"Informe o Pilot ID ou Alias.", importError:"Não foi possível importar o OFP.",
     fuelRank:(rank)=>`${rank}º em consumo`, timeRank:(rank,gs)=>`${rank}º em tempo · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingência", taxi:"Taxi",
+    manualUpdate:"Atualização manual", continueLabel:"Continuar", returnLabel:"Retornar", position:"Posição", fuelRemaining:"Combustível restante", update:"Atualizar", calibration:"Calibração", observedTas:"TAS observada", observedFuelFlow:"Fuel flow observado", calibrate:"Calibrar", reset:"Redefinir", beyondDestination:"Além do destino", noStep:"Sem step climb", nextStep:"Próximo", updated:"MANUAL", preflight:"PRÉ-VOO",
+    stepAt:(waypoint,fl)=>`${waypoint} · FL${fl}`, stepSaving:(fuel,minutes)=>`−${fuel} · ${minutes} min`,
   },
   "en-US": {
     pilotId:"Pilot ID / Alias", importLatest:"Import OFP",
@@ -20,13 +22,21 @@ const COPY = {
     objective:"Objective", bestOverall:"Best Overall", lowestFuel:"Lowest Fuel", fastest:"Fastest", maxRange:"Maximum Range", payload:"Payload", fuelOnboard:"Fuel onboard", reserve:"Reserve", takeoffWeight:"Takeoff weight", fuel:"Fuel", allLevels:"All levels", climb:"CLIMB", cruise:"CRUISE", descent:"DESCENT", disclaimer:"Simulation only · Non-certified model · No telemetry",
     demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Lower is better", timeHint:"Lower is better", efficiencyHint:"Higher is better", margin:"margin", belowMax:"below maximum", aboveMax:"above maximum", missingId:"Enter a Pilot ID or Alias.", importError:"Could not import the OFP.",
     fuelRank:(rank)=>`#${rank} fuel`, timeRank:(rank,gs)=>`#${rank} time · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingency", taxi:"Taxi",
+    manualUpdate:"Manual update", continueLabel:"Continue", returnLabel:"Return", position:"Position", fuelRemaining:"Fuel remaining", update:"Update", calibration:"Calibration", observedTas:"Observed TAS", observedFuelFlow:"Observed fuel flow", calibrate:"Calibrate", reset:"Reset", beyondDestination:"Beyond destination", noStep:"No step climb", nextStep:"Next", updated:"MANUAL", preflight:"PREFLIGHT",
+    stepAt:(waypoint,fl)=>`${waypoint} · FL${fl}`, stepSaving:(fuel,minutes)=>`−${fuel} · ${minutes} min`,
   },
 };
+
+function storedJson(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
+}
 
 const state = {
   plan: structuredClone(DEMO_PLAN), mode:"NORMAL", payloadLb:520, fuelOnboardGal:77, reserveMinutes:45,
   metric:"fuel", criterion:"overall", selectedAltitudeFt:null, language:localStorage.getItem("velocityxl.language") || "pt-BR",
   weightUnit:localStorage.getItem("velocityxl.weightUnit") || "lb", fuelUnit:localStorage.getItem("velocityxl.fuelUnit") || "gal", fontSize:localStorage.getItem("velocityxl.fontSize") || "medium",
+  calibration:storedJson("velocityxl.calibration", {}),
+  manual:{ active:false, waypointIndex:0, distanceNm:0, fuelRemainingGal:77, altitudeFt:null },
 };
 const t = (key, ...args) => typeof COPY[state.language][key] === "function" ? COPY[state.language][key](...args) : COPY[state.language][key] || key;
 const number = (value, digits = 0) => Number(value).toLocaleString(state.language, { minimumFractionDigits:digits, maximumFractionDigits:digits });
@@ -34,6 +44,7 @@ const signed = (value, suffix="") => `${value >= 0 ? "+" : "−"}${number(Math.a
 const formatTime = (hours) => { const minutes=Math.max(0,Math.round(hours*60)); return `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`; };
 const weightValue=(lb)=>state.weightUnit==="kg"?lb*.45359237:lb;
 const fuelValue=(gal)=>state.fuelUnit==="l"?gal*3.785411784:gal;
+const fuelFromDisplay=(value)=>state.fuelUnit==="l"?value/3.785411784:value;
 const weightLabel=()=>state.weightUnit==="kg"?"kg":"lb";
 const fuelLabel=()=>state.fuelUnit==="l"?"L":"gal";
 const formatWeight=(lb,digits=0)=>`${number(weightValue(lb),digits)} ${weightLabel()}`;
@@ -76,19 +87,33 @@ function renderPerformanceChart(results,recommended) {
   $$(".chart-point").forEach((point)=>{ const choose=()=>{state.selectedAltitudeFt=Number(point.dataset.altitude);render();}; point.addEventListener("click",choose); point.addEventListener("keydown",(event)=>{if(event.key==="Enter"||event.key===" ")choose();}); });
 }
 
-function renderRouteMap(plan,result) {
+function renderRouteMap(plan,result,navigation) {
   const fixes=plan.waypoints.filter((fix)=>Number.isFinite(fix.lat)&&Number.isFinite(fix.lon));
   const width=860,height=320,padX=58,padY=48,lats=fixes.map((w)=>w.lat),lons=fixes.map((w)=>w.lon),minLat=Math.min(...lats),maxLat=Math.max(...lats),minLon=Math.min(...lons),maxLon=Math.max(...lons),latSpan=maxLat-minLat||1,lonSpan=maxLon-minLon||1;
   const project=(fix)=>({x:padX+((fix.lon-minLon)/lonSpan)*(width-padX*2),y:height-padY-((fix.lat-minLat)/latSpan)*(height-padY*2)});
   const points=fixes.map(project),path=points.map((p,i)=>`${i?"L":"M"}${p.x},${p.y}`).join(" ");
+  const pointAtFraction=(fraction)=>{
+    const lengths=points.slice(1).map((point,index)=>Math.hypot(point.x-points[index].x,point.y-points[index].y));
+    const total=lengths.reduce((sum,value)=>sum+value,0)||1;
+    let target=Math.max(0,Math.min(1,fraction))*total;
+    for(let index=0;index<lengths.length;index+=1){if(target<=lengths[index]){const ratio=lengths[index]?target/lengths[index]:0;return{x:points[index].x+(points[index+1].x-points[index].x)*ratio,y:points[index].y+(points[index+1].y-points[index].y)*ratio};}target-=lengths[index];}
+    return points.at(-1);
+  };
   const stride=Math.max(1,Math.ceil(fixes.length/5));
   const dots=fixes.filter((_,i)=>i===0||i===fixes.length-1||i%stride===0).map((fix)=>{ const p=project(fix),endpoint=fix===fixes[0]||fix===fixes.at(-1); return `<g><circle cx="${p.x}" cy="${p.y}" r="${endpoint?7:4}" fill="${endpoint?"#52a964":"#fff"}" stroke="${endpoint?"#52a964":"#1976d2"}" stroke-width="2"/><text x="${p.x}" y="${p.y-14}" text-anchor="middle" fill="#62717f" font-size="9" font-weight="600">${escapeHtml(fix.ident)}</text></g>`; }).join("");
-  $("#routeMap").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="routeLine"><stop stop-color="#1976d2"/><stop offset="1" stop-color="#52a964"/></linearGradient></defs><path d="${path}" fill="none" stroke="#edf3f7" stroke-width="12"/><path d="${path}" fill="none" stroke="url(#routeLine)" stroke-width="2" stroke-dasharray="5 5"/>${dots}</svg>`;
+  const navMarkers=[{label:"ETP",point:pointAtFraction(navigation.etp.fraction),color:"#1976d2"},{label:"PNR",point:pointAtFraction(navigation.pnr.fraction),color:"#d98b34"}].map(({label,point,color},index)=>`<g><circle cx="${point.x}" cy="${point.y}" r="7" fill="#fff" stroke="${color}" stroke-width="3"/><rect x="${point.x-18}" y="${point.y+(index?-36:13)}" width="36" height="18" rx="9" fill="${color}"/><text x="${point.x}" y="${point.y+(index?-24:25)}" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">${label}</text></g>`).join("");
+  $("#routeMap").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="routeLine"><stop stop-color="#1976d2"/><stop offset="1" stop-color="#52a964"/></linearGradient></defs><path d="${path}" fill="none" stroke="#edf3f7" stroke-width="12"/><path d="${path}" fill="none" stroke="url(#routeLine)" stroke-width="2" stroke-dasharray="5 5"/>${dots}${navMarkers}</svg>`;
 }
 
-function renderVerticalProfile(plan,result) {
-  const width=860,height=290,left=44,right=24,top=42,base=226,tocX=left+(result.climb.distanceNm/plan.distanceNm)*(width-left-right),todX=width-right-(result.descent.distanceNm/plan.distanceNm)*(width-left-right),cruiseY=top+(25000-result.altitudeFt)/25000*55;
-  $("#verticalProfile").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="profileArea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1976d2" stop-opacity=".12"/><stop offset="1" stop-color="#1976d2" stop-opacity="0"/></linearGradient></defs>${[10000,15000,20000,25000].map((alt)=>{const y=top+(25000-alt)/25000*120;return `<line x1="${left}" y1="${y}" x2="${width-right}" y2="${y}" stroke="#eef1f4"/><text x="${left-8}" y="${y+3}" text-anchor="end" fill="#8a97a2" font-size="8">FL${alt/100}</text>`;}).join("")}<path d="M${left},${base} L${tocX},${cruiseY} L${todX},${cruiseY} L${width-right},${base} L${left},${base}Z" fill="url(#profileArea)"/><path d="M${left},${base} L${tocX},${cruiseY}" stroke="#1976d2" stroke-width="2"/><path d="M${tocX},${cruiseY} L${todX},${cruiseY}" stroke="#52a964" stroke-width="2"/><path d="M${todX},${cruiseY} L${width-right},${base}" stroke="#d98b34" stroke-width="2"/><text x="${tocX}" y="${cruiseY-10}" text-anchor="middle" fill="#8794a0" font-size="8">TOC</text><text x="${todX}" y="${cruiseY-10}" text-anchor="middle" fill="#8794a0" font-size="8">TOD</text><text x="${(tocX+todX)/2}" y="${cruiseY-10}" text-anchor="middle" fill="#438b52" font-size="9" font-weight="700">FL${result.fl}</text><text x="${left}" y="${base+25}" fill="#43515d" font-size="9" font-weight="700">${escapeHtml(plan.origin.icao)}</text><text x="${width-right}" y="${base+25}" text-anchor="end" fill="#43515d" font-size="9" font-weight="700">${escapeHtml(plan.destination.icao)}</text></svg>`;
+function renderVerticalProfile(plan,result,stepPlan) {
+  const width=860,height=290,left=44,right=24,top=42,base=226,plotWidth=width-left-right,tocX=left+(result.climb.distanceNm/plan.distanceNm)*plotWidth,todX=width-right-(result.descent.distanceNm/plan.distanceNm)*plotWidth;
+  const yForAltitude=(altitudeFt)=>top+(25000-altitudeFt)/25000*120;
+  const cruiseEnd=Math.max(tocX,todX),startAltitude=stepPlan.initialAltitudeFt;
+  let profilePath=`M${left},${base} L${tocX},${yForAltitude(startAltitude)}`;
+  let lastY=yForAltitude(startAltitude);
+  const stepLabels=stepPlan.steps.map((step)=>{const stepX=left+(step.distanceNm/plan.distanceNm)*plotWidth,nextY=yForAltitude(step.altitudeFt);profilePath+=` L${stepX},${lastY} L${stepX+7},${nextY}`;lastY=nextY;return `<g><circle cx="${stepX}" cy="${nextY}" r="4" fill="#52a964" stroke="#fff" stroke-width="2"/><text x="${stepX}" y="${nextY-10}" text-anchor="middle" fill="#438b52" font-size="8" font-weight="700">FL${step.altitudeFt/100}</text></g>`;}).join("");
+  profilePath+=` L${cruiseEnd},${lastY} L${width-right},${base}`;
+  $("#verticalProfile").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img">${[10000,15000,20000,25000].map((alt)=>{const y=yForAltitude(alt);return `<line x1="${left}" y1="${y}" x2="${width-right}" y2="${y}" stroke="#eef1f4"/><text x="${left-8}" y="${y+3}" text-anchor="end" fill="#8a97a2" font-size="8">FL${alt/100}</text>`;}).join("")}<path d="${profilePath}" fill="none" stroke="#1976d2" stroke-width="2" stroke-linejoin="round"/><text x="${tocX}" y="${yForAltitude(startAltitude)-10}" text-anchor="middle" fill="#8794a0" font-size="8">TOC</text><text x="${todX}" y="${lastY-10}" text-anchor="middle" fill="#8794a0" font-size="8">TOD</text>${stepLabels}<text x="${left}" y="${base+25}" fill="#43515d" font-size="9" font-weight="700">${escapeHtml(plan.origin.icao)}</text><text x="${width-right}" y="${base+25}" text-anchor="end" fill="#43515d" font-size="9" font-weight="700">${escapeHtml(plan.destination.icao)}</text></svg>`;
 }
 
 function renderLevelCards(results,recommended) {
@@ -103,13 +128,49 @@ function renderFuel(result) {
   $("#fuelLegend").innerHTML=pieces.map((p)=>`<div><i style="background:${p.color}"></i><span>${p.label}</span><b>${formatFuel(p.value,1)}</b></div>`).join("");
 }
 
+function renderFlightTools(plan,navigation,stepPlan,selected) {
+  $("#etpDistance").textContent=`${number(navigation.etp.distanceNm)} NM`;
+  $("#etpDetails").textContent=`${navigation.etp.waypoint.ident} · ${formatTime(navigation.etp.elapsedHr)} · ${formatFuel(navigation.etp.fuelRemainingGal,1)}`;
+  const pnrExtra=Math.max(0,navigation.pnr.rawDistanceNm-plan.distanceNm);
+  $("#pnrDistance").textContent=navigation.pnr.beyondDestination?`DEST + ${number(pnrExtra)} NM`:`${number(navigation.pnr.distanceNm)} NM`;
+  $("#pnrDetails").textContent=navigation.pnr.beyondDestination?t("beyondDestination"):`${navigation.pnr.waypoint.ident} · ${formatTime(navigation.pnr.elapsedHr)} · ${formatFuel(navigation.pnr.fuelRemainingGal,1)}`;
+  $("#outboundGs").textContent=`${Math.round(navigation.outboundGsKt)} kt`;
+  $("#returnGs").textContent=`${Math.round(navigation.returnGsKt)} kt`;
+  $("#etpScaleMarker").style.left=`${navigation.etp.fraction*100}%`;
+  $("#pnrScaleMarker").style.left=`${navigation.pnr.fraction*100}%`;
+
+  if(stepPlan.next){
+    $("#stepHeadline").textContent=`${t("nextStep")} · ${stepPlan.next.waypoint} → FL${stepPlan.next.altitudeFt/100}`;
+    $("#stepMeta").textContent=`${formatFuel(stepPlan.next.savingGal,1)} · ${number(stepPlan.next.distanceNm)} NM`;
+  }else{
+    $("#stepHeadline").textContent=`FL${stepPlan.initialAltitudeFt/100}`;
+    $("#stepMeta").textContent=t("noStep");
+  }
+  const startLabel=state.manual.active?`${t("updated")} · FL${stepPlan.initialAltitudeFt/100}`:`${t("preflight")} · FL${stepPlan.initialAltitudeFt/100}`;
+  $("#stepTrack").innerHTML=[`<div class="step-item"><b>${startLabel}</b><span>${number(stepPlan.startDistanceNm)} NM · ${formatFuel(stepPlan.startFuelGal,1)}</span></div>`,...stepPlan.steps.map((step)=>`<div class="step-item"><b>${t("stepAt",escapeHtml(step.waypoint),step.altitudeFt/100)}</b><span>${number(step.distanceNm)} NM · ${t("stepSaving",formatFuel(step.savingGal,1),number(step.minutes))}</span></div>`)].join("");
+
+  const waypointSelect=$("#manualWaypoint"),currentWaypointValue=String(state.manual.waypointIndex);
+  waypointSelect.innerHTML=plan.waypoints.map((waypoint,index)=>`<option value="${index}">${escapeHtml(waypoint.ident)} · ${number(waypoint.distanceNm)} NM</option>`).join("");
+  waypointSelect.value=currentWaypointValue;
+  $("#manualAltitude").innerHTML=ALTITUDES_FT.map((altitude)=>`<option value="${altitude}">FL${altitude/100}</option>`).join("");
+  $("#manualAltitude").value=String(state.manual.altitudeFt||selected.altitudeFt);
+  $("#manualFuel").value=number(fuelValue(state.manual.active?state.manual.fuelRemainingGal:state.fuelOnboardGal),1).replace(/[^0-9,.-]/g,"").replace(",",".");
+  $("#manualFuelUnit").textContent=fuelLabel();
+  $("#observedFuelFlowUnit").textContent=state.fuelUnit==="l"?"L/h":"gal/h";
+  $("#calibrationMode").textContent=state.mode;
+  const factors=state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1};
+  $("#calibrationFactors").textContent=`TAS ×${number(factors.tasFactor||1,2)} · FF ×${number(factors.fuelFlowFactor||1,2)}`;
+}
+
 function render() {
   applyTranslations();
   const analysis=calculatePlan(state),recommended=analysis.winners[state.criterion],selected=analysis.results.find((r)=>r.altitudeFt===state.selectedAltitudeFt)||recommended,plan=state.plan;
+  const navigation=calculateEtpPnr({...state,altitudeFt:selected.altitudeFt});
+  const stepPlan=calculateStepClimbs({...state,initialAltitudeFt:selected.altitudeFt,manual:state.manual.active?state.manual:null});
   $("#routeTitle").innerHTML=`${escapeHtml(plan.origin.icao)} <span>→</span> ${escapeHtml(plan.destination.icao)}`; $("#routeSource").textContent=t(plan.source==="SIMBRIEF"?"simbrief":"demo"); $("#planTimestamp").textContent=`${number(plan.distanceNm)} NM · FL${Math.round(plan.plannedAltitudeFt/100)}`;
   $("#routeFrom").textContent=plan.origin.icao; $("#routeTo").textContent=plan.destination.icao;
   $("#kpiAltitude").textContent=`FL${recommended.fl}`; $("#kpiScore").textContent=recommended.score; $("#kpiFuel").innerHTML=`${number(fuelValue(recommended.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-recommended.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(recommended.tripTimeHr); $("#kpiGs").textContent=`${Math.round(recommended.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(recommended.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?recommended.specificRangeNmGal/3.785411784:recommended.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
-  renderPerformanceChart(analysis.results,recommended); renderRouteMap(plan,selected); renderVerticalProfile(plan,selected); renderLevelCards(analysis.results,recommended); renderFuel(selected);
+  renderPerformanceChart(analysis.results,recommended); renderRouteMap(plan,selected,navigation); renderVerticalProfile(plan,selected,stepPlan); renderLevelCards(analysis.results,recommended); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected);
   $("#avgWind").textContent=`${String(Math.round(selected.weather.windDir)).padStart(3,"0")}° / ${Math.round(selected.weather.windSpeedKt)} kt`; $("#isaDeviation").textContent=signed(selected.weather.isaDeviationC,"°C"); $("#windComponent").textContent=signed(selected.weather.componentKt," kt"); $("#cruiseOat").textContent=`${Math.round(selected.weather.oatC)}°C`; $("#alternate").textContent=plan.alternate||"—";
   $("#tocTodNote").textContent=`TOC ${Math.round(selected.climb.distanceNm)} NM · TOD ${Math.round(selected.descent.distanceNm)} NM`; $("#climbStats").textContent=`${Math.round(selected.climb.timeHr*60)} min · ${Math.round(selected.climb.distanceNm)} NM · ${formatFuel(selected.climb.fuelGal,1)}`; $("#cruiseStats").textContent=`${Math.round(selected.cruiseTimeHr*60)} min · ${Math.round(selected.cruiseDistanceNm)} NM · ${formatFuel(selected.cruiseFuelGal,1)}`; $("#descentStats").textContent=`${Math.round(selected.descent.timeHr*60)} min · ${Math.round(selected.descent.distanceNm)} NM · ${formatFuel(selected.descent.fuelGal,1)}`;
   const fuelRank=[...analysis.results].sort((a,b)=>a.fuelRequiredGal-b.fuelRequiredGal).findIndex((r)=>r.altitudeFt===recommended.altitudeFt)+1,timeRank=[...analysis.results].sort((a,b)=>a.tripTimeHr-b.tripTimeHr).findIndex((r)=>r.altitudeFt===recommended.altitudeFt)+1;
@@ -122,13 +183,36 @@ function render() {
 $$('[data-language]').forEach((button)=>button.addEventListener("click",()=>{state.language=button.dataset.language;localStorage.setItem("velocityxl.language",state.language);render();}));
 $$('[data-font-size]').forEach((button)=>button.addEventListener("click",()=>{state.fontSize=button.dataset.fontSize;localStorage.setItem("velocityxl.fontSize",state.fontSize);render();}));
 $$('[data-weight-unit]').forEach((button)=>button.addEventListener("click",()=>{state.weightUnit=button.dataset.weightUnit;localStorage.setItem("velocityxl.weightUnit",state.weightUnit);render();}));
-$$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{state.fuelUnit=button.dataset.fuelUnit;localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
+$$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit,observed=$("#observedFuelFlow"),value=Number(observed.value);state.fuelUnit=next;if(Number.isFinite(value)&&value>0&&previous!==next)observed.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
 $$('[data-mode]').forEach((button)=>button.addEventListener("click",()=>{state.mode=button.dataset.mode;state.selectedAltitudeFt=null;$$('[data-mode]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
 $$('[data-metric]').forEach((button)=>button.addEventListener("click",()=>{state.metric=button.dataset.metric;$$('[data-metric]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
 $$('[data-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-view-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.viewPanel===button.dataset.view));}));
+$$('[data-tool-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-tool-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-tool-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.toolPanel===button.dataset.toolView));}));
 $("#criterionSelect").addEventListener("change",(event)=>{state.criterion=event.target.value;state.selectedAltitudeFt=null;render();}); $("#payloadInput").addEventListener("input",(event)=>{state.payloadLb=Number(event.target.value);render();}); $("#fuelInput").addEventListener("input",(event)=>{state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{state.reserveMinutes=Number(event.target.value);render();});
 
-$("#simbriefImportForm").addEventListener("submit",async(event)=>{event.preventDefault();const input=$("#quickPilotId"),identifier=input.value.trim();if(!identifier){showToast(t("missingId"),true);input.focus();return;}const button=$("#importLatest");try{button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="…";let plan;try{plan=await fetchLatestOFP(identifier,"userid");}catch(firstError){plan=await fetchLatestOFP(identifier,"username");}state.plan=plan;state.selectedAltitudeFt=null;localStorage.setItem("velocityxl.simbriefIdentifier",identifier);render();}catch(error){showToast(error.message||t("importError"),true);}finally{button.disabled=false;button.removeAttribute("aria-busy");button.textContent=t("importLatest");}});
+$("#manualUpdateForm").addEventListener("submit",(event)=>{
+  event.preventDefault();
+  const waypointIndex=Number($("#manualWaypoint").value),waypoint=state.plan.waypoints[waypointIndex];
+  state.manual={active:true,waypointIndex,distanceNm:Number(waypoint?.distanceNm)||0,fuelRemainingGal:fuelFromDisplay(Number($("#manualFuel").value)),altitudeFt:Number($("#manualAltitude").value)};
+  render();
+});
+
+$("#calibrationForm").addEventListener("submit",(event)=>{
+  event.preventDefault();
+  const altitudeFt=Number($("#manualAltitude").value),fuelRemainingGal=state.manual.active?state.manual.fuelRemainingGal:fuelFromDisplay(Number($("#manualFuel").value));
+  state.calibration[state.mode]=deriveCalibration({plan:state.plan,mode:state.mode,payloadLb:state.payloadLb,fuelRemainingGal,altitudeFt,observedTasKt:Number($("#observedTas").value),observedFuelFlowGph:fuelFromDisplay(Number($("#observedFuelFlow").value)),positionFix:state.plan.waypoints[Number($("#manualWaypoint").value)]});
+  localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
+  render();
+});
+
+$("#resetCalibration").addEventListener("click",()=>{
+  delete state.calibration[state.mode];
+  localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
+  $("#observedTas").value=""; $("#observedFuelFlow").value="";
+  render();
+});
+
+$("#simbriefImportForm").addEventListener("submit",async(event)=>{event.preventDefault();const input=$("#quickPilotId"),identifier=input.value.trim();if(!identifier){showToast(t("missingId"),true);input.focus();return;}const button=$("#importLatest");try{button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="…";let plan;try{plan=await fetchLatestOFP(identifier,"userid");}catch(firstError){plan=await fetchLatestOFP(identifier,"username");}state.plan=plan;state.selectedAltitudeFt=null;state.manual={active:false,waypointIndex:0,distanceNm:0,fuelRemainingGal:state.fuelOnboardGal,altitudeFt:null};localStorage.setItem("velocityxl.simbriefIdentifier",identifier);render();}catch(error){showToast(error.message||t("importError"),true);}finally{button.disabled=false;button.removeAttribute("aria-busy");button.textContent=t("importLatest");}});
 
 const savedIdentifier=localStorage.getItem("velocityxl.simbriefIdentifier"); if(savedIdentifier)$("#quickPilotId").value=savedIdentifier;
 render();

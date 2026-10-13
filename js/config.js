@@ -28,6 +28,16 @@ export const PERFORMANCE = {
   climbWeightFactorPer100Lb: 0.035,
   reserveDefaultMin: 45,
   contingencyPercent: 5,
+  calibrationLimits: {
+    tasFactor: [0.85, 1.15],
+    fuelFlowFactor: [0.75, 1.3],
+  },
+  stepClimb: {
+    weightLossLbPerStep: 90,
+    minimumRemainingNm: 110,
+    minimumFuelSavingGal: 0.35,
+    maximumSteps: 3,
+  },
   modes: {
     ECON: {
       label: "ECON",

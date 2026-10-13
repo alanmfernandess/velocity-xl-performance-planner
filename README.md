@@ -15,6 +15,9 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Comparação de FL100 a FL250 nos modos ECON, NORMAL e FAST.
 - Best Overall, Lowest Fuel, Fastest e Maximum Range.
 - TAS, GS, ISA deviation, componente de vento, climb/cruise/descent, combustível, endurance e alcance.
+- ETP e PNR calculados com velocidades de continuação e retorno corrigidas pelo vento.
+- Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
+- Calibração local por modo usando somente TAS e fuel flow observados no Xbox; os fatores ficam salvos no dispositivo.
 - Gráficos de performance, perfil vertical, representação de rota e perfil de combustível organizados em abas.
 - Dados demonstrativos e armazenamento local do identificador SimBrief.
 - Coeficientes centralizados em `js/config.js` para calibração manual futura.
@@ -39,7 +42,9 @@ npm test
 - [Documentação oficial do SimBrief — Using the API](https://developers.navigraph.com/docs/simbrief/using-the-api)
 - [Manual Black Square Velocity XL](https://downloads.justflight.com/products/JFF003720/BKSQ_VelocityManual.pdf)
 
-O manual informa 400 hp, twin turbo, altitude crítica de 24.000 ft, teto de serviço de 25.000 ft, 92 gal totais/87 úteis, peso vazio de 1.900 lb e peso máximo de 3.000 lb. As curvas de velocidade e consumo são aproximações explícitas, ajustáveis no arquivo de configuração.
+O manual informa 400 hp, twin turbo, altitude crítica de 24.000 ft, teto de serviço de 25.000 ft, 92 gal totais/87 úteis, peso vazio de 1.900 lb e peso máximo de 3.000 lb. As curvas de velocidade e consumo são aproximações explícitas, ajustáveis no arquivo de configuração. ETP, PNR e step climbs são referências de planejamento para simulação e não procedimentos certificados.
+
+A calibração é separada por ECON, NORMAL e FAST. O usuário seleciona posição, FL e combustível restante, informa TAS e fuel flow estabilizados vistos no Xbox e aplica dois fatores limitados de correção. Nenhum dado é transmitido; a calibração usa `localStorage` no navegador.
 
 O endpoint público permite buscar um OFP já gerado. O usuário gera o voo no SimBrief e depois informa o Pilot ID ou Navigraph Alias no planner. Tipo de aeronave, pesos, TAS, GS, tempos, combustível, TOC e TOD fornecidos pelo SimBrief não entram no cálculo do Velocity XL.
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateAtAltitude, calculatePlan, isaTemperatureC, weatherAtAltitude, windComponentKt } from "../js/engine.js";
+import { calculateAtAltitude, calculateEtpPnr, calculatePlan, calculateStepClimbs, deriveCalibration, isaTemperatureC, weatherAtAltitude, windComponentKt } from "../js/engine.js";
 import { DEMO_PLAN } from "../js/config.js";
 
 test("ISA temperature follows standard lapse rate", () => {
@@ -38,4 +38,34 @@ test("plan evaluates FL100 through FL250 and selects winners", () => {
   assert.equal(analysis.results[0].altitudeFt, 10000);
   assert.equal(analysis.results.at(-1).altitudeFt, 25000);
   assert.ok(analysis.winners.overall.score >= 0);
+});
+
+test("ETP equalizes continue and return times and PNR respects route bounds", () => {
+  const navigation = calculateEtpPnr({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const returnTime = navigation.etp.distanceNm / navigation.returnGsKt;
+  const continueTime = (DEMO_PLAN.distanceNm - navigation.etp.distanceNm) / navigation.outboundGsKt;
+  assert.ok(Math.abs(returnTime - continueTime) < 0.001);
+  assert.ok(navigation.pnr.distanceNm >= 0 && navigation.pnr.distanceNm <= DEMO_PLAN.distanceNm);
+});
+
+test("step climb advisor schedules higher levels on a long route", () => {
+  const waypoints = Array.from({ length: 9 }, (_, index) => ({
+    ...DEMO_PLAN.waypoints[Math.min(index, DEMO_PLAN.waypoints.length - 1)],
+    ident: `W${index}`,
+    lat: -23 + index * 0.1,
+    lon: -46 + index * 0.5,
+    distanceNm: index * 150,
+  }));
+  const plan = { ...DEMO_PLAN, distanceNm: 1200, waypoints };
+  const steps = calculateStepClimbs({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 87, reserveMinutes: 45, initialAltitudeFt: 16000 });
+  assert.ok(steps.steps.length > 0);
+  assert.ok(steps.steps.every((step) => step.altitudeFt > step.fromAltitudeFt && step.savingGal > 0));
+});
+
+test("simple calibration derives bounded TAS and fuel-flow factors", () => {
+  const calibration = deriveCalibration({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelRemainingGal: 60, altitudeFt: 18000, observedTasKt: 245, observedFuelFlowGph: 17.5 });
+  assert.ok(calibration.tasFactor >= 0.85 && calibration.tasFactor <= 1.15);
+  assert.ok(calibration.fuelFlowFactor >= 0.75 && calibration.fuelFlowFactor <= 1.3);
+  const calibrated = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 60, reserveMinutes: 45, calibration: { NORMAL: calibration } });
+  assert.ok(Math.abs(calibrated.fuelFlowGph - 17.5) < 0.01);
 });
