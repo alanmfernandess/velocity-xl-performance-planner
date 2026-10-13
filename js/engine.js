@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-3";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-4";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -6,6 +6,10 @@ export const toDeg = (rad) => (rad * 180) / Math.PI;
 
 export function isaTemperatureC(altitudeFt) {
   return 15 - 1.9812 * (altitudeFt / 1000);
+}
+
+export function densityAltitudeFt(altitudeFt, oatC) {
+  return altitudeFt + 120 * (oatC - isaTemperatureC(altitudeFt));
 }
 
 export function bearingDeg(a, b) {
@@ -113,15 +117,60 @@ export function averageRouteWeather(plan, altitudeFt) {
   };
 }
 
-function climbProfile(altitudeFt, weightLb) {
+export function powerAtAltitude({ altitudeFt, oatC, mapInHg, rpm, source = "AUTO" }) {
+  const densityAltitude = densityAltitudeFt(altitudeFt, oatC);
+  const aboveCriticalFt = Math.max(0, densityAltitude - AIRCRAFT.criticalAltitudeFt);
+  const maximumAvailableMapInHg = clamp(
+    AIRCRAFT.normalManifoldInHg - aboveCriticalFt / 1000 * PERFORMANCE.powerModel.mapLossInHgPer1000FtAboveCritical,
+    PERFORMANCE.powerModel.minimumMapInHg,
+    AIRCRAFT.normalManifoldInHg,
+  );
+  const availableMapInHg = Math.min(mapInHg, maximumAvailableMapInHg);
+  const estimatedHp = clamp(
+    PERFORMANCE.powerModel.ratedHp * (availableMapInHg / AIRCRAFT.normalManifoldInHg) * (rpm / AIRCRAFT.maxRpm),
+    0,
+    PERFORMANCE.powerModel.ratedHp,
+  );
+  return {
+    source,
+    targetMapInHg: mapInHg,
+    availableMapInHg,
+    maximumAvailableMapInHg,
+    rpm,
+    estimatedHp,
+    percentPower: estimatedHp / PERFORMANCE.powerModel.ratedHp * 100,
+    densityAltitudeFt: densityAltitude,
+    criticalAltitudeFt: AIRCRAFT.criticalAltitudeFt,
+    turboLimited: availableMapInHg < mapInHg - 0.05,
+  };
+}
+
+function modePowerSetting(mode, powerSetting = {}) {
+  const modeData = PERFORMANCE.modes[mode];
+  if (powerSetting.type === "MANUAL") {
+    return {
+      source: "MANUAL",
+      mapInHg: clamp(Number(powerSetting.mapInHg) || modeData.mapInHg, PERFORMANCE.powerModel.minimumMapInHg, AIRCRAFT.maxManifoldInHg),
+      rpm: clamp(Number(powerSetting.rpm) || modeData.rpm, PERFORMANCE.powerModel.minimumRpm, AIRCRAFT.maxRpm),
+    };
+  }
+  return { source: "AUTO", mapInHg: modeData.mapInHg, rpm: modeData.rpm };
+}
+
+function climbProfile(altitudeFt, weightLb, weather, phaseName = "climb") {
   const avgAltitudeRatio = altitudeFt / 2 / AIRCRAFT.serviceCeilingFt;
   const baseRate = PERFORMANCE.climbRate.seaLevelFpm -
     (PERFORMANCE.climbRate.seaLevelFpm - PERFORMANCE.climbRate.ceilingFpm) * avgAltitudeRatio;
   const weightFactor = 1 - ((weightLb - PERFORMANCE.referenceWeightLb) / 100) * PERFORMANCE.climbWeightFactorPer100Lb;
-  const rateFpm = Math.max(650, baseRate * weightFactor);
+  const setting = PERFORMANCE.powerModel.phases[phaseName];
+  const power = powerAtAltitude({ altitudeFt, oatC: weather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
+  const referencePower = PERFORMANCE.powerModel.ratedHp * (setting.mapInHg / AIRCRAFT.normalManifoldInHg) * (setting.rpm / AIRCRAFT.maxRpm);
+  const powerRatio = clamp(power.estimatedHp / referencePower, 0.55, 1);
+  const rateFpm = Math.max(550, baseRate * weightFactor * (0.72 + 0.28 * powerRatio));
   const timeHr = altitudeFt / rateFpm / 60;
   const distanceNm = timeHr * PERFORMANCE.climbSpeedKt;
-  return { rateFpm, timeHr, distanceNm, fuelGal: timeHr * PERFORMANCE.climbFuelFlowGph };
+  const fuelFlowGph = setting.fuelFlowGph * powerRatio;
+  return { rateFpm, timeHr, distanceNm, fuelGal: timeHr * fuelFlowGph, fuelFlowGph, power };
 }
 
 function calibrationForMode(calibration, mode) {
@@ -132,16 +181,20 @@ function calibrationForMode(calibration, mode) {
   };
 }
 
-export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, calibration = {} }) {
+export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, calibration = {}, powerSetting = {} }) {
   const modeData = PERFORMANCE.modes[mode];
   const factors = calibrationForMode(calibration, mode);
   const weightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal;
   const weather = averageRouteWeather(plan, altitudeFt);
+  const selectedPower = modePowerSetting(mode, powerSetting);
+  const power = powerAtAltitude({ altitudeFt, oatC: weather.oatC, mapInHg: selectedPower.mapInHg, rpm: selectedPower.rpm, source: selectedPower.source });
+  const referenceHp = PERFORMANCE.powerModel.ratedHp * (modeData.mapInHg / AIRCRAFT.normalManifoldInHg) * (modeData.rpm / AIRCRAFT.maxRpm);
+  const powerRatio = clamp(power.estimatedHp / referenceHp, 0.45, 1.5);
   const weightPenalty = ((weightLb - PERFORMANCE.referenceWeightLb) / 100) * PERFORMANCE.weightTasPenaltyKtPer100Lb;
   const altitudeGain = ((altitudeFt - 10000) / 1000) * PERFORMANCE.altitudeTasGainKtPer1000Ft;
-  const turboCeilingPenalty = Math.max(0, altitudeFt - AIRCRAFT.criticalAltitudeFt) / 1000 * 2.8;
-  const baseTasKt = modeData.tasAt10kKt + altitudeGain - weightPenalty + weather.isaDeviationC * PERFORMANCE.isaTasGainKtPerC - turboCeilingPenalty;
-  const tasKt = baseTasKt * factors.tasFactor;
+  const baseTasKt = modeData.tasAt10kKt + altitudeGain - weightPenalty + weather.isaDeviationC * PERFORMANCE.isaTasGainKtPerC;
+  const tasKt = baseTasKt * powerRatio ** PERFORMANCE.powerModel.tasPowerExponent * factors.tasFactor;
+  const fuelFlowGph = modeData.fuelFlowGph * powerRatio ** PERFORMANCE.powerModel.fuelPowerExponent * factors.fuelFlowFactor;
   return {
     altitudeFt,
     weightLb,
@@ -149,8 +202,10 @@ export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardG
     tasKt,
     gsKt: clamp(tasKt + weather.componentKt, 110, 360),
     returnGsKt: clamp(tasKt - weather.componentKt, 110, 360),
-    fuelFlowGph: modeData.fuelFlowGph * factors.fuelFlowFactor,
+    fuelFlowGph,
     factors,
+    power,
+    powerRatio,
   };
 }
 
@@ -159,12 +214,12 @@ function descentProfile(altitudeFt) {
   return { timeHr, distanceNm: timeHr * PERFORMANCE.descentSpeedKt, fuelGal: timeHr * PERFORMANCE.descentFuelFlowGph };
 }
 
-export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {} }) {
+export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
   const takeoffWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal;
-  const cruise = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, calibration });
+  const cruise = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, calibration, powerSetting });
   const { weather, tasKt, gsKt, fuelFlowGph } = cruise;
 
-  const climb = climbProfile(altitudeFt, takeoffWeightLb);
+  const climb = climbProfile(altitudeFt, takeoffWeightLb, weather);
   const descent = descentProfile(altitudeFt);
   const cruiseDistanceNm = Math.max(0, plan.distanceNm - climb.distanceNm - descent.distanceNm);
   const cruiseTimeHr = cruiseDistanceNm / gsKt;
@@ -185,6 +240,7 @@ export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnb
     tasKt,
     gsKt,
     fuelFlowGph,
+    power: cruise.power,
     weather,
     climb,
     descent,
@@ -213,9 +269,9 @@ function normalize(values, value, lowerIsBetter = false) {
   return lowerIsBetter ? 1 - score : score;
 }
 
-export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {} }) {
+export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
   const results = ALTITUDES_FT.map((altitudeFt) => calculateAtAltitude({
-    plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration,
+    plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting,
   }));
   const fuels = results.map((item) => item.fuelRequiredGal);
   const times = results.map((item) => item.tripTimeHr);
@@ -247,8 +303,8 @@ function nearestWaypoint(plan, distanceNm) {
   }, points[0]);
 }
 
-export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {} }) {
-  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration });
+export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
+  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting });
   const outboundGsKt = result.gsKt;
   const returnGsKt = clamp(result.tasKt - result.weather.componentKt, 110, 360);
   const etpDistanceNm = plan.distanceNm * returnGsKt / (outboundGsKt + returnGsKt);
@@ -282,7 +338,7 @@ export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboard
 }
 
 export function calculateStepClimbs({
-  plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, initialAltitudeFt,
+  plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {}, initialAltitudeFt,
   manual = null,
 }) {
   const startDistanceNm = clamp(Number(manual?.distanceNm) || 0, 0, plan.distanceNm);
@@ -299,7 +355,7 @@ export function calculateStepClimbs({
   const steps = [];
 
   for (const point of candidates) {
-    const current = cruiseSnapshot({ plan, altitudeFt: currentAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, calibration });
+    const current = cruiseSnapshot({ plan, altitudeFt: currentAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, calibration, powerSetting });
     const segmentNm = point.distanceNm - currentDistanceNm;
     currentFuelGal = Math.max(0, currentFuelGal - segmentNm / current.gsKt * current.fuelFlowGph);
     currentDistanceNm = point.distanceNm;
@@ -310,14 +366,16 @@ export function calculateStepClimbs({
     if (targetAltitudeFt < currentAltitudeFt + 2000 || plan.distanceNm - currentDistanceNm < PERFORMANCE.stepClimb.minimumRemainingNm) continue;
 
     const candidateAltitudeFt = Math.min(targetAltitudeFt, currentAltitudeFt + 2000);
-    const candidate = cruiseSnapshot({ plan, altitudeFt: candidateAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, calibration });
+    const candidate = cruiseSnapshot({ plan, altitudeFt: candidateAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, calibration, powerSetting });
     const remainingNm = plan.distanceNm - currentDistanceNm;
     const deltaAltitudeFt = candidateAltitudeFt - currentAltitudeFt;
-    const climbRateFpm = Math.max(650, climbProfile(candidateAltitudeFt, weightLb).rateFpm);
+    const candidateWeather = averageRouteWeather(plan, candidateAltitudeFt);
+    const stepClimb = climbProfile(candidateAltitudeFt, weightLb, candidateWeather, "enrouteClimb");
+    const climbRateFpm = Math.max(550, stepClimb.rateFpm);
     const stepTimeHr = deltaAltitudeFt / climbRateFpm / 60;
     const stepDistanceNm = stepTimeHr * PERFORMANCE.climbSpeedKt;
     const stayFuelGal = remainingNm / current.gsKt * current.fuelFlowGph;
-    const stepFuelGal = stepTimeHr * PERFORMANCE.climbFuelFlowGph + Math.max(0, remainingNm - stepDistanceNm) / candidate.gsKt * candidate.fuelFlowGph;
+    const stepFuelGal = stepTimeHr * stepClimb.fuelFlowGph + Math.max(0, remainingNm - stepDistanceNm) / candidate.gsKt * candidate.fuelFlowGph;
     const savingGal = stayFuelGal - stepFuelGal;
     if (savingGal < PERFORMANCE.stepClimb.minimumFuelSavingGal) continue;
 
@@ -343,8 +401,8 @@ export function calculateStepClimbs({
   };
 }
 
-export function deriveCalibration({ plan, mode, payloadLb, fuelRemainingGal, altitudeFt, observedTasKt, observedFuelFlowGph, positionFix = null }) {
-  const baseline = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: fuelRemainingGal, calibration: {} });
+export function deriveCalibration({ plan, mode, payloadLb, fuelRemainingGal, altitudeFt, observedTasKt, observedFuelFlowGph, positionFix = null, powerSetting = {} }) {
+  const baseline = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: fuelRemainingGal, calibration: {}, powerSetting });
   const localWeather = positionFix ? weatherAtAltitude(positionFix, altitudeFt) : baseline.weather;
   const localIsaDeviationC = localWeather.oatC - isaTemperatureC(altitudeFt);
   const localTasKt = baseline.tasKt + (localIsaDeviationC - baseline.weather.isaDeviationC) * PERFORMANCE.isaTasGainKtPerC;

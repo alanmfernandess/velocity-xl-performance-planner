@@ -1,11 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateAtAltitude, calculateEtpPnr, calculatePlan, calculateStepClimbs, deriveCalibration, isaTemperatureC, weatherAtAltitude, windComponentKt } from "../js/engine.js";
+import { calculateAtAltitude, calculateEtpPnr, calculatePlan, calculateStepClimbs, densityAltitudeFt, deriveCalibration, isaTemperatureC, powerAtAltitude, weatherAtAltitude, windComponentKt } from "../js/engine.js";
 import { DEMO_PLAN } from "../js/config.js";
 
 test("ISA temperature follows standard lapse rate", () => {
   assert.equal(isaTemperatureC(0), 15);
   assert.ok(Math.abs(isaTemperatureC(10000) + 4.812) < 0.01);
+});
+
+test("density altitude rises when OAT is above ISA", () => {
+  assert.equal(densityAltitudeFt(18000, isaTemperatureC(18000)), 18000);
+  assert.equal(densityAltitudeFt(18000, isaTemperatureC(18000) + 10), 19200);
+});
+
+test("turbo maintains target MAP to critical density altitude then rolls off", () => {
+  const belowCritical = powerAtAltitude({ altitudeFt: 18000, oatC: isaTemperatureC(18000), mapInHg: 29.6, rpm: 2700 });
+  const aboveCritical = powerAtAltitude({ altitudeFt: 25000, oatC: isaTemperatureC(25000), mapInHg: 29.6, rpm: 2700 });
+  const economyAboveCritical = powerAtAltitude({ altitudeFt: 25000, oatC: isaTemperatureC(25000), mapInHg: 20, rpm: 2300 });
+  assert.equal(belowCritical.availableMapInHg, 29.6);
+  assert.equal(belowCritical.estimatedHp, 400);
+  assert.equal(belowCritical.turboLimited, false);
+  assert.ok(aboveCritical.availableMapInHg < 29.6);
+  assert.equal(aboveCritical.turboLimited, true);
+  assert.equal(economyAboveCritical.availableMapInHg, 20);
+  assert.equal(economyAboveCritical.turboLimited, false);
 });
 
 test("tailwind component is positive and headwind negative", () => {
@@ -30,6 +48,15 @@ test("performance result includes all major phases and fuel", () => {
   assert.ok(result.climb.timeHr > 0);
   assert.ok(result.descent.timeHr > 0);
   assert.ok(result.fuelRequiredGal > result.tripFuelGal);
+});
+
+test("manual MAP and RPM refine TAS and fuel flow", () => {
+  const common = { plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 };
+  const lowPower = calculateAtAltitude({ ...common, powerSetting: { type: "MANUAL", mapInHg: 20, rpm: 2300 } });
+  const highPower = calculateAtAltitude({ ...common, powerSetting: { type: "MANUAL", mapInHg: 28, rpm: 2500 } });
+  assert.ok(highPower.tasKt > lowPower.tasKt);
+  assert.ok(highPower.fuelFlowGph > lowPower.fuelFlowGph);
+  assert.equal(highPower.power.source, "MANUAL");
 });
 
 test("plan evaluates FL100 through FL250 and selects winners", () => {

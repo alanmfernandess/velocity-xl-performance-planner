@@ -13,6 +13,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Escala de tipografia ajustável e unidades selecionáveis LB/KG e GAL/L.
 - Manifesto instalável com apresentação standalone, semelhante a um aplicativo.
 - Comparação de FL100 a FL250 nos modos ECON, NORMAL e FAST.
+- Potência automática por modo ou ajuste manual de MAP/RPM, refletida em TAS, fuel flow, tempo, combustível e alcance.
 - Best Overall, Lowest Fuel, Fastest e Maximum Range.
 - TAS, GS, ISA deviation, componente de vento, climb/cruise/descent, combustível, endurance e alcance.
 - ETP e PNR calculados com velocidades de continuação e retorno corrigidas pelo vento.
@@ -42,7 +43,9 @@ npm test
 - [Documentação oficial do SimBrief — Using the API](https://developers.navigraph.com/docs/simbrief/using-the-api)
 - [Manual Black Square Velocity XL](https://downloads.justflight.com/products/JFF003720/BKSQ_VelocityManual.pdf)
 
-O manual informa 400 hp, twin turbo, altitude crítica de 24.000 ft, teto de serviço de 25.000 ft, 92 gal totais/87 úteis, peso vazio de 1.900 lb e peso máximo de 3.000 lb. As curvas de velocidade e consumo são aproximações explícitas, ajustáveis no arquivo de configuração. ETP, PNR e step climbs são referências de planejamento para simulação e não procedimentos certificados.
+O manual informa 400 hp, twin turbo, altitude crítica de 24.000 ft, teto de serviço de 25.000 ft, 92 gal totais/87 úteis, peso vazio de 1.900 lb e peso máximo de 3.000 lb. Também informa 32 inHg e 2.700 RPM como limites, Maximum Continuous em subida, 2.650 RPM na subida inicial, 2.600 RPM em enroute climb e 2.450 RPM em cruzeiro. O controlador absoluto é modelado mantendo aproximadamente 29,6 inHg até a altitude crítica de densidade, com redução de MAP disponível acima dela.
+
+Os presets estimados são ECON 20 inHg/2.300 RPM, NORMAL 24 inHg/2.450 RPM e FAST 28 inHg/2.500 RPM. No modo manual, MAP e RPM modificam a potência estimada; a TAS varia pela aproximação de potência cúbica e o fuel flow acompanha a potência. Esses coeficientes não substituem uma tabela MAP/RPM do fabricante e continuam centralizados em `js/config.js` para calibração. ETP, PNR e step climbs são referências de planejamento para simulação e não procedimentos certificados.
 
 A calibração é separada por ECON, NORMAL e FAST. O usuário seleciona posição, FL e combustível restante, informa TAS e fuel flow estabilizados vistos no Xbox e aplica dois fatores limitados de correção. Nenhum dado é transmitido; a calibração usa `localStorage` no navegador.
 

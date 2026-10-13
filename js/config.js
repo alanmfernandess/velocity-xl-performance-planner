@@ -8,7 +8,10 @@ export const AIRCRAFT = {
   fuelDensityLbGal: 6,
   criticalAltitudeFt: 24000,
   serviceCeilingFt: 25000,
-  maxContinuousRpm: 2450,
+  normalManifoldInHg: 29.6,
+  maxManifoldInHg: 32,
+  maxRpm: 2700,
+  maxContinuousRpm: 2650,
 };
 
 // Estimated coefficients are intentionally centralized for future manual calibration.
@@ -22,6 +25,20 @@ export const PERFORMANCE = {
   descentSpeedKt: 205,
   climbRate: { seaLevelFpm: 2400, ceilingFpm: 720 },
   descentRateFpm: 1200,
+  powerModel: {
+    ratedHp: 400,
+    mapLossInHgPer1000FtAboveCritical: 0.95,
+    tasPowerExponent: 1 / 3,
+    fuelPowerExponent: 0.96,
+    minimumMapInHg: 10,
+    minimumRpm: 1200,
+    phases: {
+      takeoff: { throttle: "TAKEOFF", mapInHg: 29.6, rpm: 2700, fuelFlowGph: 40 },
+      climb: { throttle: "MAX_CONTINUOUS", mapInHg: 29.6, rpm: 2650, fuelFlowGph: 31.5 },
+      enrouteClimb: { throttle: "MAX_CONTINUOUS", mapInHg: 29.6, rpm: 2600, fuelFlowGph: 30.9 },
+      descent: { throttle: "DESCENT", mapInHg: 20, rpm: 2000, fuelFlowGph: 10.2 },
+    },
+  },
   altitudeTasGainKtPer1000Ft: 2.05,
   isaTasGainKtPerC: -0.16,
   weightTasPenaltyKtPer100Lb: 0.72,
@@ -43,16 +60,22 @@ export const PERFORMANCE = {
       label: "ECON",
       tasAt10kKt: 215,
       fuelFlowGph: 14.6,
+      mapInHg: 20,
+      rpm: 2300,
     },
     NORMAL: {
       label: "NORMAL",
       tasAt10kKt: 236,
       fuelFlowGph: 18.2,
+      mapInHg: 24,
+      rpm: 2450,
     },
     FAST: {
       label: "FAST",
       tasAt10kKt: 254,
       fuelFlowGph: 23.8,
+      mapInHg: 28,
+      rpm: 2500,
     },
   },
 };

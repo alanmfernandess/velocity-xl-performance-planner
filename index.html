@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-3" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-4" />
   </head>
   <body>
     <header class="topbar">
@@ -93,6 +93,17 @@
         <aside class="control-stack">
           <article class="panel controls-panel">
             <div class="mode-control"><button data-mode="ECON" type="button">ECON</button><button class="active" data-mode="NORMAL" type="button">NORMAL</button><button data-mode="FAST" type="button">FAST</button></div>
+            <div class="power-control">
+              <div class="power-heading">
+                <span data-i18n="power">Potência</span>
+                <div class="power-toggle"><button class="active" data-power-type="AUTO" type="button" data-i18n="automatic">Automático</button><button data-power-type="MANUAL" type="button">MAP / RPM</button></div>
+              </div>
+              <div class="power-auto-readout" id="powerAutoReadout"><strong id="powerSettingValue">24,0&quot; · 2.450 RPM</strong><small id="powerPercent">74%</small></div>
+              <div class="power-manual-fields" id="powerManualFields" hidden>
+                <label><span>MAP</span><span class="input-with-unit"><input id="manualMap" type="number" min="10" max="32" step="0.1" inputmode="decimal" /><small>inHg</small></span></label>
+                <label><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label>
+              </div>
+            </div>
             <label class="select-control"><span data-i18n="objective">Objetivo</span><select id="criterionSelect"><option value="overall" data-i18n="bestOverall">Best Overall</option><option value="fuel" data-i18n="lowestFuel">Lowest Fuel</option><option value="fastest" data-i18n="fastest">Fastest</option><option value="range" data-i18n="maxRange">Maximum Range</option></select></label>
             <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="100" max="900" value="520" step="10" /></label>
             <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="15" max="87" value="77" step="1" /></label>
@@ -156,6 +167,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-3"></script>
+    <script type="module" src="./js/app.js?v=20261013-4"></script>
   </body>
 </html>
