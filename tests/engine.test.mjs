@@ -317,6 +317,8 @@ test("mission optimizer proactively improves an already viable manual setup", ()
   assert.ok(Number.isFinite(optimizer.missionOptimizationScore));
   assert.ok(optimizer.changes.fuelDeltaGal < 0);
   assert.equal(optimizer.changes.payloadDeltaLb, 0);
+  assert.equal(optimizer.alternateAdvice.destination.status, "viable");
+  assert.ok(optimizer.alternateAdvice.destination.marginGal >= PERFORMANCE.diversion.marginalFuelMarginGal);
 });
 
 test("mission optimizer can raise fuel when the pilot manual value is too low", () => {
@@ -333,6 +335,37 @@ test("mission optimizer can raise fuel when the pilot manual value is too low", 
   assert.equal(optimizer.achievedStatus, "viable");
   assert.ok(optimizer.recommendedFuelGal > 20);
   assert.ok(optimizer.changes.fuelDeltaGal > 0);
+  assert.equal(optimizer.alternateAdvice.destination.status, "viable");
+});
+
+test("mission optimizer does not invent an alternate requirement when the OFP has none", () => {
+  const optimizer = calculateMissionOptimization({
+    plan: { ...DEMO_PLAN, alternate: null, alternates: [] },
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(FIVE_SEAT_LOAD),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance: FIVE_SEAT_LOAD,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimizer.feasible, true);
+  assert.equal(optimizer.alternateRequired, false);
+});
+
+test("mission optimizer reports the alternate shortfall when tank capacity cannot cover it", () => {
+  const optimizer = calculateMissionOptimization({
+    plan: { ...DEMO_PLAN, alternate: "FAR", alternates: [{ icao: "FAR", distanceNm: 1500 }] },
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(FIVE_SEAT_LOAD),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance: FIVE_SEAT_LOAD,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimizer.feasible, false);
+  assert.equal(optimizer.alternateRequired, true);
+  assert.ok(optimizer.alternateShortfallGal > 0);
+  assert.ok(optimizer.rawRecommendedFuelGal > 87);
 });
 
 test("mission optimizer installs oxygen when the safe profile requires it", () => {

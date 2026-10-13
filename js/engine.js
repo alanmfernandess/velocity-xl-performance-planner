@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-23";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-24";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -717,9 +717,9 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
   addReason("confidence", (100 - confidence.score) * PERFORMANCE.missionRisk.confidenceWeight, false, confidence.score);
   const alternateStatus = alternateAdvice?.destination?.status;
   if (alternateStatus === "unavailable" || alternateStatus === "unknown") {
-    addReason("alternate", PERFORMANCE.missionRisk.alternateUnavailable, false, alternateStatus);
+    addReason("alternate", PERFORMANCE.missionRisk.alternateUnavailable, false, alternateAdvice?.destination?.marginGal ?? alternateStatus);
   } else if (alternateStatus === "marginal") {
-    addReason("alternate", PERFORMANCE.missionRisk.alternateMarginal, false, alternateStatus);
+    addReason("alternate", PERFORMANCE.missionRisk.alternateMarginal, false, alternateAdvice.destination.marginGal);
   }
 
   reasons.sort((a, b) => Number(b.blocking) - Number(a.blocking) || b.impact - a.impact);
@@ -1143,7 +1143,7 @@ export function compareScenarios({ plan, scenarioA, scenarioB, calibration = {} 
   };
 }
 
-export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false }) {
+export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false }) {
   const requestedPayloadLb = Math.max(0, payloadLb);
   const payloadFloorLb = Number.isFinite(minimumPayloadLb)
     ? Math.min(requestedPayloadLb, Math.max(0, minimumPayloadLb))
@@ -1174,8 +1174,23 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
         calibration,
         powerSetting: { type: "AUTO" },
       });
+      const primaryMissionFuelGal = iteration.fuelRequiredGal + PERFORMANCE.loadOptimizer.targetFuelMarginGal;
+      const alternateAdvice = requireAlternateViable ? calculateAlternateDiversion({
+        plan,
+        altitudeFt,
+        mode,
+        payloadLb: candidatePayloadLb,
+        fuelOnboardGal: candidateFuelGal,
+        oxygenWeightLb,
+        reserveMinutes,
+        calibration,
+        powerSetting: { type: "AUTO" },
+      }) : null;
+      const alternateMissionFuelGal = alternateAdvice?.destination
+        ? candidateFuelGal + PERFORMANCE.diversion.marginalFuelMarginGal - alternateAdvice.destination.marginGal
+        : 0;
       rawRecommendedFuelGal = Math.ceil(
-        (iteration.fuelRequiredGal + PERFORMANCE.loadOptimizer.targetFuelMarginGal) / PERFORMANCE.loadOptimizer.fuelIncrementGal,
+        Math.max(primaryMissionFuelGal, alternateMissionFuelGal) / PERFORMANCE.loadOptimizer.fuelIncrementGal,
       ) * PERFORMANCE.loadOptimizer.fuelIncrementGal;
       const nextFuelGal = Math.min(AIRCRAFT.usableFuelGal, rawRecommendedFuelGal);
       if (Math.abs(nextFuelGal - candidateFuelGal) < 0.01) break;
@@ -1198,6 +1213,22 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
     result.icing = calculateIcingRisk({ plan, result });
     result.turbulence = calculateTurbulenceRisk({ plan, result });
     result.oxygen = calculateOxygenPlan({ result, oxygen });
+    const alternateAdvice = calculateAlternateDiversion({
+      plan,
+      altitudeFt,
+      mode,
+      payloadLb: candidatePayloadLb,
+      fuelOnboardGal: recommendedFuelGal,
+      oxygenWeightLb,
+      reserveMinutes,
+      calibration,
+      powerSetting: { type: "AUTO" },
+    });
+    const alternateRequired = Boolean(requireAlternateViable && alternateAdvice.destination);
+    const alternateMarginGal = alternateAdvice.destination?.marginGal ?? NaN;
+    const alternateShortfallGal = alternateRequired
+      ? Math.max(0, PERFORMANCE.diversion.marginalFuelMarginGal - alternateMarginGal)
+      : 0;
     const candidateWeightBalance = weightBalance ? scaleWeightBalanceToPayload(weightBalance, candidatePayloadLb) : null;
     result.weightBalance = candidateWeightBalance ? calculateWeightBalance({
       weightBalance: candidateWeightBalance,
@@ -1219,6 +1250,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
         && result.icing.status !== "avoid"
         && !result.turbulence.blocking
         && result.oxygen.status !== "insufficient"
+        && (!alternateRequired || alternateAdvice.destination.status === "viable")
         && (requireWeightBalanceViable ? result.weightBalance?.status === "viable" : result.weightBalance?.status !== "unavailable"),
       altitudeFt,
       mode,
@@ -1233,6 +1265,10 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
       optimizedWeightLb,
       weightMarginLb,
       weightBalance: candidateWeightBalance,
+      alternateAdvice,
+      alternateRequired,
+      alternateMarginGal,
+      alternateShortfallGal,
     };
     bestAttempt = candidate;
     if (candidate.feasible) return candidate;
@@ -1241,7 +1277,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
   return bestAttempt;
 }
 
-export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false }) {
+export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false }) {
   const candidates = ALTITUDES_FT.map((altitudeFt) => calculateLoadOptimization({
     plan,
     altitudeFt,
@@ -1254,10 +1290,13 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
     weightBalance,
     minimumPayloadLb,
     requireWeightBalanceViable,
+    requireAlternateViable,
   }));
   const viable = candidates.filter((candidate) => candidate?.feasible);
   if (!viable.length) {
-    const bestAttempt = [...candidates].filter(Boolean).sort((a, b) => a.rawRecommendedFuelGal - b.rawRecommendedFuelGal)[0];
+    const bestAttempt = [...candidates].filter(Boolean).sort((a, b) =>
+      a.alternateShortfallGal - b.alternateShortfallGal
+      || a.rawRecommendedFuelGal - b.rawRecommendedFuelGal)[0];
     return { ...bestAttempt, feasible: false, recommendedAltitudeFt: bestAttempt?.altitudeFt ?? null, candidates };
   }
 
@@ -1305,6 +1344,7 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
         weightBalance,
         minimumPayloadLb,
         requireWeightBalanceViable: true,
+        requireAlternateViable: true,
       });
       if (candidate) variants.push({ ...candidate, oxygen: oxygenVariant, bottles, requestedMode: mode });
     }
@@ -1315,7 +1355,8 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
     return (result.icing.status === "low" || (result.icing.status === "watch" && result.icing.confidence !== "weather") ? 0 : result.icing.status === "watch" ? 1 : result.icing.status === "caution" ? 3 : 20)
       + (result.turbulence.status === "smooth" || result.turbulence.status === "light" ? 0 : result.turbulence.status === "moderate" ? 3 : 20)
       + (result.oxygen.status === "not-required" || result.oxygen.status === "compliant" ? 0 : result.oxygen.status === "marginal" ? 3 : 20)
-      + (result.weightBalance?.status === "viable" ? 0 : 20);
+      + (result.weightBalance?.status === "viable" ? 0 : 20)
+      + (!candidate.alternateRequired || candidate.alternateAdvice?.destination?.status === "viable" ? 0 : candidate.alternateAdvice?.destination?.status === "marginal" ? 5 : 20);
   };
   const achievedStatus = (candidate) => operationalPenalty(candidate) === 0 ? "viable" : "marginal";
   const strictPool = viable.some((candidate) => achievedStatus(candidate) === "viable")
@@ -1351,7 +1392,8 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
   const winner = ranked[0];
   if (!winner) {
     const bestAttempt = [...variants].filter((candidate) => candidate.result).sort((a, b) =>
-      (a.rawRecommendedFuelGal || Infinity) - (b.rawRecommendedFuelGal || Infinity)
+      a.alternateShortfallGal - b.alternateShortfallGal
+      || (a.rawRecommendedFuelGal || Infinity) - (b.rawRecommendedFuelGal || Infinity)
       || b.recommendedPayloadLb - a.recommendedPayloadLb)[0];
     return {
       ...(bestAttempt || {}),
