@@ -1,6 +1,6 @@
-import { AIRCRAFT, PERFORMANCE, DEMO_PLAN, ALTITUDES_FT } from "./config.js?v=20261013-6";
-import { calculateAlternateDiversion, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration } from "./engine.js?v=20261013-6";
-import { fetchLatestOFP } from "./simbrief.js?v=20261013-6";
+import { AIRCRAFT, PERFORMANCE, DEMO_PLAN, ALTITUDES_FT } from "./config.js?v=20261013-7";
+import { calculateAlternateDiversion, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration } from "./engine.js?v=20261013-7";
+import { fetchLatestOFP } from "./simbrief.js?v=20261013-7";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -262,7 +262,7 @@ function renderGlideCorridor(plan,glide) {
   const upper=glide.samples.map((sample)=>`${x(sample.distanceNm)},${mid-sample.forwardRangeNm*scale}`);
   const lower=[...glide.samples].reverse().map((sample)=>`${x(sample.distanceNm)},${mid+sample.reverseRangeNm*scale}`);
   const labels=glide.samples.filter((_,index)=>index===0||index===glide.samples.length-1||index%Math.max(1,Math.ceil(glide.samples.length/5))===0).map((sample)=>`<g><circle cx="${x(sample.distanceNm)}" cy="${mid}" r="3" fill="#1976d2"/><text x="${x(sample.distanceNm)}" y="${mid+68}" text-anchor="middle" fill="#7a8793" font-size="8">${escapeHtml(sample.ident||"")}</text></g>`).join("");
-  $("#glideChart").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="glideFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#52a964" stop-opacity=".22"/><stop offset="1" stop-color="#1976d2" stop-opacity=".1"/></linearGradient></defs><line x1="${left}" y1="${mid}" x2="${width-right}" y2="${mid}" stroke="#cdd8e1" stroke-dasharray="4 5"/><polygon points="${[...upper,...lower].join(" ")}" fill="url(#glideFill)" stroke="#52a964" stroke-width="1.5"/>${labels}<text x="${left}" y="12" fill="#7a8793" font-size="8">${number(glide.forwardRangeNm,1)} NM →</text><text x="${left}" y="138" fill="#7a8793" font-size="8">← ${number(glide.reverseRangeNm,1)} NM</text></svg>`;
+  $("#glideChart").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="glideFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#52a964" stop-opacity=".22"/><stop offset="1" stop-color="#1976d2" stop-opacity=".1"/></linearGradient></defs><line x1="${left}" y1="${mid}" x2="${width-right}" y2="${mid}" stroke="#cdd8e1" stroke-dasharray="4 5"/><polygon points="${[...upper,...lower].join(" ")}" fill="url(#glideFill)" stroke="#52a964" stroke-width="1.5"/>${labels}<text x="${left}" y="12" fill="#7a8793" font-size="8">→ ${number(glide.forwardRangeNm,1)} NM</text><text x="${left+82}" y="12" fill="#7a8793" font-size="8">← ${number(glide.reverseRangeNm,1)} NM</text></svg>`;
 }
 
 function render() {

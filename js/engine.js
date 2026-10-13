@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-6";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-7";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
