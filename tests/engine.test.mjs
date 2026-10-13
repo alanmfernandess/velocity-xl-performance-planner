@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculatePlan, calculateStepClimbs, compareScenarios, densityAltitudeFt, deriveCalibration, isaTemperatureC, powerAtAltitude, weatherAtAltitude, windComponentKt } from "../js/engine.js";
-import { DEMO_PLAN } from "../js/config.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateModeLoadOptimization, calculatePlan, calculateStepClimbs, compareScenarios, densityAltitudeFt, deriveCalibration, isaTemperatureC, powerAtAltitude, weatherAtAltitude, windComponentKt } from "../js/engine.js";
+import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE } from "../js/config.js";
 
 test("ISA temperature follows standard lapse rate", () => {
   assert.equal(isaTemperatureC(0), 15);
@@ -166,6 +166,28 @@ test("load optimizer rejects a route that exceeds usable fuel", () => {
   const optimizer = calculateLoadOptimization({ plan, altitudeFt: 18000, mode: "FAST", payloadLb: 200, fuelOnboardGal: 87, reserveMinutes: 60 });
   assert.equal(optimizer.feasible, false);
   assert.ok(optimizer.rawRecommendedFuelGal > 87);
+});
+
+test("mode load optimizer recovers a viable preset configuration from an unavailable load", () => {
+  const optimizer = calculateModeLoadOptimization({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 1100, fuelOnboardGal: 20, reserveMinutes: 60 });
+  assert.equal(optimizer.feasible, true);
+  assert.equal(optimizer.mode, "NORMAL");
+  assert.ok(ALTITUDES_FT.includes(optimizer.recommendedAltitudeFt));
+  assert.ok(optimizer.recommendedPayloadLb < 1100);
+  assert.equal(optimizer.result.feasibility.status, "viable");
+});
+
+test("mode load optimizer uses the selected automatic preset", () => {
+  const optimizer = calculateModeLoadOptimization({ plan: DEMO_PLAN, mode: "ECON", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  assert.equal(optimizer.feasible, true);
+  assert.equal(optimizer.result.power.source, "AUTO");
+  assert.equal(optimizer.result.power.rpm, PERFORMANCE.modes.ECON.rpm);
+});
+
+test("mode load optimizer disables apply only when every level is impossible", () => {
+  const optimizer = calculateModeLoadOptimization({ plan: { ...DEMO_PLAN, distanceNm: 3000 }, mode: "FAST", payloadLb: 1100, fuelOnboardGal: 10, reserveMinutes: 60 });
+  assert.equal(optimizer.feasible, false);
+  assert.equal(optimizer.recommendedPayloadLb, 0);
 });
 
 test("engine-out glide corridor uses 12.15 to 1 at 90 KIAS", () => {

@@ -20,7 +20,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - ETP e PNR calculados com velocidades de continuação e retorno corrigidas pelo vento.
 - Alternate & Diversion Advisor com distância direta, tempo, consumo, combustível estimado no pouso e viabilidade de reserva.
 - Comparador A/B de modo, nível, payload e combustível, com deltas de consumo, tempo, GS e margem.
-- Preflight Load Optimizer para conciliar combustível requerido, payload, capacidade útil e peso máximo.
+- Preflight Load Optimizer por preset: procura automaticamente um FL viável, combustível e payload para ECON, NORMAL ou FAST.
 - Engine-Out Glide Corridor usando razão de planeio 12,15:1 e 90 KIAS, com alcance corrigido pelo vento ao longo do perfil.
 - Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
 - Calibração local por modo usando somente TAS e fuel flow observados no Xbox; os fatores ficam salvos no dispositivo.
@@ -56,7 +56,7 @@ O Alternate & Diversion Advisor usa as coordenadas do alternado quando fornecida
 
 A viabilidade considera o combustível requerido completo, peso máximo, teto de serviço e a distância necessária para subida e descida. Um nível marginal continua selecionável; um nível inviável é desabilitado e não participa da recomendação. Os limites de margem permanecem centralizados em `js/config.js`.
 
-O Load Optimizer aplica uma configuração com margem-alvo de 6 gal sobre o combustível requerido e 80 lb abaixo do peso máximo. Payload e combustível são ajustados nos controles; quando nem mesmo a capacidade útil permite uma configuração viável, a aplicação da sugestão é desabilitada.
+O Load Optimizer testa FL100–FL250 com a potência automática do preset selecionado, preserva o máximo de payload possível e aplica nível, combustível e carga com margem-alvo de 6 gal sobre o requerido e 80 lb abaixo do peso máximo. A aplicação só fica indisponível quando nenhuma combinação física entre zero payload e 87 gal torna a missão viável.
 
 A calibração é separada por ECON, NORMAL e FAST. O usuário seleciona posição, FL e combustível restante, informa TAS e fuel flow estabilizados vistos no Xbox e aplica dois fatores limitados de correção. Nenhum dado é transmitido; a calibração usa `localStorage` no navegador.
 
