@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Planejador gráfico e não certificado de performance para o Black Square Velocity XL." />
-    <meta name="theme-color" content="#07111f" />
+    <meta name="description" content="Planejador visual de performance para o Black Square Velocity XL." />
+    <meta name="theme-color" content="#f5f7fa" />
     <title>Velocity XL Performance Planner</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,177 +12,97 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="ambient ambient-one"></div>
-    <div class="ambient ambient-two"></div>
     <header class="topbar">
       <a class="brand" href="#top" aria-label="Velocity XL Performance Planner">
         <span class="brand-mark" aria-hidden="true"><span></span></span>
-        <span><strong>VELOCITY</strong><small>PERFORMANCE PLANNER</small></span>
+        <span><strong>VELOCITY XL</strong><small>PERFORMANCE PLANNER</small></span>
       </a>
-      <nav class="top-actions">
-        <span class="model-pill"><span></span> Modelo estimado</span>
-        <button class="button ghost" id="aboutButton" type="button">Sobre o modelo</button>
-        <button class="button primary" id="openImport" type="button"><span class="button-icon">↗</span> Importar SimBrief</button>
-      </nav>
+      <div class="language-switch" aria-label="Language">
+        <button class="active" data-language="pt-BR" type="button">PT</button>
+        <button data-language="en-US" type="button">EN</button>
+      </div>
     </header>
 
-    <main id="top">
-      <section class="hero shell">
-        <div>
-          <p class="eyebrow">BLACK SQUARE · VELOCITY XL · TSIO-550 EXP</p>
+    <main id="top" class="shell">
+      <section class="plan-bar" aria-label="Flight plan">
+        <div class="plan-identity">
+          <span class="route-source" id="routeSource">DEMO</span>
           <h1 id="routeTitle">SBSP <span>→</span> SBGL</h1>
-          <div class="route-meta">
-            <span id="routeDistance">246 NM</span><i></i>
-            <span id="routeAltitude">PLANEJADO FL180</span><i></i>
-            <span id="routeSource">DADOS DEMO</span>
-          </div>
+          <p id="planTimestamp">246 NM · FL180</p>
         </div>
-        <div class="hero-controls">
-          <div class="segmented" aria-label="Modo de cruzeiro">
-            <button data-mode="ECON" type="button">ECON</button>
-            <button class="active" data-mode="NORMAL" type="button">NORMAL</button>
-            <button data-mode="FAST" type="button">FAST</button>
-          </div>
-          <p id="modeDescription">Equilíbrio recomendado</p>
-        </div>
+        <form class="plan-form" id="quickPlanForm">
+          <label class="field id-field"><span data-i18n="pilotId">Pilot ID</span><input id="quickPilotId" inputmode="numeric" autocomplete="off" placeholder="123456" /></label>
+          <label class="field"><span data-i18n="origin">Origem</span><input id="manualOrigin" maxlength="4" autocomplete="off" value="SBSP" /></label>
+          <span class="route-arrow" aria-hidden="true">→</span>
+          <label class="field"><span data-i18n="destination">Destino</span><input id="manualDestination" maxlength="4" autocomplete="off" value="SBGL" /></label>
+          <label class="field compact-field"><span data-i18n="distance">Distância</span><div><input id="manualDistance" type="number" min="30" max="5000" value="246" /><small>NM</small></div></label>
+          <label class="field compact-field"><span data-i18n="plannedFl">FL planejado</span><div><input id="manualFl" type="number" min="100" max="250" step="10" value="180" /><small>FL</small></div></label>
+          <button class="icon-button" id="importLatest" type="button" data-i18n-title="importLatest" title="Importar último OFP" aria-label="Importar último OFP">↻</button>
+          <button class="primary-button" type="submit" data-i18n="apply">Aplicar</button>
+          <details class="weather-fields">
+            <summary data-i18n="weather">Atmosfera</summary>
+            <label class="field"><span data-i18n="windDirection">Direção</span><div><input id="manualWindDir" type="number" min="0" max="360" value="260" /><small>°</small></div></label>
+            <label class="field"><span data-i18n="windSpeed">Vento</span><div><input id="manualWindSpd" type="number" min="0" max="150" value="25" /><small>KT</small></div></label>
+            <label class="field"><span>OAT</span><div><input id="manualOat" type="number" min="-80" max="50" value="-20" /><small>°C</small></div></label>
+          </details>
+        </form>
       </section>
 
-      <section class="kpi-grid shell" aria-label="Resumo do melhor nível">
-        <article class="kpi kpi-featured">
-          <div class="kpi-top"><span>Melhor nível</span><span class="badge">BEST OVERALL</span></div>
-          <strong id="kpiAltitude">FL200</strong>
-          <p><span id="kpiScore">94</span>/100 performance score</p>
-        </article>
-        <article class="kpi"><span>Combustível requerido</span><strong id="kpiFuel">31.8 <small>GAL</small></strong><p id="kpiFuelDelta">+45.2 gal de margem</p></article>
-        <article class="kpi"><span>Tempo estimado</span><strong id="kpiTime">01:28</strong><p id="kpiGs">GS média 239 kt</p></article>
-        <article class="kpi"><span>Alcance máximo</span><strong id="kpiRange">1,020 <small>NM</small></strong><p id="kpiSpecificRange">13.1 NM/gal</p></article>
+      <section class="kpi-grid" aria-label="Performance summary">
+        <article class="kpi featured"><span data-i18n="bestLevel">Melhor nível</span><strong id="kpiAltitude">FL120</strong><small><b id="kpiScore">77</b>/100</small></article>
+        <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
+        <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
+        <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
       </section>
 
-      <section class="workspace shell">
-        <div class="main-column">
-          <article class="panel performance-panel">
-            <div class="panel-heading">
-              <div><p class="eyebrow">ANÁLISE COMPARATIVA</p><h2>Altitude × performance</h2></div>
-              <div class="chart-tabs" role="tablist" aria-label="Métrica do gráfico">
-                <button class="active" data-metric="fuel" type="button">Fuel</button>
-                <button data-metric="time" type="button">Time</button>
-                <button data-metric="efficiency" type="button">Efficiency</button>
-              </div>
+      <section class="dashboard-grid">
+        <article class="panel visual-panel">
+          <div class="view-tabs" role="tablist">
+            <button class="active" data-view="performance" type="button" data-i18n="performance">Performance</button>
+            <button data-view="route" type="button" data-i18n="route">Rota</button>
+            <button data-view="profile" type="button" data-i18n="profile">Perfil</button>
+          </div>
+          <div class="view active" data-view-panel="performance">
+            <div class="view-heading">
+              <h2 data-i18n="altitudeComparison">Comparação por altitude</h2>
+              <div class="chart-tabs" role="tablist"><button class="active" data-metric="fuel" type="button">Fuel</button><button data-metric="time" type="button">Time</button><button data-metric="efficiency" type="button">Efficiency</button></div>
             </div>
-            <div class="chart-wrap" id="performanceChart" aria-label="Gráfico comparativo de performance por altitude"></div>
-            <div class="legend"><span><i class="cyan"></i>Resultado por nível</span><span><i class="lime"></i>Nível recomendado</span><span id="chartHint">Menor consumo total é melhor</span></div>
-          </article>
-
-          <article class="panel route-panel">
-            <div class="panel-heading">
-              <div><p class="eyebrow">ROTA E ATMOSFERA</p><h2>Leitura do voo</h2></div>
-              <div class="weather-summary"><b id="avgWind">268° / 26 kt</b><span>vento médio</span></div>
-            </div>
+            <div class="chart-wrap" id="performanceChart"></div>
+            <div class="chart-foot"><span><i class="blue-dot"></i><span data-i18n="selectedLevel">Nível selecionado</span></span><span><i class="green-dot"></i><span data-i18n="recommendedLevel">Recomendado</span></span><span id="chartHint"></span></div>
+          </div>
+          <div class="view" data-view-panel="route">
+            <div class="view-heading"><h2><span id="routeFrom">SBSP</span> → <span id="routeTo">SBGL</span></h2><span class="muted-value" id="avgWind">248° / 23 kt</span></div>
             <div class="route-map" id="routeMap"></div>
-            <div class="route-stats">
-              <div><span>ISA deviation</span><strong id="isaDeviation">ISA −2°C</strong></div>
-              <div><span>Componente médio</span><strong id="windComponent">+8 kt tailwind</strong></div>
-              <div><span>OAT em cruzeiro</span><strong id="cruiseOat">−23°C</strong></div>
-              <div><span>Alternativa</span><strong id="alternate">SBRJ</strong></div>
-            </div>
-          </article>
-
-          <article class="panel vertical-panel">
-            <div class="panel-heading"><div><p class="eyebrow">PERFIL VERTICAL</p><h2>Climb · cruise · descent</h2></div><span class="panel-note" id="tocTodNote">TOC 43 NM · TOD 37 NM</span></div>
+            <div class="mini-stats"><div><span>ISA DEV</span><strong id="isaDeviation">+3°C</strong></div><div><span data-i18n="windComponent">Componente</span><strong id="windComponent">+19 kt</strong></div><div><span>OAT</span><strong id="cruiseOat">−6°C</strong></div><div><span data-i18n="alternate">Alternativa</span><strong id="alternate">SBRJ</strong></div></div>
+          </div>
+          <div class="view" data-view-panel="profile">
+            <div class="view-heading"><h2 data-i18n="flightProfile">Perfil de voo</h2><span class="muted-value" id="tocTodNote">TOC 17 NM · TOD 34 NM</span></div>
             <div id="verticalProfile"></div>
-            <div class="phase-grid">
-              <div><span class="phase-dot climb"></span><p>CLIMB</p><strong id="climbStats">12 min · 30 NM · 6.3 gal</strong></div>
-              <div><span class="phase-dot cruise"></span><p>CRUISE</p><strong id="cruiseStats">56 min · 179 NM · 17.1 gal</strong></div>
-              <div><span class="phase-dot descent"></span><p>DESCENT</p><strong id="descentStats">17 min · 37 NM · 2.9 gal</strong></div>
-            </div>
-          </article>
+            <div class="phase-grid"><div><i class="phase-dot climb"></i><span data-i18n="climb">SUBIDA</span><strong id="climbStats"></strong></div><div><i class="phase-dot cruise"></i><span data-i18n="cruise">CRUZEIRO</span><strong id="cruiseStats"></strong></div><div><i class="phase-dot descent"></i><span data-i18n="descent">DESCIDA</span><strong id="descentStats"></strong></div></div>
+          </div>
+        </article>
 
-          <article class="panel levels-panel">
-            <div class="panel-heading"><div><p class="eyebrow">TODOS OS NÍVEIS</p><h2>Comparação rápida</h2></div><span class="panel-note">Toque em um card para inspecionar</span></div>
-            <div class="levels-grid" id="levelCards"></div>
+        <aside class="control-stack">
+          <article class="panel controls-panel">
+            <div class="mode-control"><button data-mode="ECON" type="button">ECON</button><button class="active" data-mode="NORMAL" type="button">NORMAL</button><button data-mode="FAST" type="button">FAST</button></div>
+            <label class="select-control"><span data-i18n="objective">Objetivo</span><select id="criterionSelect"><option value="overall" data-i18n="bestOverall">Best Overall</option><option value="fuel" data-i18n="lowestFuel">Lowest Fuel</option><option value="fastest" data-i18n="fastest">Fastest</option><option value="range" data-i18n="maxRange">Maximum Range</option></select></label>
+            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="100" max="900" value="520" step="10" /></label>
+            <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="15" max="87" value="77" step="1" /></label>
+            <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
+            <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
           </article>
-        </div>
-
-        <aside class="side-column">
-          <article class="panel inputs-panel">
-            <div class="panel-heading compact"><div><p class="eyebrow">CONFIGURAÇÃO</p><h2>Seu voo</h2></div><button class="mini-link" id="resetDemo" type="button">Reset demo</button></div>
-            <label class="range-control">
-              <span><b>Payload</b><output id="payloadOutput">520 lb</output></span>
-              <input id="payloadInput" type="range" min="100" max="900" value="520" step="10" />
-              <small><span>100 lb</span><span>900 lb</span></small>
-            </label>
-            <label class="range-control">
-              <span><b>Fuel onboard</b><output id="fuelOutput">77 gal</output></span>
-              <input id="fuelInput" type="range" min="15" max="87" value="77" step="1" />
-              <small><span>15 gal</span><span>87 gal usable</span></small>
-            </label>
-            <label class="select-control"><span>Reserva</span><select id="reserveInput"><option value="30">30 minutos</option><option value="45" selected>45 minutos</option><option value="60">60 minutos</option></select></label>
-            <div class="weight-meter">
-              <div><span>Peso estimado de decolagem</span><strong id="weightValue">2,882 lb</strong></div>
-              <div class="meter"><span id="weightBar"></span></div>
-              <small id="weightNote">118 lb abaixo do máximo</small>
-            </div>
-          </article>
-
-          <article class="panel recommendation-panel">
-            <div class="recommendation-orbit"><span id="scoreRing">94</span><small>SCORE</small></div>
-            <p class="eyebrow">WHY THIS FL?</p>
-            <h2 id="whyTitle">FL200 é o melhor equilíbrio</h2>
-            <ul id="whyList"></ul>
-          </article>
-
-          <article class="panel criteria-panel">
-            <div class="panel-heading compact"><div><p class="eyebrow">ESCOLHA SUA PRIORIDADE</p><h2>Critérios</h2></div></div>
-            <button class="criterion active" data-criterion="overall" type="button"><span><i>◎</i><b>Best Overall</b><small>Tempo + consumo + alcance</small></span><strong id="winnerOverall">FL200</strong></button>
-            <button class="criterion" data-criterion="fuel" type="button"><span><i>◒</i><b>Lowest Fuel</b><small>Menor fuel required</small></span><strong id="winnerFuel">FL240</strong></button>
-            <button class="criterion" data-criterion="fastest" type="button"><span><i>↗</i><b>Fastest</b><small>Menor ETE</small></span><strong id="winnerFastest">FL120</strong></button>
-            <button class="criterion" data-criterion="range" type="button"><span><i>∞</i><b>Maximum Range</b><small>Maior autonomia teórica</small></span><strong id="winnerRange">FL240</strong></button>
-          </article>
-
-          <article class="panel fuel-panel">
-            <div class="panel-heading compact"><div><p class="eyebrow">FUEL PICTURE</p><h2>Distribuição</h2></div><strong id="fuelRequiredSide">31.8 gal</strong></div>
-            <div class="fuel-bar" id="fuelBar"></div>
-            <div class="fuel-legend" id="fuelLegend"></div>
-          </article>
+          <article class="panel insight-panel"><div class="insight-title"><strong id="whyTitle">FL120</strong><span><b id="scoreRing">77</b>/100</span></div><ul id="whyList"></ul></article>
+          <article class="panel fuel-panel"><div class="compact-heading"><span data-i18n="fuel">Combustível</span><strong id="fuelRequiredSide">33,2 gal</strong></div><div class="fuel-bar" id="fuelBar"></div><div class="fuel-legend" id="fuelLegend"></div></article>
         </aside>
       </section>
 
-      <section class="disclaimer shell">
-        <div class="disclaimer-icon">i</div>
-        <div><strong>Ferramenta de simulação — não certificada.</strong><p>Estimativas para o Black Square Velocity XL no Microsoft Flight Simulator. Não substitui POH, planejamento operacional ou dados reais de performance. Sem SimConnect e sem telemetria do Xbox.</p></div>
-        <button id="showMethod" type="button">Ver premissas <span>→</span></button>
+      <section class="levels-section">
+        <div class="section-heading"><h2 data-i18n="allLevels">Todos os níveis</h2><span id="selectionNote"></span></div>
+        <div class="levels-grid" id="levelCards"></div>
       </section>
+      <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
-
-    <dialog id="importDialog">
-      <form method="dialog" class="dialog-card" id="importForm">
-        <button class="dialog-close" value="cancel" aria-label="Fechar" type="submit">×</button>
-        <p class="eyebrow">SIMBRIEF · OFP JSON v2</p>
-        <h2>Importe seu último plano</h2>
-        <p>A rota e a atmosfera vêm do SimBrief. A performance é recalculada pelo modelo próprio do Velocity XL.</p>
-        <div class="identifier-tabs">
-          <button class="active" data-idtype="userid" type="button">Pilot ID</button>
-          <button data-idtype="username" type="button">Navigraph Alias</button>
-        </div>
-        <label><span id="identifierLabel">SimBrief Pilot ID</span><input id="identifierInput" type="text" inputmode="numeric" autocomplete="off" placeholder="Ex.: 123456" /></label>
-        <div class="privacy-note"><span>↗</span><p>A consulta ocorre diretamente entre seu navegador e o endpoint público oficial do SimBrief. O identificador fica salvo apenas neste dispositivo.</p></div>
-        <button class="button primary wide" id="importSubmit" type="submit">Importar OFP mais recente</button>
-        <button class="demo-link" id="useDemo" type="button">Continuar com dados demonstrativos</button>
-      </form>
-    </dialog>
-
-    <dialog id="aboutDialog">
-      <article class="dialog-card method-card">
-        <button class="dialog-close" data-close-about aria-label="Fechar" type="button">×</button>
-        <p class="eyebrow">METODOLOGIA</p><h2>O que este modelo faz</h2>
-        <p>Compara FL100 a FL250 usando curvas estimadas de TAS, fuel flow, razão de subida e descida. Cruza cada alternativa com ventos e temperatura do navlog do SimBrief. Como o OFP entrega a atmosfera da trajetória planejada, o modelo usa esse perfil como aproximação nos demais níveis.</p>
-        <div class="method-grid"><div><b>Conhecido</b><span>Rota, distância, waypoints, ventos, OAT e FL planejado do OFP.</span></div><div><b>Estimado</b><span>TAS, consumo, subida, descida, endurance e alcance do Velocity XL.</span></div><div><b>Configurável</b><span>Coeficientes centralizados em <code>js/config.js</code> para calibração futura.</span></div><div><b>Fora do escopo</b><span>SimConnect, telemetria Xbox e despacho certificado.</span></div></div>
-        <button class="button primary wide" data-close-about type="button">Entendi</button>
-      </article>
-    </dialog>
-
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <footer><span>Velocity XL Performance Planner</span><span>Open source · Modelo não certificado</span></footer>
     <script type="module" src="./js/app.js"></script>
   </body>
 </html>
