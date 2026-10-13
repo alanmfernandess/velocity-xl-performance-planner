@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261013-17";
+import { greatCircleNm } from "./engine.js?v=20261013-18";
 
 const number = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -80,6 +80,8 @@ export function parseSimBrief(data) {
       windDir: number(first(weather.windDir, weather.wind_dir, fix.wind_dir), 0),
       windSpd: number(first(weather.windSpd, weather.wind_spd, fix.wind_spd), 0),
       oatC: number(first(weather.oatC, weather.oat, fix.oat), NaN),
+      shear: number(fix.shear, NaN),
+      stage: first(fix.stage, ""),
       windLevels,
       weatherText: weatherText(fix.metar, fix.taf, fix.weather, fix.wx, fix.conditions, fix.clouds, fix.precipitation, fix.sigmet, fix.airmet),
     };

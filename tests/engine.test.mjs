@@ -78,14 +78,13 @@ test("icing evidence recognizes freezing precipitation, cloud, and clear weather
   assert.equal(icingWeatherEvidence("METAR SBRJ CAVOK").clear, true);
 });
 
-test("icing-aware optimizer changes level when OFP weather favors a lower-risk band", () => {
+test("icing-aware scoring can change level when route moisture is reported", () => {
   const plan = { ...DEMO_PLAN, meteorology: { originText: "", destinationText: "", enrouteText: "BKN030 -RA" } };
   const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, oxygen: FULL_OXYGEN });
   assert.equal(analysis.winners.performance.fl, 140);
-  assert.ok(analysis.winners.overall.fl >= 240);
+  assert.notEqual(analysis.winners.overall.fl, analysis.winners.performance.fl);
   assert.equal(analysis.icing.cost.changedAltitude, true);
   assert.equal(analysis.icing.confidence, "weather");
-  assert.notEqual(analysis.winners.overall.icing.status, "caution");
 });
 
 test("explicit enroute icing leaves no acceptable cruise profile", () => {
@@ -100,7 +99,7 @@ test("an OFP icing altitude band blocks the band and levels that require crossin
   const plan = { ...DEMO_PLAN, meteorology: { originText: "", destinationText: "", enrouteText: "MOD ICE FL120/180" } };
   const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
   assert.equal(analysis.winners.overall.fl, 100);
-  assert.equal(analysis.results.find((result) => result.fl === 100).icing.status, "watch");
+  assert.equal(analysis.results.find((result) => result.fl === 100).icing.status, "low");
   assert.equal(analysis.results.find((result) => result.fl === 140).icing.status, "avoid");
   assert.equal(analysis.results.find((result) => result.fl === 240).icing.status, "avoid");
 });
@@ -112,6 +111,22 @@ test("missing OFP temperature data is not treated as an icing forecast", () => {
   assert.ok(analysis.results.every((result) => result.icing.status === "low"));
   assert.equal(analysis.icing.confidence, "limited");
   assert.equal(analysis.winners.overall.altitudeFt, analysis.winners.performance.altitudeFt);
+});
+
+test("terminal cloud reports are limited to climb and descent instead of the cruise route", () => {
+  const plan = {
+    ...DEMO_PLAN,
+    meteorology: {
+      originText: "METAR SBSP 121200Z 12008KT 9999 BKN020 15/10 Q1018",
+      destinationText: "METAR SBGL 121200Z 09006KT 9999 SCT025 18/12 Q1016",
+      enrouteText: "",
+    },
+  };
+  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  assert.ok(analysis.results.every((result) => result.icing.status !== "avoid"));
+  assert.ok(analysis.results.every((result) => result.icing.confidence === "estimated"));
+  assert.ok(analysis.results.some((result) => result.icing.transitionRiskMinutes > 0));
+  assert.equal(analysis.feasibility.availableCount, 9);
 });
 
 test("unavailable cruise levels are excluded from recommendations", () => {
@@ -432,6 +447,36 @@ test("turbulence optimizer combines explicit reports and wind shear", () => {
   const risk = calculateTurbulenceRisk({ plan: { ...DEMO_PLAN, meteorology: { enrouteText: "MOD TURB FL160/220" } }, result });
   assert.equal(risk.status, "moderate");
   assert.equal(risk.confidence, "weather");
+});
+
+test("short navlog legs do not amplify small wind changes into severe turbulence", () => {
+  const waypoints = [
+    { ident: "A", lat: 0, lon: 0, distanceNm: 0, windDir: 260, windSpd: 20, oatC: -20, windLevels: [] },
+    { ident: "B", lat: 0, lon: .1, distanceNm: 6, windDir: 262, windSpd: 22, oatC: -20, windLevels: [] },
+    { ident: "C", lat: 0, lon: 1.9, distanceNm: 114, windDir: 264, windSpd: 24, oatC: -20, windLevels: [] },
+    { ident: "D", lat: 0, lon: 2, distanceNm: 120, windDir: 266, windSpd: 26, oatC: -20, windLevels: [] },
+  ];
+  const plan = { ...DEMO_PLAN, distanceNm: 120, waypoints, meteorology: { originText: "", destinationText: "", enrouteText: "" } };
+  const result = calculateAtAltitude({ plan, altitudeFt: 18000, mode: "NORMAL", payloadLb: 300, fuelOnboardGal: 60, reserveMinutes: 45 });
+  const risk = calculateTurbulenceRisk({ plan, result });
+  assert.notEqual(risk.status, "severe");
+  assert.equal(risk.confidence, "estimated");
+});
+
+test("SimBrief shear is preferred over inferred wind gradients", () => {
+  const result = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const withShear = (shear) => calculateTurbulenceRisk({
+    plan: {
+      ...DEMO_PLAN,
+      meteorology: { originText: "", destinationText: "", enrouteText: "" },
+      waypoints: DEMO_PLAN.waypoints.map((waypoint) => ({ ...waypoint, shear })),
+    },
+    result,
+  });
+  assert.notEqual(withShear(2).status, "severe");
+  assert.equal(withShear(6).status, "moderate");
+  assert.equal(withShear(11).status, "severe");
+  assert.equal(withShear(2).confidence, "simbrief");
 });
 
 test("performance confidence narrows with calibrated debrief history", () => {

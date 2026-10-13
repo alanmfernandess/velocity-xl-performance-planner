@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-17";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-18";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -135,15 +135,22 @@ export function icingWeatherEvidence(text = "") {
   });
   const freezingPrecipitation = /\b(?:FZRA|FZDZ|FZFG|PL)\b/.test(source);
   const precipitation = /(?:^|\s)(?:[-+]?RA|[-+]?DZ|[-+]?SN|SHRA|SHSN|SG)(?:\s|$)/.test(source);
-  const cloudLayer = /\b(?:BKN|OVC|VV)\d{3}\b/.test(source);
+  const cloudLayers = [...source.matchAll(/\b(BKN|OVC|VV)(\d{3})\b/g)].map((match) => ({
+    coverage: match[1],
+    baseFt: Number(match[2]) * 100,
+  }));
+  const cloudLayer = cloudLayers.length > 0;
   const clear = /\b(?:CAVOK|SKC|CLR|NSC)\b/.test(source) && !precipitation;
   return {
+    noIcing,
     explicitIcing,
     icingBandsFt,
     freezingPrecipitation,
     visibleMoisture: freezingPrecipitation || precipitation || cloudLayer,
+    precipitation,
+    cloudLayers,
     clear,
-    available: Boolean(source.trim()),
+    available: noIcing || explicitIcing || freezingPrecipitation || precipitation || cloudLayer || clear,
   };
 }
 
@@ -152,7 +159,9 @@ function evidenceAtAltitude(evidence, altitudeFt) {
     !evidence.icingBandsFt.length
     || evidence.icingBandsFt.some((band) => altitudeFt >= band.baseFt && altitudeFt <= band.topFt)
   );
-  return { ...evidence, explicitIcing };
+  const available = evidence.noIcing || explicitIcing || evidence.freezingPrecipitation
+    || evidence.precipitation || evidence.cloudLayers.length > 0 || evidence.clear;
+  return { ...evidence, explicitIcing, available };
 }
 
 function icingTemperatureFactor(oatC) {
@@ -164,11 +173,26 @@ function icingTemperatureFactor(oatC) {
   return 0.35 - (Math.abs(oatC + 30) / 10) * 0.25;
 }
 
-function moistureFactor(evidence) {
+function moistureFactor(evidence, altitudeFt = null, terminal = false) {
+  if (evidence.noIcing) return 0;
   if (evidence.explicitIcing || evidence.freezingPrecipitation) return 1;
-  if (evidence.visibleMoisture) return PERFORMANCE.icing.visibleMoistureFactor;
+  if (evidence.precipitation) {
+    if (!terminal || !Number.isFinite(altitudeFt) || altitudeFt <= 8000) return PERFORMANCE.icing.visibleMoistureFactor;
+  }
+  if (evidence.cloudLayers.length) {
+    const insideEstimatedLayer = !terminal || !Number.isFinite(altitudeFt) || evidence.cloudLayers.some((layer) => (
+      altitudeFt >= layer.baseFt && altitudeFt <= layer.baseFt + (layer.coverage === "VV" ? 3000 : 6000)
+    ));
+    if (insideEstimatedLayer) return terminal ? PERFORMANCE.icing.terminalCloudFactor : PERFORMANCE.icing.visibleMoistureFactor;
+  }
   if (evidence.clear) return PERFORMANCE.icing.clearWeatherFactor;
   return PERFORMANCE.icing.unknownMoistureFactor;
+}
+
+function metarTemperatureC(text = "") {
+  const match = String(text).toUpperCase().match(/(?:^|\s)(M?\d{2})\/(?:M?\d{2}|XX)(?:\s|$)/);
+  if (!match) return NaN;
+  return Number(match[1].replace("M", "-"));
 }
 
 export function calculateIcingRisk({ plan, result }) {
@@ -179,7 +203,8 @@ export function calculateIcingRisk({ plan, result }) {
   let temperatureExposureMinutes = 0;
   let cruiseExposureMinutes = 0;
   let observedTemperatureSamples = 0;
-  let evidenceSamples = globalEvidence.available ? 1 : 0;
+  let confirmedEvidenceSamples = globalEvidence.available ? 1 : 0;
+  let estimatedEvidenceSamples = 0;
   let hardHazard = false;
   const segments = [];
 
@@ -191,18 +216,13 @@ export function calculateIcingRisk({ plan, result }) {
     const weather = weatherAtAltitude(from, result.altitudeFt);
     const hasTemperature = Number.isFinite(from.oatC) || (from.windLevels || []).some((level) => Number.isFinite(level.oatC));
     if (hasTemperature) observedTemperatureSamples += 1;
-    const terminalText = index === 0
-      ? plan.meteorology?.originText || ""
-      : index === fixes.length - 2
-        ? plan.meteorology?.destinationText || ""
-        : "";
-    const evidence = evidenceAtAltitude(icingWeatherEvidence(`${enrouteText} ${from.weatherText || ""} ${terminalText}`), result.altitudeFt);
-    if (evidence.available) evidenceSamples += 1;
+    const evidence = evidenceAtAltitude(icingWeatherEvidence(`${enrouteText} ${from.weatherText || ""}`), result.altitudeFt);
+    if (evidence.available) confirmedEvidenceSamples += 1;
     const temperatureFactor = hasTemperature
       ? icingTemperatureFactor(weather.oatC)
       : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0;
-    const risk = temperatureFactor * moistureFactor(evidence);
-    maximumRisk = Math.max(maximumRisk, risk);
+    const risk = temperatureFactor * moistureFactor(evidence, result.altitudeFt, false);
+    if (evidence.available) maximumRisk = Math.max(maximumRisk, risk);
     if (temperatureFactor >= 0.3) temperatureExposureMinutes += segmentMinutes;
     cruiseExposureMinutes += segmentMinutes * risk;
     const segmentHardHazard = evidence.explicitIcing || evidence.freezingPrecipitation;
@@ -219,24 +239,46 @@ export function calculateIcingRisk({ plan, result }) {
   }
 
   const transitionExposure = (fix, durationHr, text) => {
-    if (!fix || durationHr <= 0) return 0;
-    const rawEvidence = icingWeatherEvidence(`${enrouteText} ${fix.weatherText || ""} ${text || ""}`);
+    if (!fix || durationHr <= 0) return { minutes: 0, maximumRisk: 0, temperatureMinutes: 0, confirmedSamples: 0, estimatedSamples: 0 };
+    const rawEvidence = icingWeatherEvidence(`${fix.weatherText || ""} ${text || ""}`);
     const hasTemperature = Number.isFinite(fix.oatC) || (fix.windLevels || []).some((level) => Number.isFinite(level.oatC));
+    const surfaceTemperatureC = metarTemperatureC(text);
+    const cruiseTemperatureC = weatherAtAltitude(fix, result.altitudeFt).oatC;
     let weighted = 0;
+    let transitionMaximumRisk = 0;
+    let transitionTemperatureMinutes = 0;
     const samples = 10;
     for (let index = 1; index <= samples; index += 1) {
-      const altitudeFt = result.altitudeFt * (index / samples);
+      const fraction = index / samples;
+      const altitudeFt = result.altitudeFt * fraction;
       const evidence = evidenceAtAltitude(rawEvidence, altitudeFt);
-      const temperatureFactor = hasTemperature
-        ? icingTemperatureFactor(weatherAtAltitude(fix, altitudeFt).oatC)
+      const estimatedTemperatureC = Number.isFinite(surfaceTemperatureC) && Number.isFinite(cruiseTemperatureC)
+        ? surfaceTemperatureC + (cruiseTemperatureC - surfaceTemperatureC) * fraction
+        : weatherAtAltitude(fix, altitudeFt).oatC;
+      const temperatureFactor = hasTemperature || Number.isFinite(surfaceTemperatureC)
+        ? icingTemperatureFactor(estimatedTemperatureC)
         : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0;
       hardHazard ||= evidence.explicitIcing || evidence.freezingPrecipitation;
-      weighted += temperatureFactor * moistureFactor(evidence);
+      const risk = temperatureFactor * moistureFactor(evidence, altitudeFt, true);
+      if (evidence.available) transitionMaximumRisk = Math.max(transitionMaximumRisk, risk);
+      if (temperatureFactor >= 0.3) transitionTemperatureMinutes += durationHr * 60 / samples;
+      weighted += evidence.available ? risk : 0;
     }
-    return durationHr * 60 * weighted / samples;
+    return {
+      minutes: durationHr * 60 * weighted / samples,
+      maximumRisk: transitionMaximumRisk,
+      temperatureMinutes: transitionTemperatureMinutes,
+      confirmedSamples: rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation || rawEvidence.precipitation ? 1 : 0,
+      estimatedSamples: rawEvidence.available && !(rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation || rawEvidence.precipitation) ? 1 : 0,
+    };
   };
-  const transitionRiskMinutes = transitionExposure(fixes[0], result.climb.timeHr, plan.meteorology?.originText)
-    + transitionExposure(fixes.at(-1), result.descent.timeHr, plan.meteorology?.destinationText);
+  const climbTransition = transitionExposure(fixes[0], result.climb.timeHr, `${enrouteText} ${plan.meteorology?.originText || ""}`);
+  const descentTransition = transitionExposure(fixes.at(-1), result.descent.timeHr, `${enrouteText} ${plan.meteorology?.destinationText || ""}`);
+  const transitionRiskMinutes = climbTransition.minutes + descentTransition.minutes;
+  maximumRisk = Math.max(maximumRisk, climbTransition.maximumRisk, descentTransition.maximumRisk);
+  temperatureExposureMinutes += climbTransition.temperatureMinutes + descentTransition.temperatureMinutes;
+  confirmedEvidenceSamples += climbTransition.confirmedSamples + descentTransition.confirmedSamples;
+  estimatedEvidenceSamples += climbTransition.estimatedSamples + descentTransition.estimatedSamples;
   const exposureMinutes = cruiseExposureMinutes + transitionRiskMinutes;
   const rawRiskScore = Math.round(maximumRisk * 100);
   const status = hardHazard
@@ -260,7 +302,7 @@ export function calculateIcingRisk({ plan, result }) {
     exposureMinutes,
     temperatureExposureMinutes,
     transitionRiskMinutes,
-    confidence: evidenceSamples > 1 ? "weather" : "limited",
+    confidence: confirmedEvidenceSamples > 0 ? "weather" : estimatedEvidenceSamples > 0 ? "estimated" : "limited",
     temperatureCoverage: fixes.length > 1 ? observedTemperatureSamples / (fixes.length - 1) : 0,
     segments,
   };
@@ -301,7 +343,7 @@ export function turbulenceWeatherEvidence(text = "") {
   if (/\bAIRMET\s+TANGO\b/.test(source)) score = Math.max(score, 55);
   if (/\b(?:CONVECTIVE\s+SIGMET|SIGMET[^.\n]{0,40}(?:TURB|CAT)|TSRA|TS|CB)\b/.test(source)) score = Math.max(score, 85);
   if (/\b(?:LLWS|WIND\s*SHEAR|WS\d{3})\b/.test(source)) score = Math.max(score, 60);
-  return { available: Boolean(source.trim()), noTurbulence, score, bands };
+  return { available: noTurbulence || score > 0 || bands.length > 0, noTurbulence, score, bands };
 }
 
 function turbulenceEvidenceAtAltitude(evidence, altitudeFt) {
@@ -316,12 +358,14 @@ export function calculateTurbulenceRisk({ plan, result }) {
   let maximumVerticalShear = 0;
   let maximumHorizontalShear = 0;
   let evidenceSamples = 0;
+  let simbriefShearSamples = 0;
+  let estimatedSamples = 0;
   const segments = [];
   for (let index = 0; index < Math.max(1, fixes.length - 1); index += 1) {
     const from = fixes[index] || plan.origin;
     const to = fixes[index + 1] || plan.destination;
-    const terminalText = index === 0 ? plan.meteorology?.originText || "" : index === fixes.length - 2 ? plan.meteorology?.destinationText || "" : "";
-    const evidence = turbulenceEvidenceAtAltitude(turbulenceWeatherEvidence(`${globalText} ${from?.weatherText || ""} ${terminalText}`), result.altitudeFt);
+    const routeEvidence = turbulenceEvidenceAtAltitude(turbulenceWeatherEvidence(`${globalText} ${from?.weatherText || ""}`), result.altitudeFt);
+    const evidence = routeEvidence;
     if (evidence.available) evidenceSamples += 1;
     let verticalShear = 0;
     const levels = (from?.windLevels || []).filter((level) => Number.isFinite(level.altitudeFt)).sort((a, b) => a.altitudeFt - b.altitudeFt);
@@ -335,15 +379,28 @@ export function calculateTurbulenceRisk({ plan, result }) {
     const segmentNm = from && to && [from.lat, from.lon, to.lat, to.lon].every(Number.isFinite) ? greatCircleNm(from, to) : 0;
     const fromWeather = weatherAtAltitude(from || {}, result.altitudeFt);
     const toWeather = weatherAtAltitude(to || from || {}, result.altitudeFt);
-    const horizontalShear = segmentNm > 0 ? vectorWindDifferenceKt(fromWeather, toWeather) / segmentNm * 150 : 0;
+    const windChangeKt = segmentNm > 0 ? vectorWindDifferenceKt(fromWeather, toWeather) : 0;
+    const horizontalShear = segmentNm > 0 ? windChangeKt / Math.max(75, segmentNm) * 150 : 0;
     maximumVerticalShear = Math.max(maximumVerticalShear, verticalShear);
     maximumHorizontalShear = Math.max(maximumHorizontalShear, horizontalShear);
     const shearRatio = Math.max(
       verticalShear / PERFORMANCE.turbulence.moderateVerticalShearKtPer1000Ft,
       horizontalShear / PERFORMANCE.turbulence.moderateHorizontalShearKtPer150Nm,
     );
-    const shearScore = shearRatio >= 1.7 ? 82 : shearRatio >= 1 ? 55 : shearRatio >= 0.55 ? 28 : 8 * shearRatio;
-    const riskScore = Math.round(Math.max(evidence.score, shearScore));
+    const inferredScore = Math.min(40, shearRatio >= 1 ? 40 : shearRatio >= 0.55 ? 24 : 8 * shearRatio);
+    if (windChangeKt > 0 || verticalShear > 0) estimatedSamples += 1;
+    const simbriefShear = Number(from?.shear);
+    const simbriefShearScore = Number.isFinite(simbriefShear)
+      ? simbriefShear <= 3
+        ? simbriefShear / 3 * 18
+        : simbriefShear <= 5
+          ? 18 + (simbriefShear - 3) / 2 * 27
+          : simbriefShear <= 10
+            ? 45 + (simbriefShear - 5) / 5 * 30
+            : Math.min(100, 75 + (simbriefShear - 10) * 5)
+      : 0;
+    if (Number.isFinite(simbriefShear)) simbriefShearSamples += 1;
+    const riskScore = Math.round(Math.max(evidence.score, simbriefShearScore, inferredScore));
     maximumScore = Math.max(maximumScore, riskScore);
     segments.push({
       from: from?.ident || from?.icao || "—",
@@ -351,6 +408,7 @@ export function calculateTurbulenceRisk({ plan, result }) {
       riskScore,
       verticalShear,
       horizontalShear,
+      simbriefShear: Number.isFinite(simbriefShear) ? simbriefShear : null,
     });
   }
   const status = maximumScore >= PERFORMANCE.turbulence.severeScore
@@ -367,7 +425,7 @@ export function calculateTurbulenceRisk({ plan, result }) {
     status,
     riskScore: maximumScore,
     penalty,
-    confidence: evidenceSamples ? "weather" : fixes.some((fix) => (fix.windLevels || []).length > 1) ? "wind" : "limited",
+    confidence: evidenceSamples ? "weather" : simbriefShearSamples ? "simbrief" : estimatedSamples ? "estimated" : "limited",
     maximumVerticalShear,
     maximumHorizontalShear,
     segments,
@@ -847,7 +905,11 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
   const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
   const turbulenceRank = { smooth: 0, light: 1, moderate: 2, severe: 3 };
   const riskRank = (item) => Math.max(icingRank[item.icing.status], turbulenceRank[item.turbulence.status]);
-  const hasWeatherEvidence = weatherAvailable.some((item) => item.icing.confidence === "weather" || item.turbulence.confidence !== "limited");
+  const hasWeatherEvidence = weatherAvailable.some((item) => (
+    item.icing.confidence === "weather"
+    || item.turbulence.confidence === "weather"
+    || item.turbulence.confidence === "simbrief"
+  ));
   const safestRank = weatherAvailable.length ? Math.min(...weatherAvailable.map(riskRank)) : 3;
   const weatherWinnerPool = hasWeatherEvidence
     ? weatherAvailable.filter((item) => riskRank(item) === safestRank)
@@ -1129,7 +1191,11 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
   const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
   const turbulenceRank = { smooth: 0, light: 1, moderate: 2, severe: 3 };
   const riskRank = (candidate) => Math.max(icingRank[candidate.result.icing.status], turbulenceRank[candidate.result.turbulence.status]);
-  const hasWeatherEvidence = viable.some((candidate) => candidate.result.icing.confidence === "weather" || candidate.result.turbulence.confidence !== "limited");
+  const hasWeatherEvidence = viable.some((candidate) => (
+    candidate.result.icing.confidence === "weather"
+    || candidate.result.turbulence.confidence === "weather"
+    || candidate.result.turbulence.confidence === "simbrief"
+  ));
   const safestRank = Math.min(...viable.map(riskRank));
   const weatherPool = hasWeatherEvidence ? viable.filter((candidate) => riskRank(candidate) === safestRank) : viable;
   const maximumRetainedPayloadLb = Math.max(...weatherPool.map((candidate) => candidate.recommendedPayloadLb));

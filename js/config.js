@@ -121,6 +121,7 @@ export const PERFORMANCE = {
     unknownMoistureFactor: 0.25,
     clearWeatherFactor: 0.08,
     visibleMoistureFactor: 0.9,
+    terminalCloudFactor: 0.35,
     watchBasePenalty: 4,
     cautionBasePenalty: 18,
   },

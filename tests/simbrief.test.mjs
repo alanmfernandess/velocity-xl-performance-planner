@@ -14,7 +14,7 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
     weather: { orig_metar: "SBSP 121200Z BKN020", dest_taf: "TAF SBGL 121100Z OVC030", sigmets: ["MOD ICE FL120/180"] },
     alternate: [{ icao_code: "SBRJ", name: "Santos Dumont", pos_lat: "-22.9105", pos_long: "-43.1631", route_distance: "12" }],
     navlog: [
-      { ident: "SBSP", pos_lat: "-23.626", pos_long: "-46.657", wind_dir: "250", wind_spd: "20", oat: "-20", wind_data: [
+      { ident: "SBSP", pos_lat: "-23.626", pos_long: "-46.657", wind_dir: "250", wind_spd: "20", oat: "-20", shear: "2", stage: "CLB", wind_data: [
         { altitude: "18000", wind_dir: "240", wind_spd: "18", oat: "-19" },
         { altitude: "24000", wind_dir: "270", wind_spd: "30", oat: "-31" },
       ] },
@@ -32,6 +32,8 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
   assert.equal(result.waypoints.length, 2);
   assert.equal(result.waypoints[0].windLevels.length, 2);
   assert.equal(result.waypoints[0].windLevels[1].altitudeFt, 24000);
+  assert.equal(result.waypoints[0].shear, 2);
+  assert.equal(result.waypoints[0].stage, "CLB");
   assert.match(result.meteorology.originText, /BKN020/);
   assert.match(result.meteorology.destinationText, /OVC030/);
   assert.match(result.meteorology.enrouteText, /MOD ICE/);
