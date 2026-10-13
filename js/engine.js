@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-13";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-14";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -1008,15 +1008,22 @@ export function compareScenarios({ plan, scenarioA, scenarioB, calibration = {} 
   };
 }
 
-export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
+export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false }) {
   const requestedPayloadLb = Math.max(0, payloadLb);
-  const minimumPayloadLb = weightBalance ? Math.ceil(normalizeWeightBalance(weightBalance).pilot / 10) * 10 : 0;
+  const payloadFloorLb = Number.isFinite(minimumPayloadLb)
+    ? Math.min(requestedPayloadLb, Math.max(0, minimumPayloadLb))
+    : weightBalance ? Math.ceil(normalizeWeightBalance(weightBalance).pilot / 10) * 10 : 0;
   const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
   const currentWeightLb = AIRCRAFT.emptyWeightLb + requestedPayloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const payloadStepLb = 10;
   let bestAttempt = null;
+  const payloadCandidates = [requestedPayloadLb];
+  for (let candidatePayloadLb = Math.floor((requestedPayloadLb - 0.001) / payloadStepLb) * payloadStepLb; candidatePayloadLb > payloadFloorLb; candidatePayloadLb -= payloadStepLb) {
+    payloadCandidates.push(candidatePayloadLb);
+  }
+  if (payloadFloorLb < requestedPayloadLb) payloadCandidates.push(payloadFloorLb);
 
-  for (let candidatePayloadLb = Math.floor(requestedPayloadLb / payloadStepLb) * payloadStepLb; candidatePayloadLb >= minimumPayloadLb; candidatePayloadLb -= payloadStepLb) {
+  for (const candidatePayloadLb of [...new Set(payloadCandidates)]) {
     let candidateFuelGal = clamp(fuelOnboardGal, 0, AIRCRAFT.usableFuelGal);
     let rawRecommendedFuelGal = candidateFuelGal;
 
@@ -1077,7 +1084,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
         && result.icing.status !== "avoid"
         && result.turbulence.status !== "severe"
         && result.oxygen.status !== "insufficient"
-        && result.weightBalance?.status !== "unavailable",
+        && (requireWeightBalanceViable ? result.weightBalance?.status === "viable" : result.weightBalance?.status !== "unavailable"),
       altitudeFt,
       mode,
       result,
@@ -1099,7 +1106,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
   return bestAttempt;
 }
 
-export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
+export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false }) {
   const candidates = ALTITUDES_FT.map((altitudeFt) => calculateLoadOptimization({
     plan,
     altitudeFt,
@@ -1110,6 +1117,8 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
     calibration,
     oxygen,
     weightBalance,
+    minimumPayloadLb,
+    requireWeightBalanceViable,
   }));
   const viable = candidates.filter((candidate) => candidate?.feasible);
   if (!viable.length) {
@@ -1137,6 +1146,70 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
   });
   const winner = [...payloadPool].sort((a, b) => b.optimizationScore - a.optimizationScore)[0];
   return { ...winner, recommendedAltitudeFt: winner.altitudeFt, candidates };
+}
+
+export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
+  const loads = normalizeWeightBalance(weightBalance || {});
+  const occupiedPayloadLb = loads.pilot + loads.copilot + loads.rearLeft + loads.rearCenter + loads.rearRight;
+  const currentBottles = clamp(Math.round(Number(oxygen.bottles) || 0), 0, 4);
+  const variants = [];
+  for (let bottles = currentBottles; bottles <= 4; bottles += 1) {
+    const oxygenVariant = { ...oxygen, bottles };
+    const candidate = calculateModeLoadOptimization({
+      plan,
+      mode,
+      payloadLb,
+      fuelOnboardGal,
+      reserveMinutes,
+      calibration,
+      oxygen: oxygenVariant,
+      weightBalance,
+      minimumPayloadLb: occupiedPayloadLb,
+      requireWeightBalanceViable: true,
+    });
+    if (candidate) variants.push({ ...candidate, oxygen: oxygenVariant, bottles });
+  }
+  const viable = variants.filter((candidate) => candidate.feasible);
+  const operationalPenalty = (candidate) => {
+    const result = candidate.result;
+    return (result.icing.status === "low" ? 0 : result.icing.status === "watch" ? 1 : result.icing.status === "caution" ? 3 : 20)
+      + (result.turbulence.status === "smooth" || result.turbulence.status === "light" ? 0 : result.turbulence.status === "moderate" ? 3 : 20)
+      + (result.oxygen.status === "not-required" || result.oxygen.status === "compliant" ? 0 : result.oxygen.status === "marginal" ? 3 : 20)
+      + (result.weightBalance?.status === "viable" ? 0 : 20);
+  };
+  const ranked = [...viable].sort((a, b) =>
+    b.recommendedPayloadLb - a.recommendedPayloadLb
+    || operationalPenalty(a) - operationalPenalty(b)
+    || (b.optimizationScore || 0) - (a.optimizationScore || 0)
+    || a.bottles - b.bottles);
+  const winner = ranked[0];
+  if (!winner) {
+    const bestAttempt = [...variants].filter((candidate) => candidate.result).sort((a, b) =>
+      (a.rawRecommendedFuelGal || Infinity) - (b.rawRecommendedFuelGal || Infinity)
+      || b.recommendedPayloadLb - a.recommendedPayloadLb)[0];
+    return {
+      ...(bestAttempt || {}),
+      feasible: false,
+      achievedStatus: "unavailable",
+      occupiedPayloadLb,
+      variants,
+    };
+  }
+  const result = winner.result;
+  const marginal = result.feasibility.status === "marginal"
+    || result.icing.status === "watch"
+    || result.icing.status === "caution"
+    || result.turbulence.status === "moderate"
+    || result.oxygen.status === "marginal"
+    || result.weightBalance?.status === "marginal";
+  return {
+    ...winner,
+    feasible: true,
+    achievedStatus: marginal ? "marginal" : "viable",
+    occupiedPayloadLb,
+    recommendedBottleCount: winner.bottles,
+    variants,
+  };
 }
 
 export function calculateGlideCorridor({ plan, result }) {

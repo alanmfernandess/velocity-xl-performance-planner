@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-13" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-14" />
   </head>
   <body>
     <header class="topbar">
@@ -117,6 +117,7 @@
             <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
             <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
+            <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
           </article>
           <article class="panel insight-panel"><div class="insight-title"><strong id="whyTitle">FL120</strong><span><b id="scoreRing">77</b>/100</span></div><ul id="whyList"></ul></article>
           <article class="panel fuel-panel"><div class="compact-heading"><span data-i18n="fuel">Combustível</span><strong id="fuelRequiredSide">33,2 gal</strong></div><div class="fuel-bar" id="fuelBar"></div><div class="fuel-legend" id="fuelLegend"></div></article>
@@ -203,7 +204,6 @@
             <article><span data-i18n="recommendedPayload">Payload recomendado</span><strong id="loadMaxPayload">—</strong></article>
             <article><span data-i18n="optimizedWeight">Peso otimizado</span><strong id="loadOptimizedWeight">—</strong></article>
             <div class="load-status"><b class="status-pill" id="loadStatus">—</b><span id="loadAdjustment">—</span></div>
-            <button class="text-button compact-action" id="applyLoadOptimization" type="button" data-i18n="applyOptimization">Aplicar otimização</button>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="wb">
@@ -324,6 +324,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-13"></script>
+    <script type="module" src="./js/app.js?v=20261013-14"></script>
   </body>
 </html>

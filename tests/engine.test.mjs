@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -233,6 +233,58 @@ test("mode load optimizer disables apply only when every level is impossible", (
   const optimizer = calculateModeLoadOptimization({ plan: { ...DEMO_PLAN, distanceNm: 3000 }, mode: "FAST", payloadLb: 1100, fuelOnboardGal: 10, reserveMinutes: 60 });
   assert.equal(optimizer.feasible, false);
   assert.equal(optimizer.recommendedPayloadLb, 0);
+});
+
+test("mission optimizer preserves every occupant and removes baggage first", () => {
+  const loaded = { ...FIVE_SEAT_LOAD, baggage: 580 };
+  const optimizer = calculateMissionOptimization({
+    plan: DEMO_PLAN,
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(loaded),
+    fuelOnboardGal: 87,
+    reserveMinutes: 45,
+    weightBalance: loaded,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimizer.feasible, true);
+  for (const key of ["pilot", "copilot", "rearLeft", "rearCenter", "rearRight"]) assert.equal(optimizer.weightBalance[key], loaded[key]);
+  assert.ok(optimizer.weightBalance.baggage < loaded.baggage);
+  assert.equal(optimizer.result.feasibility.status, "viable");
+  assert.equal(optimizer.result.weightBalance.status, "viable");
+  assert.equal(optimizer.result.power.source, "AUTO");
+  assert.equal(optimizer.result.power.rpm, PERFORMANCE.modes.NORMAL.rpm);
+});
+
+test("mission optimizer installs oxygen when the safe profile requires it", () => {
+  const plan = { ...DEMO_PLAN, meteorology: { ...DEMO_PLAN.meteorology, enrouteText: "SEV TURB FL100/140" } };
+  const optimizer = calculateMissionOptimization({
+    plan,
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(FIVE_SEAT_LOAD),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance: FIVE_SEAT_LOAD,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimizer.feasible, true);
+  assert.ok(optimizer.recommendedAltitudeFt >= 16000);
+  assert.ok(optimizer.recommendedBottleCount > 0);
+  assert.equal(optimizer.result.oxygen.status, "compliant");
+});
+
+test("mission optimizer reports no solution instead of changing occupants", () => {
+  const optimizer = calculateMissionOptimization({
+    plan: { ...DEMO_PLAN, distanceNm: 3000 },
+    mode: "FAST",
+    payloadLb: weightBalancePayloadLb(FIVE_SEAT_LOAD),
+    fuelOnboardGal: 10,
+    reserveMinutes: 60,
+    weightBalance: FIVE_SEAT_LOAD,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimizer.feasible, false);
+  assert.equal(optimizer.achievedStatus, "unavailable");
+  assert.equal(optimizer.recommendedPayloadLb, weightBalancePayloadLb(FIVE_SEAT_LOAD));
 });
 
 test("engine-out glide corridor uses 12.15 to 1 at 90 KIAS", () => {
