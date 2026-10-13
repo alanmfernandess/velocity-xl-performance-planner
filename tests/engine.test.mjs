@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -76,6 +76,14 @@ test("icing evidence recognizes freezing precipitation, cloud, and clear weather
   assert.equal(icingWeatherEvidence("SPECI SBSP 121200Z FZRA BKN008").freezingPrecipitation, true);
   assert.equal(icingWeatherEvidence("TAF SBGL OVC020 -RA").visibleMoisture, true);
   assert.equal(icingWeatherEvidence("METAR SBRJ CAVOK").clear, true);
+});
+
+test("icing percentage colors use coherent low, marginal, and high bands", () => {
+  assert.equal(icingDisplayTone(19), "low");
+  assert.equal(icingDisplayTone(25), "marginal");
+  assert.equal(icingDisplayTone(44), "marginal");
+  assert.equal(icingDisplayTone(45), "high");
+  assert.equal(icingDisplayTone(8, "avoid"), "high");
 });
 
 test("icing-aware scoring can change level when route moisture is reported", () => {
@@ -540,5 +548,6 @@ test("mission score uses one ascending 0-100 viability scale", () => {
   const result = analysis.results.find((item) => item.altitudeFt === 10000);
   const score = calculateMissionScore({ result, confidence: result.confidence });
   assert.ok(score.score >= 0 && score.score <= 100);
-  assert.equal(score.status, score.score < 40 ? "not-viable" : score.score < 60 ? "marginal" : score.score < 80 ? "attention" : "viable");
+  assert.equal(score.status, score.score < 40 ? "not-viable" : score.score < 80 ? "marginal" : "viable");
+  assert.ok(["not-viable", "marginal", "viable"].includes(score.status));
 });

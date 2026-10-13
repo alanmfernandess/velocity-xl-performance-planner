@@ -1,8 +1,15 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-22";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-23";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
 export const toDeg = (rad) => (rad * 180) / Math.PI;
+
+export function icingDisplayTone(riskScore, status = "low") {
+  const score = clamp(Math.round(Number(riskScore) || 0), 0, 100);
+  if (status === "avoid" || score >= 45) return "high";
+  if (score >= 25) return "marginal";
+  return "low";
+}
 
 export function isaTemperatureC(altitudeFt) {
   return 15 - 1.9812 * (altitudeFt / 1000);
@@ -720,7 +727,7 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
   const blocked = reasons.some((reason) => reason.blocking);
   let score = clamp(Math.round(100 - penalty), 0, 100);
   if (blocked) score = Math.min(score, 39);
-  const status = score < 40 ? "not-viable" : score < 60 ? "marginal" : score < 80 ? "attention" : "viable";
+  const status = score < 40 ? "not-viable" : score < 80 ? "marginal" : "viable";
   return { score, status, blocked, penalty: 100 - score, reasons };
 }
 
