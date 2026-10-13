@@ -479,6 +479,40 @@ test("SimBrief shear is preferred over inferred wind gradients", () => {
   assert.equal(withShear(2).confidence, "simbrief");
 });
 
+test("SimBrief shear only applies near the navlog altitude", () => {
+  const plan = {
+    ...DEMO_PLAN,
+    plannedAltitudeFt: 19000,
+    meteorology: { originText: "", destinationText: "", enrouteText: "" },
+    waypoints: DEMO_PLAN.waypoints.map((waypoint) => ({
+      ...waypoint,
+      altitudeFt: 19000,
+      stage: "CRZ",
+      shear: 13,
+    })),
+  };
+  const atPlannedLevel = calculateAtAltitude({ plan, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const awayFromPlannedLevel = calculateAtAltitude({ plan, altitudeFt: 10000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const plannedRisk = calculateTurbulenceRisk({ plan, result: atPlannedLevel });
+  const otherRisk = calculateTurbulenceRisk({ plan, result: awayFromPlannedLevel });
+  assert.equal(plannedRisk.status, "severe");
+  assert.equal(plannedRisk.blocking, true);
+  assert.notEqual(otherRisk.status, "severe");
+  assert.equal(otherRisk.blocking, false);
+});
+
+test("unbounded turbulence advisory warns without blocking every flight level", () => {
+  const plan = {
+    ...DEMO_PLAN,
+    meteorology: { originText: "", destinationText: "", enrouteText: "SEV TURB" },
+    waypoints: DEMO_PLAN.waypoints.map((waypoint) => ({ ...waypoint, shear: Number.NaN })),
+  };
+  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  assert.ok(analysis.results.every((result) => result.turbulence.status === "moderate"));
+  assert.ok(analysis.results.every((result) => result.turbulence.blocking === false));
+  assert.equal(analysis.turbulence.acceptableCount, analysis.results.length);
+});
+
 test("performance confidence narrows with calibrated debrief history", () => {
   const result = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
   const baseline = calculatePerformanceConfidence({ plan: DEMO_PLAN, result, mode: "NORMAL" });

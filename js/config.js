@@ -145,6 +145,8 @@ export const PERFORMANCE = {
     severePenalty: 100,
     moderateVerticalShearKtPer1000Ft: 6,
     moderateHorizontalShearKtPer150Nm: 18,
+    simbriefShearApplicabilityFt: 3000,
+    unboundedAdvisoryMaximumScore: 60,
   },
   confidence: {
     baseTasUncertainty: 0.08,

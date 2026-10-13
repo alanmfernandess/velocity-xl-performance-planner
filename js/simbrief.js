@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261013-18";
+import { greatCircleNm } from "./engine.js?v=20261013-19";
 
 const number = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -20,6 +20,21 @@ function weatherText(...values) {
     if (typeof value === "string" || typeof value === "number") output.push(String(value));
     else if (Array.isArray(value)) value.forEach(collect);
     else if (value && typeof value === "object") Object.values(value).forEach(collect);
+  };
+  values.forEach(collect);
+  return [...new Set(output.map((value) => value.trim()).filter(Boolean))].join(" ");
+}
+
+function bulletinText(...values) {
+  const output = [];
+  const collect = (value) => {
+    if (typeof value === "string" || typeof value === "number") output.push(String(value));
+    else if (Array.isArray(value)) value.forEach(collect);
+    else if (value && typeof value === "object") {
+      ["rawText", "raw_text", "text", "message", "bulletin"].forEach((key) => {
+        if (typeof value[key] === "string") output.push(value[key]);
+      });
+    }
   };
   values.forEach(collect);
   return [...new Set(output.map((value) => value.trim()).filter(Boolean))].join(" ");
@@ -66,7 +81,7 @@ export function parseSimBrief(data) {
   const plannedAltitudeFt = number(first(data.general?.initial_altitude, data.general?.cruise_altitude), 18000);
   const originWeatherText = weatherText(data.weather?.orig_metar, data.weather?.orig_taf, data.origin?.metar, data.origin?.taf, data.origin?.weather);
   const destinationWeatherText = weatherText(data.weather?.dest_metar, data.weather?.dest_taf, data.destination?.metar, data.destination?.taf, data.destination?.weather);
-  const enrouteWeatherText = weatherText(data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.weather?.airmet, data.weather?.airmets, data.sigmets, data.airmets);
+  const enrouteWeatherText = bulletinText(data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.weather?.airmet, data.weather?.airmets, data.sigmets, data.airmets);
   const rawFixes = arrayOf(data.navlog);
   let cumulativeNm = 0;
   const waypoints = rawFixes.map((fix, index) => {
@@ -81,9 +96,10 @@ export function parseSimBrief(data) {
       windSpd: number(first(weather.windSpd, weather.wind_spd, fix.wind_spd), 0),
       oatC: number(first(weather.oatC, weather.oat, fix.oat), NaN),
       shear: number(fix.shear, NaN),
+      altitudeFt: number(first(fix.altitude_feet, fix.altitude), NaN),
       stage: first(fix.stage, ""),
       windLevels,
-      weatherText: weatherText(fix.metar, fix.taf, fix.weather, fix.wx, fix.conditions, fix.clouds, fix.precipitation, fix.sigmet, fix.airmet),
+      weatherText: bulletinText(fix.weather, fix.wx, fix.conditions, fix.sigmet, fix.airmet),
     };
     if (index > 0 && Number.isFinite(waypoint.lat) && Number.isFinite(waypoint.lon)) {
       const previous = rawFixes[index - 1];

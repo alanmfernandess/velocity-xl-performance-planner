@@ -1,6 +1,6 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-18";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261013-18";
-import { fetchLatestOFP } from "./simbrief.js?v=20261013-18";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-19";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261013-19";
+import { fetchLatestOFP } from "./simbrief.js?v=20261013-19";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -63,7 +63,7 @@ const fuelLabel=()=>state.fuelUnit==="l"?"L":"gal";
 const formatWeight=(lb,digits=0)=>`${number(weightValue(lb),digits)} ${weightLabel()}`;
 const formatFuel=(gal,digits=1)=>`${number(fuelValue(gal),digits)} ${fuelLabel()}`;
 const currentOxygenWeightLb=()=>oxygenSystemWeightLb(state.oxygen);
-const operationallyAvailable=(result)=>result.feasibility.status!=="unavailable"&&result.icing.status!=="avoid"&&result.turbulence.status!=="severe"&&result.oxygen.status!=="insufficient"&&result.weightBalance?.status!=="unavailable";
+const operationallyAvailable=(result)=>result.feasibility.status!=="unavailable"&&result.icing.status!=="avoid"&&!result.turbulence.blocking&&result.oxygen.status!=="insufficient"&&result.weightBalance?.status!=="unavailable";
 
 state.weightBalance=normalizeWeightBalance(state.weightBalance);
 state.payloadLb=weightBalancePayloadLb(state.weightBalance);
@@ -165,7 +165,7 @@ function icingProbabilityMarkup(icing) {
 function levelFeasibilityLabel(result) {
   if(result.weightBalance?.status==="unavailable") return result.weightBalance.primaryReason==="WEIGHT"?t("grossWeight"):"CG";
   if(result.oxygen.status==="insufficient") return "O₂";
-  if(result.turbulence.status==="severe") return "SEV TURB";
+  if(result.turbulence.blocking) return "SEV TURB";
   if(result.icing.status==="avoid") return "ICE";
   const feasibility=result.feasibility;
   if(feasibility.status==="viable") return "";
@@ -435,7 +435,7 @@ function render() {
   const loadOptimizer=calculateModeLoadOptimization({...state,minimumPayloadLb:state.weightBalance.pilot,requireWeightBalanceViable:true});
   const glide=calculateGlideCorridor({plan,result:selected});
   $("#routeTitle").innerHTML=`${escapeHtml(plan.origin.icao)} <span>→</span> ${escapeHtml(plan.destination.icao)}`; $("#routeSource").textContent=t(plan.source==="SIMBRIEF"?"simbrief":"demo"); $("#planTimestamp").textContent=`${number(plan.distanceNm)} NM · FL${Math.round(plan.plannedAltitudeFt/100)}`;
-  const feasibility=selected.feasibility,feasibilityKey=feasibility.status==="viable"?"viable":feasibility.status==="marginal"?"marginalStatus":"notViable",feasibilityBadge=$("#feasibilityBadge"),noOperationalProfile=!analysis.results.some(operationallyAvailable),operationalCaution=(selected.icing.status==="watch"&&selected.icing.confidence==="weather")||selected.icing.status==="caution"||selected.turbulence.status==="moderate"||selected.oxygen.status==="marginal"||selected.weightBalance?.status==="marginal";
+  const feasibility=selected.feasibility,feasibilityKey=feasibility.status==="viable"?"viable":feasibility.status==="marginal"?"marginalStatus":"notViable",feasibilityBadge=$("#feasibilityBadge"),noOperationalProfile=!analysis.results.some(operationallyAvailable),operationalCaution=(selected.icing.status==="watch"&&selected.icing.confidence==="weather")||selected.icing.status==="caution"||selected.turbulence.status==="moderate"||selected.turbulence.status==="severe"||selected.oxygen.status==="marginal"||selected.weightBalance?.status==="marginal";
   feasibilityBadge.textContent=noOperationalProfile?t("notViable"):operationalCaution?`${t("marginalStatus")} · ${riskLabel(missionRisk.status)}`:t(feasibilityKey); feasibilityBadge.className=`feasibility-badge ${noOperationalProfile?"unavailable":operationalCaution?"marginal":feasibility.status}`;
   $("#feasibilityMeta").textContent=`${analysis.results.filter(operationallyAvailable).length}/${analysis.results.length} FL · ${signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`)} · ${signedNumber(weightValue(feasibility.weightMarginLb),0,` ${weightLabel()}`)}`;
   $("#routeFrom").textContent=plan.origin.icao; $("#routeTo").textContent=plan.destination.icao;

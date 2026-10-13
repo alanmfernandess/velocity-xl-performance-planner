@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-18";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-19";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -360,6 +360,7 @@ export function calculateTurbulenceRisk({ plan, result }) {
   let evidenceSamples = 0;
   let simbriefShearSamples = 0;
   let estimatedSamples = 0;
+  let blocking = false;
   const segments = [];
   for (let index = 0; index < Math.max(1, fixes.length - 1); index += 1) {
     const from = fixes[index] || plan.origin;
@@ -380,7 +381,14 @@ export function calculateTurbulenceRisk({ plan, result }) {
     const fromWeather = weatherAtAltitude(from || {}, result.altitudeFt);
     const toWeather = weatherAtAltitude(to || from || {}, result.altitudeFt);
     const windChangeKt = segmentNm > 0 ? vectorWindDifferenceKt(fromWeather, toWeather) : 0;
-    const horizontalShear = segmentNm > 0 ? windChangeKt / Math.max(75, segmentNm) * 150 : 0;
+    const referenceAltitudeFt = Number.isFinite(Number(from?.altitudeFt))
+      ? Number(from.altitudeFt)
+      : Number(plan.plannedAltitudeFt);
+    const nearSimbriefLevel = Number.isFinite(referenceAltitudeFt)
+      && Math.abs(result.altitudeFt - referenceAltitudeFt) <= PERFORMANCE.turbulence.simbriefShearApplicabilityFt;
+    const horizontalShear = segmentNm > 0 && ((from?.windLevels || []).length > 1 || nearSimbriefLevel)
+      ? windChangeKt / Math.max(75, segmentNm) * 150
+      : 0;
     maximumVerticalShear = Math.max(maximumVerticalShear, verticalShear);
     maximumHorizontalShear = Math.max(maximumHorizontalShear, horizontalShear);
     const shearRatio = Math.max(
@@ -390,7 +398,10 @@ export function calculateTurbulenceRisk({ plan, result }) {
     const inferredScore = Math.min(40, shearRatio >= 1 ? 40 : shearRatio >= 0.55 ? 24 : 8 * shearRatio);
     if (windChangeKt > 0 || verticalShear > 0) estimatedSamples += 1;
     const simbriefShear = Number(from?.shear);
-    const simbriefShearScore = Number.isFinite(simbriefShear)
+    const simbriefShearApplicable = Number.isFinite(simbriefShear)
+      && nearSimbriefLevel
+      && (!from?.stage || String(from.stage).toUpperCase() === "CRZ");
+    const simbriefShearScore = simbriefShearApplicable
       ? simbriefShear <= 3
         ? simbriefShear / 3 * 18
         : simbriefShear <= 5
@@ -399,8 +410,14 @@ export function calculateTurbulenceRisk({ plan, result }) {
             ? 45 + (simbriefShear - 5) / 5 * 30
             : Math.min(100, 75 + (simbriefShear - 10) * 5)
       : 0;
-    if (Number.isFinite(simbriefShear)) simbriefShearSamples += 1;
-    const riskScore = Math.round(Math.max(evidence.score, simbriefShearScore, inferredScore));
+    if (simbriefShearApplicable) simbriefShearSamples += 1;
+    const advisoryScore = evidence.bands.length
+      ? evidence.score
+      : Math.min(evidence.score, PERFORMANCE.turbulence.unboundedAdvisoryMaximumScore);
+    const segmentBlocking = (evidence.bands.length > 0 && evidence.score >= PERFORMANCE.turbulence.severeScore)
+      || simbriefShearScore >= PERFORMANCE.turbulence.severeScore;
+    blocking ||= segmentBlocking;
+    const riskScore = Math.round(Math.max(advisoryScore, simbriefShearScore, inferredScore));
     maximumScore = Math.max(maximumScore, riskScore);
     segments.push({
       from: from?.ident || from?.icao || "—",
@@ -408,7 +425,8 @@ export function calculateTurbulenceRisk({ plan, result }) {
       riskScore,
       verticalShear,
       horizontalShear,
-      simbriefShear: Number.isFinite(simbriefShear) ? simbriefShear : null,
+      simbriefShear: simbriefShearApplicable ? simbriefShear : null,
+      blocking: segmentBlocking,
     });
   }
   const status = maximumScore >= PERFORMANCE.turbulence.severeScore
@@ -425,6 +443,7 @@ export function calculateTurbulenceRisk({ plan, result }) {
     status,
     riskScore: maximumScore,
     penalty,
+    blocking,
     confidence: evidenceSamples ? "weather" : simbriefShearSamples ? "simbrief" : estimatedSamples ? "estimated" : "limited",
     maximumVerticalShear,
     maximumHorizontalShear,
@@ -901,7 +920,9 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
   });
 
   const available = results.filter((item) => item.feasibility.status !== "unavailable" && item.weightBalance?.status !== "unavailable");
-  const weatherAvailable = available.filter((item) => item.icing.status !== "avoid" && item.turbulence.status !== "severe" && item.oxygen.status !== "insufficient");
+  const icingAvailable = available.filter((item) => item.icing.status !== "avoid");
+  const turbulenceAvailable = available.filter((item) => !item.turbulence.blocking);
+  const weatherAvailable = available.filter((item) => item.icing.status !== "avoid" && !item.turbulence.blocking && item.oxygen.status !== "insufficient");
   const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
   const turbulenceRank = { smooth: 0, light: 1, moderate: 2, severe: 3 };
   const riskRank = (item) => Math.max(icingRank[item.icing.status], turbulenceRank[item.turbulence.status]);
@@ -929,8 +950,8 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
     results,
     winners,
     icing: {
-      acceptableCount: weatherAvailable.length,
-      hasAcceptableProfile: weatherAvailable.length > 0,
+      acceptableCount: icingAvailable.length,
+      hasAcceptableProfile: icingAvailable.length > 0,
       confidence: hasWeatherEvidence ? "weather" : "limited",
       cost: {
         changedAltitude: overallWinner.altitudeFt !== performanceWinner.altitudeFt,
@@ -941,7 +962,7 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
       },
     },
     turbulence: {
-      acceptableCount: results.filter((item) => item.turbulence.status !== "severe").length,
+      acceptableCount: turbulenceAvailable.length,
       confidence: results.some((item) => item.turbulence.confidence !== "limited") ? "weather" : "limited",
     },
     oxygen: {
@@ -1144,7 +1165,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
         && weightMarginLb >= PERFORMANCE.loadOptimizer.targetWeightMarginLb
         && result.feasibility.status === "viable"
         && result.icing.status !== "avoid"
-        && result.turbulence.status !== "severe"
+        && !result.turbulence.blocking
         && result.oxygen.status !== "insufficient"
         && (requireWeightBalanceViable ? result.weightBalance?.status === "viable" : result.weightBalance?.status !== "unavailable"),
       altitudeFt,
