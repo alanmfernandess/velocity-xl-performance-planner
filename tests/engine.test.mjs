@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, turbulenceWeatherEvidence, weatherAtAltitude, windComponentKt } from "../js/engine.js";
-import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE } from "../js/config.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionRisk, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
+const FIVE_SEAT_LOAD = { pilot: 190, copilot: 170, rearLeft: 55, rearCenter: 50, rearRight: 55, baggage: 0 };
 
 test("ISA temperature follows standard lapse rate", () => {
   assert.equal(isaTemperatureC(0), 15);
@@ -259,6 +260,60 @@ test("oxygen bottle weight is included in takeoff weight", () => {
   const result = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, oxygenWeightLb, reserveMinutes: 45 });
   assert.equal(oxygenWeightLb, 28);
   assert.equal(result.takeoffWeightLb, 1900 + 520 + 77 * 6 + 28);
+});
+
+test("weight and balance uses the five-seat Black Square layout", () => {
+  const result = calculateWeightBalance({ weightBalance: FIVE_SEAT_LOAD, fuelOnboardGal: 77, landingFuelGal: 40, oxygenWeightLb: 28 });
+  assert.equal(result.payloadLb, 520);
+  assert.equal(result.takeoff.weightLb, 1900 + 520 + 77 * 6 + 28);
+  assert.equal(result.status, "viable");
+  assert.ok(result.takeoff.cgIn >= 127 && result.takeoff.cgIn <= 134);
+  assert.ok(result.landing.cgIn >= 127 && result.landing.cgIn <= 134);
+});
+
+test("all three rear passengers share the manual rear bench arm", () => {
+  for (const key of ["rearLeft", "rearCenter", "rearRight"]) {
+    assert.equal(WEIGHT_BALANCE.armsIn[key], 124);
+  }
+  const left = calculateWeightBalance({ weightBalance: { rearLeft: 180 }, fuelOnboardGal: 40 });
+  const center = calculateWeightBalance({ weightBalance: { rearCenter: 180 }, fuelOnboardGal: 40 });
+  const right = calculateWeightBalance({ weightBalance: { rearRight: 180 }, fuelOnboardGal: 40 });
+  assert.equal(left.takeoff.cgIn, center.takeoff.cgIn);
+  assert.equal(center.takeoff.cgIn, right.takeoff.cgIn);
+});
+
+test("fuel burn trajectory preserves header fuel and updates CG", () => {
+  const result = calculateWeightBalance({ weightBalance: FIVE_SEAT_LOAD, fuelOnboardGal: 77, landingFuelGal: 18 });
+  assert.equal(result.trajectory.length, 13);
+  assert.equal(result.takeoff.stations.find((station) => station.key === "headerFuel").weightLb, 24);
+  assert.equal(result.takeoff.stations.find((station) => station.key === "mainFuel").weightLb, 73 * 6);
+  assert.notEqual(result.takeoff.cgIn, result.landing.cgIn);
+});
+
+test("forward CG and gross weight violations are explicit", () => {
+  const result = calculateWeightBalance({ weightBalance: { pilot: 1000 }, fuelOnboardGal: 77, landingFuelGal: 30, oxygenWeightLb: 28 });
+  assert.equal(result.status, "unavailable");
+  assert.ok(result.reasons.includes("WEIGHT"));
+  assert.ok(result.reasons.includes("CG_FORWARD"));
+});
+
+test("weight and balance violations disable every affected cruise option", () => {
+  const weightBalance = { pilot: 1000, copilot: 0, rearLeft: 0, rearCenter: 0, rearRight: 0, baggage: 0 };
+  const analysis = calculatePlan({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 1000, fuelOnboardGal: 77, reserveMinutes: 45, weightBalance });
+  assert.equal(analysis.weightBalance.acceptableCount, 0);
+  assert.ok(analysis.results.every((result) => result.weightBalance.status === "unavailable"));
+});
+
+test("payload optimization scales stations and returns a viable CG", () => {
+  const overloaded = { pilot: 190, copilot: 170, rearLeft: 250, rearCenter: 250, rearRight: 250, baggage: 190 };
+  const scaled = scaleWeightBalanceToPayload(overloaded, 780);
+  assert.ok(Math.abs(weightBalancePayloadLb(scaled) - 780) < 0.001);
+  assert.equal(scaled.pilot, overloaded.pilot);
+  assert.equal(scaled.baggage, 0);
+  const optimizer = calculateModeLoadOptimization({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: weightBalancePayloadLb(overloaded), fuelOnboardGal: 87, reserveMinutes: 45, weightBalance: overloaded });
+  assert.equal(optimizer.feasible, true);
+  assert.equal(optimizer.result.weightBalance.status, "viable");
+  assert.equal(weightBalancePayloadLb(optimizer.weightBalance), optimizer.recommendedPayloadLb);
 });
 
 test("turbulence optimizer combines explicit reports and wind shear", () => {

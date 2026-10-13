@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-12";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-13";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -389,6 +389,96 @@ export function oxygenSystemWeightLb(oxygen = {}) {
   return Math.max(0, Math.round(Number(oxygen.bottles) || 0)) * cylinder.fullWeightLb;
 }
 
+const WEIGHT_BALANCE_KEYS = ["pilot", "copilot", "rearLeft", "rearCenter", "rearRight", "baggage"];
+
+export function normalizeWeightBalance(weightBalance = {}) {
+  return Object.fromEntries(WEIGHT_BALANCE_KEYS.map((key) => [key, Math.max(0, Number(weightBalance[key]) || 0)]));
+}
+
+export function weightBalancePayloadLb(weightBalance = {}) {
+  return Object.values(normalizeWeightBalance(weightBalance)).reduce((sum, value) => sum + value, 0);
+}
+
+export function scaleWeightBalanceToPayload(weightBalance = {}, targetPayloadLb = 0) {
+  const normalized = normalizeWeightBalance(weightBalance);
+  const currentPayloadLb = weightBalancePayloadLb(normalized);
+  const target = Math.max(0, Number(targetPayloadLb) || 0);
+  if (currentPayloadLb <= 0) return { ...normalized, pilot: target };
+  if (target >= currentPayloadLb) return { ...normalized, baggage: normalized.baggage + target - currentPayloadLb };
+  const reduced = { ...normalized };
+  let remainingReductionLb = currentPayloadLb - target;
+  for (const key of ["baggage", "rearCenter", "rearRight", "rearLeft", "copilot", "pilot"]) {
+    const reductionLb = Math.min(reduced[key], remainingReductionLb);
+    reduced[key] -= reductionLb;
+    remainingReductionLb -= reductionLb;
+    if (remainingReductionLb <= 0) break;
+  }
+  return reduced;
+}
+
+export function calculateWeightBalance({ weightBalance = {}, fuelOnboardGal = 0, landingFuelGal = fuelOnboardGal, oxygenWeightLb = 0 }) {
+  const loads = normalizeWeightBalance(weightBalance);
+  const envelope = WEIGHT_BALANCE.envelope;
+  const buildPoint = (name, fuelGal) => {
+    const totalFuelGal = clamp(Number(fuelGal) || 0, 0, AIRCRAFT.usableFuelGal);
+    const headerFuelGal = Math.min(WEIGHT_BALANCE.headerFuelGal, totalFuelGal);
+    const mainFuelGal = Math.max(0, totalFuelGal - headerFuelGal);
+    const stations = [
+      { key: "empty", weightLb: AIRCRAFT.emptyWeightLb, armIn: WEIGHT_BALANCE.emptyArmIn },
+      ...WEIGHT_BALANCE_KEYS.map((key) => ({ key, weightLb: loads[key], armIn: WEIGHT_BALANCE.armsIn[key] })),
+      { key: "oxygen", weightLb: Math.max(0, Number(oxygenWeightLb) || 0), armIn: WEIGHT_BALANCE.armsIn.oxygen },
+      { key: "headerFuel", weightLb: headerFuelGal * AIRCRAFT.fuelDensityLbGal, armIn: WEIGHT_BALANCE.armsIn.headerFuel },
+      { key: "mainFuel", weightLb: mainFuelGal * AIRCRAFT.fuelDensityLbGal, armIn: WEIGHT_BALANCE.armsIn.mainFuel },
+    ].map((station) => ({ ...station, momentInLb: station.weightLb * station.armIn }));
+    const weightLb = stations.reduce((sum, station) => sum + station.weightLb, 0);
+    const momentInLb = stations.reduce((sum, station) => sum + station.momentInLb, 0);
+    const cgIn = momentInLb / Math.max(1, weightLb);
+    return {
+      name,
+      fuelGal: totalFuelGal,
+      stations,
+      weightLb,
+      momentInLb,
+      cgIn,
+      forwardMarginIn: cgIn - envelope.forwardCgIn,
+      aftMarginIn: envelope.aftCgIn - cgIn,
+      weightMarginLb: envelope.maximumWeightLb - weightLb,
+      withinCg: cgIn >= envelope.forwardCgIn && cgIn <= envelope.aftCgIn,
+      withinWeight: weightLb <= envelope.maximumWeightLb,
+    };
+  };
+  const zeroFuel = buildPoint("zeroFuel", 0);
+  const takeoff = buildPoint("takeoff", fuelOnboardGal);
+  const landing = buildPoint("landing", landingFuelGal);
+  const hardReasons = [];
+  if (!takeoff.withinWeight) hardReasons.push("WEIGHT");
+  for (const point of [takeoff, landing]) {
+    if (point.cgIn < envelope.forwardCgIn) hardReasons.push("CG_FORWARD");
+    if (point.cgIn > envelope.aftCgIn) hardReasons.push("CG_AFT");
+  }
+  const minimumCgMarginIn = Math.min(takeoff.forwardMarginIn, takeoff.aftMarginIn, landing.forwardMarginIn, landing.aftMarginIn);
+  const marginal = !hardReasons.length && (minimumCgMarginIn < envelope.marginalCgIn || takeoff.weightMarginLb < envelope.marginalWeightLb);
+  const trajectory = Array.from({ length: 13 }, (_, index) => {
+    const fraction = index / 12;
+    return buildPoint("trajectory", Number(fuelOnboardGal) + (Number(landingFuelGal) - Number(fuelOnboardGal)) * fraction);
+  });
+  return {
+    status: hardReasons.length ? "unavailable" : marginal ? "marginal" : "viable",
+    primaryReason: hardReasons[0] || (marginal ? "MARGIN" : "OK"),
+    reasons: [...new Set(hardReasons)],
+    payloadLb: weightBalancePayloadLb(loads),
+    oxygenWeightLb,
+    zeroFuel,
+    takeoff,
+    landing,
+    trajectory,
+    envelope,
+    minimumCgMarginIn,
+    cgTravelIn: landing.cgIn - takeoff.cgIn,
+    penalty: hardReasons.length ? 100 : marginal ? 12 : 0,
+  };
+}
+
 export function calculateOxygenPlan({ result, oxygen = {} }) {
   const cylinder = OXYGEN_CYLINDERS[oxygen.bottleModel] || OXYGEN_CYLINDERS["SK-12-24"];
   const bottles = clamp(Math.round(Number(oxygen.bottles) || 0), 0, 6);
@@ -507,6 +597,9 @@ export function calculateMissionRisk({ result, confidence, alternateAdvice = nul
   score += result.oxygen.status === "insufficient"
     ? PERFORMANCE.missionRisk.oxygenInsufficient
     : result.oxygen.status === "marginal" ? PERFORMANCE.missionRisk.oxygenMarginal : 0;
+  score += result.weightBalance?.status === "unavailable"
+    ? PERFORMANCE.missionRisk.weightBalanceUnavailable
+    : result.weightBalance?.status === "marginal" ? PERFORMANCE.missionRisk.weightBalanceMarginal : 0;
   score += (100 - confidence.score) * PERFORMANCE.missionRisk.confidenceWeight;
   const alternateStatus = alternateAdvice?.destination?.status;
   if (alternateStatus === "unavailable" || alternateStatus === "unknown") score += PERFORMANCE.missionRisk.alternateUnavailable;
@@ -716,7 +809,7 @@ export function assessFeasibility(result, { plan, fuelOnboardGal }) {
   };
 }
 
-export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {}, oxygen = {}, debriefs = [] }) {
+export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {}, oxygen = {}, debriefs = [], weightBalance = null }) {
   const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
   const results = ALTITUDES_FT.map((altitudeFt) => calculateAtAltitude({
     plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting,
@@ -726,6 +819,12 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
     item.icing = calculateIcingRisk({ plan, result: item });
     item.turbulence = calculateTurbulenceRisk({ plan, result: item });
     item.oxygen = calculateOxygenPlan({ result: item, oxygen });
+    item.weightBalance = weightBalance ? calculateWeightBalance({
+      weightBalance,
+      fuelOnboardGal,
+      landingFuelGal: Math.max(0, fuelOnboardGal - PERFORMANCE.taxiFuelGal - item.tripFuelGal),
+      oxygenWeightLb,
+    }) : null;
     item.confidence = calculatePerformanceConfidence({ plan, result: item, calibration, debriefs, mode });
     item.missionRisk = calculateMissionRisk({ result: item, confidence: item.confidence });
   });
@@ -740,10 +839,10 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
     );
     const feasibilityPenalty = item.feasibility.status === "unavailable" ? 50 : item.feasibility.status === "marginal" ? 8 : 0;
     item.performanceScore = Math.max(0, Math.round(baseScore - feasibilityPenalty));
-    item.score = Math.max(0, Math.round(item.performanceScore - item.icing.penalty - item.turbulence.penalty - item.oxygen.penalty));
+    item.score = Math.max(0, Math.round(item.performanceScore - item.icing.penalty - item.turbulence.penalty - item.oxygen.penalty - (item.weightBalance?.penalty || 0)));
   });
 
-  const available = results.filter((item) => item.feasibility.status !== "unavailable");
+  const available = results.filter((item) => item.feasibility.status !== "unavailable" && item.weightBalance?.status !== "unavailable");
   const weatherAvailable = available.filter((item) => item.icing.status !== "avoid" && item.turbulence.status !== "severe" && item.oxygen.status !== "insufficient");
   const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
   const turbulenceRank = { smooth: 0, light: 1, moderate: 2, severe: 3 };
@@ -786,6 +885,10 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
     oxygen: {
       installedWeightLb: oxygenWeightLb,
       acceptableCount: results.filter((item) => item.oxygen.status !== "insufficient").length,
+    },
+    weightBalance: {
+      acceptableCount: results.filter((item) => item.weightBalance?.status !== "unavailable").length,
+      status: overallWinner.weightBalance?.status || "unknown",
     },
     feasibility: {
       availableCount: available.length,
@@ -905,14 +1008,15 @@ export function compareScenarios({ plan, scenarioA, scenarioB, calibration = {} 
   };
 }
 
-export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {} }) {
+export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
   const requestedPayloadLb = Math.max(0, payloadLb);
+  const minimumPayloadLb = weightBalance ? Math.ceil(normalizeWeightBalance(weightBalance).pilot / 10) * 10 : 0;
   const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
   const currentWeightLb = AIRCRAFT.emptyWeightLb + requestedPayloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const payloadStepLb = 10;
   let bestAttempt = null;
 
-  for (let candidatePayloadLb = Math.floor(requestedPayloadLb / payloadStepLb) * payloadStepLb; candidatePayloadLb >= 0; candidatePayloadLb -= payloadStepLb) {
+  for (let candidatePayloadLb = Math.floor(requestedPayloadLb / payloadStepLb) * payloadStepLb; candidatePayloadLb >= minimumPayloadLb; candidatePayloadLb -= payloadStepLb) {
     let candidateFuelGal = clamp(fuelOnboardGal, 0, AIRCRAFT.usableFuelGal);
     let rawRecommendedFuelGal = candidateFuelGal;
 
@@ -952,6 +1056,13 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
     result.icing = calculateIcingRisk({ plan, result });
     result.turbulence = calculateTurbulenceRisk({ plan, result });
     result.oxygen = calculateOxygenPlan({ result, oxygen });
+    const candidateWeightBalance = weightBalance ? scaleWeightBalanceToPayload(weightBalance, candidatePayloadLb) : null;
+    result.weightBalance = candidateWeightBalance ? calculateWeightBalance({
+      weightBalance: candidateWeightBalance,
+      fuelOnboardGal: recommendedFuelGal,
+      landingFuelGal: Math.max(0, recommendedFuelGal - PERFORMANCE.taxiFuelGal - result.tripFuelGal),
+      oxygenWeightLb,
+    }) : null;
     const optimizedWeightLb = AIRCRAFT.emptyWeightLb + candidatePayloadLb + recommendedFuelGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
     const weightMarginLb = AIRCRAFT.maxGrossWeightLb - optimizedWeightLb;
     const maxFuelByWeightGal = clamp(
@@ -965,7 +1076,8 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
         && result.feasibility.status === "viable"
         && result.icing.status !== "avoid"
         && result.turbulence.status !== "severe"
-        && result.oxygen.status !== "insufficient",
+        && result.oxygen.status !== "insufficient"
+        && result.weightBalance?.status !== "unavailable",
       altitudeFt,
       mode,
       result,
@@ -978,6 +1090,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
       currentWeightLb,
       optimizedWeightLb,
       weightMarginLb,
+      weightBalance: candidateWeightBalance,
     };
     bestAttempt = candidate;
     if (candidate.feasible) return candidate;
@@ -986,7 +1099,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
   return bestAttempt;
 }
 
-export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {} }) {
+export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
   const candidates = ALTITUDES_FT.map((altitudeFt) => calculateLoadOptimization({
     plan,
     altitudeFt,
@@ -996,6 +1109,7 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
     reserveMinutes,
     calibration,
     oxygen,
+    weightBalance,
   }));
   const viable = candidates.filter((candidate) => candidate?.feasible);
   if (!viable.length) {

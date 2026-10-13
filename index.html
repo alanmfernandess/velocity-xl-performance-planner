@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-12" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-13" />
   </head>
   <body>
     <header class="topbar">
@@ -129,6 +129,7 @@
           <button data-tool-view="alternate" type="button">ALT / DIV</button>
           <button data-tool-view="compare" type="button">A / B</button>
           <button data-tool-view="load" type="button">LOAD</button>
+          <button data-tool-view="wb" type="button">W&amp;B</button>
           <button data-tool-view="glide" type="button">GLIDE</button>
           <button data-tool-view="oxygen" type="button">O₂</button>
           <button data-tool-view="confidence" type="button">CONF</button>
@@ -203,6 +204,34 @@
             <article><span data-i18n="optimizedWeight">Peso otimizado</span><strong id="loadOptimizedWeight">—</strong></article>
             <div class="load-status"><b class="status-pill" id="loadStatus">—</b><span id="loadAdjustment">—</span></div>
             <button class="text-button compact-action" id="applyLoadOptimization" type="button" data-i18n="applyOptimization">Aplicar otimização</button>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="wb">
+          <div class="wb-layout">
+            <div class="wb-inputs">
+              <label><span data-i18n="pilot">Piloto</span><span class="input-with-unit"><input data-wb-key="pilot" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label><span data-i18n="copilot">Copiloto</span><span class="input-with-unit"><input data-wb-key="copilot" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label><span data-i18n="rearLeft">Traseiro E</span><span class="input-with-unit"><input data-wb-key="rearLeft" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label><span data-i18n="rearCenter">Traseiro C</span><span class="input-with-unit"><input data-wb-key="rearCenter" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label><span data-i18n="rearRight">Traseiro D</span><span class="input-with-unit"><input data-wb-key="rearRight" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label><span data-i18n="baggage">Bagagem</span><span class="input-with-unit"><input data-wb-key="baggage" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+            </div>
+            <div class="wb-chart-card">
+              <div class="wb-chart-head"><div><strong data-i18n="cgEnvelope">Envelope de CG</strong><small id="wbMargins">—</small></div><b class="status-pill" id="wbStatus">—</b></div>
+              <div class="cg-chart" id="cgChart"></div>
+              <div class="cg-legend"><span><i class="to"></i>TO</span><span><i class="landing"></i>LDG</span><span><i class="zfw"></i>ZFW</span><small id="wbEnvelopeLegend">127–134 in · 3,000 lb</small></div>
+            </div>
+            <div class="wb-kpis">
+              <span><b data-i18n="takeoff">Decolagem</b><strong id="wbTakeoffCg">—</strong></span>
+              <span><b data-i18n="landing">Pouso</b><strong id="wbLandingCg">—</strong></span>
+              <span><b data-i18n="grossWeight">Peso total</b><strong id="wbGrossWeight">—</strong></span>
+              <span><b data-i18n="cgTravel">Variação do CG</b><strong id="wbCgTravel">—</strong></span>
+            </div>
+            <div class="wb-stations">
+              <div class="wb-table-head"><span data-i18n="station">Estação</span><span data-i18n="weight">Peso</span><span data-i18n="arm">Braço</span><span data-i18n="moment">Momento</span></div>
+              <div id="wbStationRows"></div>
+              <small>N97XL ARMS · REAR ×3 · BLACK SQUARE 3,000 LB</small>
+            </div>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="glide">
@@ -295,6 +324,6 @@
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Simulação somente · Modelo não certificado · Sem telemetria</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./js/app.js?v=20261013-12"></script>
+    <script type="module" src="./js/app.js?v=20261013-13"></script>
   </body>
 </html>

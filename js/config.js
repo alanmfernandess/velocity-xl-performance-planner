@@ -27,6 +27,35 @@ export const OXYGEN_CYLINDERS = {
   "SK-11-40": { label: "SK-11-40", capacityLiters: 1132, fullWeightLb: 28, outlets: 4 },
 };
 
+// Longitudinal arms use the Velocity XL owner's manual N97XL sample.
+// The simulator's third rear passenger shares the rear bench arm.
+// The 3,000 lb upper weight is the Black Square configuration; this remains
+// an estimated simulator adaptation because each real experimental airframe
+// requires its own measured empty CG and approved envelope.
+export const WEIGHT_BALANCE = {
+  emptyArmIn: 141.63,
+  headerFuelGal: 4,
+  armsIn: {
+    pilot: 80,
+    copilot: 80,
+    rearLeft: 124,
+    rearCenter: 124,
+    rearRight: 124,
+    baggage: 115,
+    oxygen: 115,
+    headerFuel: 145,
+    mainFuel: 132,
+  },
+  envelope: {
+    forwardCgIn: 127,
+    aftCgIn: 134,
+    minimumChartWeightLb: 1400,
+    maximumWeightLb: 3000,
+    marginalCgIn: 0.5,
+    marginalWeightLb: 75,
+  },
+};
+
 // Estimated coefficients are intentionally centralized for future manual calibration.
 // They model the simulator aircraft—not a certified real-world POH.
 export const PERFORMANCE = {
@@ -135,6 +164,8 @@ export const PERFORMANCE = {
     confidenceWeight: 0.12,
     alternateMarginal: 6,
     alternateUnavailable: 14,
+    weightBalanceMarginal: 10,
+    weightBalanceUnavailable: 35,
   },
   debrief: {
     learningRate: 0.2,
