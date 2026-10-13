@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-14";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-15";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -1150,37 +1150,42 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
 
 export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
   const loads = normalizeWeightBalance(weightBalance || {});
-  const occupiedPayloadLb = loads.pilot + loads.copilot + loads.rearLeft + loads.rearCenter + loads.rearRight;
-  const currentBottles = clamp(Math.round(Number(oxygen.bottles) || 0), 0, 4);
+  const minimumPayloadLb = loads.pilot;
   const variants = [];
-  for (let bottles = currentBottles; bottles <= 4; bottles += 1) {
-    const oxygenVariant = { ...oxygen, bottles };
-    const candidate = calculateModeLoadOptimization({
-      plan,
-      mode,
-      payloadLb,
-      fuelOnboardGal,
-      reserveMinutes,
-      calibration,
-      oxygen: oxygenVariant,
-      weightBalance,
-      minimumPayloadLb: occupiedPayloadLb,
-      requireWeightBalanceViable: true,
-    });
-    if (candidate) variants.push({ ...candidate, oxygen: oxygenVariant, bottles });
+  for (const candidateMode of Object.keys(PERFORMANCE.modes)) {
+    for (let bottles = 0; bottles <= 4; bottles += 1) {
+      const oxygenVariant = { ...oxygen, bottles };
+      const candidate = calculateModeLoadOptimization({
+        plan,
+        mode: candidateMode,
+        payloadLb,
+        fuelOnboardGal,
+        reserveMinutes,
+        calibration,
+        oxygen: oxygenVariant,
+        weightBalance,
+        minimumPayloadLb,
+        requireWeightBalanceViable: true,
+      });
+      if (candidate) variants.push({ ...candidate, oxygen: oxygenVariant, bottles, requestedMode: mode });
+    }
   }
   const viable = variants.filter((candidate) => candidate.feasible);
   const operationalPenalty = (candidate) => {
     const result = candidate.result;
-    return (result.icing.status === "low" ? 0 : result.icing.status === "watch" ? 1 : result.icing.status === "caution" ? 3 : 20)
+    return (result.icing.status === "low" || (result.icing.status === "watch" && result.icing.confidence !== "weather") ? 0 : result.icing.status === "watch" ? 1 : result.icing.status === "caution" ? 3 : 20)
       + (result.turbulence.status === "smooth" || result.turbulence.status === "light" ? 0 : result.turbulence.status === "moderate" ? 3 : 20)
       + (result.oxygen.status === "not-required" || result.oxygen.status === "compliant" ? 0 : result.oxygen.status === "marginal" ? 3 : 20)
       + (result.weightBalance?.status === "viable" ? 0 : 20);
   };
+  const achievedStatus = (candidate) => operationalPenalty(candidate) === 0 ? "viable" : "marginal";
   const ranked = [...viable].sort((a, b) =>
-    b.recommendedPayloadLb - a.recommendedPayloadLb
+    (achievedStatus(a) === "viable" ? 0 : 1) - (achievedStatus(b) === "viable" ? 0 : 1)
+    || b.recommendedPayloadLb - a.recommendedPayloadLb
     || operationalPenalty(a) - operationalPenalty(b)
+    || (a.mode === mode ? 0 : 1) - (b.mode === mode ? 0 : 1)
     || (b.optimizationScore || 0) - (a.optimizationScore || 0)
+    || a.recommendedFuelGal - b.recommendedFuelGal
     || a.bottles - b.bottles);
   const winner = ranked[0];
   if (!winner) {
@@ -1191,22 +1196,15 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
       ...(bestAttempt || {}),
       feasible: false,
       achievedStatus: "unavailable",
-      occupiedPayloadLb,
+      minimumPayloadLb,
       variants,
     };
   }
-  const result = winner.result;
-  const marginal = result.feasibility.status === "marginal"
-    || result.icing.status === "watch"
-    || result.icing.status === "caution"
-    || result.turbulence.status === "moderate"
-    || result.oxygen.status === "marginal"
-    || result.weightBalance?.status === "marginal";
   return {
     ...winner,
     feasible: true,
-    achievedStatus: marginal ? "marginal" : "viable",
-    occupiedPayloadLb,
+    achievedStatus: achievedStatus(winner),
+    minimumPayloadLb,
     recommendedBottleCount: winner.bottles,
     variants,
   };

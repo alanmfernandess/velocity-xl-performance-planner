@@ -235,7 +235,7 @@ test("mode load optimizer disables apply only when every level is impossible", (
   assert.equal(optimizer.recommendedPayloadLb, 0);
 });
 
-test("mission optimizer preserves every occupant and removes baggage first", () => {
+test("mission optimizer removes baggage before changing occupants", () => {
   const loaded = { ...FIVE_SEAT_LOAD, baggage: 580 };
   const optimizer = calculateMissionOptimization({
     plan: DEMO_PLAN,
@@ -252,7 +252,28 @@ test("mission optimizer preserves every occupant and removes baggage first", () 
   assert.equal(optimizer.result.feasibility.status, "viable");
   assert.equal(optimizer.result.weightBalance.status, "viable");
   assert.equal(optimizer.result.power.source, "AUTO");
-  assert.equal(optimizer.result.power.rpm, PERFORMANCE.modes.NORMAL.rpm);
+  assert.equal(optimizer.result.power.rpm, PERFORMANCE.modes[optimizer.mode].rpm);
+  assert.equal(optimizer.achievedStatus, "viable");
+});
+
+test("mission optimizer can reduce payload and select a compatible preset", () => {
+  const overweight = { pilot: 190, copilot: 170, rearLeft: 170, rearCenter: 170, rearRight: 162, baggage: 0 };
+  const optimizer = calculateMissionOptimization({
+    plan: DEMO_PLAN,
+    mode: "FAST",
+    payloadLb: weightBalancePayloadLb(overweight),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance: overweight,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimizer.feasible, true);
+  assert.equal(optimizer.achievedStatus, "viable");
+  assert.equal(optimizer.mode, "ECON");
+  assert.ok(optimizer.recommendedPayloadLb < weightBalancePayloadLb(overweight));
+  assert.equal(optimizer.weightBalance.pilot, overweight.pilot);
+  assert.equal(optimizer.result.feasibility.status, "viable");
+  assert.equal(optimizer.result.weightBalance.status, "viable");
 });
 
 test("mission optimizer installs oxygen when the safe profile requires it", () => {
@@ -272,7 +293,7 @@ test("mission optimizer installs oxygen when the safe profile requires it", () =
   assert.equal(optimizer.result.oxygen.status, "compliant");
 });
 
-test("mission optimizer reports no solution instead of changing occupants", () => {
+test("mission optimizer reports no solution only after testing every preset down to pilot-only load", () => {
   const optimizer = calculateMissionOptimization({
     plan: { ...DEMO_PLAN, distanceNm: 3000 },
     mode: "FAST",
@@ -284,7 +305,8 @@ test("mission optimizer reports no solution instead of changing occupants", () =
   });
   assert.equal(optimizer.feasible, false);
   assert.equal(optimizer.achievedStatus, "unavailable");
-  assert.equal(optimizer.recommendedPayloadLb, weightBalancePayloadLb(FIVE_SEAT_LOAD));
+  assert.equal(optimizer.recommendedPayloadLb, FIVE_SEAT_LOAD.pilot);
+  assert.equal(optimizer.weightBalance.pilot, FIVE_SEAT_LOAD.pilot);
 });
 
 test("engine-out glide corridor uses 12.15 to 1 at 90 KIAS", () => {
