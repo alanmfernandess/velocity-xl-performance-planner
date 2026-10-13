@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Planejador visual de performance para o Black Square Velocity XL." />
     <meta name="theme-color" content="#f5f7fa" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Velocity XL" />
     <title>Velocity XL Performance Planner</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -17,9 +22,24 @@
         <span class="brand-mark" aria-hidden="true"><span></span></span>
         <span><strong>VELOCITY XL</strong><small>PERFORMANCE PLANNER</small></span>
       </a>
-      <div class="language-switch" aria-label="Language">
-        <button class="active" data-language="pt-BR" type="button">PT</button>
-        <button data-language="en-US" type="button">EN</button>
+      <div class="app-toolbar">
+        <div class="toolbar-group font-switch" aria-label="Tamanho da fonte">
+          <button data-font-size="small" type="button" aria-label="Fonte menor">A−</button>
+          <button class="active" data-font-size="medium" type="button" aria-label="Fonte média">A</button>
+          <button data-font-size="large" type="button" aria-label="Fonte maior">A+</button>
+        </div>
+        <div class="toolbar-group" aria-label="Weight unit">
+          <button class="active" data-weight-unit="lb" type="button">LB</button>
+          <button data-weight-unit="kg" type="button">KG</button>
+        </div>
+        <div class="toolbar-group" aria-label="Fuel unit">
+          <button class="active" data-fuel-unit="gal" type="button">GAL</button>
+          <button data-fuel-unit="l" type="button">L</button>
+        </div>
+        <div class="toolbar-group language-switch" aria-label="Language">
+          <button class="active" data-language="pt-BR" type="button">PT</button>
+          <button data-language="en-US" type="button">EN</button>
+        </div>
       </div>
     </header>
 
@@ -37,13 +57,14 @@
           <label class="field"><span data-i18n="destination">Destino</span><input id="manualDestination" maxlength="4" autocomplete="off" value="SBGL" /></label>
           <label class="field compact-field"><span data-i18n="distance">Distância</span><div><input id="manualDistance" type="number" min="30" max="5000" value="246" /><small>NM</small></div></label>
           <label class="field compact-field"><span data-i18n="plannedFl">FL planejado</span><div><input id="manualFl" type="number" min="100" max="250" step="10" value="180" /><small>FL</small></div></label>
-          <button class="icon-button" id="importLatest" type="button" data-i18n-title="importLatest" title="Importar último OFP" aria-label="Importar último OFP">↻</button>
-          <button class="primary-button" type="submit" data-i18n="apply">Aplicar</button>
+          <button class="icon-button" id="importLatest" type="button" data-i18n-title="importLatest" title="Importar último OFP" aria-label="Importar último OFP">↓</button>
+          <button class="primary-button" type="submit" data-i18n="createFlight">Criar voo</button>
           <details class="weather-fields">
-            <summary data-i18n="weather">Atmosfera</summary>
+            <summary data-i18n="options">Opções</summary>
             <label class="field"><span data-i18n="windDirection">Direção</span><div><input id="manualWindDir" type="number" min="0" max="360" value="260" /><small>°</small></div></label>
             <label class="field"><span data-i18n="windSpeed">Vento</span><div><input id="manualWindSpd" type="number" min="0" max="150" value="25" /><small>KT</small></div></label>
             <label class="field"><span>OAT</span><div><input id="manualOat" type="number" min="-80" max="50" value="-20" /><small>°C</small></div></label>
+            <label class="field simbrief-aircraft"><span data-i18n="aircraftProfile">Perfil SimBrief</span><input id="simbriefAircraft" autocomplete="off" value="SR22" /></label>
           </details>
         </form>
       </section>
