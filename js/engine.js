@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-15";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261013-17";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -1179,14 +1179,36 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
       + (result.weightBalance?.status === "viable" ? 0 : 20);
   };
   const achievedStatus = (candidate) => operationalPenalty(candidate) === 0 ? "viable" : "marginal";
-  const ranked = [...viable].sort((a, b) =>
-    (achievedStatus(a) === "viable" ? 0 : 1) - (achievedStatus(b) === "viable" ? 0 : 1)
-    || b.recommendedPayloadLb - a.recommendedPayloadLb
+  const strictPool = viable.some((candidate) => achievedStatus(candidate) === "viable")
+    ? viable.filter((candidate) => achievedStatus(candidate) === "viable")
+    : viable;
+  const maximumRetainedPayloadLb = strictPool.length
+    ? Math.max(...strictPool.map((candidate) => candidate.recommendedPayloadLb))
+    : 0;
+  const payloadPool = strictPool.filter((candidate) => candidate.recommendedPayloadLb === maximumRetainedPayloadLb);
+  const preferenceWeights = {
+    ECON: { fuel: 0.4, time: 0.1, efficiency: 0.3, range: 0.2 },
+    NORMAL: { fuel: 0.25, time: 0.35, efficiency: 0.2, range: 0.2 },
+    FAST: { fuel: 0.1, time: 0.65, efficiency: 0.1, range: 0.15 },
+  }[mode] || { fuel: 0.25, time: 0.35, efficiency: 0.2, range: 0.2 };
+  const fuels = payloadPool.map((candidate) => candidate.result.fuelRequiredGal);
+  const times = payloadPool.map((candidate) => candidate.result.tripTimeHr);
+  const efficiencies = payloadPool.map((candidate) => candidate.result.specificRangeNmGal);
+  const ranges = payloadPool.map((candidate) => candidate.result.maxRangeNm);
+  payloadPool.forEach((candidate) => {
+    const profileAffinity = candidate.mode === mode ? 10 : 0;
+    candidate.missionOptimizationScore = 100 * (
+      normalize(fuels, candidate.result.fuelRequiredGal, true) * preferenceWeights.fuel
+      + normalize(times, candidate.result.tripTimeHr, true) * preferenceWeights.time
+      + normalize(efficiencies, candidate.result.specificRangeNmGal) * preferenceWeights.efficiency
+      + normalize(ranges, candidate.result.maxRangeNm) * preferenceWeights.range
+    ) + profileAffinity - operationalPenalty(candidate) * 5;
+  });
+  const ranked = [...payloadPool].sort((a, b) =>
+    (b.missionOptimizationScore || 0) - (a.missionOptimizationScore || 0)
     || operationalPenalty(a) - operationalPenalty(b)
-    || (a.mode === mode ? 0 : 1) - (b.mode === mode ? 0 : 1)
-    || (b.optimizationScore || 0) - (a.optimizationScore || 0)
-    || a.recommendedFuelGal - b.recommendedFuelGal
-    || a.bottles - b.bottles);
+    || a.bottles - b.bottles
+    || a.recommendedFuelGal - b.recommendedFuelGal);
   const winner = ranked[0];
   if (!winner) {
     const bestAttempt = [...variants].filter((candidate) => candidate.result).sort((a, b) =>
@@ -1206,6 +1228,12 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
     achievedStatus: achievedStatus(winner),
     minimumPayloadLb,
     recommendedBottleCount: winner.bottles,
+    changes: {
+      modeChanged: winner.mode !== mode,
+      fuelDeltaGal: winner.recommendedFuelGal - fuelOnboardGal,
+      payloadDeltaLb: winner.recommendedPayloadLb - payloadLb,
+      bottleDelta: winner.bottles - (Number(oxygen?.bottles) || 0),
+    },
     variants,
   };
 }

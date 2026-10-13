@@ -276,6 +276,42 @@ test("mission optimizer can reduce payload and select a compatible preset", () =
   assert.equal(optimizer.result.weightBalance.status, "viable");
 });
 
+test("mission optimizer proactively improves an already viable manual setup", () => {
+  const optimizer = calculateMissionOptimization({
+    plan: DEMO_PLAN,
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(FIVE_SEAT_LOAD),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance: FIVE_SEAT_LOAD,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimizer.feasible, true);
+  assert.equal(optimizer.achievedStatus, "viable");
+  assert.equal(optimizer.mode, "NORMAL");
+  assert.equal(optimizer.recommendedPayloadLb, weightBalancePayloadLb(FIVE_SEAT_LOAD));
+  assert.ok(optimizer.recommendedFuelGal < 77);
+  assert.ok(Number.isFinite(optimizer.missionOptimizationScore));
+  assert.ok(optimizer.changes.fuelDeltaGal < 0);
+  assert.equal(optimizer.changes.payloadDeltaLb, 0);
+});
+
+test("mission optimizer can raise fuel when the pilot manual value is too low", () => {
+  const optimizer = calculateMissionOptimization({
+    plan: DEMO_PLAN,
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(FIVE_SEAT_LOAD),
+    fuelOnboardGal: 20,
+    reserveMinutes: 45,
+    weightBalance: FIVE_SEAT_LOAD,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimizer.feasible, true);
+  assert.equal(optimizer.achievedStatus, "viable");
+  assert.ok(optimizer.recommendedFuelGal > 20);
+  assert.ok(optimizer.changes.fuelDeltaGal > 0);
+});
+
 test("mission optimizer installs oxygen when the safe profile requires it", () => {
   const plan = { ...DEMO_PLAN, meteorology: { ...DEMO_PLAN.meteorology, enrouteText: "SEV TURB FL100/140" } };
   const optimizer = calculateMissionOptimization({
