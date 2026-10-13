@@ -25,7 +25,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
 - Calibração local por modo usando somente TAS e fuel flow observados no Xbox; os fatores ficam salvos no dispositivo.
 - Gráficos de performance, perfil vertical, representação de rota e perfil de combustível organizados em abas.
-- Dados demonstrativos e armazenamento local do identificador SimBrief.
+- Tela inicial vazia até a importação de um OFP real e armazenamento local somente do identificador SimBrief.
 - Coeficientes centralizados em `js/config.js` para calibração manual futura.
 
 ## Executar localmente
@@ -55,6 +55,8 @@ Os presets estimados são ECON 20 inHg/2.300 RPM, NORMAL 24 inHg/2.450 RPM e FAS
 O Alternate & Diversion Advisor usa as coordenadas do alternado quando fornecidas pelo OFP; sem coordenadas, o cálculo fica indisponível. O combustível até o alternado inclui estimativas centralizadas de arremetida e aproximação. O Glide Corridor assume altitude sobre o nível do mar, não considera relevo, obstáculos, razão de planeio degradada, configuração, falhas adicionais ou locais de pouso; serve exclusivamente como referência visual para o simulador.
 
 A viabilidade considera o combustível requerido completo, peso máximo, teto de serviço e a distância necessária para subida e descida. Um nível marginal continua selecionável; um nível inviável é desabilitado e não participa da recomendação. Os limites de margem permanecem centralizados em `js/config.js`.
+
+O Load Optimizer aplica uma configuração com margem-alvo de 6 gal sobre o combustível requerido e 80 lb abaixo do peso máximo. Payload e combustível são ajustados nos controles; quando nem mesmo a capacidade útil permite uma configuração viável, a aplicação da sugestão é desabilitada.
 
 A calibração é separada por ECON, NORMAL e FAST. O usuário seleciona posição, FL e combustível restante, informa TAS e fuel flow estabilizados vistos no Xbox e aplica dois fatores limitados de correção. Nenhum dado é transmitido; a calibração usa `localStorage` no navegador.
 

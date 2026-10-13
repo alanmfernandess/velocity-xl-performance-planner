@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateAlternateDiversion, calculateAtAltitude, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculatePlan, calculateStepClimbs, compareScenarios, densityAltitudeFt, deriveCalibration, isaTemperatureC, powerAtAltitude, weatherAtAltitude, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculatePlan, calculateStepClimbs, compareScenarios, densityAltitudeFt, deriveCalibration, isaTemperatureC, powerAtAltitude, weatherAtAltitude, windComponentKt } from "../js/engine.js";
 import { DEMO_PLAN } from "../js/config.js";
 
 test("ISA temperature follows standard lapse rate", () => {
@@ -145,16 +145,27 @@ test("load optimizer respects useful load, fuel capacity, and required fuel", ()
   const optimizer = calculateLoadOptimization({ plan: DEMO_PLAN, altitudeFt: 14000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
   assert.ok(optimizer.recommendedFuelGal > 0 && optimizer.recommendedFuelGal <= 87);
   assert.ok(optimizer.maxFuelByWeightGal <= 87);
-  assert.ok(optimizer.optimizedWeightLb <= 3000.01);
+  assert.ok(optimizer.optimizedWeightLb <= 2920.01);
   assert.equal(optimizer.feasible, true);
+  const applied = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 14000, mode: "NORMAL", payloadLb: optimizer.recommendedPayloadLb, fuelOnboardGal: optimizer.recommendedFuelGal, reserveMinutes: 45 });
+  assert.equal(assessFeasibility(applied, { plan: DEMO_PLAN, fuelOnboardGal: optimizer.recommendedFuelGal }).status, "viable");
 });
 
 test("load optimizer computes payload reduction when fuel and load cannot coexist", () => {
   const optimizer = calculateLoadOptimization({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "FAST", payloadLb: 1100, fuelOnboardGal: 87, reserveMinutes: 60 });
-  assert.equal(optimizer.feasible, false);
+  assert.equal(optimizer.feasible, true);
   assert.ok(optimizer.payloadReductionLb > 0);
-  assert.ok(optimizer.maxPayloadLb < 1100);
-  assert.ok(optimizer.optimizedWeightLb <= 3000.01);
+  assert.ok(optimizer.recommendedPayloadLb < 1100);
+  assert.ok(optimizer.optimizedWeightLb <= 2920.01);
+  const applied = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "FAST", payloadLb: optimizer.recommendedPayloadLb, fuelOnboardGal: optimizer.recommendedFuelGal, reserveMinutes: 60 });
+  assert.equal(assessFeasibility(applied, { plan: DEMO_PLAN, fuelOnboardGal: optimizer.recommendedFuelGal }).status, "viable");
+});
+
+test("load optimizer rejects a route that exceeds usable fuel", () => {
+  const plan = { ...DEMO_PLAN, distanceNm: 3000 };
+  const optimizer = calculateLoadOptimization({ plan, altitudeFt: 18000, mode: "FAST", payloadLb: 200, fuelOnboardGal: 87, reserveMinutes: 60 });
+  assert.equal(optimizer.feasible, false);
+  assert.ok(optimizer.rawRecommendedFuelGal > 87);
 });
 
 test("engine-out glide corridor uses 12.15 to 1 at 90 KIAS", () => {

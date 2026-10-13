@@ -1,6 +1,6 @@
-import { AIRCRAFT, PERFORMANCE, DEMO_PLAN, ALTITUDES_FT } from "./config.js?v=20261013-7";
-import { calculateAlternateDiversion, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration } from "./engine.js?v=20261013-7";
-import { fetchLatestOFP } from "./simbrief.js?v=20261013-7";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-8";
+import { calculateAlternateDiversion, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration } from "./engine.js?v=20261013-8";
+import { fetchLatestOFP } from "./simbrief.js?v=20261013-8";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -14,7 +14,7 @@ const COPY = {
     demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Menor valor", timeHint:"Menor valor", efficiencyHint:"Maior valor", margin:"de margem", belowMax:"abaixo do máximo", aboveMax:"acima do máximo", missingId:"Informe o Pilot ID ou Alias.", importError:"Não foi possível importar o OFP.",
     fuelRank:(rank)=>`${rank}º em consumo`, timeRank:(rank,gs)=>`${rank}º em tempo · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingência", taxi:"Taxi",
     manualUpdate:"Atualização manual", continueLabel:"Continuar", returnLabel:"Retornar", position:"Posição", fuelRemaining:"Combustível restante", update:"Atualizar", calibration:"Calibração", observedTas:"TAS observada", observedFuelFlow:"Fuel flow observado", calibrate:"Calibrar", reset:"Redefinir", beyondDestination:"Além do destino", noStep:"Sem step climb", nextStep:"Próximo", updated:"MANUAL", preflight:"PRÉ-VOO",
-    destinationAlternate:"Destino → alternado", diversionFrom:"Desvio a partir de", fuelAtDestination:"Combustível no destino", alternateFuel:"Combustível até alternado", alternateLanding:"Pouso no alternado", currentScenario:"ATUAL", comparisonScenario:"COMPARAÇÃO", applyScenario:"Aplicar B", recommendedFuel:"Combustível recomendado", maximumFuelByWeight:"Máximo pelo peso", maximumPayload:"Payload máximo", optimizedWeight:"Peso otimizado", applyOptimization:"Aplicar otimização", glideRatio:"Razão de planeio", bestGlide:"Melhor planeio", glideRange:"Alcance sem vento", glideTime:"Tempo estimado", reducePayload:"reduzir payload", noAdjustment:"sem ajuste", noAlternateData:"SEM COORDENADAS",
+    destinationAlternate:"Destino → alternado", diversionFrom:"Desvio a partir de", fuelAtDestination:"Combustível no destino", alternateFuel:"Combustível até alternado", alternateLanding:"Pouso no alternado", currentScenario:"ATUAL", comparisonScenario:"COMPARAÇÃO", applyScenario:"Aplicar B", recommendedFuel:"Combustível recomendado", maximumFuelByWeight:"Máximo pelo peso", recommendedPayload:"Payload recomendado", optimizedWeight:"Peso otimizado", applyOptimization:"Aplicar otimização", glideRatio:"Razão de planeio", bestGlide:"Melhor planeio", glideRange:"Alcance sem vento", glideTime:"Tempo estimado", reducePayload:"reduzir payload", noAdjustment:"sem ajuste", noAlternateData:"SEM COORDENADAS",
     stepAt:(waypoint,fl)=>`${waypoint} · FL${fl}`, stepSaving:(fuel,minutes)=>`−${fuel} · ${minutes} min`,
   },
   "en-US": {
@@ -24,7 +24,7 @@ const COPY = {
     demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Lower is better", timeHint:"Lower is better", efficiencyHint:"Higher is better", margin:"margin", belowMax:"below maximum", aboveMax:"above maximum", missingId:"Enter a Pilot ID or Alias.", importError:"Could not import the OFP.",
     fuelRank:(rank)=>`#${rank} fuel`, timeRank:(rank,gs)=>`#${rank} time · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingency", taxi:"Taxi",
     manualUpdate:"Manual update", continueLabel:"Continue", returnLabel:"Return", position:"Position", fuelRemaining:"Fuel remaining", update:"Update", calibration:"Calibration", observedTas:"Observed TAS", observedFuelFlow:"Observed fuel flow", calibrate:"Calibrate", reset:"Reset", beyondDestination:"Beyond destination", noStep:"No step climb", nextStep:"Next", updated:"MANUAL", preflight:"PREFLIGHT",
-    destinationAlternate:"Destination → alternate", diversionFrom:"Diversion from", fuelAtDestination:"Fuel at destination", alternateFuel:"Fuel to alternate", alternateLanding:"Alternate landing", currentScenario:"CURRENT", comparisonScenario:"COMPARISON", applyScenario:"Apply B", recommendedFuel:"Recommended fuel", maximumFuelByWeight:"Maximum by weight", maximumPayload:"Maximum payload", optimizedWeight:"Optimized weight", applyOptimization:"Apply optimization", glideRatio:"Glide ratio", bestGlide:"Best glide", glideRange:"Still-air range", glideTime:"Estimated time", reducePayload:"reduce payload", noAdjustment:"no adjustment", noAlternateData:"NO COORDINATES",
+    destinationAlternate:"Destination → alternate", diversionFrom:"Diversion from", fuelAtDestination:"Fuel at destination", alternateFuel:"Fuel to alternate", alternateLanding:"Alternate landing", currentScenario:"CURRENT", comparisonScenario:"COMPARISON", applyScenario:"Apply B", recommendedFuel:"Recommended fuel", maximumFuelByWeight:"Maximum by weight", recommendedPayload:"Recommended payload", optimizedWeight:"Optimized weight", applyOptimization:"Apply optimization", glideRatio:"Glide ratio", bestGlide:"Best glide", glideRange:"Still-air range", glideTime:"Estimated time", reducePayload:"reduce payload", noAdjustment:"no adjustment", noAlternateData:"NO COORDINATES",
     stepAt:(waypoint,fl)=>`${waypoint} · FL${fl}`, stepSaving:(fuel,minutes)=>`−${fuel} · ${minutes} min`,
   },
 };
@@ -34,7 +34,7 @@ function storedJson(key, fallback) {
 }
 
 const state = {
-  plan: structuredClone(DEMO_PLAN), mode:"NORMAL", payloadLb:520, fuelOnboardGal:77, reserveMinutes:45,
+  plan:null, mode:"NORMAL", payloadLb:520, fuelOnboardGal:77, reserveMinutes:45,
   metric:"fuel", selectedAltitudeFt:null, language:localStorage.getItem("velocityxl.language") || "pt-BR",
   weightUnit:localStorage.getItem("velocityxl.weightUnit") || "lb", fuelUnit:localStorage.getItem("velocityxl.fuelUnit") || "gal", fontSize:localStorage.getItem("velocityxl.fontSize") || "medium",
   calibration:storedJson("velocityxl.calibration", {}),
@@ -245,10 +245,11 @@ function renderScenarioComparison(comparison,selected) {
 function renderLoadOptimizer(optimizer) {
   $("#loadRecommendedFuel").textContent=formatFuel(optimizer.recommendedFuelGal,1);
   $("#loadMaxFuel").textContent=formatFuel(optimizer.maxFuelByWeightGal,1);
-  $("#loadMaxPayload").textContent=formatWeight(optimizer.maxPayloadLb);
+  $("#loadMaxPayload").textContent=formatWeight(optimizer.recommendedPayloadLb);
   $("#loadOptimizedWeight").textContent=formatWeight(optimizer.optimizedWeightLb);
   setStatusPill("#loadStatus",optimizer.feasible?"viable":"unavailable");
   $("#loadAdjustment").textContent=optimizer.payloadReductionLb>0?`${t("reducePayload")} ${formatWeight(optimizer.payloadReductionLb)}`:t("noAdjustment");
+  $("#applyLoadOptimization").disabled=!optimizer.feasible;
 }
 
 function renderGlideCorridor(plan,glide) {
@@ -256,17 +257,25 @@ function renderGlideCorridor(plan,glide) {
   $("#bestGlide").textContent=`${number(glide.bestGlideKias)} KIAS`;
   $("#glideRange").textContent=`${number(glide.cruiseRangeNm,1)} NM`;
   $("#glideTime").textContent=`${number(glide.cruiseMinutes)} min`;
-  const width=860,height=145,left=34,right=24,mid=72,plotWidth=width-left-right,maxRange=Math.max(1,...glide.samples.flatMap((sample)=>[sample.forwardRangeNm,sample.reverseRangeNm]));
+  const width=860,height=180,left=46,right=24,top=18,bottom=42,plotWidth=width-left-right,maxRange=Math.max(1,...glide.samples.map((sample)=>sample.stillAirRangeNm));
   const x=(distance)=>left+clamp(distance/Math.max(1,plan.distanceNm),0,1)*plotWidth;
-  const scale=50/maxRange;
-  const upper=glide.samples.map((sample)=>`${x(sample.distanceNm)},${mid-sample.forwardRangeNm*scale}`);
-  const lower=[...glide.samples].reverse().map((sample)=>`${x(sample.distanceNm)},${mid+sample.reverseRangeNm*scale}`);
-  const labels=glide.samples.filter((_,index)=>index===0||index===glide.samples.length-1||index%Math.max(1,Math.ceil(glide.samples.length/5))===0).map((sample)=>`<g><circle cx="${x(sample.distanceNm)}" cy="${mid}" r="3" fill="#1976d2"/><text x="${x(sample.distanceNm)}" y="${mid+68}" text-anchor="middle" fill="#7a8793" font-size="8">${escapeHtml(sample.ident||"")}</text></g>`).join("");
-  $("#glideChart").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="glideFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#52a964" stop-opacity=".22"/><stop offset="1" stop-color="#1976d2" stop-opacity=".1"/></linearGradient></defs><line x1="${left}" y1="${mid}" x2="${width-right}" y2="${mid}" stroke="#cdd8e1" stroke-dasharray="4 5"/><polygon points="${[...upper,...lower].join(" ")}" fill="url(#glideFill)" stroke="#52a964" stroke-width="1.5"/>${labels}<text x="${left}" y="12" fill="#7a8793" font-size="8">→ ${number(glide.forwardRangeNm,1)} NM</text><text x="${left+82}" y="12" fill="#7a8793" font-size="8">← ${number(glide.reverseRangeNm,1)} NM</text></svg>`;
+  const y=(range)=>top+(maxRange-range)/maxRange*(height-top-bottom);
+  const points=glide.samples.map((sample)=>`${x(sample.distanceNm)},${y(sample.stillAirRangeNm)}`).join(" ");
+  const area=`${left},${height-bottom} ${points} ${width-right},${height-bottom}`;
+  const grid=[0,.5,1].map((ratio)=>{const value=maxRange*(1-ratio),yy=top+ratio*(height-top-bottom);return `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" stroke="#e8edf1"/><text x="${left-8}" y="${yy+3}" text-anchor="end" fill="#7a8793" font-size="8">${number(value,0)}</text>`;}).join("");
+  const labelSamples=glide.samples.filter((_,index)=>index===0||index===glide.samples.length-1||index%Math.max(1,Math.ceil(glide.samples.length/5))===0);
+  const labels=labelSamples.map((sample)=>`<g><circle cx="${x(sample.distanceNm)}" cy="${y(sample.stillAirRangeNm)}" r="4" fill="#1976d2" stroke="#fff" stroke-width="2"/><text x="${x(sample.distanceNm)}" y="${height-14}" text-anchor="middle" fill="#7a8793" font-size="8">${escapeHtml(sample.ident||"")}</text></g>`).join("");
+  $("#glideChart").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img"><defs><linearGradient id="glideFill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1976d2" stop-opacity=".18"/><stop offset="1" stop-color="#1976d2" stop-opacity=".02"/></linearGradient></defs>${grid}<polygon points="${area}" fill="url(#glideFill)"/><polyline points="${points}" fill="none" stroke="#1976d2" stroke-width="2" stroke-linejoin="round"/>${labels}<text x="${left}" y="10" fill="#7a8793" font-size="8">NM</text></svg>`;
+  $("#glideWind").textContent=`→ ${number(glide.forwardRangeNm,1)} NM · ← ${number(glide.reverseRangeNm,1)} NM`;
 }
 
 function render() {
   applyTranslations();
+  const hasPlan=Boolean(state.plan);
+  $("#plannerContent").hidden=!hasPlan;
+  $("#feasibilityBadge").hidden=!hasPlan;
+  $("#feasibilityMeta").hidden=!hasPlan;
+  if(!hasPlan){$("#routeSource").textContent=t("simbrief");$("#routeTitle").innerHTML=`— <span>→</span> —`;$("#planTimestamp").textContent="—";return;}
   const analysis=calculatePlan(state),recommended=analysis.winners.overall,selectedCandidate=analysis.results.find((r)=>r.altitudeFt===state.selectedAltitudeFt),selected=selectedCandidate&&selectedCandidate.feasibility.status!=="unavailable"?selectedCandidate:recommended,plan=state.plan;
   const navigation=calculateEtpPnr({...state,altitudeFt:selected.altitudeFt});
   const stepPlan=calculateStepClimbs({...state,initialAltitudeFt:selected.altitudeFt,manual:state.manual.active?state.manual:null});
@@ -314,7 +323,7 @@ $("#scenarioBAltitude").addEventListener("change",(event)=>{state.scenarioB.alti
 $("#scenarioBPayload").addEventListener("input",(event)=>{state.scenarioB.payloadLb=Math.max(0,weightFromDisplay(Number(event.target.value)||0));render();});
 $("#scenarioBFuel").addEventListener("input",(event)=>{state.scenarioB.fuelOnboardGal=clamp(fuelFromDisplay(Number(event.target.value)||0),0,AIRCRAFT.usableFuelGal);render();});
 $("#applyScenarioB").addEventListener("click",()=>{state.mode=state.scenarioB.mode;state.payloadLb=state.scenarioB.payloadLb;state.fuelOnboardGal=state.scenarioB.fuelOnboardGal;state.selectedAltitudeFt=state.scenarioB.altitudeFt;state.powerSetting={type:"AUTO",mapInHg:PERFORMANCE.modes[state.mode].mapInHg,rpm:PERFORMANCE.modes[state.mode].rpm};$("#payloadInput").value=String(Math.round(state.payloadLb/10)*10);$("#fuelInput").value=String(Math.round(state.fuelOnboardGal));$$('[data-mode]').forEach((button)=>button.classList.toggle("active",button.dataset.mode===state.mode));localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));render();});
-$("#applyLoadOptimization").addEventListener("click",()=>{const analysis=calculatePlan(state),candidate=analysis.results.find((result)=>result.altitudeFt===state.selectedAltitudeFt),selected=candidate&&candidate.feasibility.status!=="unavailable"?candidate:analysis.winners.overall,optimizer=calculateLoadOptimization({...state,altitudeFt:selected.altitudeFt});state.fuelOnboardGal=clamp(optimizer.recommendedFuelGal,0,AIRCRAFT.usableFuelGal);state.payloadLb=Math.min(state.payloadLb,optimizer.maxPayloadLb);$("#payloadInput").value=String(Math.round(state.payloadLb/10)*10);$("#fuelInput").value=String(Math.round(state.fuelOnboardGal));state.manual.fuelRemainingGal=state.fuelOnboardGal;render();});
+$("#applyLoadOptimization").addEventListener("click",()=>{const analysis=calculatePlan(state),candidate=analysis.results.find((result)=>result.altitudeFt===state.selectedAltitudeFt),selected=candidate&&candidate.feasibility.status!=="unavailable"?candidate:analysis.winners.overall,optimizer=calculateLoadOptimization({...state,altitudeFt:selected.altitudeFt});if(!optimizer.feasible)return;state.fuelOnboardGal=clamp(optimizer.recommendedFuelGal,0,AIRCRAFT.usableFuelGal);state.payloadLb=optimizer.recommendedPayloadLb;$("#payloadInput").value=String(state.payloadLb);$("#fuelInput").value=String(state.fuelOnboardGal);state.manual.fuelRemainingGal=state.fuelOnboardGal;render();});
 
 $("#manualUpdateForm").addEventListener("submit",(event)=>{
   event.preventDefault();

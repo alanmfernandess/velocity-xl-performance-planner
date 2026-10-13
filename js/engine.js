@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-7";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT } from "./config.js?v=20261013-8";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -448,28 +448,34 @@ export function compareScenarios({ plan, scenarioA, scenarioB, calibration = {} 
 
 export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {} }) {
   const maxFuelByWeightGal = clamp(
-    (AIRCRAFT.maxGrossWeightLb - AIRCRAFT.emptyWeightLb - payloadLb) / AIRCRAFT.fuelDensityLbGal,
+    (AIRCRAFT.maxGrossWeightLb - PERFORMANCE.loadOptimizer.targetWeightMarginLb - AIRCRAFT.emptyWeightLb - payloadLb) / AIRCRAFT.fuelDensityLbGal,
     0,
     AIRCRAFT.usableFuelGal,
   );
   let candidateFuelGal = Math.min(fuelOnboardGal, maxFuelByWeightGal);
   let result;
+  let rawRecommendedFuelGal = candidateFuelGal;
   for (let index = 0; index < 5; index += 1) {
     result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: candidateFuelGal, reserveMinutes, calibration, powerSetting });
-    const rawTarget = result.fuelRequiredGal + PERFORMANCE.loadOptimizer.dispatchBufferGal;
-    candidateFuelGal = Math.ceil(rawTarget / PERFORMANCE.loadOptimizer.fuelIncrementGal) * PERFORMANCE.loadOptimizer.fuelIncrementGal;
+    const rawTarget = result.fuelRequiredGal + PERFORMANCE.loadOptimizer.targetFuelMarginGal;
+    rawRecommendedFuelGal = Math.ceil(rawTarget / PERFORMANCE.loadOptimizer.fuelIncrementGal) * PERFORMANCE.loadOptimizer.fuelIncrementGal;
+    candidateFuelGal = Math.min(AIRCRAFT.usableFuelGal, rawRecommendedFuelGal);
   }
-  const recommendedFuelGal = Math.min(AIRCRAFT.usableFuelGal, candidateFuelGal);
+  const recommendedFuelGal = Math.min(AIRCRAFT.usableFuelGal, rawRecommendedFuelGal);
   const maxPayloadLb = Math.max(0, AIRCRAFT.maxGrossWeightLb - AIRCRAFT.emptyWeightLb - recommendedFuelGal * AIRCRAFT.fuelDensityLbGal);
-  const payloadReductionLb = Math.max(0, payloadLb - maxPayloadLb);
+  const viablePayloadLimitLb = Math.max(0, maxPayloadLb - PERFORMANCE.loadOptimizer.targetWeightMarginLb);
+  const recommendedPayloadLb = Math.max(0, Math.floor(Math.min(payloadLb, viablePayloadLimitLb) / 10) * 10);
+  const payloadReductionLb = Math.max(0, payloadLb - recommendedPayloadLb);
   const currentWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal;
-  const optimizedWeightLb = AIRCRAFT.emptyWeightLb + Math.min(payloadLb, maxPayloadLb) + recommendedFuelGal * AIRCRAFT.fuelDensityLbGal;
-  const feasible = recommendedFuelGal <= maxFuelByWeightGal + 0.01 && recommendedFuelGal <= AIRCRAFT.usableFuelGal;
+  const optimizedWeightLb = AIRCRAFT.emptyWeightLb + recommendedPayloadLb + recommendedFuelGal * AIRCRAFT.fuelDensityLbGal;
+  const feasible = rawRecommendedFuelGal <= AIRCRAFT.usableFuelGal && viablePayloadLimitLb >= 0;
   return {
     feasible,
     recommendedFuelGal,
+    rawRecommendedFuelGal,
     maxFuelByWeightGal,
     maxPayloadLb,
+    recommendedPayloadLb,
     payloadReductionLb,
     currentWeightLb,
     optimizedWeightLb,

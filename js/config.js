@@ -67,7 +67,8 @@ export const PERFORMANCE = {
     marginalFuelMarginGal: 3,
   },
   loadOptimizer: {
-    dispatchBufferGal: 1,
+    targetFuelMarginGal: 6,
+    targetWeightMarginLb: 80,
     fuelIncrementGal: 0.5,
   },
   glide: {
