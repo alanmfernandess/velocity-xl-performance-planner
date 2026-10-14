@@ -8,8 +8,8 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261013-27/);
-  assert.match(index,/js\/app\.js\?v=20261013-27/);
+  assert.match(index,/styles\.css\?v=20261013-28/);
+  assert.match(index,/js\/app\.js\?v=20261013-28/);
 });
 
 test("scenario B separates editable inputs from calculated results",()=>{
@@ -21,6 +21,12 @@ test("scenario B separates editable inputs from calculated results",()=>{
 test("mission strip results are centered geometrically in every segment",()=>{
   assert.match(css,/\.mission-strip strong \{[^}]*top:50%; left:50%; transform:translate\(-50%,-50%\)/);
   assert.match(css,/\.mission-strip div \{[^}]*min-height:78px/);
+});
+
+test("scenario A centers its information block without changing scenario B",()=>{
+  assert.match(index,/class="scenario-current-body"/);
+  assert.match(css,/\.scenario-card:not\(\.scenario-editable\) \{ display:flex; flex-direction:column; \}/);
+  assert.match(css,/\.scenario-current-body \{[^}]*justify-content:center/);
 });
 
 test("discrete icon rules cover every primary calculator surface",()=>{

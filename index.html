@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-27" />
+    <link rel="stylesheet" href="./styles.css?v=20261013-28" />
   </head>
   <body>
     <header class="topbar">
@@ -193,8 +193,10 @@
           <div class="scenario-grid">
             <article class="scenario-card">
               <div class="scenario-head"><strong>A</strong><span data-i18n="currentScenario">ATUAL</span></div>
-              <div class="scenario-name" id="scenarioAName">NORMAL · FL140</div>
-              <div class="scenario-stats" id="scenarioAStats"></div>
+              <div class="scenario-current-body">
+                <div class="scenario-name" id="scenarioAName">NORMAL · FL140</div>
+                <div class="scenario-stats" id="scenarioAStats"></div>
+              </div>
             </article>
             <article class="scenario-card scenario-editable">
               <div class="scenario-head"><strong>B</strong><span data-i18n="comparisonScenario">COMPARAÇÃO</span></div>
@@ -338,6 +340,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261013-27"></script>
+    <script type="module" src="./js/app.js?v=20261013-28"></script>
   </body>
 </html>
