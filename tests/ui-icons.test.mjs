@@ -8,8 +8,8 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261014-01/);
-  assert.match(index,/js\/app\.js\?v=20261014-01/);
+  assert.match(index,/styles\.css\?v=20261014-02/);
+  assert.match(index,/js\/app\.js\?v=20261014-02/);
 });
 
 test("scenario B separates editable inputs from calculated results",()=>{
@@ -58,5 +58,5 @@ test("icon styling remains discrete and preserves operational status colors",()=
   assert.match(css,/color:var\(--green\)/);
   assert.match(css,/color:var\(--orange\)/);
   assert.match(css,/color:var\(--red\)/);
-  assert.match(css,/\.level-card\.recommended::after \{ display:none; \}/);
+  assert.match(css,/\.level-item\.unavailable \.level-status \{ color:var\(--red\); \}/);
 });

@@ -16,9 +16,22 @@ test("weight and balance renders a separate responsive CG band for each flight p
   assert.match(css,/@media \(max-width:430px\) \{\s*\.cg-phase-heading/);
 });
 
-test("responsive typography no longer exposes manual A-minus/A-plus scaling",()=>{
-  assert.doesNotMatch(html,/class="toolbar-group font-switch"/);
-  assert.doesNotMatch(app,/data-font-size/);
-  assert.doesNotMatch(css,/html\[data-font-size/);
-  assert.match(css,/--font-base: 19px/);
+test("A-minus/A/A-plus control persists a slightly smaller default font",()=>{
+  assert.match(html,/class="toolbar-group font-switch"/);
+  assert.match(app,/velocityxl\.fontSize/);
+  assert.match(app,/document\.documentElement\.dataset\.fontSize=state\.fontSize/);
+  assert.match(app,/\$\$\('\.font-switch button\[data-font-size\]'\)/);
+  assert.match(css,/--font-base: 18px/);
+  assert.match(css,/html\[data-font-size="small"\]/);
+  assert.match(css,/html\[data-font-size="large"\]/);
+  assert.match(css,/body :is\(strong,b,button\) \{ font-weight:500!important; \}/);
+});
+
+test("all cruise levels use expandable progressive rows with separate selection",()=>{
+  assert.match(html,/class="levels-list" id="levelCards"/);
+  assert.match(app,/aria-expanded="\$\{expanded\}" aria-controls="\$\{detailId\}"/);
+  assert.match(app,/class="level-detail" id="\$\{detailId\}"/);
+  assert.match(app,/!blocked&&!current\?`<button class="level-select"/);
+  assert.match(css,/\.level-expand \{[^}]*grid-template-columns:90px minmax\(0,1fr\) auto 16px/);
+  assert.match(css,/@media \(max-width:760px\) \{[^]*\.level-summary \{ grid-column:1\/-1; grid-row:2; \}/);
 });

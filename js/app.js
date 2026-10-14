@@ -1,7 +1,7 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261014-01";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261014-01";
-import { fetchLatestOFP } from "./simbrief.js?v=20261014-01";
-import { buildRouteGeometry, layoutRouteLabels, pointAlongPolyline } from "./route-map.js?v=20261014-01";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261014-02";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261014-02";
+import { fetchLatestOFP } from "./simbrief.js?v=20261014-02";
+import { buildRouteGeometry, layoutRouteLabels, pointAlongPolyline } from "./route-map.js?v=20261014-02";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -146,7 +146,7 @@ const COPY = {
   "pt-BR": {
     pilotId:"Pilot ID / Alias", importLatest:"Importar OFP",
     bestLevel:"Melhor nível", fuelRequired:"Combustível requerido", estimatedTime:"Tempo estimado", maximumRange:"Alcance máximo", performance:"Performance", route:"Rota", profile:"Perfil", altitudeComparison:"Comparação por altitude", selectedLevel:"Selecionado", recommendedLevel:"Recomendado", windComponent:"Componente", alternate:"Alternativa", flightProfile:"Perfil de voo",
-    payload:"Carga útil", fuelOnboard:"Combustível a bordo", reserve:"Reserva", takeoffWeight:"Peso de decolagem", fuel:"Combustível", allLevels:"Todos os níveis", climb:"SUBIDA", cruise:"CRUZEIRO", descent:"DESCIDA", power:"Potência", automatic:"Automático", viable:"VIÁVEL", marginalStatus:"MARGINAL", notViable:"INVIÁVEL", profileLimit:"PERFIL", ceilingLimit:"TETO", disclaimer:"Alan Fernandes - 2026",
+    payload:"Carga útil", fuelOnboard:"Combustível a bordo", reserve:"Reserva", takeoffWeight:"Peso de decolagem", fuel:"Combustível", allLevels:"Todos os níveis", fontSize:"Tamanho da fonte", fontSmall:"Fonte menor", fontNormal:"Fonte padrão", fontLarge:"Fonte maior", selectLevel:"Selecionar nível", levelReason:"Motivo", levelSelection:"Seleção", climb:"SUBIDA", cruise:"CRUZEIRO", descent:"DESCIDA", power:"Potência", automatic:"Automático", viable:"VIÁVEL", marginalStatus:"MARGINAL", notViable:"INVIÁVEL", profileLimit:"PERFIL", ceilingLimit:"TETO", disclaimer:"Alan Fernandes - 2026",
     demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Menor valor", timeHint:"Menor valor", efficiencyHint:"Maior valor", margin:"de margem", belowMax:"abaixo do máximo", aboveMax:"acima do máximo", missingId:"Informe o Pilot ID ou Alias.", importError:"Não foi possível importar o OFP.",
     fuelRank:(rank)=>`${rank}º em consumo`, timeRank:(rank,gs)=>`${rank}º em tempo · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingência", taxi:"Taxi",
     manualUpdate:"Atualização manual", continueLabel:"Continuar", returnLabel:"Retornar", position:"Posição", fuelRemaining:"Combustível restante", update:"Atualizar", calibration:"Calibração", observedTas:"TAS observada", observedFuelFlow:"Fuel flow observado", calibrate:"Calibrar", reset:"Redefinir", beyondDestination:"Além do destino", noStep:"Sem step climb", nextStep:"Próximo", updated:"MANUAL", preflight:"PRÉ-VOO",
@@ -157,7 +157,7 @@ const COPY = {
   "en-US": {
     pilotId:"Pilot ID / Alias", importLatest:"Import OFP",
     bestLevel:"Best level", fuelRequired:"Fuel required", estimatedTime:"Estimated time", maximumRange:"Maximum range", performance:"Performance", route:"Route", profile:"Profile", altitudeComparison:"Altitude comparison", selectedLevel:"Selected", recommendedLevel:"Recommended", windComponent:"Component", alternate:"Alternate", flightProfile:"Flight profile",
-    payload:"Payload", fuelOnboard:"Fuel onboard", reserve:"Reserve", takeoffWeight:"Takeoff weight", fuel:"Fuel", allLevels:"All levels", climb:"CLIMB", cruise:"CRUISE", descent:"DESCENT", power:"Power", automatic:"Automatic", viable:"VIABLE", marginalStatus:"MARGINAL", notViable:"NOT VIABLE", profileLimit:"PROFILE", ceilingLimit:"CEILING", disclaimer:"Alan Fernandes - 2026",
+    payload:"Payload", fuelOnboard:"Fuel onboard", reserve:"Reserve", takeoffWeight:"Takeoff weight", fuel:"Fuel", allLevels:"All levels", fontSize:"Font size", fontSmall:"Smaller font", fontNormal:"Default font", fontLarge:"Larger font", selectLevel:"Select level", levelReason:"Reason", levelSelection:"Selection", climb:"CLIMB", cruise:"CRUISE", descent:"DESCENT", power:"Power", automatic:"Automatic", viable:"VIABLE", marginalStatus:"MARGINAL", notViable:"NOT VIABLE", profileLimit:"PROFILE", ceilingLimit:"CEILING", disclaimer:"Alan Fernandes - 2026",
     demo:"DEMO", simbrief:"SIMBRIEF", fuelHint:"Lower is better", timeHint:"Lower is better", efficiencyHint:"Higher is better", margin:"margin", belowMax:"below maximum", aboveMax:"above maximum", missingId:"Enter a Pilot ID or Alias.", importError:"Could not import the OFP.",
     fuelRank:(rank)=>`#${rank} fuel`, timeRank:(rank,gs)=>`#${rank} time · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingency", taxi:"Taxi",
     manualUpdate:"Manual update", continueLabel:"Continue", returnLabel:"Return", position:"Position", fuelRemaining:"Fuel remaining", update:"Update", calibration:"Calibration", observedTas:"Observed TAS", observedFuelFlow:"Observed fuel flow", calibrate:"Calibrate", reset:"Reset", beyondDestination:"Beyond destination", noStep:"No step climb", nextStep:"Next", updated:"MANUAL", preflight:"PREFLIGHT",
@@ -173,7 +173,8 @@ function storedJson(key, fallback) {
 
 const state = {
   plan:null, mode:"NORMAL", payloadLb:520, fuelOnboardGal:77, reserveMinutes:45,
-  metric:"fuel", selectedAltitudeFt:null, language:localStorage.getItem("velocityxl.language") || "pt-BR",
+  metric:"fuel", selectedAltitudeFt:null, expandedAltitudeFt:null, lastSelectedAltitudeFt:null, language:localStorage.getItem("velocityxl.language") || "pt-BR",
+  fontSize:["small","normal","large"].includes(localStorage.getItem("velocityxl.fontSize"))?localStorage.getItem("velocityxl.fontSize"):"normal",
   weightUnit:localStorage.getItem("velocityxl.weightUnit") || "lb", fuelUnit:localStorage.getItem("velocityxl.fuelUnit") || "gal",
   calibration:storedJson("velocityxl.calibration", {}),
   powerSetting:storedJson("velocityxl.powerSetting", { type:"AUTO", mapInHg:24, rpm:2450 }),
@@ -227,11 +228,13 @@ function showToast(message, error=false) {
 
 function applyTranslations() {
   document.documentElement.lang=state.language;
+  document.documentElement.dataset.fontSize=state.fontSize;
   $$('[data-i18n]').forEach((element)=>{ element.textContent=t(element.dataset.i18n); });
   $$('[data-i18n-title]').forEach((element)=>{ const label=t(element.dataset.i18nTitle); element.title=label; element.setAttribute("aria-label",label); });
   $$('[data-language]').forEach((button)=>button.classList.toggle("active",button.dataset.language===state.language));
   $$('[data-weight-unit]').forEach((button)=>button.classList.toggle("active",button.dataset.weightUnit===state.weightUnit));
   $$('[data-fuel-unit]').forEach((button)=>button.classList.toggle("active",button.dataset.fuelUnit===state.fuelUnit));
+  $$('.font-switch button[data-font-size]').forEach((button)=>{const active=button.dataset.fontSize===state.fontSize;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));button.setAttribute("aria-label",t(button.dataset.fontSize==="small"?"fontSmall":button.dataset.fontSize==="large"?"fontLarge":"fontNormal"));});
   $$('[data-power-type]').forEach((button)=>button.classList.toggle("active",button.dataset.powerType===state.powerSetting.type));
   $("#powerManualFields").hidden=state.powerSetting.type!=="MANUAL";
   const metricLabels={fuel:state.language==="pt-BR"?"Combustível":"Fuel",time:state.language==="pt-BR"?"Tempo":"Time",efficiency:state.language==="pt-BR"?"Eficiência":"Efficiency"};
@@ -296,12 +299,16 @@ function icingProbabilityMarkup(icing) {
 
 function levelFeasibilityLabel(result) {
   if(result.weightBalance?.status==="unavailable") return result.weightBalance.primaryReason==="WEIGHT"?t("grossWeight"):"CG";
-  if(result.oxygen.status==="insufficient") return "O₂";
-  if(result.turbulence.blocking) return "SEV TURB";
-  if(result.icing.status==="avoid") return "ICE";
+  if(result.oxygen.status==="insufficient") return `${t("oxygenInsufficient")} O₂`;
+  if(result.turbulence.blocking) return `${t("severe")} TURB`;
+  if(result.icing.status==="avoid") return t("icingAvoid");
   const feasibility=result.feasibility;
+  if(result.oxygen.status==="marginal") return "O₂";
+  if(result.turbulence.status==="severe") return `${t("severe")} TURB`;
+  if(result.turbulence.status==="moderate") return `${t("moderate")} TURB`;
+  if(result.icing.status==="caution") return t("icingCaution");
   if(feasibility.status==="viable") return "";
-  if(feasibility.status==="marginal") return t("marginalStatus");
+  if(feasibility.status==="marginal") return feasibility.primaryReason==="FUEL"?`${t("fuel")} · ${signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`)}`:t("marginalStatus");
   if(feasibility.primaryReason==="FUEL") return signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`);
   if(feasibility.primaryReason==="WEIGHT") return `+${formatWeight(Math.abs(feasibility.weightMarginLb))}`;
   if(feasibility.primaryReason==="ALTITUDE") return t("ceilingLimit");
@@ -309,9 +316,41 @@ function levelFeasibilityLabel(result) {
 }
 
 function renderLevelCards(results,recommended,selected) {
-  const unit=state.fuelUnit==="l"?"L":"GAL";
-  $("#levelCards").innerHTML=results.map((r)=>{const status=r.feasibility.status,blocked=!operationallyAvailable(r),performanceLabel=levelFeasibilityLabel(r),isRecommended=r.altitudeFt===recommended.altitudeFt&&!blocked,recommendedClass=isRecommended?"recommended":"",stateIcon=blocked?"triangle-alert":isRecommended?"star":"circle-check";return `<button class="level-card ${status} icing-${r.icing.status} ${blocked?"weather-unavailable":""} ${recommendedClass} ${r.altitudeFt===selected.altitudeFt?"selected":""}" data-level="${r.altitudeFt}" type="button" ${blocked?"disabled aria-disabled=\"true\"":""}><span class="level-card-heading"><b>FL${r.fl}</b>${iconMarkup(stateIcon,"level-state-icon")}</span><span>${unit} · ETE · GS</span><strong>${number(fuelValue(r.fuelRequiredGal),1)} · ${formatTime(r.tripTimeHr)} · ${Math.round(r.gsKt)}</strong><span class="level-card-status">${performanceLabel?`<em>${escapeHtml(performanceLabel)}</em>`:""}${icingProbabilityMarkup(r.icing)}</span></button>`;}).join("");
-  $$(".level-card:not(:disabled)").forEach((card)=>card.addEventListener("click",()=>{state.selectedAltitudeFt=Number(card.dataset.level);render();}));
+  if(selected.altitudeFt!==state.lastSelectedAltitudeFt){state.expandedAltitudeFt=selected.altitudeFt;state.lastSelectedAltitudeFt=selected.altitudeFt;}
+  if(!results.some((result)=>result.altitudeFt===state.expandedAltitudeFt)) state.expandedAltitudeFt=selected.altitudeFt;
+  $("#levelCards").innerHTML=results.map((result)=>{
+    const blocked=!operationallyAvailable(result);
+    const status=blocked?"unavailable":result.feasibility.status==="marginal"||result.oxygen.status==="marginal"||result.icing.status==="caution"||["moderate","severe"].includes(result.turbulence.status)?"marginal":"viable";
+    const statusLabel=t(status==="unavailable"?"notViable":status==="marginal"?"marginalStatus":"viable");
+    const current=result.altitudeFt===selected.altitudeFt;
+    const isRecommended=result.altitudeFt===recommended.altitudeFt&&!blocked;
+    const expanded=result.altitudeFt===state.expandedAltitudeFt;
+    const reason=levelFeasibilityLabel(result);
+    const oxygenStatus=oxygenLabel(result.oxygen.status);
+    const detailId=`level-detail-${result.altitudeFt}`;
+    const stateIcon=blocked?"triangle-alert":isRecommended?"star":status==="marginal"?"triangle-alert":"circle-check";
+    return `<article class="level-item ${status} ${current?"selected":""} ${isRecommended?"recommended":""} ${expanded?"expanded":""}" data-level="${result.altitudeFt}">
+      <button class="level-expand" type="button" aria-expanded="${expanded}" aria-controls="${detailId}" aria-label="FL${result.fl} · ${escapeHtml(statusLabel)} · ${formatFuel(result.fuelRequiredGal,1)} · ETE ${formatTime(result.tripTimeHr)} · ${Math.round(result.gsKt)} kt GS">
+        <strong class="level-fl">FL${result.fl}</strong>
+        <span class="level-summary">${formatFuel(result.fuelRequiredGal,1)} <span aria-hidden="true">·</span> ${formatTime(result.tripTimeHr)} <span aria-hidden="true">·</span> ${Math.round(result.gsKt)} kt GS</span>
+        <span class="level-status">${iconMarkup(stateIcon,"level-state-icon")}${escapeHtml(statusLabel)}</span>
+        ${iconMarkup("chevron-down","level-chevron")}
+      </button>
+      <div class="level-detail" id="${detailId}" ${expanded?"":"hidden"}>
+        <div><span>${escapeHtml(t("iceProbability"))}</span>${icingProbabilityMarkup(result.icing)}</div>
+        <div><span>${escapeHtml(t("oxygen"))}</span><strong class="${result.oxygen.status==="insufficient"?"level-warning":""}">${escapeHtml(oxygenStatus)}</strong></div>
+        ${reason&&reason!==statusLabel?`<div class="level-reason"><span>${escapeHtml(t("levelReason"))}</span><strong>${escapeHtml(reason)}</strong></div>`:""}
+        ${current?`<div class="level-selection"><span>${escapeHtml(t("levelSelection"))}</span><strong>${escapeHtml(t("selectedLevel"))}</strong></div>`:isRecommended?`<div class="level-selection"><span>${escapeHtml(t("levelSelection"))}</span><strong>${escapeHtml(t("recommendedLevel"))}</strong></div>`:""}
+        ${!blocked&&!current?`<button class="level-select" type="button" data-select-level="${result.altitudeFt}">${escapeHtml(t("selectLevel"))}</button>`:""}
+      </div>
+    </article>`;
+  }).join("");
+  $$(".level-expand").forEach((button)=>button.addEventListener("click",()=>{
+    const level=Number(button.closest(".level-item").dataset.level);
+    state.expandedAltitudeFt=level;
+    $$(".level-item").forEach((item)=>{const expanded=Number(item.dataset.level)===level;item.classList.toggle("expanded",expanded);item.querySelector(".level-expand").setAttribute("aria-expanded",String(expanded));item.querySelector(".level-detail").hidden=!expanded;});
+  }));
+  $$("[data-select-level]").forEach((button)=>button.addEventListener("click",()=>{state.selectedAltitudeFt=Number(button.dataset.selectLevel);render();$( `.level-item[data-level="${state.selectedAltitudeFt}"] .level-expand`)?.focus();}));
 }
 
 function renderIcingSummary(analysis) {
@@ -659,6 +698,7 @@ function render() {
 }
 
 $$('[data-language]').forEach((button)=>button.addEventListener("click",()=>{state.language=button.dataset.language;localStorage.setItem("velocityxl.language",state.language);render();}));
+$$('.font-switch button[data-font-size]').forEach((button)=>button.addEventListener("click",()=>{state.fontSize=button.dataset.fontSize;localStorage.setItem("velocityxl.fontSize",state.fontSize);applyTranslations();}));
 $$('[data-weight-unit]').forEach((button)=>button.addEventListener("click",()=>{state.weightUnit=button.dataset.weightUnit;localStorage.setItem("velocityxl.weightUnit",state.weightUnit);render();}));
 $$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit,observed=$("#observedFuelFlow"),debrief=$("#debriefFuel"),value=Number(observed.value),debriefValue=Number(debrief.value);state.fuelUnit=next;if(Number.isFinite(value)&&value>0&&previous!==next)observed.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);if(Number.isFinite(debriefValue)&&debriefValue>0&&previous!==next)debrief.value=(next==="l"?debriefValue*3.785411784:debriefValue/3.785411784).toFixed(1);localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
 $$('[data-mode]').forEach((button)=>button.addEventListener("click",()=>{state.mode=button.dataset.mode;state.selectedAltitudeFt=null;$$('[data-mode]').forEach((item)=>item.classList.toggle("active",item===button));render();}));

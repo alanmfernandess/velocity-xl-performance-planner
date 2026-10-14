@@ -11,12 +11,12 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Interpolação de vento e OAT por waypoint para comparar FL100 a FL250.
 - Icing-Aware Level Optimizer usando OAT por waypoint/nível e evidências meteorológicas presentes no OFP para evitar ou penalizar faixas com risco de gelo.
 - Interface clara e minimalista em português do Brasil e inglês americano.
-- Tipografia compacta e responsiva, com unidades selecionáveis LB/KG e GAL/L.
+- Tipografia compacta e responsiva, com controle A−/A/A+ salvo no dispositivo e unidades selecionáveis LB/KG e GAL/L.
 - Manifesto instalável com apresentação standalone, semelhante a um aplicativo.
 - Comparação de FL100 a FL250 nos modos ECON, NORMAL e FAST.
 - Potência automática por modo ou ajuste manual de MAP/RPM, refletida em TAS, fuel flow, tempo, combustível e alcance.
 - Indicador explícito de viabilidade usando combustível, peso, teto e espaço disponível para subida/cruzeiro/descida.
-- Níveis de cruzeiro inviáveis são desabilitados automaticamente e excluídos da recomendação.
+- Lista progressiva de todos os níveis de cruzeiro: cada linha mostra combustível, ETE, GS e status; a expansão revela gelo, oxigênio e o motivo de restrição. Níveis inviáveis podem ser inspecionados, mas não selecionados nem recomendados.
 - TAS, GS, ISA deviation, componente de vento, climb/cruise/descent, combustível, endurance e alcance.
 - ETP e PNR calculados com velocidades de continuação e retorno corrigidas pelo vento.
 - Alternate & Diversion Advisor com distância direta, tempo, consumo, combustível estimado no pouso e viabilidade de reserva.
