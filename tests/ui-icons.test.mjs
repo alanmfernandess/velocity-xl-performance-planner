@@ -8,8 +8,14 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261013-25/);
-  assert.match(index,/js\/app\.js\?v=20261013-25/);
+  assert.match(index,/styles\.css\?v=20261013-26/);
+  assert.match(index,/js\/app\.js\?v=20261013-26/);
+});
+
+test("scenario B separates editable inputs from calculated results",()=>{
+  assert.match(css,/\.scenario-inputs \{[^}]*padding:12px/);
+  assert.match(css,/\.scenario-editable \.scenario-stats \{[^}]*border-top:1px solid var\(--line\)/);
+  assert.match(css,/\.scenario-editable \.scenario-stats span \{[^}]*border-radius:9px/);
 });
 
 test("discrete icon rules cover every primary calculator surface",()=>{

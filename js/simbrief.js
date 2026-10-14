@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261013-25";
+import { greatCircleNm } from "./engine.js?v=20261013-26";
 
 const number = (value, fallback = 0) => {
   const parsed = Number(value);
