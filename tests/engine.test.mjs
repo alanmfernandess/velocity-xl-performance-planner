@@ -408,6 +408,12 @@ test("engine-out glide corridor uses 12.15 to 1 at 90 KIAS", () => {
   assert.equal(glide.bestGlideKias, 90);
   assert.ok(Math.abs(glide.cruiseRangeNm - 35.99) < 0.1);
   assert.ok(glide.samples.length >= 2);
+  assert.equal(glide.samples.length, DEMO_PLAN.waypoints.length);
+  glide.samples.forEach((sample,index)=>{
+    assert.equal(sample.ident,DEMO_PLAN.waypoints[index].ident);
+    assert.ok(Math.abs(sample.forwardRangeNm+sample.reverseRangeNm-2*sample.stillAirRangeNm)<1e-8);
+    assert.ok(sample.glideMinutes>=0);
+  });
 });
 
 test("oxygen planner applies international crew and passenger thresholds", () => {

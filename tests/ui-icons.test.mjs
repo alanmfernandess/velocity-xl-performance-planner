@@ -8,8 +8,8 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261014-03/);
-  assert.match(index,/js\/app\.js\?v=20261014-03/);
+  assert.match(index,/styles\.css\?v=20261014-04/);
+  assert.match(index,/js\/app\.js\?v=20261014-04/);
 });
 
 test("A/B matrix keeps B controls above four aligned comparison metrics",()=>{
@@ -33,6 +33,19 @@ test("A/B matrix stacks each metric for narrow screens without horizontal overfl
   assert.match(css,/@media \(max-width:760px\) \{[\s\S]*?\.scenario-matrix-head,\.scenario-matrix-row \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css,/\.scenario-metric,\.scenario-change \{ grid-column:1\/-1; \}/);
   assert.match(css,/\.scenario-matrix \{[^}]*overflow:hidden/);
+});
+
+test("GLIDE focuses an OFP point and keeps the full route navigable on narrow screens",()=>{
+  for(const id of ["glideRoute","glideFocusHint","glideFocusPoint","glideFocusRange","glideFocusMeta","glideFocusForward","glideFocusReverse","glideFocusAltitude"]){
+    assert.match(index,new RegExp(`id="${id}"`));
+  }
+  assert.doesNotMatch(index,/id="glideChart"/);
+  assert.match(app,/glide\.samples\.map\(\(sample,index\)=>/);
+  assert.match(app,/state\.glideSampleIndex=Number\(button\.dataset\.glideIndex\)/);
+  assert.match(app,/state\.glideSampleIndex=null;state\.oxygen\.altitudeFt/);
+  assert.match(css,/\.glide-route \{[^}]*overflow-x:auto/);
+  assert.match(css,/\.glide-focus \{[^}]*grid-template-columns:minmax\(0,1\.2fr\)/);
+  assert.match(css,/\.glide-focus \{ grid-template-columns:minmax\(0,1fr\); \}/);
 });
 
 test("discrete icon rules cover every primary calculator surface",()=>{

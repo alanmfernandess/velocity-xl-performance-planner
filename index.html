@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261014-03" />
+    <link rel="stylesheet" href="./styles.css?v=20261014-04" />
   </head>
   <body>
     <header class="topbar">
@@ -248,8 +248,17 @@
               <span><b data-i18n="glideRange">Alcance sem vento</b><strong id="glideRange">—</strong></span>
               <span><b data-i18n="glideTime">Tempo estimado</b><strong id="glideTime">—</strong></span>
             </div>
-            <div class="glide-chart" id="glideChart"></div>
-            <div class="glide-wind" id="glideWind"></div>
+            <div class="glide-route-heading"><strong data-i18n="glideAlongRoute">Alcance ao longo da rota</strong><small id="glideFocusHint">—</small></div>
+            <div class="glide-route" id="glideRoute" role="group" aria-label="Pontos da rota"></div>
+            <div class="glide-focus">
+              <div class="glide-focus-main" aria-live="polite"><small id="glideFocusPoint">—</small><strong id="glideFocusRange">—</strong><span id="glideFocusMeta">—</span></div>
+              <div class="glide-focus-side">
+                <div><span data-i18n="glideForward">Rumo da rota →</span><strong id="glideFocusForward">—</strong></div>
+                <div><span data-i18n="glideReverse">Sentido oposto ←</span><strong id="glideFocusReverse">—</strong></div>
+                <div><span data-i18n="glidePointAltitude">Altitude no ponto</span><strong id="glideFocusAltitude">—</strong></div>
+              </div>
+            </div>
+            <small class="glide-note" data-i18n="glideCaveat">Alcance teórico com vento estimado; não considera terreno, obstáculos ou local de pouso.</small>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="oxygen">
@@ -331,6 +340,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261014-03"></script>
+    <script type="module" src="./js/app.js?v=20261014-04"></script>
   </body>
 </html>
