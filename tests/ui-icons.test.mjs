@@ -8,14 +8,18 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261014-02/);
-  assert.match(index,/js\/app\.js\?v=20261014-02/);
+  assert.match(index,/styles\.css\?v=20261014-03/);
+  assert.match(index,/js\/app\.js\?v=20261014-03/);
 });
 
-test("scenario B separates editable inputs from calculated results",()=>{
-  assert.match(css,/\.scenario-inputs \{[^}]*padding:12px/);
-  assert.match(css,/\.scenario-editable \.scenario-stats \{[^}]*border-top:1px solid var\(--line\)/);
-  assert.match(css,/\.scenario-editable \.scenario-stats span \{[^}]*border-radius:9px/);
+test("A/B matrix keeps B controls above four aligned comparison metrics",()=>{
+  assert.match(index,/class="scenario-inputs scenario-matrix-inputs"/);
+  for(const id of ["scenarioBMode","scenarioBAltitude","scenarioBPayload","scenarioBFuel","scenarioAName","scenarioBName","scenarioMatrixRows","applyScenarioB"]){
+    assert.match(index,new RegExp(`id="${id}"`));
+  }
+  assert.match(app,/\$\("#scenarioMatrixRows"\)\.innerHTML=\[/);
+  assert.match(app,/comparison\.delta\.marginGal/);
+  assert.match(css,/\.scenario-matrix-head,\.scenario-matrix-row \{[^}]*grid-template-columns:minmax\(0,1fr\)/);
 });
 
 test("mission strip centers each complete information group",()=>{
@@ -25,10 +29,10 @@ test("mission strip centers each complete information group",()=>{
   assert.doesNotMatch(css,/\.mission-strip strong \{[^}]*position:absolute/);
 });
 
-test("scenario A centers its information block without changing scenario B",()=>{
-  assert.match(index,/class="scenario-current-body"/);
-  assert.match(css,/\.scenario-card:not\(\.scenario-editable\) \{ display:flex; flex-direction:column; \}/);
-  assert.match(css,/\.scenario-current-body \{[^}]*justify-content:center/);
+test("A/B matrix stacks each metric for narrow screens without horizontal overflow",()=>{
+  assert.match(css,/@media \(max-width:760px\) \{[\s\S]*?\.scenario-matrix-head,\.scenario-matrix-row \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.scenario-metric,\.scenario-change \{ grid-column:1\/-1; \}/);
+  assert.match(css,/\.scenario-matrix \{[^}]*overflow:hidden/);
 });
 
 test("discrete icon rules cover every primary calculator surface",()=>{

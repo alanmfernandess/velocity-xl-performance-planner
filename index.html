@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261014-02" />
+    <link rel="stylesheet" href="./styles.css?v=20261014-03" />
   </head>
   <body>
     <header class="topbar">
@@ -190,25 +190,17 @@
           </div>
         </div>
         <div class="tool-view" data-tool-panel="compare">
-          <div class="scenario-grid">
-            <article class="scenario-card">
-              <div class="scenario-head"><strong>A</strong><span data-i18n="currentScenario">ATUAL</span></div>
-              <div class="scenario-current-body">
-                <div class="scenario-name" id="scenarioAName">NORMAL · FL140</div>
-                <div class="scenario-stats" id="scenarioAStats"></div>
-              </div>
-            </article>
-            <article class="scenario-card scenario-editable">
-              <div class="scenario-head"><strong>B</strong><span data-i18n="comparisonScenario">COMPARAÇÃO</span></div>
-              <div class="scenario-inputs">
-                <label><span>MODE</span><select id="scenarioBMode"><option>ECON</option><option>NORMAL</option><option>FAST</option></select></label>
-                <label><span>FL</span><select id="scenarioBAltitude"></select></label>
-                <label><span data-i18n="payload">Carga útil</span><span class="input-with-unit"><input id="scenarioBPayload" type="number" min="0" step="10" /><small id="scenarioBWeightUnit">lb</small></span></label>
-                <label><span data-i18n="fuelOnboard">Combustível a bordo</span><span class="input-with-unit"><input id="scenarioBFuel" type="number" min="0" step="1" /><small id="scenarioBFuelUnit">gal</small></span></label>
-              </div>
-              <div class="scenario-stats" id="scenarioBStats"></div>
-            </article>
-            <div class="scenario-delta" id="scenarioDelta"></div>
+          <div class="scenario-matrix-module">
+            <div class="scenario-inputs scenario-matrix-inputs" aria-label="B">
+              <label><span data-i18n="scenarioModeB">MODE B</span><select id="scenarioBMode"><option>ECON</option><option>NORMAL</option><option>FAST</option></select></label>
+              <label><span>FL B</span><select id="scenarioBAltitude"></select></label>
+              <label><span data-i18n="scenarioPayloadB">Carga útil B</span><span class="input-with-unit"><input id="scenarioBPayload" type="number" min="0" step="10" /><small id="scenarioBWeightUnit">lb</small></span></label>
+              <label><span data-i18n="scenarioFuelB">Combustível B</span><span class="input-with-unit"><input id="scenarioBFuel" type="number" min="0" step="1" /><small id="scenarioBFuelUnit">gal</small></span></label>
+            </div>
+            <div class="scenario-matrix" role="table" aria-label="A / B">
+              <div class="scenario-matrix-head" role="row"><span role="columnheader" data-i18n="scenarioMetric">MÉTRICA</span><strong role="columnheader" id="scenarioAName">A · NORMAL · FL140</strong><strong role="columnheader" id="scenarioBName">B · ECON · FL160</strong><span role="columnheader">Δ B − A</span></div>
+              <div class="scenario-matrix-body" id="scenarioMatrixRows" role="rowgroup"></div>
+            </div>
             <button class="text-button compact-action" id="applyScenarioB" type="button" data-i18n="applyScenario">Aplicar B</button>
           </div>
         </div>
@@ -339,6 +331,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261014-02"></script>
+    <script type="module" src="./js/app.js?v=20261014-03"></script>
   </body>
 </html>
