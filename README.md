@@ -11,7 +11,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Interpolação de vento e OAT por waypoint para comparar FL100 a FL250.
 - Icing-Aware Level Optimizer usando OAT por waypoint/nível e evidências meteorológicas presentes no OFP para evitar ou penalizar faixas com risco de gelo.
 - Interface clara e minimalista em português do Brasil e inglês americano.
-- Escala de tipografia ajustável e unidades selecionáveis LB/KG e GAL/L.
+- Tipografia compacta e responsiva, com unidades selecionáveis LB/KG e GAL/L.
 - Manifesto instalável com apresentação standalone, semelhante a um aplicativo.
 - Comparação de FL100 a FL250 nos modos ECON, NORMAL e FAST.
 - Potência automática por modo ou ajuste manual de MAP/RPM, refletida em TAS, fuel flow, tempo, combustível e alcance.

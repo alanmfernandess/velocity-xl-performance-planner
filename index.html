@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261013-30" />
+    <link rel="stylesheet" href="./styles.css?v=20261014-01" />
   </head>
   <body>
     <header class="topbar">
@@ -23,11 +23,6 @@
         <span><strong>VELOCITY XL</strong><small>PERFORMANCE PLANNER</small></span>
       </a>
       <div class="app-toolbar">
-        <div class="toolbar-group font-switch" aria-label="Tamanho da fonte">
-          <button data-font-size="small" type="button" aria-label="Fonte menor">A−</button>
-          <button class="active" data-font-size="medium" type="button" aria-label="Fonte média">A</button>
-          <button data-font-size="large" type="button" aria-label="Fonte maior">A+</button>
-        </div>
         <div class="toolbar-group" aria-label="Weight unit">
           <button class="active" data-weight-unit="lb" type="button">LB</button>
           <button data-weight-unit="kg" type="button">KG</button>
@@ -234,7 +229,7 @@
             <div class="wb-chart-card">
               <div class="wb-chart-head"><div><strong data-i18n="cgEnvelope">Envelope de CG</strong><small id="wbMargins">—</small></div><b class="status-pill" id="wbStatus">—</b></div>
               <div class="cg-chart" id="cgChart"></div>
-              <div class="cg-legend"><span><i class="to"></i>TO</span><span><i class="landing"></i>LDG</span><span><i class="zfw"></i>ZFW</span><small id="wbEnvelopeLegend">127–134 in · 3,000 lb</small></div>
+              <small class="cg-limits" id="wbEnvelopeLegend">127–134 in · 3,000 lb</small>
             </div>
             <div class="wb-kpis">
               <span><b data-i18n="takeoff">Decolagem</b><strong id="wbTakeoffCg">—</strong></span>
@@ -339,6 +334,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261013-30"></script>
+    <script type="module" src="./js/app.js?v=20261014-01"></script>
   </body>
 </html>

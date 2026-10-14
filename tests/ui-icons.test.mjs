@@ -8,8 +8,8 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261013-30/);
-  assert.match(index,/js\/app\.js\?v=20261013-30/);
+  assert.match(index,/styles\.css\?v=20261014-01/);
+  assert.match(index,/js\/app\.js\?v=20261014-01/);
 });
 
 test("scenario B separates editable inputs from calculated results",()=>{

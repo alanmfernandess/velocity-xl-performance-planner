@@ -1,7 +1,7 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-30";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261013-30";
-import { fetchLatestOFP } from "./simbrief.js?v=20261013-30";
-import { buildRouteGeometry, layoutRouteLabels, pointAlongPolyline } from "./route-map.js?v=20261013-30";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261014-01";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261014-01";
+import { fetchLatestOFP } from "./simbrief.js?v=20261014-01";
+import { buildRouteGeometry, layoutRouteLabels, pointAlongPolyline } from "./route-map.js?v=20261014-01";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -10,7 +10,6 @@ const iconMarkup = (name, className="") => `<i class="ui-icon ${className}" data
 
 const UI_ICON_RULES = [
   [".brand-mark","plane","brand"],
-  [".font-switch","type","group"],
   ['.toolbar-group[aria-label="Weight unit"]',"scale","group"],
   ['.toolbar-group[aria-label="Fuel unit"]',"fuel","group"],
   [".language-switch","languages","group"],
@@ -175,7 +174,7 @@ function storedJson(key, fallback) {
 const state = {
   plan:null, mode:"NORMAL", payloadLb:520, fuelOnboardGal:77, reserveMinutes:45,
   metric:"fuel", selectedAltitudeFt:null, language:localStorage.getItem("velocityxl.language") || "pt-BR",
-  weightUnit:localStorage.getItem("velocityxl.weightUnit") || "lb", fuelUnit:localStorage.getItem("velocityxl.fuelUnit") || "gal", fontSize:localStorage.getItem("velocityxl.fontSize") || "medium",
+  weightUnit:localStorage.getItem("velocityxl.weightUnit") || "lb", fuelUnit:localStorage.getItem("velocityxl.fuelUnit") || "gal",
   calibration:storedJson("velocityxl.calibration", {}),
   powerSetting:storedJson("velocityxl.powerSetting", { type:"AUTO", mapInHg:24, rpm:2450 }),
   oxygen:storedJson("velocityxl.oxygen", { bottleModel:"SK-12-24", bottles:0, seats:[true,true,true,true,true], altitudeFt:null }),
@@ -228,11 +227,9 @@ function showToast(message, error=false) {
 
 function applyTranslations() {
   document.documentElement.lang=state.language;
-  document.documentElement.dataset.fontSize=state.fontSize;
   $$('[data-i18n]').forEach((element)=>{ element.textContent=t(element.dataset.i18n); });
   $$('[data-i18n-title]').forEach((element)=>{ const label=t(element.dataset.i18nTitle); element.title=label; element.setAttribute("aria-label",label); });
   $$('[data-language]').forEach((button)=>button.classList.toggle("active",button.dataset.language===state.language));
-  $$('[data-font-size]').forEach((button)=>button.classList.toggle("active",button.dataset.fontSize===state.fontSize));
   $$('[data-weight-unit]').forEach((button)=>button.classList.toggle("active",button.dataset.weightUnit===state.weightUnit));
   $$('[data-fuel-unit]').forEach((button)=>button.classList.toggle("active",button.dataset.fuelUnit===state.fuelUnit));
   $$('[data-power-type]').forEach((button)=>button.classList.toggle("active",button.dataset.powerType===state.powerSetting.type));
@@ -570,19 +567,25 @@ function renderWeightBalance(weightBalance) {
   $("#wbGrossWeight").textContent=formatWeight(weightBalance.takeoff.weightLb);
   $("#wbCgTravel").textContent=signedNumber(weightBalance.cgTravelIn,2," in");
   $("#wbMargins").textContent=`FWD ${number(weightBalance.takeoff.forwardMarginIn,2)} · AFT ${number(weightBalance.takeoff.aftMarginIn,2)} in`;
-  $("#wbEnvelopeLegend").textContent=`127–134 in · ${formatWeight(weightBalance.envelope.maximumWeightLb)}`;
+  $("#wbEnvelopeLegend").textContent=`${number(weightBalance.envelope.forwardCgIn)}–${number(weightBalance.envelope.aftCgIn)} in · ${formatWeight(weightBalance.envelope.maximumWeightLb)}`;
 
-  const width=760,height=350,left=62,right=24,top=30,bottom=48,env=weightBalance.envelope,relevantPoints=[weightBalance.zeroFuel,weightBalance.takeoff,weightBalance.landing];
-  const minCg=Math.min(126,Math.floor((Math.min(...relevantPoints.map((item)=>item.cgIn))-.5)*2)/2),maxCg=Math.max(135,Math.ceil((Math.max(...relevantPoints.map((item)=>item.cgIn))+.5)*2)/2),minWeight=env.minimumChartWeightLb,maxWeight=Math.max(env.maximumWeightLb,Math.ceil(Math.max(...relevantPoints.map((item)=>item.weightLb))/200)*200);
-  const x=(cg)=>left+(cg-minCg)/(maxCg-minCg)*(width-left-right);
-  const y=(weight)=>top+(maxWeight-weight)/(maxWeight-minWeight)*(height-top-bottom);
-  const xTicks=Array.from({length:Math.floor(maxCg-minCg)+1},(_,index)=>Math.ceil(minCg)+index).filter((value)=>value<=maxCg);
-  const xGrid=xTicks.map((value)=>`<g><line x1="${x(value)}" y1="${top}" x2="${x(value)}" y2="${height-bottom}" stroke="#e8edf1"/><text x="${x(value)}" y="${height-19}" text-anchor="middle" fill="#7a8793" font-size="9">${value}</text></g>`).join("");
-  const yGrid=Array.from({length:5},(_,index)=>minWeight+(maxWeight-minWeight)*index/4).map((value)=>`<g><line x1="${left}" y1="${y(value)}" x2="${width-right}" y2="${y(value)}" stroke="#e8edf1"/><text x="${left-10}" y="${y(value)+3}" text-anchor="end" fill="#7a8793" font-size="9">${number(weightValue(value),0)}</text></g>`).join("");
-  const trajectory=weightBalance.trajectory.map((point)=>`${x(point.cgIn)},${y(point.weightLb)}`).join(" ");
-  const point=(item,label,color,dy,dx=9,anchor="start")=>`<g><circle cx="${x(item.cgIn)}" cy="${y(item.weightLb)}" r="6" fill="${color}" stroke="#fff" stroke-width="2"/><text x="${x(item.cgIn)+dx}" y="${y(item.weightLb)+dy}" text-anchor="${anchor}" fill="${color}" font-size="9" font-weight="700">${label} · ${number(item.cgIn,2)}\"</text></g>`;
-  $("#cgChart").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(t("cgEnvelope"))}"><rect x="${x(env.forwardCgIn)}" y="${y(env.maximumWeightLb)}" width="${x(env.aftCgIn)-x(env.forwardCgIn)}" height="${y(env.minimumChartWeightLb)-y(env.maximumWeightLb)}" rx="8" fill="#edf8ef" stroke="#52a964" stroke-width="1.5"/>${xGrid}${yGrid}<line x1="${x(env.forwardCgIn)}" y1="${top}" x2="${x(env.forwardCgIn)}" y2="${height-bottom}" stroke="#52a964" stroke-width="2"/><line x1="${x(env.aftCgIn)}" y1="${top}" x2="${x(env.aftCgIn)}" y2="${height-bottom}" stroke="#52a964" stroke-width="2"/><polyline points="${trajectory}" fill="none" stroke="#1976d2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${point(weightBalance.zeroFuel,"ZFW","#7a8793",14,-9,"end")}${point(weightBalance.takeoff,"TO","#1976d2",-9)}${point(weightBalance.landing,"LDG",weightBalance.status==="unavailable"?"#dc5661":"#52a964",14)}<text x="${left}" y="14" fill="#7a8793" font-size="9">${escapeHtml(weightLabel().toUpperCase())}</text><text x="${width-right}" y="${height-5}" text-anchor="end" fill="#7a8793" font-size="9">CG · IN AFT DATUM</text></svg>`;
-
+  const env=weightBalance.envelope;
+  const phases=[
+    {key:"zfw",label:t("zeroFuel"),point:weightBalance.zeroFuel},
+    {key:"takeoff",label:t("takeoff"),point:weightBalance.takeoff},
+    {key:"landing",label:t("landing"),point:weightBalance.landing},
+  ];
+  const minCg=Math.min(env.forwardCgIn-.7,...phases.map(({point})=>point.cgIn-.35));
+  const maxCg=Math.max(env.aftCgIn+.7,...phases.map(({point})=>point.cgIn+.35));
+  const position=(cg)=>clamp((cg-minCg)/(maxCg-minCg)*100,0,100);
+  const safeStart=position(env.forwardCgIn),safeWidth=position(env.aftCgIn)-safeStart;
+  $("#cgChart").innerHTML=`<div class="cg-phase-list" role="group" aria-label="${escapeHtml(t("cgEnvelope"))}">${phases.map(({key,label,point})=>{
+    const outside=point.cgIn<env.forwardCgIn||point.cgIn>env.aftCgIn||point.weightLb>env.maximumWeightLb;
+    const closeToLimit=!outside&&key!=="zfw"&&(Math.min(point.forwardMarginIn,point.aftMarginIn)<env.marginalCgIn||point.weightMarginLb<env.marginalWeightLb);
+    const phaseStatus=outside?"notViable":closeToLimit?"marginalStatus":"viable";
+    const summary=`${label}: CG ${number(point.cgIn,2)} in; ${formatWeight(point.weightLb)}; ${t(phaseStatus)}`;
+    return `<div class="cg-phase-row ${key} ${outside?"outside":closeToLimit?"marginal":""}" role="img" aria-label="${escapeHtml(summary)}"><div class="cg-phase-heading"><span>${escapeHtml(label)}</span><strong>${number(point.cgIn,2)} in</strong><span class="cg-phase-weight">${formatWeight(point.weightLb)}</span></div><div class="cg-phase-track" style="--cg-safe-start:${safeStart.toFixed(2)}%;--cg-safe-width:${safeWidth.toFixed(2)}%;--cg-at:${position(point.cgIn).toFixed(2)}%"><span class="cg-phase-safe"></span><i class="cg-phase-marker"></i></div>${outside||closeToLimit?`<small class="cg-phase-warning">${escapeHtml(t(phaseStatus))}</small>`:""}</div>`;
+  }).join("")}<div class="cg-phase-axis"><span>${number(env.forwardCgIn)} in · ${escapeHtml(t("cgForward"))}</span><span>${number(env.aftCgIn)} in · ${escapeHtml(t("cgAft"))}</span></div></div>`;
   const stationLabels={empty:t("emptyAircraft"),pilot:t("pilot"),copilot:t("copilot"),rearLeft:t("rearLeft"),rearCenter:t("rearCenter"),rearRight:t("rearRight"),baggage:t("baggage"),oxygen:t("oxygen"),headerFuel:t("headerFuel"),mainFuel:t("mainFuel")};
   const stationIcon=(key)=>key==="empty"?"plane":key==="baggage"?"luggage":key==="oxygen"?"cylinder":key.includes("Fuel")?"fuel":"user-round";
   $("#wbStationRows").innerHTML=weightBalance.takeoff.stations.filter((item)=>item.weightLb>0).map((item)=>`<div><b>${iconMarkup(stationIcon(item.key))}${escapeHtml(stationLabels[item.key]||item.key)}</b><span>${formatWeight(item.weightLb)}</span><span>${number(item.armIn,1)} in</span><strong>${number(item.momentInLb,0)}</strong></div>`).join("");
@@ -656,7 +659,6 @@ function render() {
 }
 
 $$('[data-language]').forEach((button)=>button.addEventListener("click",()=>{state.language=button.dataset.language;localStorage.setItem("velocityxl.language",state.language);render();}));
-$$('[data-font-size]').forEach((button)=>button.addEventListener("click",()=>{state.fontSize=button.dataset.fontSize;localStorage.setItem("velocityxl.fontSize",state.fontSize);render();}));
 $$('[data-weight-unit]').forEach((button)=>button.addEventListener("click",()=>{state.weightUnit=button.dataset.weightUnit;localStorage.setItem("velocityxl.weightUnit",state.weightUnit);render();}));
 $$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit,observed=$("#observedFuelFlow"),debrief=$("#debriefFuel"),value=Number(observed.value),debriefValue=Number(debrief.value);state.fuelUnit=next;if(Number.isFinite(value)&&value>0&&previous!==next)observed.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);if(Number.isFinite(debriefValue)&&debriefValue>0&&previous!==next)debrief.value=(next==="l"?debriefValue*3.785411784:debriefValue/3.785411784).toFixed(1);localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
 $$('[data-mode]').forEach((button)=>button.addEventListener("click",()=>{state.mode=button.dataset.mode;state.selectedAltitudeFt=null;$$('[data-mode]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
