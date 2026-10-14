@@ -193,6 +193,94 @@ body :is(
 .ice-probability.ice-marginal { color:var(--orange); }
 .ice-probability.ice-high { color:var(--red); }
 
+/* Discrete global icon language. Icons clarify meaning without changing type scale. */
+.ui-icon {
+  width:13px;
+  height:13px;
+  flex:0 0 auto;
+  color:var(--muted);
+  opacity:.82;
+  fill:none;
+  stroke:currentColor;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  vertical-align:-2px;
+}
+.ui-icon-inline,
+.ui-icon-heading,
+.ui-icon-button { display:inline-flex!important; align-items:center; gap:6px; }
+.ui-icon-button { justify-content:center; }
+.ui-icon-heading > .ui-icon { width:14px; height:14px; }
+.ui-icon-button.active > .ui-icon,
+.view-tabs button.active > .ui-icon,
+.chart-tabs button.active > .ui-icon,
+.tool-tabs button.active > .ui-icon { color:var(--blue); opacity:1; }
+.primary-button > .ui-icon { color:currentColor; opacity:1; }
+
+.brand-mark::before,
+.brand-mark::after,
+.brand-mark > span { display:none; }
+.brand-mark > .ui-icon { width:18px; height:18px; color:var(--blue); opacity:1; }
+.toolbar-group.ui-icon-group { align-items:center; gap:2px; }
+.toolbar-group.ui-icon-group > .ui-icon { width:12px; height:12px; margin-inline:4px 2px; }
+
+.kpi.ui-icon-card { position:relative; }
+.kpi.ui-icon-card > .ui-icon { position:absolute; top:18px; left:19px; width:13px; height:13px; }
+.kpi.ui-icon-card > span:first-of-type { padding-left:20px; }
+.mission-strip > .ui-icon-card { position:relative; padding-left:39px; }
+.mission-strip > .ui-icon-card > .ui-icon { position:absolute; top:14px; left:16px; width:13px; height:13px; }
+
+.status-pill,
+.feasibility-badge,
+#missionScoreStatus { display:inline-flex; align-items:center; gap:5px; }
+.status-ui-icon { width:11px; height:11px; color:currentColor!important; opacity:1; }
+.icing-summary #icingStatus { display:inline-flex; align-items:center; gap:5px; }
+.icing-summary #icingStatus > .ui-icon { width:11px; height:11px; color:currentColor; opacity:1; }
+
+.level-card-heading {
+  display:flex!important;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  margin:0 0 3px!important;
+  color:inherit!important;
+}
+.level-card-heading .level-state-icon { width:11px; height:11px; color:var(--green); opacity:1; }
+.level-card.weather-unavailable .level-state-icon,
+.level-card.unavailable .level-state-icon { color:var(--red); }
+.level-card.recommended::after { display:none; }
+.ice-probability > .ui-icon { width:10px; height:10px; color:inherit; opacity:1; }
+
+.fuel-legend div { grid-template-columns:13px 1fr; column-gap:3px; }
+.fuel-legend .fuel-legend-icon { width:11px; height:11px; border-radius:0; color:var(--muted); opacity:.82; background:none!important; }
+.fuel-legend b { grid-column:2; }
+
+.mission-score-reasons > div { grid-template-columns:13px minmax(0,1fr) auto; }
+.mission-score-reasons .reason-icon {
+  width:11px;
+  height:11px;
+  border-radius:0;
+  color:var(--orange);
+  background:none!important;
+  opacity:1;
+}
+.mission-score-reasons .critical .reason-icon { color:var(--red); background:none; }
+.mission-score-reasons .ok .reason-icon { color:var(--green); background:none; }
+
+.scenario-stats b,
+.wb-stations #wbStationRows b,
+.envelope-row b,
+.ride-level b,
+.debrief-history span { display:flex; align-items:center; gap:5px; }
+.scenario-stats b > .ui-icon,
+.wb-stations #wbStationRows b > .ui-icon,
+.envelope-row b > .ui-icon,
+.ride-level b > .ui-icon,
+.debrief-history span > .ui-icon { width:11px; height:11px; }
+.ride-level.selected b > .ui-icon { color:var(--blue); opacity:1; }
+.step-item > .ui-icon { position:absolute; top:12px; right:14px; width:11px; height:11px; }
+.step-item:first-child > .ui-icon { right:14px; }
+
 @media (max-width:1100px) {
   .plan-bar { grid-template-columns:1fr; gap:18px; }.plan-form { grid-template-columns:minmax(220px,1fr) 124px; justify-content:stretch; }.dashboard-grid { grid-template-columns:1fr; }.control-stack { display:grid; grid-template-columns:1.2fr 1fr 1fr; }.navigation-grid { grid-template-columns:1fr 1.5fr 1fr; }.navigation-speeds { grid-column:1/-1; }.levels-grid { grid-template-columns:repeat(5,1fr); }
   .dashboard-grid { grid-template-columns:minmax(0,1fr); }.control-stack { grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr); }.ride-levels { grid-template-columns:repeat(5,1fr); }.debrief-layout { grid-template-columns:1fr 1fr; }.debrief-history { grid-column:1/-1; }.wb-layout { grid-template-columns:minmax(210px,.55fr) minmax(0,1.45fr); }
@@ -203,6 +291,7 @@ body :is(
   .kpi-grid { grid-template-columns:1fr 1fr; }.kpi { min-height:98px; padding:14px; }.kpi > strong { font-size:1.5rem; }.kpi.featured > strong { font-size:1.875rem; }
   .visual-panel { padding:0 16px 16px; min-height:460px; }.view-tabs { height:48px; }.view-tabs button { height:48px; }.view-heading { align-items:flex-start; }.chart-wrap { min-height:300px; margin-left:-10px; margin-right:-5px; }.chart-foot > span:last-child { display:none; }.icing-summary { grid-template-columns:auto minmax(0,1fr); }.icing-summary small { grid-column:1/-1; }.route-map { min-height:300px; }.mini-stats { grid-template-columns:1fr 1fr; }.mini-stats div:nth-child(2) { border-right:0; }.mini-stats div:nth-child(-n+2) { border-bottom:1px solid var(--line); }
   .control-stack { display:flex; }.flight-tools-panel { padding-inline:16px; }.tool-tabs { gap:16px; overflow-x:auto; }.tool-tabs button { flex:0 0 auto; }.navigation-grid { grid-template-columns:1fr 1fr; }.navigation-scale { grid-column:1/-1; grid-row:2; }.navigation-speeds { grid-column:1/-1; }.compact-form,.calibration-form { grid-template-columns:1fr 1fr; }.compact-form .primary-button,.calibration-head { align-self:end; }.levels-grid { grid-template-columns:repeat(3,1fr); }.phase-grid strong { font-size:.5rem; }.scenario-grid { grid-template-columns:1fr; }.scenario-inputs { grid-template-columns:1fr 1fr; }.load-grid,.glide-kpis { grid-template-columns:1fr 1fr; }.mission-strip { grid-template-columns:1fr 1fr; }.mission-strip div:nth-child(2) { border-right:0; }.mission-strip div:nth-child(-n+2) { border-bottom:1px solid var(--line); }.oxygen-layout { grid-template-columns:1fr; }.oxygen-controls { grid-template-columns:1fr 1fr; }.oxygen-status { grid-column:auto; }.confidence-layout { grid-template-columns:1fr; }.confidence-score { min-height:100px; }.ride-levels { grid-template-columns:repeat(3,1fr); }.debrief-layout { grid-template-columns:1fr; }.debrief-form { grid-template-columns:1fr 1fr; }.debrief-form button { grid-column:1/-1; }.debrief-history { grid-column:auto; }.wb-layout { grid-template-columns:1fr; }.wb-inputs { grid-template-columns:repeat(3,1fr); }.wb-chart-card { grid-column:auto; grid-row:auto; }.wb-kpis { grid-template-columns:repeat(4,1fr); }.wb-stations { grid-column:auto; }
+  .toolbar-group.ui-icon-group > .ui-icon { display:none; }
 }
 @media (max-width:430px) {
   .plan-form { grid-template-columns:1fr; }.primary-button { width:100%; }.kpi-grid { grid-template-columns:1fr 1fr; }.kpi { min-height:112px; padding:13px; }.kpi > strong { font-size:1.375rem; }.kpi.featured > strong { font-size:1.625rem; }.navigation-grid { gap:14px 8px; }.navigation-point > strong { font-size:.9375rem; }.compact-form,.calibration-form { grid-template-columns:1fr; }.levels-grid { grid-template-columns:1fr 1fr; }.chart-tabs button { padding:6px; }.view-heading h2 { font-size:.8125rem; }.icing-summary { grid-template-columns:1fr; }.icing-summary span { white-space:normal; }.icing-summary small { grid-column:auto; white-space:normal; } footer { display:grid; gap:5px; }.advisor-grid { grid-template-columns:1fr; }.advisor-strip { grid-column:auto; grid-template-columns:1fr; }.advisor-strip span { border-right:0; border-bottom:1px solid var(--line); }.scenario-stats { grid-template-columns:1fr 1fr; }.scenario-delta { grid-template-columns:1fr 1fr; }.load-grid,.glide-kpis { grid-template-columns:1fr; }.compact-action { width:100%; }.oxygen-controls,.debrief-form { grid-template-columns:1fr; }.debrief-form button { grid-column:auto; }.ride-levels { grid-template-columns:1fr 1fr; }.envelope-head,.envelope-row { grid-template-columns:minmax(54px,.8fr) repeat(3,minmax(58px,1fr)); }.envelope-row { padding-inline:5px; }.wb-inputs { grid-template-columns:1fr 1fr; }.wb-kpis { grid-template-columns:1fr 1fr; }.cg-chart { min-height:190px; }.cg-legend { flex-wrap:wrap; }.cg-legend small { width:100%; margin:0; }.wb-table-head,.wb-stations #wbStationRows>div { grid-template-columns:minmax(92px,1.35fr) repeat(3,minmax(54px,1fr)); gap:4px; }.wb-stations { padding-inline:7px; }

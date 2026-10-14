@@ -1,11 +1,147 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-24";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261013-24";
-import { fetchLatestOFP } from "./simbrief.js?v=20261013-24";
-import { buildRouteGeometry, layoutRouteLabels, pointAlongPolyline } from "./route-map.js?v=20261013-24";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261013-25";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261013-25";
+import { fetchLatestOFP } from "./simbrief.js?v=20261013-25";
+import { buildRouteGeometry, layoutRouteLabels, pointAlongPolyline } from "./route-map.js?v=20261013-25";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[char]));
+const iconMarkup = (name, className="") => `<i class="ui-icon ${className}" data-lucide="${name}" aria-hidden="true"></i>`;
+
+const UI_ICON_RULES = [
+  [".brand-mark","plane","brand"],
+  [".font-switch","type","group"],
+  ['.toolbar-group[aria-label="Weight unit"]',"scale","group"],
+  ['.toolbar-group[aria-label="Fuel unit"]',"fuel","group"],
+  [".language-switch","languages","group"],
+  ["#planTimestamp","route","inline"],
+  ["#importLatest","cloud-download","button"],
+  [".kpi-grid .kpi:nth-child(1)","navigation","card"],
+  [".kpi-grid .kpi:nth-child(2)","fuel","card"],
+  [".kpi-grid .kpi:nth-child(3)","clock-3","card"],
+  [".kpi-grid .kpi:nth-child(4)","trending-up","card"],
+  [".mission-strip > div:nth-child(1)","activity","card"],
+  [".mission-strip > div:nth-child(2)","shield-check","card"],
+  [".mission-strip > div:nth-child(3)","waves","card"],
+  [".mission-strip > div:nth-child(4)","wind","card"],
+  ['[data-view="performance"]',"gauge","button"],
+  ['[data-view="route"]',"route","button"],
+  ['[data-view="profile"]',"area-chart","button"],
+  ['[data-view-panel="performance"] .view-heading h2',"bar-chart-3","heading"],
+  ['[data-metric="fuel"]',"fuel","button"],
+  ['[data-metric="time"]',"clock-3","button"],
+  ['[data-metric="efficiency"]',"gauge","button"],
+  ["#icingStatus","snowflake","inline"],
+  ['[data-view-panel="route"] .view-heading h2',"map","heading"],
+  [".mini-stats > div:nth-child(1) > span","thermometer-sun","inline"],
+  [".mini-stats > div:nth-child(2) > span","wind","inline"],
+  [".mini-stats > div:nth-child(3) > span","thermometer","inline"],
+  [".mini-stats > div:nth-child(4) > span","map-pin","inline"],
+  ['[data-view-panel="profile"] .view-heading h2',"area-chart","heading"],
+  [".phase-grid > div:nth-child(1) > span","plane-takeoff","inline"],
+  [".phase-grid > div:nth-child(2) > span","move-right","inline"],
+  [".phase-grid > div:nth-child(3) > span","plane-landing","inline"],
+  [".power-heading > span","gauge","inline"],
+  [".range-control:nth-of-type(1) b","luggage","inline"],
+  [".range-control:nth-of-type(2) b","fuel","inline"],
+  [".select-control > span","timer","inline"],
+  [".weight-meter > div:first-child > span","scale","inline"],
+  ["#optimizeMission","wand-sparkles","button"],
+  [".mission-score-heading > div > span","activity","inline"],
+  [".mission-score-action > span","wrench","inline"],
+  [".compact-heading > span","fuel","inline"],
+  ['[data-tool-view="etp"]',"route","button"],
+  ['[data-tool-view="alternate"]',"map-pinned","button"],
+  ['[data-tool-view="compare"]',"git-compare-arrows","button"],
+  ['[data-tool-view="load"]',"package-check","button"],
+  ['[data-tool-view="wb"]',"scale","button"],
+  ['[data-tool-view="glide"]',"wind","button"],
+  ['[data-tool-view="oxygen"]',"heart-pulse","button"],
+  ['[data-tool-view="confidence"]',"shield-check","button"],
+  ['[data-tool-view="ride"]',"waves","button"],
+  ['[data-tool-view="debrief"]',"history","button"],
+  ['[data-tool-view="steps"]',"trending-up","button"],
+  ['[data-tool-view="update"]',"refresh-cw","button"],
+  [".etp-point > span","route","inline"],
+  [".pnr-point > span","rotate-ccw","inline"],
+  [".navigation-speeds > span:nth-child(1) b","move-right","inline"],
+  [".navigation-speeds > span:nth-child(2) b","move-left","inline"],
+  [".advisor-card:nth-child(1) > span","map-pinned","inline"],
+  [".advisor-card:nth-child(2) .inline-select > span","route","inline"],
+  [".advisor-strip > span:nth-child(1) b","fuel","inline"],
+  [".advisor-strip > span:nth-child(2) b","navigation","inline"],
+  [".advisor-strip > span:nth-child(3) b","plane-landing","inline"],
+  [".scenario-head","git-compare-arrows","inline"],
+  ["#applyScenarioB","check","button"],
+  [".load-grid > article:nth-child(1) > span","fuel","inline"],
+  [".load-grid > article:nth-child(2) > span","navigation","inline"],
+  [".load-grid > article:nth-child(3) > span","luggage","inline"],
+  [".load-grid > article:nth-child(4) > span","scale","inline"],
+  [".wb-inputs > label:nth-child(-n+5) > span:first-child","user-round","inline"],
+  [".wb-inputs > label:nth-child(6) > span:first-child","luggage","inline"],
+  [".wb-chart-head strong","scale","inline"],
+  [".wb-kpis > span:nth-child(1) b","plane-takeoff","inline"],
+  [".wb-kpis > span:nth-child(2) b","plane-landing","inline"],
+  [".wb-kpis > span:nth-child(3) b","scale","inline"],
+  [".wb-kpis > span:nth-child(4) b","move-horizontal","inline"],
+  [".glide-kpis > span:nth-child(1) b","ratio","inline"],
+  [".glide-kpis > span:nth-child(2) b","gauge","inline"],
+  [".glide-kpis > span:nth-child(3) b","move-up-right","inline"],
+  [".glide-kpis > span:nth-child(4) b","clock-3","inline"],
+  [".oxygen-controls > label:nth-child(1) > span","gauge","inline"],
+  [".oxygen-controls > label:nth-child(2) > span","cylinder","inline"],
+  [".oxygen-controls > label:nth-child(3) > span","hash","inline"],
+  ["#applyOxygenRecommendation","check","button"],
+  [".oxygen-stats > span:nth-child(1) b","activity","inline"],
+  [".oxygen-stats > span:nth-child(2) b","cylinder","inline"],
+  [".oxygen-stats > span:nth-child(3) b","clock-3","inline"],
+  [".oxygen-stats > span:nth-child(4) b","scale","inline"],
+  [".confidence-score > span","shield-check","inline"],
+  [".ride-summary","waves","heading"],
+  [".debrief-form > label:nth-child(1) > span:first-child","clock-3","inline"],
+  [".debrief-form > label:nth-child(2) > span:first-child","fuel","inline"],
+  ["#debriefForm .primary-button","save","button"],
+  [".step-summary","trending-up","heading"],
+  ["#manualUpdateForm > label:nth-child(1) > span:first-child","map-pin","inline"],
+  ["#manualUpdateForm > label:nth-child(2) > span:first-child","navigation","inline"],
+  ["#manualUpdateForm > label:nth-child(3) > span:first-child","fuel","inline"],
+  ["#manualUpdateForm .primary-button","refresh-cw","button"],
+  [".calibration-head > span","sliders-horizontal","inline"],
+  ["#calibrationForm > label:nth-of-type(1) > span:first-child","gauge","inline"],
+  ["#calibrationForm > label:nth-of-type(2) > span:first-child","fuel","inline"],
+  ["#calibrationForm .primary-button","check","button"],
+  ["#resetCalibration","rotate-ccw","button"],
+  [".section-heading h2","layers-3","heading"],
+];
+
+function ensureUiIcon(element,name,mode="inline") {
+  if(!element) return;
+  const current=element.querySelector(":scope > .ui-icon");
+  if(current?.dataset.uiIcon===name) return;
+  current?.remove();
+  const icon=document.createElement("i");
+  icon.className="ui-icon";
+  icon.dataset.lucide=name;
+  icon.dataset.uiIcon=name;
+  icon.setAttribute("aria-hidden","true");
+  element.prepend(icon);
+  element.classList.add(`ui-icon-${mode}`);
+}
+
+function refreshUiIcons() {
+  UI_ICON_RULES.forEach(([selector,name,mode])=>document.querySelectorAll(selector).forEach((element)=>ensureUiIcon(element,name,mode)));
+  $$(".status-pill, #feasibilityBadge, #missionScoreStatus").forEach((element)=>{
+    element.querySelector(":scope > .status-ui-icon")?.remove();
+    const status=element.dataset.status||[...element.classList].find((item)=>["viable","marginal","unavailable","unknown","oxygen-compliant","oxygen-not-required","oxygen-marginal","oxygen-insufficient"].includes(item));
+    const name=["viable","oxygen-compliant","oxygen-not-required"].includes(status)?"circle-check":["marginal","oxygen-marginal"].includes(status)?"triangle-alert":"circle-x";
+    const icon=document.createElement("i");
+    icon.className="ui-icon status-ui-icon";
+    icon.dataset.lucide=name;
+    icon.setAttribute("aria-hidden","true");
+    element.prepend(icon);
+  });
+  if(window.lucide?.createIcons) window.lucide.createIcons({attrs:{"stroke-width":1.7}});
+}
 
 const COPY = {
   "pt-BR": {
@@ -158,7 +294,7 @@ function icingLabel(icing) {
 function icingProbabilityMarkup(icing) {
   const score=clamp(Math.round(icing.riskScore),0,100);
   const tone=icingDisplayTone(score,icing.status);
-  return `<span class="ice-probability ice-${tone}" aria-label="${escapeHtml(t("iceProbabilityAria"))}: ${score}%"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1v14M2 4.5l12 7M14 4.5l-12 7M5.8 2.3 8 4.5l2.2-2.2M5.8 13.7 8 11.5l2.2 2.2M1.9 7.5l3-.8-.8-3M14.1 8.5l-3 .8.8 3"/></svg><span>ICE</span><strong>${score}%</strong></span>`;
+  return `<span class="ice-probability ice-${tone}" aria-label="${escapeHtml(t("iceProbabilityAria"))}: ${score}%">${iconMarkup("snowflake")}<span>ICE</span><strong>${score}%</strong></span>`;
 }
 
 function levelFeasibilityLabel(result) {
@@ -177,7 +313,7 @@ function levelFeasibilityLabel(result) {
 
 function renderLevelCards(results,recommended,selected) {
   const unit=state.fuelUnit==="l"?"L":"GAL";
-  $("#levelCards").innerHTML=results.map((r)=>{const status=r.feasibility.status,blocked=!operationallyAvailable(r),performanceLabel=levelFeasibilityLabel(r),recommendedClass=r.altitudeFt===recommended.altitudeFt&&!blocked?"recommended":"";return `<button class="level-card ${status} icing-${r.icing.status} ${blocked?"weather-unavailable":""} ${recommendedClass} ${r.altitudeFt===selected.altitudeFt?"selected":""}" data-level="${r.altitudeFt}" type="button" ${blocked?"disabled aria-disabled=\"true\"":""}><b>FL${r.fl}</b><span>${unit} · ETE · GS</span><strong>${number(fuelValue(r.fuelRequiredGal),1)} · ${formatTime(r.tripTimeHr)} · ${Math.round(r.gsKt)}</strong><span class="level-card-status">${performanceLabel?`<em>${escapeHtml(performanceLabel)}</em>`:""}${icingProbabilityMarkup(r.icing)}</span></button>`;}).join("");
+  $("#levelCards").innerHTML=results.map((r)=>{const status=r.feasibility.status,blocked=!operationallyAvailable(r),performanceLabel=levelFeasibilityLabel(r),isRecommended=r.altitudeFt===recommended.altitudeFt&&!blocked,recommendedClass=isRecommended?"recommended":"",stateIcon=blocked?"triangle-alert":isRecommended?"star":"circle-check";return `<button class="level-card ${status} icing-${r.icing.status} ${blocked?"weather-unavailable":""} ${recommendedClass} ${r.altitudeFt===selected.altitudeFt?"selected":""}" data-level="${r.altitudeFt}" type="button" ${blocked?"disabled aria-disabled=\"true\"":""}><span class="level-card-heading"><b>FL${r.fl}</b>${iconMarkup(stateIcon,"level-state-icon")}</span><span>${unit} · ETE · GS</span><strong>${number(fuelValue(r.fuelRequiredGal),1)} · ${formatTime(r.tripTimeHr)} · ${Math.round(r.gsKt)}</strong><span class="level-card-status">${performanceLabel?`<em>${escapeHtml(performanceLabel)}</em>`:""}${icingProbabilityMarkup(r.icing)}</span></button>`;}).join("");
   $$(".level-card:not(:disabled)").forEach((card)=>card.addEventListener("click",()=>{state.selectedAltitudeFt=Number(card.dataset.level);render();}));
 }
 
@@ -192,9 +328,9 @@ function renderIcingSummary(analysis) {
 }
 
 function renderFuel(result) {
-  const pieces=[{label:t("trip"),value:result.tripFuelGal,color:"#1976d2"},{label:t("reserve"),value:result.reserveFuelGal,color:"#52a964"},{label:t("contingency"),value:result.contingencyFuelGal,color:"#d98b34"},{label:t("taxi"),value:PERFORMANCE.taxiFuelGal,color:"#8a72d9"}],total=pieces.reduce((sum,p)=>sum+p.value,0);
+  const pieces=[{label:t("trip"),value:result.tripFuelGal,color:"#1976d2",icon:"route"},{label:t("reserve"),value:result.reserveFuelGal,color:"#52a964",icon:"shield-check"},{label:t("contingency"),value:result.contingencyFuelGal,color:"#d98b34",icon:"plus-circle"},{label:t("taxi"),value:PERFORMANCE.taxiFuelGal,color:"#8a72d9",icon:"plane"}],total=pieces.reduce((sum,p)=>sum+p.value,0);
   $("#fuelBar").innerHTML=pieces.map((p)=>`<span style="width:${p.value/total*100}%;background:${p.color}"></span>`).join("");
-  $("#fuelLegend").innerHTML=pieces.map((p)=>`<div><i style="background:${p.color}"></i><span>${p.label}</span><b>${formatFuel(p.value,1)}</b></div>`).join("");
+  $("#fuelLegend").innerHTML=pieces.map((p)=>`<div>${iconMarkup(p.icon,"fuel-legend-icon")}<span>${p.label}</span><b>${formatFuel(p.value,1)}</b></div>`).join("");
 }
 
 function renderFlightTools(plan,navigation,stepPlan,selected) {
@@ -216,7 +352,7 @@ function renderFlightTools(plan,navigation,stepPlan,selected) {
     $("#stepMeta").textContent=t("noStep");
   }
   const startLabel=state.manual.active?`${t("updated")} · FL${stepPlan.initialAltitudeFt/100}`:`${t("preflight")} · FL${stepPlan.initialAltitudeFt/100}`;
-  $("#stepTrack").innerHTML=[`<div class="step-item"><b>${startLabel}</b><span>${number(stepPlan.startDistanceNm)} NM · ${formatFuel(stepPlan.startFuelGal,1)}</span></div>`,...stepPlan.steps.map((step)=>`<div class="step-item"><b>${t("stepAt",escapeHtml(step.waypoint),step.altitudeFt/100)}</b><span>${number(step.distanceNm)} NM · ${t("stepSaving",formatFuel(step.savingGal,1),number(step.minutes))}</span></div>`)].join("");
+  $("#stepTrack").innerHTML=[`<div class="step-item">${iconMarkup("plane-takeoff")}<b>${startLabel}</b><span>${number(stepPlan.startDistanceNm)} NM · ${formatFuel(stepPlan.startFuelGal,1)}</span></div>`,...stepPlan.steps.map((step)=>`<div class="step-item">${iconMarkup("trending-up")}<b>${t("stepAt",escapeHtml(step.waypoint),step.altitudeFt/100)}</b><span>${number(step.distanceNm)} NM · ${t("stepSaving",formatFuel(step.savingGal,1),number(step.minutes))}</span></div>`)].join("");
 
   const waypointSelect=$("#manualWaypoint"),currentWaypointValue=String(state.manual.waypointIndex);
   waypointSelect.innerHTML=plan.waypoints.map((waypoint,index)=>`<option value="${index}">${escapeHtml(waypoint.ident)} · ${number(waypoint.distanceNm)} NM</option>`).join("");
@@ -274,7 +410,7 @@ function renderAlternateAdvisor(plan,advice) {
 
 function scenarioStats(result) {
   const key=result.feasibility.status==="viable"?"viable":result.feasibility.status==="marginal"?"marginalStatus":"notViable";
-  return `<span><b>${escapeHtml(t("fuel"))}</b><strong>${formatFuel(result.fuelRequiredGal,1)}</strong></span><span><b>ETE</b><strong>${formatTime(result.tripTimeHr)}</strong></span><span><b>GS</b><strong>${number(result.gsKt)} kt</strong></span><span><b>${escapeHtml(t(key))}</b><strong>${signedNumber(fuelValue(result.feasibility.fuelMarginGal),1,` ${fuelLabel()}`)}</strong></span>`;
+  return `<span><b>${iconMarkup("fuel")}${escapeHtml(t("fuel"))}</b><strong>${formatFuel(result.fuelRequiredGal,1)}</strong></span><span><b>${iconMarkup("clock-3")}ETE</b><strong>${formatTime(result.tripTimeHr)}</strong></span><span><b>${iconMarkup("navigation")}GS</b><strong>${number(result.gsKt)} kt</strong></span><span><b>${iconMarkup(result.feasibility.status==="viable"?"circle-check":result.feasibility.status==="marginal"?"triangle-alert":"circle-x")}${escapeHtml(t(key))}</b><strong>${signedNumber(fuelValue(result.feasibility.fuelMarginGal),1,` ${fuelLabel()}`)}</strong></span>`;
 }
 
 function renderScenarioComparison(comparison,selected) {
@@ -336,11 +472,17 @@ function missionReasonLabel(reason,result) {
 
 function missionPositiveReasons(result,excluded) {
   const pt=state.language==="pt-BR",items=[];
-  if(!excluded.has("fuel")&&result.feasibility.fuelMarginGal>=0) items.push({label:`${pt?"Combustível suficiente":"Fuel sufficient"} · ${formatFuel(result.feasibility.fuelMarginGal,1)}`,status:"ok"});
-  if(!excluded.has("weight-balance")&&result.weightBalance?.status==="viable") items.push({label:pt?"Peso e CG dentro do envelope":"Weight and CG within envelope",status:"ok"});
-  if(!excluded.has("icing")&&result.icing.status==="low") items.push({label:pt?"Sem indicação relevante de gelo":"No relevant icing indication",status:"ok"});
-  if(!excluded.has("oxygen")&&["compliant","not-required"].includes(result.oxygen.status)) items.push({label:pt?"Oxigênio adequado":"Oxygen adequate",status:"ok"});
+  if(!excluded.has("fuel")&&result.feasibility.fuelMarginGal>=0) items.push({code:"fuel",label:`${pt?"Combustível suficiente":"Fuel sufficient"} · ${formatFuel(result.feasibility.fuelMarginGal,1)}`,status:"ok"});
+  if(!excluded.has("weight-balance")&&result.weightBalance?.status==="viable") items.push({code:"weight-balance",label:pt?"Peso e CG dentro do envelope":"Weight and CG within envelope",status:"ok"});
+  if(!excluded.has("icing")&&result.icing.status==="low") items.push({code:"icing",label:pt?"Sem indicação relevante de gelo":"No relevant icing indication",status:"ok"});
+  if(!excluded.has("oxygen")&&["compliant","not-required"].includes(result.oxygen.status)) items.push({code:"oxygen",label:pt?"Oxigênio adequado":"Oxygen adequate",status:"ok"});
   return items;
+}
+
+function missionReasonIcon(code,status) {
+  if(status==="critical") return "circle-x";
+  if(status==="ok") return "circle-check";
+  return ({fuel:"fuel","weight-balance":"scale","flight-profile":"area-chart",icing:"snowflake",turbulence:"waves",oxygen:"heart-pulse",alternate:"map-pinned",confidence:"shield-check"})[code]||"triangle-alert";
 }
 
 function missionAction(score) {
@@ -377,7 +519,7 @@ function renderMissionScore(result,score) {
   }));
   const excluded=new Set(negatives.map((item)=>item.code));
   const items=[...negatives,...missionPositiveReasons(result,excluded)].slice(0,3);
-  $("#missionScoreReasons").innerHTML=items.map((item)=>`<div class="${item.status}"><i></i><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value||"OK")}</strong></div>`).join("");
+  $("#missionScoreReasons").innerHTML=items.map((item)=>`<div class="${item.status}">${iconMarkup(missionReasonIcon(item.code,item.status),"reason-icon")}<span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value||"OK")}</strong></div>`).join("");
   $("#missionScoreAction").textContent=missionAction(score);
 }
 
@@ -442,19 +584,20 @@ function renderWeightBalance(weightBalance) {
   $("#cgChart").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(t("cgEnvelope"))}"><rect x="${x(env.forwardCgIn)}" y="${y(env.maximumWeightLb)}" width="${x(env.aftCgIn)-x(env.forwardCgIn)}" height="${y(env.minimumChartWeightLb)-y(env.maximumWeightLb)}" rx="8" fill="#edf8ef" stroke="#52a964" stroke-width="1.5"/>${xGrid}${yGrid}<line x1="${x(env.forwardCgIn)}" y1="${top}" x2="${x(env.forwardCgIn)}" y2="${height-bottom}" stroke="#52a964" stroke-width="2"/><line x1="${x(env.aftCgIn)}" y1="${top}" x2="${x(env.aftCgIn)}" y2="${height-bottom}" stroke="#52a964" stroke-width="2"/><polyline points="${trajectory}" fill="none" stroke="#1976d2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${point(weightBalance.zeroFuel,"ZFW","#7a8793",14,-9,"end")}${point(weightBalance.takeoff,"TO","#1976d2",-9)}${point(weightBalance.landing,"LDG",weightBalance.status==="unavailable"?"#dc5661":"#52a964",14)}<text x="${left}" y="14" fill="#7a8793" font-size="9">${escapeHtml(weightLabel().toUpperCase())}</text><text x="${width-right}" y="${height-5}" text-anchor="end" fill="#7a8793" font-size="9">CG · IN AFT DATUM</text></svg>`;
 
   const stationLabels={empty:t("emptyAircraft"),pilot:t("pilot"),copilot:t("copilot"),rearLeft:t("rearLeft"),rearCenter:t("rearCenter"),rearRight:t("rearRight"),baggage:t("baggage"),oxygen:t("oxygen"),headerFuel:t("headerFuel"),mainFuel:t("mainFuel")};
-  $("#wbStationRows").innerHTML=weightBalance.takeoff.stations.filter((item)=>item.weightLb>0).map((item)=>`<div><b>${escapeHtml(stationLabels[item.key]||item.key)}</b><span>${formatWeight(item.weightLb)}</span><span>${number(item.armIn,1)} in</span><strong>${number(item.momentInLb,0)}</strong></div>`).join("");
+  const stationIcon=(key)=>key==="empty"?"plane":key==="baggage"?"luggage":key==="oxygen"?"cylinder":key.includes("Fuel")?"fuel":"user-round";
+  $("#wbStationRows").innerHTML=weightBalance.takeoff.stations.filter((item)=>item.weightLb>0).map((item)=>`<div><b>${iconMarkup(stationIcon(item.key))}${escapeHtml(stationLabels[item.key]||item.key)}</b><span>${formatWeight(item.weightLb)}</span><span>${number(item.armIn,1)} in</span><strong>${number(item.momentInLb,0)}</strong></div>`).join("");
 }
 
 function renderConfidenceEnvelope(confidence) {
   $("#confidenceScore").textContent=`${confidence.score}%`;
   $("#confidenceSamples").textContent=confidence.sampleCount?`${confidence.sampleCount} ${t("flights")}`:t("noDebriefs");
   const rows=[
-    [t("fuel"),formatFuel(confidence.fuel.low,1),formatFuel(confidence.fuel.nominal,1),formatFuel(confidence.fuel.high,1)],
-    ["ETE",formatTime(confidence.time.low),formatTime(confidence.time.nominal),formatTime(confidence.time.high)],
-    ["TAS",`${number(confidence.tas.low)} kt`,`${number(confidence.tas.nominal)} kt`,`${number(confidence.tas.high)} kt`],
-    [state.language==="pt-BR"?"Alcance":"Range",`${number(confidence.range.low)} NM`,`${number(confidence.range.nominal)} NM`,`${number(confidence.range.high)} NM`],
+    ["fuel",t("fuel"),formatFuel(confidence.fuel.low,1),formatFuel(confidence.fuel.nominal,1),formatFuel(confidence.fuel.high,1)],
+    ["clock-3","ETE",formatTime(confidence.time.low),formatTime(confidence.time.nominal),formatTime(confidence.time.high)],
+    ["gauge","TAS",`${number(confidence.tas.low)} kt`,`${number(confidence.tas.nominal)} kt`,`${number(confidence.tas.high)} kt`],
+    ["move-up-right",state.language==="pt-BR"?"Alcance":"Range",`${number(confidence.range.low)} NM`,`${number(confidence.range.nominal)} NM`,`${number(confidence.range.high)} NM`],
   ];
-  $("#confidenceEnvelope").innerHTML=`<div class="envelope-head"><span></span><span>LOW</span><span>${t("expected")}</span><span>HIGH</span></div>${rows.map((row)=>`<div class="envelope-row"><b>${escapeHtml(row[0])}</b><span>${row[1]}</span><strong>${row[2]}</strong><span>${row[3]}</span></div>`).join("")}`;
+  $("#confidenceEnvelope").innerHTML=`<div class="envelope-head"><span></span><span>LOW</span><span>${t("expected")}</span><span>HIGH</span></div>${rows.map((row)=>`<div class="envelope-row"><b>${iconMarkup(row[0])}${escapeHtml(row[1])}</b><span>${row[2]}</span><strong>${row[3]}</strong><span>${row[4]}</span></div>`).join("")}`;
 }
 
 function renderRideOptimizer(analysis,selected) {
@@ -463,7 +606,7 @@ function renderRideOptimizer(analysis,selected) {
   const source=best.turbulence.confidence==="weather"?t("icingWeather"):best.turbulence.confidence==="simbrief"?t("simbriefShear"):best.turbulence.confidence==="estimated"?t("weatherEstimated"):t("weatherLimited");
   $("#rideHeadline").textContent=`FL${best.fl} · ${rideLabel(best.turbulence.status)}`;
   $("#rideSummaryMeta").textContent=`${number(best.turbulence.riskScore)}/100 · ${source}`;
-  $("#rideLevels").innerHTML=analysis.results.map((item)=>`<button type="button" data-ride-level="${item.altitudeFt}" ${!operationallyAvailable(item)?"disabled":""} class="ride-level ${item.turbulence.status} ${item.altitudeFt===selected.altitudeFt?"selected":""}"><b>FL${item.fl}</b><span>${rideLabel(item.turbulence.status)}</span><i><em style="width:${item.turbulence.riskScore}%"></em></i><strong>${number(item.turbulence.riskScore)}</strong></button>`).join("");
+  $("#rideLevels").innerHTML=analysis.results.map((item)=>`<button type="button" data-ride-level="${item.altitudeFt}" ${!operationallyAvailable(item)?"disabled":""} class="ride-level ${item.turbulence.status} ${item.altitudeFt===selected.altitudeFt?"selected":""}"><b>${iconMarkup("wind")}FL${item.fl}</b><span>${rideLabel(item.turbulence.status)}</span><i><em style="width:${item.turbulence.riskScore}%"></em></i><strong>${number(item.turbulence.riskScore)}</strong></button>`).join("");
   $$('[data-ride-level]:not(:disabled)').forEach((button)=>button.addEventListener("click",()=>{state.selectedAltitudeFt=Number(button.dataset.rideLevel);render();}));
 }
 
@@ -473,7 +616,7 @@ function renderDebrief(result) {
   if(document.activeElement!==$("#debriefFuel")&&!$("#debriefFuel").value) $("#debriefFuel").value=number(fuelValue(result.tripFuelGal),1).replace(",",".");
   const last=state.lastDebrief;
   $("#debriefResult").innerHTML=last?`<strong>${last.accuracyScore}% ${t("accuracy")}</strong><span>ETE ${signedNumber(last.timeErrorPct,1,"%")} · ${t("fuel")} ${signedNumber(last.fuelErrorPct,1,"%")}</span>`:`<strong>—</strong><span>${t("noDebriefs")}</span>`;
-  $("#debriefHistory").innerHTML=state.debriefs.slice(-5).reverse().map((entry)=>`<div><span>${escapeHtml(entry.route)} · ${entry.mode} · FL${entry.fl}</span><strong>${entry.accuracyScore}%</strong></div>`).join("");
+  $("#debriefHistory").innerHTML=state.debriefs.slice(-5).reverse().map((entry)=>`<div><span>${iconMarkup("history")}${escapeHtml(entry.route)} · ${entry.mode} · FL${entry.fl}</span><strong>${entry.accuracyScore}%</strong></div>`).join("");
 }
 
 function render() {
@@ -482,7 +625,7 @@ function render() {
   $("#plannerContent").hidden=!hasPlan;
   $("#feasibilityBadge").hidden=!hasPlan;
   $("#feasibilityMeta").hidden=!hasPlan;
-  if(!hasPlan){$("#routeSource").textContent=t("simbrief");$("#routeTitle").innerHTML=`— <span>→</span> —`;$("#planTimestamp").textContent="—";return;}
+  if(!hasPlan){$("#routeSource").textContent=t("simbrief");$("#routeTitle").innerHTML=`— <span>→</span> —`;$("#planTimestamp").textContent="—";refreshUiIcons();return;}
   const analysis=calculatePlan(state),recommended=analysis.winners.overall,selectedCandidate=analysis.results.find((r)=>r.altitudeFt===state.selectedAltitudeFt),selected=selectedCandidate&&operationallyAvailable(selectedCandidate)?selectedCandidate:recommended,plan=state.plan,oxygenWeightLb=currentOxygenWeightLb();
   const navigation=calculateEtpPnr({...state,oxygenWeightLb,altitudeFt:selected.altitudeFt});
   const stepPlan=calculateStepClimbs({...state,oxygenWeightLb,initialAltitudeFt:selected.altitudeFt,manual:state.manual.active?state.manual:null});
@@ -509,6 +652,7 @@ function render() {
   $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1); $("#selectionNote").textContent=`FL${selected.fl} · ${formatFuel(selected.fuelRequiredGal,1)} · ${formatTime(selected.tripTimeHr)} · ${missionStatusLabel(missionScore.status)}`;
   $("#payloadOutput").textContent=formatWeight(state.payloadLb); $("#fuelOutput").textContent=formatFuel(state.fuelOnboardGal,0);
   const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(selected.weightBalance.takeoff.cgIn,2)}→${number(selected.weightBalance.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||selected.weightBalance.status==="unavailable"?"var(--red)":"";
+  refreshUiIcons();
 }
 
 $$('[data-language]').forEach((button)=>button.addEventListener("click",()=>{state.language=button.dataset.language;localStorage.setItem("velocityxl.language",state.language);render();}));
@@ -574,7 +718,8 @@ $("#debriefForm").addEventListener("submit",(event)=>{
   render();
 });
 
-$("#simbriefImportForm").addEventListener("submit",async(event)=>{event.preventDefault();const input=$("#quickPilotId"),identifier=input.value.trim();if(!identifier){showToast(t("missingId"),true);input.focus();return;}const button=$("#importLatest");try{button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="…";let plan;try{plan=await fetchLatestOFP(identifier,"userid");}catch(firstError){plan=await fetchLatestOFP(identifier,"username");}state.plan=plan;state.selectedAltitudeFt=null;state.oxygen.altitudeFt=ALTITUDES_FT.reduce((best,altitude)=>Math.abs(altitude-plan.plannedAltitudeFt)<Math.abs(best-plan.plannedAltitudeFt)?altitude:best,ALTITUDES_FT[0]);state.manual={active:false,waypointIndex:0,distanceNm:0,fuelRemainingGal:state.fuelOnboardGal,altitudeFt:null};localStorage.setItem("velocityxl.simbriefIdentifier",identifier);localStorage.setItem("velocityxl.oxygen",JSON.stringify(state.oxygen));render();}catch(error){showToast(error.message||t("importError"),true);}finally{button.disabled=false;button.removeAttribute("aria-busy");button.textContent=t("importLatest");}});
+$("#simbriefImportForm").addEventListener("submit",async(event)=>{event.preventDefault();const input=$("#quickPilotId"),identifier=input.value.trim();if(!identifier){showToast(t("missingId"),true);input.focus();return;}const button=$("#importLatest");try{button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="…";let plan;try{plan=await fetchLatestOFP(identifier,"userid");}catch(firstError){plan=await fetchLatestOFP(identifier,"username");}state.plan=plan;state.selectedAltitudeFt=null;state.oxygen.altitudeFt=ALTITUDES_FT.reduce((best,altitude)=>Math.abs(altitude-plan.plannedAltitudeFt)<Math.abs(best-plan.plannedAltitudeFt)?altitude:best,ALTITUDES_FT[0]);state.manual={active:false,waypointIndex:0,distanceNm:0,fuelRemainingGal:state.fuelOnboardGal,altitudeFt:null};localStorage.setItem("velocityxl.simbriefIdentifier",identifier);localStorage.setItem("velocityxl.oxygen",JSON.stringify(state.oxygen));render();}catch(error){showToast(error.message||t("importError"),true);}finally{button.disabled=false;button.removeAttribute("aria-busy");button.textContent=t("importLatest");refreshUiIcons();}});
 
 const savedIdentifier=localStorage.getItem("velocityxl.simbriefIdentifier"); if(savedIdentifier)$("#quickPilotId").value=savedIdentifier;
+window.addEventListener("load",refreshUiIcons,{once:true});
 render();
