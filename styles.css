@@ -477,3 +477,59 @@ body :is(
   .step-comparison-verdict { display:grid; gap:4px; }
   .step-comparison-verdict strong { text-align:left; }
 }
+
+/* Performance: metric ranking is readable without scaling down an SVG chart. */
+[data-view-panel="performance"] .chart-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); width:min(100%,340px); min-width:0; }
+[data-view-panel="performance"] .chart-tabs button { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-width:0; padding:7px 5px; font-size:var(--type-caption)!important; white-space:nowrap; }
+[data-view-panel="performance"] .chart-tabs .ui-icon { width:12px; height:12px; }
+.performance-ranking { display:grid; gap:12px; min-width:0; margin:16px 0; }
+.ranking-context { display:flex; flex-wrap:wrap; gap:6px; min-width:0; }
+.ranking-context span { padding:5px 8px; border-radius:7px; background:var(--panel-soft); color:var(--muted); font-size:var(--type-caption); }
+.ranking-top { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr)); gap:9px; min-width:0; }
+.ranking-card { display:grid; align-content:space-between; gap:11px; min-width:0; min-height:112px; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--panel-soft); color:var(--text); text-align:left; }
+.ranking-card:first-child { border-color:#b7d6f4; background:var(--blue-soft); }
+.ranking-card.selected,.ranking-row.selected { outline:2px solid var(--blue); outline-offset:-2px; }
+.ranking-card:hover,.ranking-row:not(:disabled):hover { border-color:#9fc8ee; }
+.ranking-card-top,.ranking-card-bottom { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 8px; min-width:0; }
+.ranking-card-top b { font-size:var(--type-heading); font-weight:600; }
+.ranking-card-top small { font-size:var(--type-caption); }
+.ranking-card.viable .ranking-card-top small,.ranking-row.viable .ranking-row-id>span { color:var(--green); }
+.ranking-card.marginal .ranking-card-top small,.ranking-row.marginal .ranking-row-id>span { color:var(--orange); }
+.ranking-card strong { font-size:var(--type-heading); font-weight:600; overflow-wrap:anywhere; }
+.ranking-card-bottom>small { color:var(--muted); font-size:var(--type-caption); }
+.ranking-badges { display:inline-flex; flex-wrap:wrap; gap:4px; }
+.ranking-badge { display:inline-block; padding:3px 6px; border-radius:6px; font-size:var(--type-caption); font-weight:600; }
+.ranking-badge.selected { background:var(--blue-soft); color:var(--blue); }
+.ranking-badge.recommended { background:var(--green-soft); color:var(--green); }
+.ranking-rest { display:grid; gap:0; min-width:0; border-top:1px solid var(--line); }
+.ranking-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; min-width:0; padding:9px 8px; border:0; border-bottom:1px solid var(--line); background:transparent; color:var(--text); text-align:left; }
+.ranking-row:disabled { cursor:not-allowed; opacity:.75; }
+.ranking-row-id,.ranking-row-value { display:grid; gap:3px; min-width:0; }
+.ranking-row-id b,.ranking-row-value strong { font-size:var(--type-body); font-weight:600; }
+.ranking-row-id>span { display:flex; align-items:center; flex-wrap:wrap; gap:4px; color:var(--muted); font-size:var(--type-caption); }
+.ranking-row.unavailable .ranking-row-id>span { color:var(--red); }
+.ranking-row-value { text-align:right; }
+.ranking-row-value strong { white-space:nowrap; }
+.ranking-row-value small { color:var(--muted); font-size:var(--type-caption); overflow-wrap:anywhere; }
+.ranking-empty { grid-column:1/-1; margin:0; padding:18px; border-radius:10px; background:var(--panel-soft); color:var(--red); font-size:var(--type-body); }
+.ranking-toggle { display:none; }
+.ranking-note { margin:0; color:var(--muted); font-size:var(--type-caption); line-height:1.4; }
+@media (max-width:760px) {
+  [data-view-panel="performance"] .view-heading { display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+  [data-view-panel="performance"] .chart-tabs { width:100%; }
+}
+@media (max-width:600px) {
+  .ranking-top { grid-template-columns:minmax(0,1fr); gap:7px; }
+  .ranking-card { grid-template-columns:minmax(0,1fr) auto; min-height:0; gap:4px 8px; padding:10px 12px; }
+  .ranking-card-top { grid-column:1; }
+  .ranking-card>strong { grid-column:2; grid-row:1/3; align-self:center; text-align:right; }
+  .ranking-card-bottom { grid-column:1; }
+  .ranking-card-bottom>small { order:2; }
+  .ranking-toggle { display:flex; align-items:center; justify-content:center; width:100%; min-height:38px; padding:7px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel-soft); color:var(--blue); font-size:var(--type-body); }
+  .ranking-rest[data-collapsed="true"] { display:none; }
+}
+@media (max-width:360px) {
+  [data-view-panel="performance"] .chart-tabs .ui-icon { display:none; }
+  [data-view-panel="performance"] .chart-tabs button { padding-inline:2px; }
+  .ranking-card>strong { font-size:var(--type-body); }
+}

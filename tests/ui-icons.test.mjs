@@ -8,14 +8,24 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261014-06/);
-  assert.match(index,/js\/app\.js\?v=20261014-05/);
+  assert.match(index,/styles\.css\?v=20261014-07/);
+  assert.match(index,/js\/app\.js\?v=20261014-07/);
 });
 
 test("oxygen recommendation button aligns with the adjacent controls",()=>{
   assert.match(css,/\.oxygen-controls > button \{ align-self:end; \}/);
   assert.match(css,/\.oxygen-controls select \{[^}]*height:36px/);
   assert.match(css,/\.text-button \{ height:36px/);
+});
+
+test("performance ranking replaces the tiny SVG and contains the metric selector on mobile",()=>{
+  assert.match(index,/class="performance-ranking" id="performanceChart"/);
+  assert.doesNotMatch(index,/class="chart-wrap" id="performanceChart"/);
+  assert.match(app,/rankMetricLevels\(results\.map/);
+  assert.match(app,/data-ranking-toggle/);
+  assert.match(app,/data-rank-altitude/);
+  assert.match(css,/\[data-view-panel="performance"\] \.chart-tabs \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.ranking-top \{ grid-template-columns:minmax\(0,1fr\)/);
 });
 
 test("A/B matrix keeps B controls above four aligned comparison metrics",()=>{
