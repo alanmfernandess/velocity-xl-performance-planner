@@ -1419,6 +1419,34 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
   };
 }
 
+export function missionOptimizationFailureReason(optimization) {
+  const attempts = (optimization?.variants || []).flatMap((variant) => variant.candidates || [variant]).filter((candidate) => candidate?.result);
+  if (!attempts.length) return "COMBINED";
+  const all = (predicate) => attempts.every(predicate);
+  if (all((candidate) => candidate.result.weightBalance?.primaryReason === "CG_AFT")) return "CG_AFT";
+  if (all((candidate) => candidate.result.weightBalance?.primaryReason === "CG_FORWARD")) return "CG_FORWARD";
+  if (all((candidate) => candidate.result.weightBalance?.primaryReason === "WEIGHT")) return "WEIGHT";
+  if (all((candidate) => candidate.rawRecommendedFuelGal > AIRCRAFT.usableFuelGal)) return "FUEL_CAPACITY";
+  if (all((candidate) => candidate.alternateRequired && candidate.alternateAdvice?.destination?.status !== "viable")) return "ALTERNATE";
+  if (all((candidate) => candidate.result.icing.status === "avoid" || candidate.result.turbulence.blocking)) return "WEATHER";
+  if (all((candidate) => candidate.result.oxygen.status === "insufficient")) return "OXYGEN";
+  return "COMBINED";
+}
+
+export function calculateMissionRecovery(current, previousViableMission) {
+  if (!previousViableMission || previousViableMission.plan !== current.plan || !previousViableMission.weightBalance) return null;
+  const weightBalance = normalizeWeightBalance(previousViableMission.weightBalance);
+  const recovery = calculateMissionOptimization({
+    ...current,
+    mode: previousViableMission.mode,
+    payloadLb: weightBalancePayloadLb(weightBalance),
+    fuelOnboardGal: previousViableMission.fuelOnboardGal,
+    oxygen: previousViableMission.oxygen,
+    weightBalance,
+  });
+  return recovery.feasible && recovery.achievedStatus === "viable" ? recovery : null;
+}
+
 export function calculateGlideCorridor({ plan, result }) {
   const ratio = PERFORMANCE.glide.ratio;
   const bestGlideKias = PERFORMANCE.glide.bestGlideKias;

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -425,6 +425,35 @@ test("mission optimizer reports no solution only after testing every preset down
   assert.equal(optimizer.achievedStatus, "unavailable");
   assert.equal(optimizer.recommendedPayloadLb, FIVE_SEAT_LOAD.pilot);
   assert.equal(optimizer.weightBalance.pilot, FIVE_SEAT_LOAD.pilot);
+});
+
+test("mission optimization identifies an aft-CG dead end and revalidates the last feasible load", () => {
+  const oxygen = { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] };
+  const previous = {
+    plan: DEMO_PLAN,
+    mode: "NORMAL",
+    fuelOnboardGal: 77,
+    oxygen,
+    weightBalance: FIVE_SEAT_LOAD,
+  };
+  const badLoad = { pilot: 190, copilot: 0, rearLeft: 0, rearCenter: 0, rearRight: 0, baggage: 60 };
+  const current = {
+    plan: DEMO_PLAN,
+    mode: "ECON",
+    payloadLb: weightBalancePayloadLb(badLoad),
+    fuelOnboardGal: 47,
+    reserveMinutes: 45,
+    weightBalance: badLoad,
+    oxygen: { ...oxygen, seats: [true, false, false, false, false] },
+  };
+  const failed = calculateMissionOptimization(current);
+  assert.equal(failed.feasible, false);
+  assert.equal(missionOptimizationFailureReason(failed), "CG_AFT");
+  const recovered = calculateMissionRecovery(current, previous);
+  assert.equal(recovered.feasible, true);
+  assert.equal(recovered.result.weightBalance.status, "viable");
+  assert.deepEqual(current.weightBalance, badLoad);
+  assert.equal(calculateMissionRecovery({ ...current, plan: { ...DEMO_PLAN } }, previous), null);
 });
 
 test("engine-out glide corridor uses 12.15 to 1 at 90 KIAS", () => {

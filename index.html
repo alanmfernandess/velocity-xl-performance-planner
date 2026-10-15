@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261014-08" />
+    <link rel="stylesheet" href="./styles.css?v=20261014-09" />
   </head>
   <body>
     <header class="topbar">
@@ -107,11 +107,16 @@
                 <label><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label>
               </div>
             </div>
-            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /></label>
+            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /><small data-i18n="payloadAssignment">Acréscimos vão para bagagem; ajuste ocupantes em W&amp;B.</small></label>
             <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
             <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
             <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
+            <div class="mission-recovery" id="missionRecovery" role="status" aria-live="polite" hidden>
+              <p id="missionRecoveryReason"></p>
+              <button id="missionRecoveryAction" type="button" data-i18n="restoreViableMission">Usar última carga viável</button>
+              <small id="missionRecoveryWarning" data-i18n="restoreViableWarning">A carga anterior será reotimizada e substituirá ajustes de carga, combustível, preset e oxigênio. Confira os ocupantes e o W&amp;B.</small>
+            </div>
           </article>
           <article class="panel insight-panel mission-score-panel">
             <div class="mission-score-heading">
@@ -333,6 +338,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261014-08"></script>
+    <script type="module" src="./js/app.js?v=20261014-09"></script>
   </body>
 </html>
