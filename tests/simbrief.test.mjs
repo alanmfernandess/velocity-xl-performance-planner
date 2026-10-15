@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseSimBrief } from "../js/simbrief.js";
-import { calculatePlan } from "../js/engine.js";
+import { calculatePlan, calculateTurbulenceRisk } from "../js/engine.js";
 
 test("parses SimBrief JSON v2 arrays and strings", () => {
   const result = parseSimBrief({
@@ -63,4 +63,44 @@ test("ignores unstructured advisory objects instead of concatenating unrelated f
   assert.ok(blockedLevels.length > 0);
   assert.ok(blockedLevels.length < analysis.results.length);
   assert.ok(analysis.results.find((item) => item.fl === 100).turbulence.status !== "severe");
+});
+
+test("SimBrief bulletins retain separate severity and altitude in RIDE", () => {
+  const plan = parseSimBrief({
+    fetch: { status: "Success" },
+    general: { initial_altitude: "19000", route_distance: "120" },
+    origin: { icao_code: "AAAA", pos_lat: "0", pos_long: "0" },
+    destination: { icao_code: "BBBB", pos_lat: "0", pos_long: "2" },
+    weather: { sigmets: ["MOD TURB FL100/120", "SEV TURB FL200/220"] },
+    navlog: [
+      { ident: "A", pos_lat: "0", pos_long: "0", altitude_feet: "19000", stage: "CRZ", wind_data: [
+        { altitude: "10000", wind_dir: "220", wind_spd: "20" },
+        { altitude: "25000", wind_dir: "230", wind_spd: "25" },
+      ] },
+      { ident: "B", pos_lat: "0", pos_long: "2", altitude_feet: "19000", stage: "CRZ", wind_data: [
+        { altitude: "10000", wind_dir: "221", wind_spd: "21" },
+        { altitude: "25000", wind_dir: "231", wind_spd: "26" },
+      ] },
+    ],
+  });
+  assert.deepEqual(plan.meteorology.enrouteBulletins, ["MOD TURB FL100/120", "SEV TURB FL200/220"]);
+  assert.equal(calculateTurbulenceRisk({ plan, result: { altitudeFt: 10000 } }).riskScore, 60);
+  assert.equal(calculateTurbulenceRisk({ plan, result: { altitudeFt: 20000 } }).riskScore, 90);
+  assert.ok(calculateTurbulenceRisk({ plan, result: { altitudeFt: 16000 } }).riskScore < 60);
+});
+
+test("blank SimBrief wind fields are missing data, not a calm-wind report", () => {
+  const plan = parseSimBrief({
+    fetch: { status: "Success" },
+    general: { initial_altitude: "19000" },
+    origin: { icao_code: "AAAA", pos_lat: "0", pos_long: "0" },
+    destination: { icao_code: "BBBB", pos_lat: "0", pos_long: "2" },
+    navlog: [
+      { ident: "A", pos_lat: "0", pos_long: "0", altitude_feet: "19000", wind_dir: "", wind_spd: "", wind_data: [{ altitude: "19000", wind_dir: "", wind_spd: "" }] },
+      { ident: "B", pos_lat: "0", pos_long: "2", altitude_feet: "19000", wind_dir: "", wind_spd: "" },
+    ],
+  });
+  assert.equal(Number.isNaN(plan.waypoints[0].windLevels[0].windSpd), true);
+  assert.equal(Number.isNaN(plan.waypoints[0].windSpd), true);
+  assert.equal(calculateTurbulenceRisk({ plan, result: { altitudeFt: 19000 } }).riskScore, null);
 });

@@ -1,6 +1,6 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261014-05";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261014-07";
-import { fetchLatestOFP } from "./simbrief.js?v=20261014-05";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261015-01";
+import { fetchLatestOFP } from "./simbrief.js?v=20261015-01";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 
 const $ = (selector) => document.querySelector(selector);
@@ -580,7 +580,8 @@ function renderGlideCorridor(plan,glide) {
 }
 
 function missionStatusLabel(status){return t(status==="not-viable"?"notViable":status==="viable"?"viable":"marginalStatus");}
-function rideLabel(status){return t(status);}
+function rideLabel(status){return status==="unknown"?t("weatherLimited"):t(status);}
+function rideScoreLabel(turbulence){return turbulence.riskScore===null?"—":number(turbulence.riskScore);}
 function oxygenLabel(status){return t(status==="not-required"?"oxygenNotRequired":status==="compliant"?"oxygenCompliant":status==="marginal"?"oxygenMarginal":"oxygenInsufficient");}
 function weightBalanceLabel(status){return t(status==="viable"?"viable":status==="marginal"?"marginalStatus":"notViable");}
 
@@ -656,7 +657,7 @@ function renderMissionStrip(result,missionScore) {
   $("#confidenceValue").textContent=`${result.confidence.score}%`;
   $("#confidenceMeta").textContent=`${result.confidence.sampleCount} ${t("flights")}`;
   $("#rideValue").textContent=rideLabel(result.turbulence.status);
-  $("#rideMeta").textContent=`${number(result.turbulence.riskScore)}/100`;
+  $("#rideMeta").textContent=result.turbulence.riskScore===null?t("weatherLimited"):`${rideScoreLabel(result.turbulence)}/100`;
   $("#oxygenValue").textContent=oxygenLabel(result.oxygen.status);
   $("#oxygenMeta").textContent=result.oxygen.requiredLiters>0?`${number(result.oxygen.requiredLiters)} L · ${formatWeight(result.oxygen.bottleWeightLb)}`:`FL${result.fl}`;
 }
@@ -734,11 +735,11 @@ function renderConfidenceEnvelope(confidence) {
 
 function renderRideOptimizer(analysis,selected) {
   const eligible=analysis.results.filter(operationallyAvailable);
-  const best=[...(eligible.length?eligible:analysis.results)].sort((a,b)=>a.turbulence.riskScore-b.turbulence.riskScore||b.score-a.score)[0];
+  const best=[...(eligible.length?eligible:analysis.results)].sort((a,b)=>(a.turbulence.riskScore??Infinity)-(b.turbulence.riskScore??Infinity)||b.score-a.score)[0];
   const source=best.turbulence.confidence==="weather"?t("icingWeather"):best.turbulence.confidence==="simbrief"?t("simbriefShear"):best.turbulence.confidence==="estimated"?t("weatherEstimated"):t("weatherLimited");
   $("#rideHeadline").textContent=`FL${best.fl} · ${rideLabel(best.turbulence.status)}`;
-  $("#rideSummaryMeta").textContent=`${number(best.turbulence.riskScore)}/100 · ${source}`;
-  $("#rideLevels").innerHTML=analysis.results.map((item)=>`<button type="button" data-ride-level="${item.altitudeFt}" ${!operationallyAvailable(item)?"disabled":""} class="ride-level ${item.turbulence.status} ${item.altitudeFt===selected.altitudeFt?"selected":""}"><b>${iconMarkup("wind")}FL${item.fl}</b><span>${rideLabel(item.turbulence.status)}</span><i><em style="width:${item.turbulence.riskScore}%"></em></i><strong>${number(item.turbulence.riskScore)}</strong></button>`).join("");
+  $("#rideSummaryMeta").textContent=`${rideScoreLabel(best.turbulence)}${best.turbulence.riskScore===null?"":"/100"} · ${source}`;
+  $("#rideLevels").innerHTML=analysis.results.map((item)=>`<button type="button" data-ride-level="${item.altitudeFt}" ${!operationallyAvailable(item)?"disabled":""} class="ride-level ${item.turbulence.status} ${item.altitudeFt===selected.altitudeFt?"selected":""}"><b>${iconMarkup("wind")}FL${item.fl}</b><span>${rideLabel(item.turbulence.status)}</span><i><em style="width:${item.turbulence.riskScore??0}%"></em></i><strong>${rideScoreLabel(item.turbulence)}</strong></button>`).join("");
   $$('[data-ride-level]:not(:disabled)').forEach((button)=>button.addEventListener("click",()=>{state.selectedAltitudeFt=Number(button.dataset.rideLevel);render();}));
 }
 

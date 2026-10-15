@@ -633,16 +633,60 @@ test("SimBrief shear only applies near the navlog altitude", () => {
   assert.equal(otherRisk.blocking, false);
 });
 
-test("unbounded turbulence advisory warns without blocking every flight level", () => {
+test("unbounded turbulence advisory does not fabricate a per-level score", () => {
   const plan = {
     ...DEMO_PLAN,
     meteorology: { originText: "", destinationText: "", enrouteText: "SEV TURB" },
     waypoints: DEMO_PLAN.waypoints.map((waypoint) => ({ ...waypoint, shear: Number.NaN })),
   };
   const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
-  assert.ok(analysis.results.every((result) => result.turbulence.status === "moderate"));
+  assert.ok(analysis.results.every((result) => result.turbulence.status === "unknown"));
+  assert.ok(analysis.results.every((result) => result.turbulence.riskScore === null));
+  assert.ok(analysis.results.every((result) => result.turbulence.unboundedAdvisory));
   assert.ok(analysis.results.every((result) => result.turbulence.blocking === false));
   assert.equal(analysis.turbulence.acceptableCount, analysis.results.length);
+});
+
+test("turbulence severity stays with its own OFP altitude band", () => {
+  const plan = {
+    ...DEMO_PLAN,
+    meteorology: { originText: "", destinationText: "", enrouteText: "MOD TURB FL100/120. SEV TURB FL200/220." },
+    waypoints: DEMO_PLAN.waypoints.map((waypoint) => ({ ...waypoint, shear: Number.NaN })),
+  };
+  const rows = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 }).results;
+  assert.equal(rows.find((row) => row.fl === 100).turbulence.riskScore, 60);
+  assert.equal(rows.find((row) => row.fl === 120).turbulence.status, "moderate");
+  assert.equal(rows.find((row) => row.fl === 200).turbulence.riskScore, 90);
+  assert.equal(rows.find((row) => row.fl === 220).turbulence.blocking, true);
+  assert.ok(rows.find((row) => row.fl === 160).turbulence.riskScore < 60);
+  assert.ok(rows.find((row) => row.fl === 240).turbulence.riskScore < 90);
+});
+
+test("RIDE associates preposed altitude bands with the correct advisory on one line", () => {
+  const plan = {
+    ...DEMO_PLAN,
+    meteorology: { originText: "", destinationText: "", enrouteText: "FL100/120 MOD TURB FL200/220 SEV TURB" },
+    waypoints: DEMO_PLAN.waypoints.map((waypoint) => ({ ...waypoint, shear: Number.NaN })),
+  };
+  const rows = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 }).results;
+  assert.equal(rows.find((row) => row.fl === 100).turbulence.riskScore, 60);
+  assert.equal(rows.find((row) => row.fl === 120).turbulence.riskScore, 60);
+  assert.equal(rows.find((row) => row.fl === 200).turbulence.riskScore, 90);
+  assert.equal(rows.find((row) => row.fl === 220).turbulence.riskScore, 90);
+});
+
+test("RIDE reports missing OFP evidence instead of treating missing winds as calm", () => {
+  const plan = {
+    source: "SIMBRIEF", plannedAltitudeFt: 19000, meteorology: { enrouteText: "" },
+    waypoints: [
+      { ident: "A", lat: 0, lon: 0, windDir: Number.NaN, windSpd: Number.NaN, windLevels: [], shear: Number.NaN },
+      { ident: "B", lat: 0, lon: 1, windDir: Number.NaN, windSpd: Number.NaN, windLevels: [], shear: Number.NaN },
+    ],
+  };
+  const risk = calculateTurbulenceRisk({ plan, result: { altitudeFt: 16000 } });
+  assert.equal(risk.status, "unknown");
+  assert.equal(risk.riskScore, null);
+  assert.equal(risk.confidence, "limited");
 });
 
 test("performance confidence narrows with calibrated debrief history", () => {

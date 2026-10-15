@@ -326,74 +326,110 @@ function vectorWindDifferenceKt(first, second) {
 export function turbulenceWeatherEvidence(text = "") {
   const source = String(text).toUpperCase();
   const noTurbulence = /\b(?:NO|NIL)\s+(?:TURB|TURBULENCE|CAT)\b/.test(source);
-  const bands = [];
-  const patterns = [
-    /(?:TURB(?:ULENCE)?|CAT)[^.\n]{0,50}?\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})\b/g,
-    /\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})[^.\n]{0,50}?(?:TURB(?:ULENCE)?|CAT)\b/g,
-  ];
-  patterns.forEach((pattern) => {
-    for (const match of source.matchAll(pattern)) {
+  const hazardPattern = /\b(?:EXTRM|EXTREME|SEV(?:ERE)?|MOD(?:ERATE)?|LGT|LIGHT)(?:\s*[-\/]\s*(?:EXTRM|EXTREME|SEV(?:ERE)?|MOD(?:ERATE)?))?\s+(?:TURB(?:ULENCE)?|CAT|CHOP)\b/g;
+  const bandPattern = /\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})\b/g;
+  const hazards = [...source.matchAll(hazardPattern)];
+  const usedBandPositions = new Set();
+  const advisories = hazards.map((hazard, index) => {
+    const nextHazard = hazards[index + 1]?.index ?? source.length;
+    const afterStart = hazard.index + hazard[0].length;
+    const after = source.slice(afterStart, Math.min(nextHazard, afterStart + 100)).split(/[.;\n]/, 1)[0];
+    const afterBands = [...after.matchAll(bandPattern)].map((match) => ({ match, position: afterStart + match.index }));
+    const previousHazardEnd = index ? hazards[index - 1].index + hazards[index - 1][0].length : 0;
+    const beforeStart = Math.max(previousHazardEnd, hazard.index - 70);
+    const before = source.slice(beforeStart, hazard.index).split(/[.;\n]/).at(-1);
+    const offset = hazard.index - before.length;
+    const beforeBand = [...before.matchAll(bandPattern)].map((match) => ({ match, position: offset + match.index }))
+      .filter(({ position }) => !usedBandPositions.has(position)).at(-1);
+    const unusedAfter = afterBands.filter(({ position }) => !usedBandPositions.has(position));
+    const beforeDistance = beforeBand ? hazard.index - (beforeBand.position + beforeBand.match[0].length) : Infinity;
+    const afterDistance = unusedAfter.length ? unusedAfter[0].position - afterStart : Infinity;
+    const matches = beforeBand && beforeDistance <= afterDistance ? [beforeBand] : unusedAfter;
+    const bands = matches.map(({ match, position }) => {
+      usedBandPositions.add(position);
       const firstFt = Number(match[1]) * 100;
       const secondFt = Number(match[2]) * 100;
-      bands.push({ baseFt: Math.min(firstFt, secondFt), topFt: Math.max(firstFt, secondFt) });
-    }
+      return { baseFt: Math.min(firstFt, secondFt), topFt: Math.max(firstFt, secondFt) };
+    });
+    const phrase = hazard[0];
+    const score = /\b(?:EXTRM|EXTREME)\b/.test(phrase) ? 100
+      : /\b(?:MOD|MODERATE)\s*[-\/]\s*(?:SEV|SEVERE)\b/.test(phrase) ? 82
+        : /\b(?:SEV|SEVERE)\b/.test(phrase) ? 90
+          : /\b(?:LGT|LIGHT)\s*[-\/]\s*(?:MOD|MODERATE)\b/.test(phrase) ? 45
+            : /\b(?:MOD|MODERATE)\b/.test(phrase) ? 60 : 30;
+    return { score, bands };
   });
-  let score = 0;
-  if (!noTurbulence) {
-    if (/\b(?:EXTRM|EXTREME)\s+(?:TURB|TURBULENCE|CAT)\b/.test(source)) score = 100;
-    else if (/\b(?:SEV|SEVERE)(?:\s*[-\/]\s*EXTREME)?\s+(?:TURB|TURBULENCE|CAT)\b/.test(source)) score = 90;
-    else if (/\b(?:MOD|MODERATE)\s*[-\/]\s*(?:SEV|SEVERE)\s+(?:TURB|TURBULENCE|CAT)\b/.test(source)) score = 82;
-    else if (/\b(?:MOD|MODERATE)\s+(?:TURB|TURBULENCE|CAT|CHOP)\b/.test(source)) score = 60;
-    else if (/\b(?:LGT|LIGHT)\s*[-\/]\s*(?:MOD|MODERATE)\s+(?:TURB|TURBULENCE|CAT|CHOP)\b/.test(source)) score = 45;
-    else if (/\b(?:LGT|LIGHT)\s+(?:TURB|TURBULENCE|CAT|CHOP)\b/.test(source)) score = 30;
-  }
-  if (/\bAIRMET\s+TANGO\b/.test(source)) score = Math.max(score, 55);
-  if (/\b(?:CONVECTIVE\s+SIGMET|SIGMET[^.\n]{0,40}(?:TURB|CAT)|TSRA|TS|CB)\b/.test(source)) score = Math.max(score, 85);
-  if (/\b(?:LLWS|WIND\s*SHEAR|WS\d{3})\b/.test(source)) score = Math.max(score, 60);
-  return { available: noTurbulence || score > 0 || bands.length > 0, noTurbulence, score, bands };
+  const unbounded = advisories.some((advisory) => !advisory.bands.length)
+    || (!advisories.some((advisory) => advisory.bands.length)
+      && /\b(?:AIRMET\s+TANGO|CONVECTIVE\s+SIGMET|TSRA|TS|CB|LLWS|WIND\s*SHEAR|WS\d{3})\b/.test(source));
+  return {
+    available: noTurbulence || advisories.length > 0 || unbounded,
+    noTurbulence,
+    score: Math.max(0, ...advisories.map((advisory) => advisory.score)),
+    bands: advisories.flatMap((advisory) => advisory.bands),
+    advisories,
+    unbounded,
+  };
 }
 
-function turbulenceEvidenceAtAltitude(evidence, altitudeFt) {
-  if (!evidence.bands.length || evidence.bands.some((band) => altitudeFt >= band.baseFt && altitudeFt <= band.topFt)) return evidence;
-  return { ...evidence, score: 0 };
+function rideWindAtAltitude(fix, altitudeFt, plannedAltitudeFt) {
+  const levels = (fix?.windLevels || []).filter((level) => Number.isFinite(level.altitudeFt)
+    && Number.isFinite(level.windDir) && Number.isFinite(level.windSpd)).sort((a, b) => a.altitudeFt - b.altitudeFt);
+  if (levels.length) {
+    return levels.length >= 2 && altitudeFt >= levels[0].altitudeFt && altitudeFt <= levels.at(-1).altitudeFt
+      ? { weather: weatherAtAltitude({ ...fix, windLevels: levels }, altitudeFt), levels }
+      : null;
+  }
+  const referenceAltitudeFt = Number.isFinite(fix?.altitudeFt) ? fix.altitudeFt : plannedAltitudeFt;
+  if (Number.isFinite(referenceAltitudeFt)
+    && Math.abs(altitudeFt - referenceAltitudeFt) <= PERFORMANCE.turbulence.simbriefShearApplicabilityFt
+    && Number.isFinite(fix?.windDir) && Number.isFinite(fix?.windSpd)) {
+    return { weather: { windDir: fix.windDir, windSpd: fix.windSpd }, levels: [] };
+  }
+  return null;
 }
 
 export function calculateTurbulenceRisk({ plan, result }) {
   const fixes = plan.waypoints?.filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) || [];
-  const globalText = plan.meteorology?.enrouteText || "";
+  const globalBulletins = plan.meteorology?.enrouteBulletins?.length
+    ? plan.meteorology.enrouteBulletins : [plan.meteorology?.enrouteText || ""];
+  const globalEvidence = globalBulletins.map(turbulenceWeatherEvidence);
   let maximumScore = 0;
   let maximumVerticalShear = 0;
   let maximumHorizontalShear = 0;
   let evidenceSamples = 0;
   let simbriefShearSamples = 0;
   let estimatedSamples = 0;
+  let unboundedAdvisory = false;
   let blocking = false;
   const segments = [];
   for (let index = 0; index < Math.max(1, fixes.length - 1); index += 1) {
     const from = fixes[index] || plan.origin;
     const to = fixes[index + 1] || plan.destination;
-    const routeEvidence = turbulenceEvidenceAtAltitude(turbulenceWeatherEvidence(`${globalText} ${from?.weatherText || ""}`), result.altitudeFt);
-    const evidence = routeEvidence;
-    if (evidence.available) evidenceSamples += 1;
+    const localBulletins = from?.weatherBulletins?.length ? from.weatherBulletins : [from?.weatherText || ""];
+    const evidences = [...globalEvidence, ...localBulletins.map(turbulenceWeatherEvidence)];
+    const applicableAdvisories = evidences.flatMap((evidence) => evidence.advisories)
+      .filter((advisory) => advisory.bands.some((band) => result.altitudeFt >= band.baseFt && result.altitudeFt <= band.topFt));
+    if (applicableAdvisories.length) evidenceSamples += 1;
+    unboundedAdvisory ||= evidences.some((evidence) => evidence.unbounded);
     let verticalShear = 0;
-    const levels = (from?.windLevels || []).filter((level) => Number.isFinite(level.altitudeFt)).sort((a, b) => a.altitudeFt - b.altitudeFt);
+    const fromWind = rideWindAtAltitude(from, result.altitudeFt, plan.plannedAltitudeFt);
+    const toWind = rideWindAtAltitude(to, result.altitudeFt, plan.plannedAltitudeFt);
+    const levels = fromWind?.levels || [];
     for (let levelIndex = 0; levelIndex < levels.length - 1; levelIndex += 1) {
       const lower = levels[levelIndex];
       const upper = levels[levelIndex + 1];
-      if (result.altitudeFt < lower.altitudeFt - 3000 || result.altitudeFt > upper.altitudeFt + 3000) continue;
+      if (result.altitudeFt < lower.altitudeFt || result.altitudeFt > upper.altitudeFt) continue;
       const separationThousands = Math.max(0.1, (upper.altitudeFt - lower.altitudeFt) / 1000);
       verticalShear = Math.max(verticalShear, vectorWindDifferenceKt(lower, upper) / separationThousands);
     }
     const segmentNm = from && to && [from.lat, from.lon, to.lat, to.lon].every(Number.isFinite) ? greatCircleNm(from, to) : 0;
-    const fromWeather = weatherAtAltitude(from || {}, result.altitudeFt);
-    const toWeather = weatherAtAltitude(to || from || {}, result.altitudeFt);
-    const windChangeKt = segmentNm > 0 ? vectorWindDifferenceKt(fromWeather, toWeather) : 0;
-    const referenceAltitudeFt = Number.isFinite(Number(from?.altitudeFt))
-      ? Number(from.altitudeFt)
-      : Number(plan.plannedAltitudeFt);
+    const windChangeKt = segmentNm > 0 && fromWind && toWind
+      ? vectorWindDifferenceKt(fromWind.weather, toWind.weather) : 0;
+    const referenceAltitudeFt = Number.isFinite(from?.altitudeFt) ? from.altitudeFt : plan.plannedAltitudeFt;
     const nearSimbriefLevel = Number.isFinite(referenceAltitudeFt)
       && Math.abs(result.altitudeFt - referenceAltitudeFt) <= PERFORMANCE.turbulence.simbriefShearApplicabilityFt;
-    const horizontalShear = segmentNm > 0 && ((from?.windLevels || []).length > 1 || nearSimbriefLevel)
+    const horizontalShear = segmentNm > 0 && fromWind && toWind
       ? windChangeKt / Math.max(75, segmentNm) * 150
       : 0;
     maximumVerticalShear = Math.max(maximumVerticalShear, verticalShear);
@@ -403,8 +439,8 @@ export function calculateTurbulenceRisk({ plan, result }) {
       horizontalShear / PERFORMANCE.turbulence.moderateHorizontalShearKtPer150Nm,
     );
     const inferredScore = Math.min(40, shearRatio >= 1 ? 40 : shearRatio >= 0.55 ? 24 : 8 * shearRatio);
-    if (windChangeKt > 0 || verticalShear > 0) estimatedSamples += 1;
-    const simbriefShear = Number(from?.shear);
+    if ((fromWind?.levels.length || 0) >= 2 || (segmentNm > 0 && fromWind && toWind)) estimatedSamples += 1;
+    const simbriefShear = from?.shear;
     const simbriefShearApplicable = Number.isFinite(simbriefShear)
       && nearSimbriefLevel
       && (!from?.stage || String(from.stage).toUpperCase() === "CRZ");
@@ -418,14 +454,14 @@ export function calculateTurbulenceRisk({ plan, result }) {
             : Math.min(100, 75 + (simbriefShear - 10) * 5)
       : 0;
     if (simbriefShearApplicable) simbriefShearSamples += 1;
-    const advisoryScore = evidence.bands.length
-      ? evidence.score
-      : Math.min(evidence.score, PERFORMANCE.turbulence.unboundedAdvisoryMaximumScore);
-    const segmentBlocking = (evidence.bands.length > 0 && evidence.score >= PERFORMANCE.turbulence.severeScore)
+    const advisoryScore = Math.max(0, ...applicableAdvisories.map((advisory) => advisory.score));
+    const segmentBlocking = advisoryScore >= PERFORMANCE.turbulence.severeScore
       || simbriefShearScore >= PERFORMANCE.turbulence.severeScore;
     blocking ||= segmentBlocking;
-    const riskScore = Math.round(Math.max(advisoryScore, simbriefShearScore, inferredScore));
-    maximumScore = Math.max(maximumScore, riskScore);
+    const hasSourceData = applicableAdvisories.length > 0 || simbriefShearApplicable
+      || (fromWind?.levels.length || 0) >= 2 || (segmentNm > 0 && fromWind && toWind);
+    const riskScore = hasSourceData ? Math.round(Math.max(advisoryScore, simbriefShearScore, inferredScore)) : null;
+    if (riskScore !== null) maximumScore = Math.max(maximumScore, riskScore);
     segments.push({
       from: from?.ident || from?.icao || "—",
       to: to?.ident || to?.icao || "—",
@@ -436,7 +472,10 @@ export function calculateTurbulenceRisk({ plan, result }) {
       blocking: segmentBlocking,
     });
   }
-  const status = maximumScore >= PERFORMANCE.turbulence.severeScore
+  const hasSourceData = evidenceSamples > 0 || simbriefShearSamples > 0 || estimatedSamples > 0;
+  // An altitude-unbounded hazard cannot be cleared by a lower wind-shear estimate.
+  const unresolvedAdvisory = unboundedAdvisory && !blocking;
+  const status = !hasSourceData || unresolvedAdvisory ? "unknown" : maximumScore >= PERFORMANCE.turbulence.severeScore
     ? "severe"
     : maximumScore >= PERFORMANCE.turbulence.moderateScore
       ? "moderate"
@@ -448,10 +487,11 @@ export function calculateTurbulenceRisk({ plan, result }) {
       : status === "light" ? PERFORMANCE.turbulence.lightPenalty : 0;
   return {
     status,
-    riskScore: maximumScore,
+    riskScore: hasSourceData && !unresolvedAdvisory ? maximumScore : null,
     penalty,
     blocking,
-    confidence: evidenceSamples ? "weather" : simbriefShearSamples ? "simbrief" : estimatedSamples ? "estimated" : "limited",
+    confidence: unresolvedAdvisory ? "limited" : evidenceSamples ? "weather" : simbriefShearSamples ? "simbrief" : estimatedSamples ? "estimated" : "limited",
+    unboundedAdvisory,
     maximumVerticalShear,
     maximumHorizontalShear,
     segments,
@@ -739,7 +779,9 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
 
   const icingBlocking = result.icing.status === "avoid";
   addReason("icing", icingBlocking ? 52 : result.icing.riskScore * PERFORMANCE.missionRisk.icingWeight, icingBlocking, result.icing.riskScore);
-  addReason("turbulence", result.turbulence.riskScore * PERFORMANCE.missionRisk.turbulenceWeight, Boolean(result.turbulence.blocking), result.turbulence.riskScore);
+  if (result.turbulence.riskScore !== null) {
+    addReason("turbulence", result.turbulence.riskScore * PERFORMANCE.missionRisk.turbulenceWeight, Boolean(result.turbulence.blocking), result.turbulence.riskScore);
+  }
 
   if (result.oxygen.status === "insufficient") {
     addReason("oxygen", 48, true, result.oxygen.requiredLiters);
@@ -1009,7 +1051,7 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
   const turbulenceAvailable = available.filter((item) => !item.turbulence.blocking);
   const weatherAvailable = available.filter((item) => item.icing.status !== "avoid" && !item.turbulence.blocking && item.oxygen.status !== "insufficient");
   const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
-  const turbulenceRank = { smooth: 0, light: 1, moderate: 2, severe: 3 };
+  const turbulenceRank = { smooth: 0, light: 1, moderate: 2, unknown: 2, severe: 3 };
   const riskRank = (item) => Math.max(icingRank[item.icing.status], turbulenceRank[item.turbulence.status]);
   const hasWeatherEvidence = weatherAvailable.some((item) => (
     item.icing.confidence === "weather"
@@ -1048,7 +1090,8 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
     },
     turbulence: {
       acceptableCount: turbulenceAvailable.length,
-      confidence: results.some((item) => item.turbulence.confidence !== "limited") ? "weather" : "limited",
+      confidence: results.some((item) => ["weather", "simbrief"].includes(item.turbulence.confidence))
+        ? "weather" : results.some((item) => item.turbulence.confidence === "estimated") ? "estimated" : "limited",
     },
     oxygen: {
       installedWeightLb: oxygenWeightLb,
@@ -1334,7 +1377,7 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
   }
 
   const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
-  const turbulenceRank = { smooth: 0, light: 1, moderate: 2, severe: 3 };
+  const turbulenceRank = { smooth: 0, light: 1, moderate: 2, unknown: 2, severe: 3 };
   const riskRank = (candidate) => Math.max(icingRank[candidate.result.icing.status], turbulenceRank[candidate.result.turbulence.status]);
   const hasWeatherEvidence = viable.some((candidate) => (
     candidate.result.icing.confidence === "weather"
