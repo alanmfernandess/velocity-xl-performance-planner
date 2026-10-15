@@ -16,6 +16,14 @@ test("weight and balance renders a separate responsive CG band for each flight p
   assert.match(css,/@media \(max-width:430px\) \{\s*\.cg-phase-heading/);
 });
 
+test("W&B random load action updates shared payload and oxygen occupancy before global render",()=>{
+  assert.match(html,/id="randomizeWeightBalance"/);
+  assert.match(css,/\.wb-randomize \{ grid-column:1\/-1;/);
+  assert.match(app,/randomizeWeightBalance\(\{weightBalance:state\.weightBalance,fuelOnboardGal:state\.fuelOnboardGal,oxygenWeightLb:currentOxygenWeightLb\(\)\}\)/);
+  assert.match(app,/state\.weightBalance=randomized;\s*persistWeightBalance\(\);\s*\$\("#payloadInput"\)\.value=String\(state\.payloadLb\);\s*render\(\);/);
+  assert.match(app,/state\.oxygen\.seats=\[state\.weightBalance\.pilot,state\.weightBalance\.copilot/);
+});
+
 test("A-minus/A/A-plus control persists a slightly smaller default font",()=>{
   assert.match(html,/class="toolbar-group font-switch"/);
   assert.match(app,/velocityxl\.fontSize/);

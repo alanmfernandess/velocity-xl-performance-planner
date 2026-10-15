@@ -1,5 +1,5 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261014-05";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261014-06";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261014-07";
 import { fetchLatestOFP } from "./simbrief.js?v=20261014-05";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 
@@ -37,6 +37,7 @@ const UI_ICON_RULES = [
   [".select-control > span","timer","inline"],
   [".weight-meter > div:first-child > span","scale","inline"],
   ["#optimizeMission","wand-sparkles","button"],
+  ["#randomizeWeightBalance","shuffle","button"],
   ["#missionRecoveryAction","rotate-ccw","button"],
   [".mission-score-heading > div > span","activity","inline"],
   [".mission-score-action > span","wrench","inline"],
@@ -172,6 +173,10 @@ Object.assign(COPY["pt-BR"], {
   restoreViableMission: "Usar última carga viável",
   restoreViableWarning: "A carga anterior será reotimizada e substituirá ajustes de carga, combustível, preset e oxigênio. Confira os ocupantes e o W&B.",
   restoredViableMission: "Carga anterior reotimizada. Confira os ocupantes e o W&B.",
+  randomizeWeightBalance: "Sortear passageiros e bagagem",
+  randomizeWeightBalanceHint: "Mantém piloto e combustível; sorteia os demais ocupantes e a bagagem dentro dos limites de peso e CG.",
+  randomizeWeightBalanceApplied: "Carga sorteada com peso e CG viáveis. Os demais indicadores foram recalculados.",
+  randomizeWeightBalanceFailed: "Não foi encontrada uma carga segura com o piloto, combustível e oxigênio atuais. Revise esses valores.",
 });
 Object.assign(COPY["en-US"], {
   optimizationCgAft: "Aft CG is outside the envelope with the current load. Reducing weight is not enough; review the W&B distribution.",
@@ -186,6 +191,10 @@ Object.assign(COPY["en-US"], {
   restoreViableMission: "Use last viable load",
   restoreViableWarning: "The previous load will be reoptimized, replacing load, fuel, preset, and oxygen changes. Verify occupants and W&B.",
   restoredViableMission: "Previous load reoptimized. Verify occupants and W&B.",
+  randomizeWeightBalance: "Randomize passengers and baggage",
+  randomizeWeightBalanceHint: "Keeps the pilot and fuel; randomizes other occupants and baggage within weight and CG limits.",
+  randomizeWeightBalanceApplied: "Random load has viable weight and CG. Other indicators have been recalculated.",
+  randomizeWeightBalanceFailed: "No safe load was found with the current pilot, fuel, and oxygen. Review those values.",
 });
 
 function storedJson(key, fallback) {
@@ -859,6 +868,15 @@ $("#oxygenBottle").addEventListener("change",(event)=>{state.oxygen.bottleModel=
 $("#oxygenBottleCount").addEventListener("change",(event)=>{state.oxygen.bottles=clamp(Number(event.target.value),0,4);localStorage.setItem("velocityxl.oxygen",JSON.stringify(state.oxygen));render();});
 $$('[data-oxygen-seat]').forEach((input)=>input.addEventListener("change",()=>{const keys=["pilot","copilot","rearLeft","rearCenter","rearRight"],index=Number(input.dataset.oxygenSeat),key=keys[index];state.weightBalance[key]=input.checked?Math.max(state.weightBalance[key],index===0?190:170):0;persistWeightBalance();render();}));
 $$('[data-wb-key]').forEach((input)=>input.addEventListener("input",()=>{state.weightBalance[input.dataset.wbKey]=Math.max(0,weightFromDisplay(Number(input.value)||0));persistWeightBalance();render();}));
+$("#randomizeWeightBalance").addEventListener("click",()=>{
+  const randomized=randomizeWeightBalance({weightBalance:state.weightBalance,fuelOnboardGal:state.fuelOnboardGal,oxygenWeightLb:currentOxygenWeightLb()});
+  if(!randomized){showToast(t("randomizeWeightBalanceFailed"),true);return;}
+  state.weightBalance=randomized;
+  persistWeightBalance();
+  $("#payloadInput").value=String(state.payloadLb);
+  render();
+  showToast(t("randomizeWeightBalanceApplied"));
+});
 $("#applyOxygenRecommendation").addEventListener("click",()=>{const analysis=calculatePlan(state),target=analysis.results.find((item)=>item.altitudeFt===Number(state.oxygen.altitudeFt))||analysis.winners.overall,oxygen=calculateOxygenPlan({result:target,oxygen:state.oxygen});state.oxygen.bottles=clamp(oxygen.recommendedBottles,0,4);localStorage.setItem("velocityxl.oxygen",JSON.stringify(state.oxygen));render();});
 
 $("#manualUpdateForm").addEventListener("submit",(event)=>{

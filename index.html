@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261014-09" />
+    <link rel="stylesheet" href="./styles.css?v=20261014-10" />
   </head>
   <body>
     <header class="topbar">
@@ -221,6 +221,7 @@
               <label><span data-i18n="rearCenter">Traseiro C</span><span class="input-with-unit"><input data-wb-key="rearCenter" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
               <label><span data-i18n="rearRight">Traseiro D</span><span class="input-with-unit"><input data-wb-key="rearRight" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
               <label><span data-i18n="baggage">Bagagem</span><span class="input-with-unit"><input data-wb-key="baggage" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <button class="text-button wb-randomize" id="randomizeWeightBalance" type="button" data-i18n="randomizeWeightBalance" data-i18n-title="randomizeWeightBalanceHint">Sortear passageiros e bagagem</button>
             </div>
             <div class="wb-chart-card">
               <div class="wb-chart-head"><div><strong data-i18n="cgEnvelope">Envelope de CG</strong><small id="wbMargins">—</small></div><b class="status-pill" id="wbStatus">—</b></div>
@@ -338,6 +339,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261014-09"></script>
+    <script type="module" src="./js/app.js?v=20261014-10"></script>
   </body>
 </html>

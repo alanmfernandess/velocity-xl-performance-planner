@@ -563,6 +563,39 @@ export function calculateWeightBalance({ weightBalance = {}, fuelOnboardGal = 0,
   };
 }
 
+// Use the same station arms and envelope as the rest of the planner. CG is a
+// weighted average within each fuel-tank segment, so checking both ends of
+// each segment covers every intermediate fuel quantity as well.
+export function randomizeWeightBalance({ weightBalance = {}, fuelOnboardGal = 0, oxygenWeightLb = 0, random = Math.random, maxAttempts = 1000 } = {}) {
+  const current = normalizeWeightBalance(weightBalance);
+  if (current.pilot <= 0) return null;
+  const seats = ["copilot", "rearLeft", "rearCenter", "rearRight"];
+  const fuelGal = clamp(Number(fuelOnboardGal) || 0, 0, AIRCRAFT.usableFuelGal);
+  const checkpoints = [...new Set([0, Math.min(WEIGHT_BALANCE.headerFuelGal, fuelGal), fuelGal])];
+  const envelope = WEIGHT_BALANCE.envelope;
+  const draw = () => clamp(Number(random()) || 0, 0, 0.999999999);
+  const drawInt = (minimum, maximum) => minimum + Math.floor(draw() * (maximum - minimum + 1));
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const shuffledSeats = [...seats];
+    for (let index = shuffledSeats.length - 1; index > 0; index -= 1) {
+      const swapIndex = drawInt(0, index);
+      [shuffledSeats[index], shuffledSeats[swapIndex]] = [shuffledSeats[swapIndex], shuffledSeats[index]];
+    }
+    const passengerCount = drawInt(1, seats.length);
+    const candidate = { ...current, copilot: 0, rearLeft: 0, rearCenter: 0, rearRight: 0, baggage: drawInt(1, 16) * 5 };
+    shuffledSeats.slice(0, passengerCount).forEach((key) => { candidate[key] = drawInt(24, 44) * 5; });
+    if (WEIGHT_BALANCE_KEYS.every((key) => candidate[key] === current[key])) continue;
+    const valid = checkpoints.every((checkpointFuelGal) => {
+      const point = calculateWeightBalance({ weightBalance: candidate, fuelOnboardGal: checkpointFuelGal, landingFuelGal: checkpointFuelGal, oxygenWeightLb }).takeoff;
+      return point.forwardMarginIn >= envelope.marginalCgIn
+        && point.aftMarginIn >= envelope.marginalCgIn
+        && point.weightMarginLb >= envelope.marginalWeightLb;
+    });
+    if (valid) return candidate;
+  }
+  return null;
+}
+
 export function calculateOxygenPlan({ result, oxygen = {} }) {
   const cylinder = OXYGEN_CYLINDERS[oxygen.bottleModel] || OXYGEN_CYLINDERS["SK-12-24"];
   const bottles = clamp(Math.round(Number(oxygen.bottles) || 0), 0, 6);

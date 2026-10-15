@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -529,6 +529,36 @@ test("weight and balance violations disable every affected cruise option", () =>
   const analysis = calculatePlan({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 1000, fuelOnboardGal: 77, reserveMinutes: 45, weightBalance });
   assert.equal(analysis.weightBalance.acceptableCount, 0);
   assert.ok(analysis.results.every((result) => result.weightBalance.status === "unavailable"));
+});
+
+test("random load preserves the pilot and stays viable throughout fuel burn", () => {
+  let seed = 813;
+  const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  const initial = { pilot: 165, copilot: 172, rearLeft: 0, rearCenter: 0, rearRight: 0, baggage: 20 };
+  for (const fuelOnboardGal of [0, 20, 77, 87]) {
+    const load = randomizeWeightBalance({ weightBalance: initial, fuelOnboardGal, oxygenWeightLb: 14, random });
+    assert.ok(load);
+    assert.equal(load.pilot, initial.pilot);
+    assert.ok([load.copilot, load.rearLeft, load.rearCenter, load.rearRight].some((weight) => weight > 0));
+    assert.ok(load.baggage > 0 && load.baggage <= 80);
+    assert.notDeepEqual(load, initial);
+    for (const fuelGal of [0, Math.min(4, fuelOnboardGal), fuelOnboardGal]) {
+      const point = calculateWeightBalance({ weightBalance: load, fuelOnboardGal: fuelGal, oxygenWeightLb: 14 }).takeoff;
+      assert.ok(point.forwardMarginIn >= WEIGHT_BALANCE.envelope.marginalCgIn);
+      assert.ok(point.aftMarginIn >= WEIGHT_BALANCE.envelope.marginalCgIn);
+      assert.ok(point.weightMarginLb >= WEIGHT_BALANCE.envelope.marginalWeightLb);
+    }
+    const analysis = calculatePlan({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: weightBalancePayloadLb(load), fuelOnboardGal, reserveMinutes: 45, weightBalance: load });
+    assert.ok(analysis.results.every((result) => result.weightBalance.payloadLb === weightBalancePayloadLb(load)));
+  }
+  assert.deepEqual(initial, { pilot: 165, copilot: 172, rearLeft: 0, rearCenter: 0, rearRight: 0, baggage: 20 });
+});
+
+test("random load leaves the current stations untouched if none can be safe", () => {
+  const load = { pilot: 1000, copilot: 0, rearLeft: 0, rearCenter: 0, rearRight: 0, baggage: 0 };
+  assert.equal(randomizeWeightBalance({ weightBalance: load, fuelOnboardGal: 87, oxygenWeightLb: 28, maxAttempts: 20 }), null);
+  assert.deepEqual(load, { pilot: 1000, copilot: 0, rearLeft: 0, rearCenter: 0, rearRight: 0, baggage: 0 });
+  assert.equal(randomizeWeightBalance({ weightBalance: { pilot: 0 }, fuelOnboardGal: 77 }), null);
 });
 
 test("payload optimization scales stations and returns a viable CG", () => {
