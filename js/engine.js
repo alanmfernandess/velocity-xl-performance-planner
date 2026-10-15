@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261014-04";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261014-05";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -1508,22 +1508,25 @@ export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboard
 
 export function calculateStepClimbs({
   plan, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {}, initialAltitudeFt,
-  manual = null,
+  manual = null, availableAltitudesFt = null,
 }) {
   const startDistanceNm = clamp(Number(manual?.distanceNm) || 0, 0, plan.distanceNm);
-  const startFuelGal = clamp(Number(manual?.fuelRemainingGal) || fuelOnboardGal, 0, AIRCRAFT.usableFuelGal);
+  const startFuelGal = clamp(manual?.fuelRemainingGal != null && Number.isFinite(Number(manual.fuelRemainingGal)) ? Number(manual.fuelRemainingGal) : fuelOnboardGal, 0, AIRCRAFT.usableFuelGal);
   const startingAltitudeFt = Number(manual?.altitudeFt) || initialAltitudeFt;
   let currentAltitudeFt = startingAltitudeFt;
   let currentFuelGal = startFuelGal;
   let currentDistanceNm = startDistanceNm;
-  const startWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
+  const startWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + startFuelGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const candidates = (plan.waypoints || [])
     .map((point) => ({ ...point, distanceNm: Number(point.distanceNm) }))
     .filter((point) => Number.isFinite(point.distanceNm) && point.distanceNm > startDistanceNm + 5 && point.distanceNm < plan.distanceNm - 10)
     .sort((a, b) => a.distanceNm - b.distanceNm);
+  const allowedAltitudes = Array.isArray(availableAltitudesFt) ? new Set(availableAltitudesFt) : null;
+  let blockedByAvailability = false;
   const steps = [];
 
   for (const point of candidates) {
+    if (point.distanceNm <= currentDistanceNm + 5) continue;
     const current = cruiseSnapshot({ plan, altitudeFt: currentAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, oxygenWeightLb, calibration, powerSetting });
     const segmentNm = point.distanceNm - currentDistanceNm;
     currentFuelGal = Math.max(0, currentFuelGal - segmentNm / current.gsKt * current.fuelFlowGph);
@@ -1535,6 +1538,7 @@ export function calculateStepClimbs({
     if (targetAltitudeFt < currentAltitudeFt + 2000 || plan.distanceNm - currentDistanceNm < PERFORMANCE.stepClimb.minimumRemainingNm) continue;
 
     const candidateAltitudeFt = Math.min(targetAltitudeFt, currentAltitudeFt + 2000);
+    if (allowedAltitudes && !allowedAltitudes.has(candidateAltitudeFt)) { blockedByAvailability = true; continue; }
     const candidate = cruiseSnapshot({ plan, altitudeFt: candidateAltitudeFt, mode, payloadLb, fuelOnboardGal: currentFuelGal, oxygenWeightLb, calibration, powerSetting });
     const remainingNm = plan.distanceNm - currentDistanceNm;
     const deltaAltitudeFt = candidateAltitudeFt - currentAltitudeFt;
@@ -1558,15 +1562,57 @@ export function calculateStepClimbs({
       minutes: stepTimeHr * 60,
     });
     currentAltitudeFt = candidateAltitudeFt;
+    currentFuelGal = Math.max(0, currentFuelGal - stepTimeHr * stepClimb.fuelFlowGph);
+    currentDistanceNm = Math.min(plan.distanceNm, currentDistanceNm + stepDistanceNm);
     if (steps.length >= PERFORMANCE.stepClimb.maximumSteps) break;
   }
+
+  // Compare only the remaining enroute segment; common climb, descent and reserve
+  // are deliberately excluded from both profiles.
+  const estimateProfile = (scheduledSteps) => {
+    let distanceNm = startDistanceNm;
+    let fuelGal = startFuelGal;
+    let timeHr = 0;
+    let altitudeFt = startingAltitudeFt;
+    for (const point of [...scheduledSteps, { distanceNm: plan.distanceNm }]) {
+      const cruiseNm = Math.max(0, point.distanceNm - distanceNm);
+      if (cruiseNm > 0) {
+        const cruise = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: Math.max(0, fuelGal), oxygenWeightLb, calibration, powerSetting });
+        const cruiseHr = cruiseNm / cruise.gsKt;
+        fuelGal -= cruiseHr * cruise.fuelFlowGph;
+        timeHr += cruiseHr;
+        distanceNm += cruiseNm;
+      }
+      if (!point.altitudeFt) continue;
+      const weightLb = AIRCRAFT.emptyWeightLb + payloadLb + Math.max(0, fuelGal) * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
+      const climb = climbProfile(point.altitudeFt, weightLb, averageRouteWeather(plan, point.altitudeFt), "enrouteClimb");
+      const climbHr = (point.altitudeFt - altitudeFt) / climb.rateFpm / 60;
+      const climbNm = Math.min(Math.max(0, plan.distanceNm - distanceNm), climbHr * PERFORMANCE.climbSpeedKt);
+      fuelGal -= climbHr * climb.fuelFlowGph;
+      timeHr += climbHr;
+      distanceNm += climbNm;
+      altitudeFt = point.altitudeFt;
+    }
+    return { fuelGal: startFuelGal - fuelGal, timeHr, landingFuelGal: fuelGal };
+  };
+  const baseline = estimateProfile([]);
+  const stepped = steps.length ? estimateProfile(steps) : null;
+  const hasNetGain = stepped && baseline.fuelGal - stepped.fuelGal >= PERFORMANCE.stepClimb.minimumFuelSavingGal;
+  const recommendedSteps = hasNetGain ? steps : [];
 
   return {
     startDistanceNm,
     startFuelGal,
     initialAltitudeFt: startingAltitudeFt,
-    steps,
-    next: steps[0] || null,
+    steps: recommendedSteps,
+    next: recommendedSteps[0] || null,
+    comparison: {
+      baseline,
+      stepped: hasNetGain ? stepped : null,
+      fuelSavingGal: hasNetGain ? baseline.fuelGal - stepped.fuelGal : 0,
+      timeDeltaMin: hasNetGain ? (stepped.timeHr - baseline.timeHr) * 60 : 0,
+      reason: hasNetGain ? null : !candidates.length ? "no-waypoint" : steps.length ? "no-net-gain" : blockedByAvailability ? "level-unavailable" : "no-beneficial-step",
+    },
   };
 }
 

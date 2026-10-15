@@ -8,8 +8,8 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261014-04/);
-  assert.match(index,/js\/app\.js\?v=20261014-04/);
+  assert.match(index,/styles\.css\?v=20261014-05/);
+  assert.match(index,/js\/app\.js\?v=20261014-05/);
 });
 
 test("A/B matrix keeps B controls above four aligned comparison metrics",()=>{
@@ -46,6 +46,18 @@ test("GLIDE focuses an OFP point and keeps the full route navigable on narrow sc
   assert.match(css,/\.glide-route \{[^}]*overflow-x:auto/);
   assert.match(css,/\.glide-focus \{[^}]*grid-template-columns:minmax\(0,1\.2fr\)/);
   assert.match(css,/\.glide-focus \{ grid-template-columns:minmax\(0,1fr\); \}/);
+});
+
+test("STEP CLIMB compares complete remaining profiles and explains no-step cases",()=>{
+  assert.match(index,/id="stepComparison" aria-live="polite"/);
+  assert.doesNotMatch(index,/id="stepTrack"/);
+  assert.match(app,/function renderStepComparison\(stepPlan\)/);
+  assert.match(app,/stepPlan\.comparison/);
+  assert.match(app,/stepNoNetGain/);
+  assert.match(app,/availableAltitudesFt:analysis\.results\.filter\(operationallyAvailable\)/);
+  assert.match(app,/calculateOxygenPlan, calculatePlan, calculateStepClimbs/);
+  assert.match(css,/\.step-profiles \{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.step-profiles \{ grid-template-columns:minmax\(0,1fr\)/);
 });
 
 test("discrete icon rules cover every primary calculator surface",()=>{

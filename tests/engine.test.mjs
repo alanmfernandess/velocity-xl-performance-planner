@@ -178,6 +178,32 @@ test("step climb advisor schedules higher levels on a long route", () => {
   const steps = calculateStepClimbs({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 87, reserveMinutes: 45, initialAltitudeFt: 16000 });
   assert.ok(steps.steps.length > 0);
   assert.ok(steps.steps.every((step) => step.altitudeFt > step.fromAltitudeFt && step.savingGal > 0));
+  assert.ok(steps.comparison.stepped);
+  assert.ok(steps.comparison.fuelSavingGal >= PERFORMANCE.stepClimb.minimumFuelSavingGal);
+  assert.ok(Math.abs(steps.comparison.baseline.fuelGal - steps.comparison.stepped.fuelGal - steps.comparison.fuelSavingGal) < 1e-9);
+  assert.ok(Math.abs((steps.comparison.stepped.timeHr - steps.comparison.baseline.timeHr) * 60 - steps.comparison.timeDeltaMin) < 1e-9);
+  const blocked = calculateStepClimbs({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 87, reserveMinutes: 45, initialAltitudeFt: 16000, availableAltitudesFt: [16000] });
+  assert.equal(blocked.steps.length, 0);
+  assert.equal(blocked.comparison.reason, "level-unavailable");
+});
+
+test("step climb comparison keeps a no-step flight at its current level", () => {
+  const plan = calculateStepClimbs({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, initialAltitudeFt: 10000 });
+  assert.equal(plan.steps.length, 0);
+  assert.equal(plan.comparison.stepped, null);
+  assert.equal(plan.comparison.fuelSavingGal, 0);
+  assert.ok(plan.comparison.baseline.fuelGal > 0);
+  assert.equal(plan.comparison.reason, "no-beneficial-step");
+});
+
+test("manual step climb comparison starts from the reported fuel and position", () => {
+  const plan = calculateStepClimbs({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, initialAltitudeFt: 10000, manual: { distanceNm: 100, fuelRemainingGal: 40, altitudeFt: 10000 } });
+  assert.equal(plan.startDistanceNm, 100);
+  assert.equal(plan.startFuelGal, 40);
+  assert.ok(plan.comparison.baseline.fuelGal > 0);
+  assert.ok(plan.comparison.baseline.fuelGal < 40);
+  const empty = calculateStepClimbs({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, initialAltitudeFt: 10000, manual: { distanceNm: 100, fuelRemainingGal: 0, altitudeFt: 10000 } });
+  assert.equal(empty.startFuelGal, 0);
 });
 
 test("simple calibration derives bounded TAS and fuel-flow factors", () => {
