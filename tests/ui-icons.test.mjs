@@ -8,8 +8,14 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261014-05/);
+  assert.match(index,/styles\.css\?v=20261014-06/);
   assert.match(index,/js\/app\.js\?v=20261014-05/);
+});
+
+test("oxygen recommendation button aligns with the adjacent controls",()=>{
+  assert.match(css,/\.oxygen-controls > button \{ align-self:end; \}/);
+  assert.match(css,/\.oxygen-controls select \{[^}]*height:36px/);
+  assert.match(css,/\.text-button \{ height:36px/);
 });
 
 test("A/B matrix keeps B controls above four aligned comparison metrics",()=>{
