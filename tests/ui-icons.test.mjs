@@ -8,8 +8,8 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=20261014-07/);
-  assert.match(index,/js\/app\.js\?v=20261014-07/);
+  assert.match(index,/styles\.css\?v=20261014-08/);
+  assert.match(index,/js\/app\.js\?v=20261014-08/);
 });
 
 test("oxygen recommendation button aligns with the adjacent controls",()=>{
@@ -26,6 +26,19 @@ test("performance ranking replaces the tiny SVG and contains the metric selector
   assert.match(app,/data-rank-altitude/);
   assert.match(css,/\[data-view-panel="performance"\] \.chart-tabs \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.ranking-top \{ grid-template-columns:minmax\(0,1fr\)/);
+});
+
+test("flight phases stay live in the icing card after Route and Profile tabs are removed",()=>{
+  assert.doesNotMatch(index,/data-view="(?:route|profile)"/);
+  assert.doesNotMatch(index,/id="(?:routeMap|verticalProfile)"/);
+  assert.match(index,/class="icing-summary" id="icingSummary"[\s\S]*?class="phase-footer"[\s\S]*?id="climbStats"[\s\S]*?id="cruiseStats"[\s\S]*?id="descentStats"/);
+  assert.match(app,/\$\("#phaseLevel"\)\.textContent=`\$\{t\("selectedLevel"\)\} · FL\$\{selected\.fl\}`/);
+  assert.match(app,/\$\("#climbStats"\)\.textContent=`\$\{Math\.round\(selected\.climb\.timeHr/);
+  assert.match(app,/\$\("#cruiseStats"\)\.textContent=`\$\{Math\.round\(selected\.cruiseTimeHr/);
+  assert.match(app,/\$\("#descentStats"\)\.textContent=`\$\{Math\.round\(selected\.descent\.timeHr/);
+  assert.match(app,/renderMissionScore\(selected,missionScore\)/);
+  assert.match(css,/\.phase-footer \{ border-top:1px solid var\(--line\)/);
+  assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.phase-grid \{ grid-template-columns:minmax\(0,1fr\)/);
 });
 
 test("A/B matrix keeps B controls above four aligned comparison metrics",()=>{
@@ -79,7 +92,7 @@ test("STEP CLIMB compares complete remaining profiles and explains no-step cases
 test("discrete icon rules cover every primary calculator surface",()=>{
   [
     ".brand-mark", ".kpi-grid .kpi:nth-child(1)", ".mission-strip > div:nth-child(1)",
-    '[data-view="performance"]', '[data-view="route"]', '[data-view="profile"]',
+    '[data-view-panel="performance"] .view-heading h2', '.phase-grid > div:nth-child(1) > span',
     '[data-tool-view="alternate"]', '[data-tool-view="compare"]', '[data-tool-view="load"]',
     '[data-tool-view="wb"]', '[data-tool-view="glide"]', '[data-tool-view="oxygen"]',
     '[data-tool-view="confidence"]', '[data-tool-view="ride"]', '[data-tool-view="debrief"]',

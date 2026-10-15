@@ -1,7 +1,6 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261014-05";
 import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, normalizeWeightBalance, oxygenSystemWeightLb, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261014-05";
 import { fetchLatestOFP } from "./simbrief.js?v=20261014-05";
-import { buildRouteGeometry, layoutRouteLabels, pointAlongPolyline } from "./route-map.js?v=20261014-05";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 
 const $ = (selector) => document.querySelector(selector);
@@ -24,20 +23,11 @@ const UI_ICON_RULES = [
   [".mission-strip > div:nth-child(2)","shield-check","card"],
   [".mission-strip > div:nth-child(3)","waves","card"],
   [".mission-strip > div:nth-child(4)","wind","card"],
-  ['[data-view="performance"]',"gauge","button"],
-  ['[data-view="route"]',"route","button"],
-  ['[data-view="profile"]',"area-chart","button"],
   ['[data-view-panel="performance"] .view-heading h2',"bar-chart-3","heading"],
   ['[data-metric="fuel"]',"fuel","button"],
   ['[data-metric="time"]',"clock-3","button"],
   ['[data-metric="efficiency"]',"gauge","button"],
   ["#icingStatus","snowflake","inline"],
-  ['[data-view-panel="route"] .view-heading h2',"map","heading"],
-  [".mini-stats > div:nth-child(1) > span","thermometer-sun","inline"],
-  [".mini-stats > div:nth-child(2) > span","wind","inline"],
-  [".mini-stats > div:nth-child(3) > span","thermometer","inline"],
-  [".mini-stats > div:nth-child(4) > span","map-pin","inline"],
-  ['[data-view-panel="profile"] .view-heading h2',"area-chart","heading"],
   [".phase-grid > div:nth-child(1) > span","plane-takeoff","inline"],
   [".phase-grid > div:nth-child(2) > span","move-right","inline"],
   [".phase-grid > div:nth-child(3) > span","plane-landing","inline"],
@@ -281,33 +271,6 @@ function renderPerformanceRanking(results,recommended,selectedResult) {
     <div class="ranking-top">${topMarkup||`<p class="ranking-empty">${escapeHtml(t("rankingNoAvailable"))}</p>`}</div>
     ${rest.length?`<button class="ranking-toggle" type="button" data-ranking-toggle aria-controls="rankingRest" aria-expanded="${state.rankingExpanded}">${escapeHtml(t("rankingOthers",rest.length))} · ${escapeHtml(t(state.rankingExpanded?"rankingHide":"rankingShow"))}</button><div class="ranking-rest" id="rankingRest" data-collapsed="${!state.rankingExpanded}">${restMarkup}</div>`:""}
     <p class="ranking-note">${escapeHtml(config.hint)} · ${escapeHtml(t("rankingNote"))}</p>`;
-}
-
-function renderRouteMap(plan,result,navigation) {
-  const geometry=buildRouteGeometry(plan),{width,height,points,path}=geometry;
-  if(!points.length){$("#routeMap").innerHTML="";return;}
-  const tocInOFP=points.some((point)=>point.ident==="TOC"),todInOFP=points.some((point)=>point.ident==="TOD");
-  const labeled=layoutRouteLabels(points.map((point,index)=>({...point,endpoint:index===0||index===points.length-1,special:point.ident==="TOC"||point.ident==="TOD"})),width,height);
-  const dots=labeled.map((fix)=>{const radius=fix.endpoint?7:fix.special?5:3.5,color=fix.endpoint?"#52a964":fix.special?"#d98b34":"#1976d2",fill=fix.endpoint||fix.special?color:"#fff",leader=Math.hypot(fix.labelX-fix.x,fix.labelY-fix.y)>20?`<line x1="${fix.x}" y1="${fix.y}" x2="${fix.labelX}" y2="${fix.labelY-4}" stroke="#cbd5dd" stroke-width="1"/>`:"";return `<g class="route-waypoint"><title>${escapeHtml(fix.ident)} · ${number(fix.distanceNm)} NM</title>${leader}<circle cx="${fix.x}" cy="${fix.y}" r="${radius}" fill="${fill}" stroke="${color}" stroke-width="2"/><text class="route-waypoint-label" x="${fix.labelX}" y="${fix.labelY}" text-anchor="${fix.labelAnchor}" fill="${fix.special?"#b36c22":"#62717f"}" font-weight="600">${escapeHtml(fix.ident)}</text></g>`;}).join("");
-  const computedMarkers=[
-    ...(!tocInOFP?[{label:"TOC",fraction:result.climb.distanceNm/Math.max(1,plan.distanceNm),color:"#52a964"}]:[]),
-    ...(!todInOFP?[{label:"TOD",fraction:1-result.descent.distanceNm/Math.max(1,plan.distanceNm),color:"#d98b34"}]:[]),
-  ];
-  const flightMarkers=computedMarkers.map(({label,fraction,color})=>{const point=pointAlongPolyline(points,fraction);return `<g class="route-flight-marker"><circle cx="${point.x}" cy="${point.y}" r="5" fill="#fff" stroke="${color}" stroke-width="2.5"/><rect x="${point.x-17}" y="${point.y-30}" width="34" height="17" rx="8.5" fill="${color}"/><text x="${point.x}" y="${point.y-18.5}" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">${label}</text></g>`;}).join("");
-  const navMarkers=[{label:"ETP",point:pointAlongPolyline(points,navigation.etp.fraction),color:"#1976d2"},{label:"PNR",point:pointAlongPolyline(points,navigation.pnr.fraction),color:"#d98b34"}].map(({label,point,color},index)=>`<g><circle cx="${point.x}" cy="${point.y}" r="7" fill="#fff" stroke="${color}" stroke-width="3"/><rect x="${point.x-18}" y="${point.y+(index?-36:13)}" width="36" height="18" rx="9" fill="${color}"/><text x="${point.x}" y="${point.y+(index?-24:25)}" text-anchor="middle" fill="#fff" font-size="8" font-weight="700">${label}</text></g>`).join("");
-  $("#routeMap").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(plan.origin.icao)} ${escapeHtml(plan.destination.icao)} · ${points.length} waypoints"><defs><linearGradient id="routeLine"><stop stop-color="#1976d2"/><stop offset="1" stop-color="#52a964"/></linearGradient></defs><path d="${path}" fill="none" stroke="#edf3f7" stroke-width="12"/><path d="${path}" fill="none" stroke="url(#routeLine)" stroke-width="2" stroke-dasharray="5 5"/>${dots}${flightMarkers}${navMarkers}</svg>`;
-}
-
-function renderVerticalProfile(plan,result,stepPlan) {
-  const width=860,height=290,left=44,right=24,top=42,base=226,plotWidth=width-left-right,tocX=left+(result.climb.distanceNm/plan.distanceNm)*plotWidth,todX=width-right-(result.descent.distanceNm/plan.distanceNm)*plotWidth;
-  const yForAltitude=(altitudeFt)=>top+(25000-altitudeFt)/25000*120;
-  const cruiseEnd=Math.max(tocX,todX),startAltitude=stepPlan.initialAltitudeFt;
-  let profilePath=`M${left},${base} L${tocX},${yForAltitude(startAltitude)}`;
-  let lastY=yForAltitude(startAltitude);
-  const stepLabels=stepPlan.steps.map((step)=>{const stepX=left+(step.distanceNm/plan.distanceNm)*plotWidth,nextY=yForAltitude(step.altitudeFt);profilePath+=` L${stepX},${lastY} L${stepX+7},${nextY}`;lastY=nextY;return `<g><circle cx="${stepX}" cy="${nextY}" r="4" fill="#52a964" stroke="#fff" stroke-width="2"/><text x="${stepX}" y="${nextY-10}" text-anchor="middle" fill="#438b52" font-size="8" font-weight="700">FL${step.altitudeFt/100}</text></g>`;}).join("");
-  profilePath+=` L${cruiseEnd},${lastY} L${width-right},${base}`;
-  const icingBands=(result.icing?.segments||[]).map((segment)=>{const start=left+clamp(segment.startNm/Math.max(1,plan.distanceNm),0,1)*plotWidth,end=left+clamp(segment.endNm/Math.max(1,plan.distanceNm),0,1)*plotWidth,color=segment.status==="avoid"?"#dc5661":segment.status==="caution"?"#d98b34":segment.status==="watch"?"#c2a13c":"#52a964",opacity=segment.status==="low"?.08:.2;return `<rect x="${start}" y="${yForAltitude(result.altitudeFt)-7}" width="${Math.max(2,end-start)}" height="14" rx="3" fill="${color}" opacity="${opacity}"/>`;}).join("");
-  $("#verticalProfile").innerHTML=`<svg viewBox="0 0 ${width} ${height}" role="img">${[10000,15000,20000,25000].map((alt)=>{const y=yForAltitude(alt);return `<line x1="${left}" y1="${y}" x2="${width-right}" y2="${y}" stroke="#eef1f4"/><text x="${left-8}" y="${y+3}" text-anchor="end" fill="#8a97a2" font-size="8">FL${alt/100}</text>`;}).join("")}${icingBands}<path d="${profilePath}" fill="none" stroke="#1976d2" stroke-width="2" stroke-linejoin="round"/><text x="${tocX}" y="${yForAltitude(startAltitude)-10}" text-anchor="middle" fill="#8794a0" font-size="8">TOC</text><text x="${todX}" y="${lastY-10}" text-anchor="middle" fill="#8794a0" font-size="8">TOD</text>${stepLabels}<text x="${left}" y="${base+25}" fill="#43515d" font-size="9" font-weight="700">${escapeHtml(plan.origin.icao)}</text><text x="${width-right}" y="${base+25}" text-anchor="end" fill="#43515d" font-size="9" font-weight="700">${escapeHtml(plan.destination.icao)}</text></svg>`;
 }
 
 function icingLabel(icing) {
@@ -743,7 +706,6 @@ function render() {
   const feasibility=selected.feasibility,feasibilityBadge=$("#feasibilityBadge"),badgeClass=missionScore.status==="not-viable"?"unavailable":missionScore.status==="viable"?"viable":"marginal";
   feasibilityBadge.textContent=missionStatusLabel(missionScore.status); feasibilityBadge.className=`feasibility-badge ${badgeClass}`;
   $("#feasibilityMeta").textContent=`${analysis.results.filter(operationallyAvailable).length}/${analysis.results.length} FL · ${signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`)} · ${signedNumber(weightValue(feasibility.weightMarginLb),0,` ${weightLabel()}`)}`;
-  $("#routeFrom").textContent=plan.origin.icao; $("#routeTo").textContent=plan.destination.icao;
   const power=selected.power,mapLabel=power.turboLimited?`${number(power.targetMapInHg,1)}→${number(power.availableMapInHg,1)}\"`:`${number(power.availableMapInHg,1)}\"`;
   $("#powerSettingValue").textContent=`${mapLabel} · ${number(power.rpm)} RPM`;
   $("#powerPercent").textContent=`${number(power.percentPower)}%`;
@@ -751,9 +713,9 @@ function render() {
   if(document.activeElement!==$("#manualMap")) $("#manualMap").value=Number(state.powerSetting.mapInHg).toFixed(1);
   if(document.activeElement!==$("#manualRpm")) $("#manualRpm").value=String(Math.round(state.powerSetting.rpm));
   $("#kpiAltitude").textContent=`FL${recommended.fl}`; $("#kpiLevelMeta").textContent=t("recommendedLevel"); $("#kpiFuel").innerHTML=`${number(fuelValue(recommended.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-recommended.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(recommended.tripTimeHr); $("#kpiGs").textContent=`${Math.round(recommended.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(recommended.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?recommended.specificRangeNmGal/3.785411784:recommended.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
-  renderPerformanceRanking(analysis.results,recommended,selected); renderIcingSummary(analysis); renderRouteMap(plan,selected,navigation); renderVerticalProfile(plan,selected,stepPlan); renderLevelCards(analysis.results,recommended,selected); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderScenarioComparison(scenarioComparison,selected); renderLoadOptimizer(loadOptimizer); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore); renderOxygenPlanner(analysis); renderWeightBalance(selected.weightBalance); renderConfidenceEnvelope(selected.confidence); renderRideOptimizer(analysis,selected); renderDebrief(selected);
-  $("#avgWind").textContent=`${String(Math.round(selected.weather.windDir)).padStart(3,"0")}° / ${Math.round(selected.weather.windSpeedKt)} kt`; $("#isaDeviation").textContent=signed(selected.weather.isaDeviationC,"°C"); $("#windComponent").textContent=signed(selected.weather.componentKt," kt"); $("#cruiseOat").textContent=`${Math.round(selected.weather.oatC)}°C`; $("#alternate").textContent=plan.alternate||"—";
-  $("#tocTodNote").textContent=`TOC ${Math.round(selected.climb.distanceNm)} NM · TOD ${Math.round(selected.descent.distanceNm)} NM`; $("#climbStats").textContent=`${Math.round(selected.climb.timeHr*60)} min · ${formatFuel(selected.climb.fuelGal,1)} · ${number(selected.climb.power.availableMapInHg,1)}\" / ${number(selected.climb.power.rpm)}`; $("#cruiseStats").textContent=`${Math.round(selected.cruiseTimeHr*60)} min · ${formatFuel(selected.cruiseFuelGal,1)} · ${number(selected.power.availableMapInHg,1)}\" / ${number(selected.power.rpm)}`; $("#descentStats").textContent=`${Math.round(selected.descent.timeHr*60)} min · ${formatFuel(selected.descent.fuelGal,1)} · ${number(PERFORMANCE.powerModel.phases.descent.mapInHg,1)}\" / ${number(PERFORMANCE.powerModel.phases.descent.rpm)}`;
+  renderPerformanceRanking(analysis.results,recommended,selected); renderIcingSummary(analysis); renderLevelCards(analysis.results,recommended,selected); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderScenarioComparison(scenarioComparison,selected); renderLoadOptimizer(loadOptimizer); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore); renderOxygenPlanner(analysis); renderWeightBalance(selected.weightBalance); renderConfidenceEnvelope(selected.confidence); renderRideOptimizer(analysis,selected); renderDebrief(selected);
+  $("#phaseLevel").textContent=`${t("selectedLevel")} · FL${selected.fl}`;
+  $("#climbStats").textContent=`${Math.round(selected.climb.timeHr*60)} min · ${formatFuel(selected.climb.fuelGal,1)} · ${number(selected.climb.power.availableMapInHg,1)}\" / ${number(selected.climb.power.rpm)}`; $("#cruiseStats").textContent=`${Math.round(selected.cruiseTimeHr*60)} min · ${formatFuel(selected.cruiseFuelGal,1)} · ${number(selected.power.availableMapInHg,1)}\" / ${number(selected.power.rpm)}`; $("#descentStats").textContent=`${Math.round(selected.descent.timeHr*60)} min · ${formatFuel(selected.descent.fuelGal,1)} · ${number(PERFORMANCE.powerModel.phases.descent.mapInHg,1)}\" / ${number(PERFORMANCE.powerModel.phases.descent.rpm)}`;
   $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1); $("#selectionNote").textContent=`FL${selected.fl} · ${formatFuel(selected.fuelRequiredGal,1)} · ${formatTime(selected.tripTimeHr)} · ${missionStatusLabel(missionScore.status)}`;
   $("#payloadOutput").textContent=formatWeight(state.payloadLb); $("#fuelOutput").textContent=formatFuel(state.fuelOnboardGal,0);
   const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(selected.weightBalance.takeoff.cgIn,2)}→${number(selected.weightBalance.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||selected.weightBalance.status==="unavailable"?"var(--red)":"";
@@ -783,7 +745,6 @@ $("#performanceChart").addEventListener("click",(event)=>{
   state.selectedAltitudeFt=Number(level.dataset.rankAltitude);
   render();
 });
-$$('[data-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-view-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.viewPanel===button.dataset.view));}));
 $$('[data-tool-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-tool-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-tool-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.toolPanel===button.dataset.toolView));if(button.dataset.toolView==="glide")centerGlideRoutePoint();}));
 $("#payloadInput").addEventListener("input",(event)=>{setPayloadAndScaleStations(Number(event.target.value));render();}); $("#fuelInput").addEventListener("input",(event)=>{state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{state.reserveMinutes=Number(event.target.value);render();});
 $("#diversionWaypoint").addEventListener("change",(event)=>{state.diversionWaypointIndex=Number(event.target.value);render();});

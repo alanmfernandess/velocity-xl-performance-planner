@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261014-07" />
+    <link rel="stylesheet" href="./styles.css?v=20261014-08" />
   </head>
   <body>
     <header class="topbar">
@@ -73,28 +73,23 @@
 
       <section class="dashboard-grid">
         <article class="panel visual-panel">
-          <div class="view-tabs" role="tablist">
-            <button class="active" data-view="performance" type="button" data-i18n="performance">Performance</button>
-            <button data-view="route" type="button" data-i18n="route">Rota</button>
-            <button data-view="profile" type="button" data-i18n="profile">Perfil</button>
-          </div>
           <div class="view active" data-view-panel="performance">
             <div class="view-heading">
               <h2 data-i18n="altitudeComparison">Comparação por altitude</h2>
               <div class="chart-tabs" role="tablist"><button class="active" data-metric="fuel" type="button">Fuel</button><button data-metric="time" type="button">Time</button><button data-metric="efficiency" type="button">Efficiency</button></div>
             </div>
             <div class="performance-ranking" id="performanceChart"></div>
-            <div class="icing-summary" id="icingSummary"><b id="icingStatus">—</b><span id="icingDelta">—</span><small id="icingSource">—</small></div>
-          </div>
-          <div class="view" data-view-panel="route">
-            <div class="view-heading"><h2><span id="routeFrom">SBSP</span> → <span id="routeTo">SBGL</span></h2><span class="muted-value" id="avgWind">248° / 23 kt</span></div>
-            <div class="route-map" id="routeMap"></div>
-            <div class="mini-stats"><div><span>ISA DEV</span><strong id="isaDeviation">+3°C</strong></div><div><span data-i18n="windComponent">Componente</span><strong id="windComponent">+19 kt</strong></div><div><span>OAT</span><strong id="cruiseOat">−6°C</strong></div><div><span data-i18n="alternate">Alternativa</span><strong id="alternate">SBRJ</strong></div></div>
-          </div>
-          <div class="view" data-view-panel="profile">
-            <div class="view-heading"><h2 data-i18n="flightProfile">Perfil de voo</h2><span class="muted-value" id="tocTodNote">TOC 17 NM · TOD 34 NM</span></div>
-            <div id="verticalProfile"></div>
-            <div class="phase-grid"><div><i class="phase-dot climb"></i><span data-i18n="climb">SUBIDA</span><strong id="climbStats"></strong></div><div><i class="phase-dot cruise"></i><span data-i18n="cruise">CRUZEIRO</span><strong id="cruiseStats"></strong></div><div><i class="phase-dot descent"></i><span data-i18n="descent">DESCIDA</span><strong id="descentStats"></strong></div></div>
+            <div class="icing-summary" id="icingSummary">
+              <div class="icing-head"><b id="icingStatus">—</b><span id="icingDelta">—</span><small id="icingSource">—</small></div>
+              <div class="phase-footer">
+                <small id="phaseLevel"></small>
+                <div class="phase-grid">
+                  <div><i class="phase-dot climb"></i><span data-i18n="climb">SUBIDA</span><strong id="climbStats"></strong></div>
+                  <div><i class="phase-dot cruise"></i><span data-i18n="cruise">CRUZEIRO</span><strong id="cruiseStats"></strong></div>
+                  <div><i class="phase-dot descent"></i><span data-i18n="descent">DESCIDA</span><strong id="descentStats"></strong></div>
+                </div>
+              </div>
+            </div>
           </div>
         </article>
 
@@ -338,6 +333,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261014-07"></script>
+    <script type="module" src="./js/app.js?v=20261014-08"></script>
   </body>
 </html>
