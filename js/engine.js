@@ -828,16 +828,66 @@ export function calculateDebrief({ result, actualTimeMinutes, actualFuelGal, cur
   const timeErrorPct = (actualTimeHr - result.tripTimeHr) / result.tripTimeHr * 100;
   const fuelErrorPct = (actualFuel - result.tripFuelGal) / result.tripFuelGal * 100;
   const accuracyScore = clamp(Math.round(100 - Math.abs(timeErrorPct) * 0.45 - Math.abs(fuelErrorPct) * 0.55), 0, 100);
+  return { accuracyScore, timeErrorPct, fuelErrorPct, actualTimeHr, actualFuelGal: actualFuel,
+    calibration: applyDebriefCalibration(currentCalibration, { timeErrorPct, fuelErrorPct }) };
+}
+
+export function summarizeDebriefs(debriefs = []) {
+  const valid = debriefs.filter((entry) => Number.isFinite(entry?.accuracyScore)
+    && Number.isFinite(entry?.timeErrorPct) && Number.isFinite(entry?.fuelErrorPct));
+  if (!valid.length) return null;
+  const average = (key) => valid.reduce((sum, entry) => sum + entry[key], 0) / valid.length;
+  return {
+    count: valid.length,
+    accuracyScore: Math.round(average("accuracyScore")),
+    timeErrorPct: average("timeErrorPct"),
+    fuelErrorPct: average("fuelErrorPct"),
+  };
+}
+
+function applyDebriefCalibration(currentCalibration = {}, entry = {}) {
   const learningRate = PERFORMANCE.debrief.learningRate;
-  const tasFactor = clamp(
-    (Number(currentCalibration.tasFactor) || 1) * (1 + learningRate * (result.tripTimeHr / actualTimeHr - 1)),
-    ...PERFORMANCE.calibrationLimits.tasFactor,
-  );
-  const fuelFlowFactor = clamp(
-    (Number(currentCalibration.fuelFlowFactor) || 1) * (1 + learningRate * (actualFuel / result.tripFuelGal - 1)),
-    ...PERFORMANCE.calibrationLimits.fuelFlowFactor,
-  );
-  return { accuracyScore, timeErrorPct, fuelErrorPct, actualTimeHr, actualFuelGal: actualFuel, calibration: { tasFactor, fuelFlowFactor } };
+  const currentTas = Number(currentCalibration?.tasFactor) || 1;
+  const currentFuel = Number(currentCalibration?.fuelFlowFactor) || 1;
+  const timeRatio = 1 + Number(entry.timeErrorPct) / 100;
+  const fuelRatio = 1 + Number(entry.fuelErrorPct) / 100;
+  return {
+    tasFactor: clamp(timeRatio > 0 ? currentTas * (1 + learningRate * (1 / timeRatio - 1)) : currentTas, ...PERFORMANCE.calibrationLimits.tasFactor),
+    fuelFlowFactor: clamp(Number.isFinite(fuelRatio) ? currentFuel * (1 + learningRate * (fuelRatio - 1)) : currentFuel, ...PERFORMANCE.calibrationLimits.fuelFlowFactor),
+  };
+}
+
+const sameCalibration = (a, b) => a && b
+  && Math.abs(Number(a.tasFactor) - Number(b.tasFactor)) < 1e-8
+  && Math.abs(Number(a.fuelFlowFactor) - Number(b.fuelFlowFactor)) < 1e-8;
+
+export function deleteDebrief({ debriefs = [], calibration = {} }, index) {
+  if (!Number.isInteger(index) || index < 0 || index >= debriefs.length) return null;
+  const entry = debriefs[index];
+  const remaining = debriefs.filter((_, candidateIndex) => candidateIndex !== index);
+  const nextCalibration = { ...calibration };
+  const laterSameMode = debriefs.map((later, originalIndex) => ({ later, originalIndex }))
+    .filter(({ later, originalIndex }) => originalIndex > index && later.mode === entry.mode);
+  let chainEnd = entry.calibrationAfter;
+  const continuous = Boolean(entry.calibrationBefore && chainEnd)
+    && laterSameMode.every(({ later }) => {
+      const matched = sameCalibration(later.calibrationBefore, chainEnd);
+      chainEnd = later.calibrationAfter;
+      return matched && Boolean(chainEnd);
+    });
+  if (continuous && sameCalibration(calibration[entry.mode], chainEnd)) {
+    let replay = { ...entry.calibrationBefore };
+    for (const { later, originalIndex } of laterSameMode) {
+      const before = { ...replay };
+      replay = applyDebriefCalibration(replay, later);
+      remaining[originalIndex - 1] = { ...later, calibrationBefore: before, calibrationAfter: { ...replay } };
+    }
+    nextCalibration[entry.mode] = replay;
+  }
+  return {
+    debriefs: remaining,
+    calibration: nextCalibration,
+  };
 }
 
 export function powerAtAltitude({ altitudeFt, oatC, mapInHg, rpm, source = "AUTO" }) {

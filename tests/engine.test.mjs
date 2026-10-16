@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -707,6 +707,40 @@ test("performance confidence narrows with calibrated debrief history", () => {
   const learned = calculatePerformanceConfidence({ plan: DEMO_PLAN, result, mode: "NORMAL", calibration: { NORMAL: { tasFactor: 1.02, fuelFlowFactor: .98 } }, debriefs: Array.from({ length: 5 }, () => ({ mode: "NORMAL" })) });
   assert.ok(learned.score > baseline.score);
   assert.ok(learned.fuel.high - learned.fuel.low < baseline.fuel.high - baseline.fuel.low);
+});
+
+test("debrief accuracy is recalculated from the remaining records", () => {
+  const entries = [
+    { mode: "NORMAL", accuracyScore: 94, timeErrorPct: 2.3, fuelErrorPct: 8.3 },
+    { mode: "NORMAL", accuracyScore: 70, timeErrorPct: -12, fuelErrorPct: 20 },
+    { mode: "ECON", accuracyScore: 80, timeErrorPct: 4, fuelErrorPct: -6 },
+  ];
+  assert.equal(summarizeDebriefs(entries).accuracyScore, 81);
+  const updated = deleteDebrief({ debriefs: entries, calibration: { NORMAL: { tasFactor: 1, fuelFlowFactor: 1 }, ECON: { tasFactor: 1, fuelFlowFactor: 1 } } }, 1);
+  assert.equal(summarizeDebriefs(updated.debriefs).accuracyScore, 87);
+  assert.equal(summarizeDebriefs(updated.debriefs).count, 2);
+  assert.equal(entries.length, 3);
+  assert.equal(deleteDebrief({ debriefs: entries }, 99), null);
+  assert.equal(summarizeDebriefs([]), null);
+});
+
+test("deleting a debrief replays supported calibration history", () => {
+  const result = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const baseline = { tasFactor: 1, fuelFlowFactor: 1 };
+  const optionsA = { result, actualTimeMinutes: result.tripTimeHr * 60 * 1.08, actualFuelGal: result.tripFuelGal * 1.1 };
+  const optionsB = { result, actualTimeMinutes: result.tripTimeHr * 60 * 0.94, actualFuelGal: result.tripFuelGal * 0.93 };
+  const first = calculateDebrief({ ...optionsA, currentCalibration: baseline });
+  const second = calculateDebrief({ ...optionsB, currentCalibration: first.calibration });
+  const firstEntry = { mode: "NORMAL", ...first, calibrationBefore: baseline, calibrationAfter: first.calibration };
+  const secondEntry = { mode: "NORMAL", ...second, calibrationBefore: first.calibration, calibrationAfter: second.calibration };
+  const state = { debriefs: [firstEntry, secondEntry], calibration: { NORMAL: second.calibration } };
+  const withoutFirst = deleteDebrief(state, 0);
+  const replayedSecond = calculateDebrief({ ...optionsB, currentCalibration: baseline });
+  assert.deepEqual(withoutFirst.calibration.NORMAL, replayedSecond.calibration);
+  assert.deepEqual(withoutFirst.debriefs[0].calibrationBefore, baseline);
+  assert.deepEqual(deleteDebrief(state, 1).calibration.NORMAL, first.calibration);
+  const legacy = { debriefs: [{ mode: "NORMAL", ...first }], calibration: { NORMAL: first.calibration } };
+  assert.deepEqual(deleteDebrief(legacy, 0).calibration.NORMAL, first.calibration);
 });
 
 test("debrief updates calibration and mission score blocks mandatory hazards", () => {

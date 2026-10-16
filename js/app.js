@@ -1,6 +1,6 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261016-01";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261016-01";
-import { fetchLatestOFP } from "./simbrief.js?v=20261016-01";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, weightBalancePayloadLb } from "./engine.js?v=20261016-04";
+import { fetchLatestOFP } from "./simbrief.js?v=20261016-04";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 import { fetchElevationProfile, routeTerrainLegs, terrainMinimumForLeg } from "./terrain.js?v=20261016-01";
 
@@ -199,8 +199,8 @@ Object.assign(COPY["en-US"], {
   randomizeWeightBalanceApplied: "Random load has viable weight and CG. Other indicators have been recalculated.",
   randomizeWeightBalanceFailed: "No safe load was found with the current pilot, fuel, and oxygen. Review those values.",
 });
-Object.assign(COPY["pt-BR"], { terrainUnknown:"TERRENO NÃO AVALIADO", bestLevel:"Nível selecionado", cabinAltitude:"Nível de voo" });
-Object.assign(COPY["en-US"], { terrainUnknown:"TERRAIN UNASSESSED", bestLevel:"Selected level", cabinAltitude:"Flight level" });
+Object.assign(COPY["pt-BR"], { terrainUnknown:"TERRENO NÃO AVALIADO", bestLevel:"Nível selecionado", cabinAltitude:"Nível de voo", deleteDebrief:"Excluir debrief", debriefAverage:(count)=>`Média de ${count} debriefs` });
+Object.assign(COPY["en-US"], { terrainUnknown:"TERRAIN UNASSESSED", bestLevel:"Selected level", cabinAltitude:"Flight level", deleteDebrief:"Delete debrief", debriefAverage:(count)=>`Average of ${count} debriefs` });
 
 function storedJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
@@ -216,7 +216,6 @@ const state = {
   oxygen:storedJson("velocityxl.oxygen", { bottleModel:"SK-12-24", bottles:0, seats:[true,true,true,true,true], altitudeFt:null }),
   weightBalance:storedJson("velocityxl.weightBalance", { pilot:190, copilot:170, rearLeft:55, rearCenter:50, rearRight:55, baggage:0 }),
   debriefs:storedJson("velocityxl.debriefs", []),
-  lastDebrief:null,
   manual:{ active:false, waypointIndex:0, distanceNm:0, fuelRemainingGal:77, altitudeFt:null },
   diversionWaypointIndex:0,
   scenarioB:{ mode:"ECON", altitudeFt:16000, payloadLb:520, fuelOnboardGal:77 },
@@ -809,9 +808,9 @@ function renderDebrief(result) {
   $("#debriefFuelUnit").textContent=fuelLabel();
   if(document.activeElement!==$("#debriefTime")&&!$("#debriefTime").value) $("#debriefTime").value=String(Math.round(result.tripTimeHr*60));
   if(document.activeElement!==$("#debriefFuel")&&!$("#debriefFuel").value) $("#debriefFuel").value=number(fuelValue(result.tripFuelGal),1).replace(",",".");
-  const last=state.lastDebrief;
-  $("#debriefResult").innerHTML=last?`<strong>${last.accuracyScore}% ${t("accuracy")}</strong><span>ETE ${signedNumber(last.timeErrorPct,1,"%")} · ${t("fuel")} ${signedNumber(last.fuelErrorPct,1,"%")}</span>`:`<strong>—</strong><span>${t("noDebriefs")}</span>`;
-  $("#debriefHistory").innerHTML=state.debriefs.slice(-5).reverse().map((entry)=>`<div><span>${iconMarkup("history")}${escapeHtml(entry.route)} · ${entry.mode} · FL${entry.fl}</span><strong>${entry.accuracyScore}%</strong></div>`).join("");
+  const summary=summarizeDebriefs(state.debriefs);
+  $("#debriefResult").innerHTML=summary?`<strong>${summary.accuracyScore}% ${t("accuracy")}</strong><span>${t("debriefAverage",summary.count)} · ETE ${signedNumber(summary.timeErrorPct,1,"%")} · ${t("fuel")} ${signedNumber(summary.fuelErrorPct,1,"%")}</span>`:`<strong>—</strong><span>${t("noDebriefs")}</span>`;
+  $("#debriefHistory").innerHTML=state.debriefs.map((entry,index)=>({entry,index})).reverse().map(({entry,index})=>`<div><span>${iconMarkup("history")}${escapeHtml(entry.route)} · ${escapeHtml(entry.mode)} · FL${escapeHtml(entry.fl)}</span><button class="debrief-delete" type="button" data-delete-debrief="${index}" aria-label="${escapeHtml(t("deleteDebrief"))}: ${escapeHtml(entry.route)} · ${escapeHtml(entry.mode)} · FL${escapeHtml(entry.fl)}" title="${escapeHtml(t("deleteDebrief"))}">${iconMarkup("trash-2")}</button><strong>${number(entry.accuracyScore)}%</strong></div>`).join("");
 }
 
 function render() {
@@ -978,11 +977,24 @@ $("#resetCalibration").addEventListener("click",()=>{
 $("#debriefForm").addEventListener("submit",(event)=>{
   event.preventDefault();
   const analysis=calculatePlan(state),result=analysis.results.find((item)=>item.altitudeFt===state.selectedAltitudeFt&&operationallyAvailable(item))||analysis.winners.overall;
-  const debrief=calculateDebrief({result,actualTimeMinutes:Number($("#debriefTime").value),actualFuelGal:fuelFromDisplay(Number($("#debriefFuel").value)),currentCalibration:state.calibration[state.mode]||{}});
+  const calibrationBefore={...(state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1})};
+  const debrief=calculateDebrief({result,actualTimeMinutes:Number($("#debriefTime").value),actualFuelGal:fuelFromDisplay(Number($("#debriefFuel").value)),currentCalibration:calibrationBefore});
   state.calibration[state.mode]=debrief.calibration;
-  state.lastDebrief=debrief;
-  state.debriefs.push({route:`${state.plan.origin.icao}-${state.plan.destination.icao}`,mode:state.mode,fl:result.fl,accuracyScore:debrief.accuracyScore,timeErrorPct:debrief.timeErrorPct,fuelErrorPct:debrief.fuelErrorPct,date:new Date().toISOString()});
+  state.debriefs.push({route:`${state.plan.origin.icao}-${state.plan.destination.icao}`,mode:state.mode,fl:result.fl,accuracyScore:debrief.accuracyScore,timeErrorPct:debrief.timeErrorPct,fuelErrorPct:debrief.fuelErrorPct,calibrationBefore,calibrationAfter:{...debrief.calibration},date:new Date().toISOString()});
   state.debriefs=state.debriefs.slice(-PERFORMANCE.debrief.maximumHistory);
+  localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
+  localStorage.setItem("velocityxl.debriefs",JSON.stringify(state.debriefs));
+  render();
+});
+
+$("#debriefHistory").addEventListener("click",(event)=>{
+  const button=event.target.closest("[data-delete-debrief]");
+  if(!button)return;
+  const index=Number(button.dataset.deleteDebrief);
+  const updated=deleteDebrief(state,index);
+  if(!updated)return;
+  state.debriefs=updated.debriefs;
+  state.calibration=updated.calibration;
   localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
   localStorage.setItem("velocityxl.debriefs",JSON.stringify(state.debriefs));
   render();
