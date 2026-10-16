@@ -1,6 +1,6 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261014-05";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261015-03";
-import { fetchLatestOFP } from "./simbrief.js?v=20261015-01";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261015-04";
+import { fetchLatestOFP } from "./simbrief.js?v=20261015-02";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 
 const $ = (selector) => document.querySelector(selector);
@@ -630,14 +630,16 @@ function missionReasonIcon(code,status) {
   return ({fuel:"fuel","weight-balance":"scale","flight-profile":"area-chart",icing:"snowflake",turbulence:"waves",oxygen:"heart-pulse",alternate:"map-pinned",confidence:"shield-check"})[code]||"triangle-alert";
 }
 
-function missionAction(score) {
+function missionAction(score,result) {
   const pt=state.language==="pt-BR",code=score.reasons[0]?.code;
   if(code==="weight-balance") return pt?"Reduza ou redistribua a carga.":"Reduce or redistribute the load.";
   if(code==="fuel") return pt?"Aumente o combustível ou reduza a reserva/carga.":"Add fuel or reduce reserve/load.";
   if(code==="flight-profile") return pt?"Selecione um nível mais baixo.":"Select a lower flight level.";
   if(code==="oxygen") return pt?"Adicione a capacidade de O₂ recomendada.":"Add the recommended O₂ capacity.";
   if(code==="icing") return pt?"Escolha um nível fora da faixa de gelo.":"Choose a level outside the icing band.";
-  if(code==="turbulence") return pt?"Escolha o nível de menor turbulência.":"Choose the lowest-turbulence level.";
+  if(code==="turbulence") return result.turbulence.unboundedAdvisory
+    ? pt?"Verifique o aviso meteorológico do OFP.":"Check the OFP weather advisory."
+    : pt?"Escolha o nível de menor turbulência.":"Choose the lowest-turbulence level.";
   if(code==="alternate") return pt?"Aumente a margem para o alternado.":"Increase the alternate margin.";
   if(code==="confidence") return pt?"Calibre o modelo após o voo.":"Calibrate the model after the flight.";
   return pt?"Nenhum ajuste obrigatório.":"No mandatory adjustment.";
@@ -665,7 +667,7 @@ function renderMissionScore(result,score) {
   const excluded=new Set(negatives.map((item)=>item.code));
   const items=[...negatives,...missionPositiveReasons(result,excluded)].slice(0,3);
   $("#missionScoreReasons").innerHTML=items.map((item)=>`<div class="${item.status}">${iconMarkup(missionReasonIcon(item.code,item.status),"reason-icon")}<span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value||"OK")}</strong></div>`).join("");
-  $("#missionScoreAction").textContent=missionAction(score);
+  $("#missionScoreAction").textContent=missionAction(score,result);
 }
 
 function renderMissionStrip(result,missionScore) {

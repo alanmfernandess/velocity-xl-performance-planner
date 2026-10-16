@@ -397,6 +397,12 @@ test("an unbounded OFP turbulence advisory remains a caution, not invented calm 
   assert.equal(optimized.result.turbulence.unboundedAdvisory, true);
   assert.equal(optimized.result.turbulence.riskScore, null);
   assert.equal(optimized.achievedStatus, "marginal");
+  const current = calculatePlan({
+    plan, mode: "NORMAL", payloadLb: weightBalancePayloadLb(weightBalance), fuelOnboardGal: 77,
+    reserveMinutes: 45, weightBalance, oxygen: FULL_OXYGEN,
+  });
+  assert.ok(current.results.every((result) => result.missionScore.status !== "viable"));
+  assert.ok(current.results.every((result) => result.missionScore.reasons.some((reason) => reason.code === "turbulence")));
 });
 
 test("mission optimizer can reduce payload and select a compatible preset", () => {

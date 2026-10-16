@@ -797,6 +797,12 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
     addReason("alternate", PERFORMANCE.missionRisk.alternateMarginal, false, alternateAdvice.destination.marginGal);
   }
 
+  // An unresolved enroute advisory is a caution, even when it has no numeric
+  // turbulence score. Keep the displayed score consistent with the optimizer.
+  if (result.turbulence.unboundedAdvisory && result.turbulence.status === "unknown") {
+    addReason("turbulence", Math.max(0, 21 - reasons.reduce((sum, reason) => sum + reason.impact, 0)), false, null);
+  }
+
   reasons.sort((a, b) => Number(b.blocking) - Number(a.blocking) || b.impact - a.impact);
   const penalty = reasons.reduce((sum, reason) => sum + reason.impact, 0);
   const blocked = reasons.some((reason) => reason.blocking);

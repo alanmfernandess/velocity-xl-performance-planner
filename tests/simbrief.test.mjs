@@ -1,7 +1,48 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseSimBrief } from "../js/simbrief.js";
-import { calculatePlan, calculateTurbulenceRisk } from "../js/engine.js";
+import { advisoryAppliesToFlight, parseSimBrief } from "../js/simbrief.js";
+import { calculateMissionOptimization, calculatePlan, calculateTurbulenceRisk } from "../js/engine.js";
+
+test("SIGMETs must overlap the planned flight in both time and geography", () => {
+  const route = [{ lat: -12.9, lon: -38.3 }, { lat: -8.1, lon: -34.9 }];
+  const departure = "2026-10-15T23:35:00Z", arrival = "2026-10-16T01:32:00Z";
+  const westOfRoute = "SIGMET VALID 152300/160300 TS WI S1020 W04719 - S1200 W04654 - S1321 W04534 - S1020 W04719 TOP FL500";
+  const onRoute = "SIGMET VALID 152300/160300 TS WI S1200 W03900 - S1200 W03700 - S0800 W03500 - S0800 W03700 TOP FL500";
+  const expired = onRoute.replace("152300/160300", "151930/152330");
+  assert.equal(advisoryAppliesToFlight(westOfRoute, route, departure, arrival), false);
+  assert.equal(advisoryAppliesToFlight(expired, route, departure, arrival), false);
+  assert.equal(advisoryAppliesToFlight(onRoute, route, departure, arrival), true);
+  assert.equal(advisoryAppliesToFlight("SEV TURB", route, departure, arrival), true);
+});
+
+test("out-of-route SimBrief SIGMETs do not make an otherwise viable optimizer marginal", () => {
+  const advisory = "SIGMET VALID 152300/160300 EMBD TS WI S1020 W04719 - S1200 W04654 - S1321 W04534 - S1020 W04719 TOP FL500";
+  const raw = {
+    fetch: { status: "Success" },
+    general: { initial_altitude: "19000", route_distance: "373" },
+    times: { sched_off: "2026-10-15T23:35:00Z", sched_on: "2026-10-16T01:32:00Z" },
+    origin: { icao_code: "SBSV", pos_lat: "-12.9086", pos_long: "-38.3225" },
+    destination: { icao_code: "SBRF", pos_lat: "-8.1264", pos_long: "-34.9228" },
+    weather: { sigmets: [advisory] },
+    navlog: [
+      { ident: "A", pos_lat: "-12.9", pos_long: "-38.3", altitude_feet: "19000" },
+      { ident: "B", pos_lat: "-8.1", pos_long: "-34.9", altitude_feet: "19000" },
+    ],
+  };
+  const plan = parseSimBrief(raw);
+  assert.deepEqual(plan.meteorology.enrouteBulletins, []);
+  const weightBalance = { pilot: 165, copilot: 172, rearLeft: 0, rearCenter: 0, rearRight: 0, baggage: 66 };
+  const options = { plan, mode: "NORMAL", payloadLb: 403, fuelOnboardGal: 77, reserveMinutes: 45, weightBalance,
+    oxygen: { bottleModel: "SK-12-24", bottles: 1, seats: [true, false, false, false, false] } };
+  const optimization = calculateMissionOptimization(options);
+  assert.equal(optimization.feasible, true);
+  assert.equal(optimization.achievedStatus, "viable");
+
+  const relevant = parseSimBrief({ ...raw, weather: { sigmets: [advisory.replaceAll("W04719", "W03719").replaceAll("W04654", "W03654").replaceAll("W04534", "W03534")] } });
+  assert.equal(relevant.meteorology.enrouteBulletins.length, 1);
+  const affected = calculateMissionOptimization({ ...options, plan: relevant });
+  assert.equal(affected.achievedStatus, "marginal");
+});
 
 test("parses SimBrief JSON v2 arrays and strings", () => {
   const result = parseSimBrief({
