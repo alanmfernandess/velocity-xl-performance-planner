@@ -1409,11 +1409,11 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
   return { ...winner, recommendedAltitudeFt: winner.altitudeFt, candidates };
 }
 
-export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, debriefs = [], lockedAltitudeFt = null }) {
+export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, debriefs = [], lockedAltitudeFt = null, allowedModes = null }) {
   const loads = normalizeWeightBalance(weightBalance || {});
   const minimumPayloadLb = loads.pilot;
   const variants = [];
-  for (const candidateMode of Object.keys(PERFORMANCE.modes)) {
+  for (const candidateMode of Object.keys(PERFORMANCE.modes).filter((item) => allowedModes === null || allowedModes.includes(item))) {
     for (let bottles = 0; bottles <= 4; bottles += 1) {
       const oxygenVariant = { ...oxygen, bottles };
       const candidate = calculateModeLoadOptimization({

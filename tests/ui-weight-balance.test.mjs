@@ -49,8 +49,8 @@ test("mission recovery offers a revalidated level in a centered dialog and prese
   assert.match(html,/id="optimizationDialogApply"/);
   assert.match(html,/id="optimizationDialogReview"/);
   assert.match(html,/data-i18n="payloadAssignment"/);
-  assert.match(app,/const locked=calculateMissionOptimization\(\{\.\.\.state,lockedAltitudeFt:state\.selectedAltitudeFt\}\)/);
-  assert.match(app,/const recovery=global\.feasible&&global\.achievedStatus==="viable"\?null:calculateMissionRecovery\(state,lastViableMission\)/);
+  assert.match(app,/calculateMissionOptimization\(\{\.\.\.state,allowedModes:modes,lockedAltitudeFt:altitudeFt\}\)/);
+  assert.match(app,/suggestion=calculateMissionRecovery\(state,lastViableMission\)/);
   assert.match(app,/savedViableMission\?\.planKey===missionPlanKey\(plan\)/);
   assert.match(app,/\$\("#optimizationDialogApply"\)\.addEventListener\("click"/);
   assert.match(app,/\$\("#optimizationDialogReview"\)\.addEventListener\("click",reviewOptimizationBlocker\)/);
@@ -61,7 +61,7 @@ test("mission recovery offers a revalidated level in a centered dialog and prese
 test("an imported OFP uses the automatic best FL without displaying a manual selection",()=>{
   assert.match(html,/class="kpi featured kpi-levels"/);
   assert.match(html,/id="kpiSelectedAltitude"><\/strong><small id="kpiSelectedLevelMeta"><\/small>/);
-  assert.match(app,/state\.selectedAltitudeFt=null;state\.selectedAltitudePinned=false;state\.glideSampleIndex=null/);
+  assert.match(app,/state\.selectedAltitudeFt=null;state\.selectedAltitudePinned=false;state\.optimizedAltitudeFt=null;state\.optimizedFingerprint=null;state\.wizardStep=0;state\.glideSampleIndex=null/);
   assert.match(app,/selectedCandidate=state\.selectedAltitudePinned\?analysis\.results\.find\(\(r\)=>r\.altitudeFt===state\.selectedAltitudeFt\):null,selected=selectedCandidate\|\|recommended,hasManualSelection=Boolean\(selectedCandidate\)/);
   assert.match(app,/\$\("#kpiSelectedAltitude"\)\.textContent=hasManualSelection\?`FL\$\{selected\.fl\}`:""/);
   assert.match(app,/\$\("#kpiSelectedLevelMeta"\)\.textContent=hasManualSelection\?missionStatusLabel\(missionScore\.status\):""/);
@@ -77,6 +77,6 @@ test("only a pilot-chosen FL is marked selected, including after optimization",(
   assert.match(app,/const current=hasManualSelection&&result\.altitudeFt===selected\.altitudeFt/);
   assert.match(app,/hasManualSelection&&result\.altitudeFt===selectedResult\.altitudeFt/);
   assert.match(app,/state\.selectedAltitudeFt=keepSelectedLevel\?optimizer\.recommendedAltitudeFt:null/);
-  assert.match(app,/applyMissionOptimization\(suggestion,true\)/);
+  assert.match(app,/applyMissionOptimization\(suggestion,pendingKeepSelectedLevel\)/);
   assert.match(app,/if\(currentLevelIsViable\(\)\)\{\s*showToast/);
 });

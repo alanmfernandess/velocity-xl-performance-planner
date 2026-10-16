@@ -6,10 +6,12 @@ const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 const app=readFileSync(new URL("../js/app.js",import.meta.url),"utf8");
 
-test("guided mission keeps one preset selector and one global optimizer above the detailed tools",()=>{
-  assert.match(html,/class="guided-grid"[\s\S]*?guided-choice[\s\S]*?guided-recommendation[\s\S]*?<details class="mission-details"/);
+test("three-step mission wizard keeps one preset selector and one global optimizer above the detailed tools",()=>{
+  assert.match(html,/class="mission-wizard"[\s\S]*?data-wizard-panel="0"[\s\S]*?data-wizard-panel="1"[\s\S]*?data-wizard-panel="2"[\s\S]*?<details class="mission-details"/);
   assert.equal((html.match(/id="optimizeMission"/g)||[]).length,1);
   for(const mode of ["ECON","NORMAL","FAST"]) assert.equal((html.match(new RegExp(`data-mode="${mode}"`,"g"))||[]).length,1);
+  assert.equal((html.match(/data-wizard-wb-key=/g)||[]).length,6);
+  assert.match(html,/id="wizardRandomizeWeightBalance"/);
   for(const id of ["flight-tools-panel","levelCards","payloadInput","fuelInput","reserveInput","missionScoreValue"]){
     assert.match(html,new RegExp(id));
   }
@@ -18,8 +20,11 @@ test("guided mission keeps one preset selector and one global optimizer above th
   assert.match(app,/\$\("#guidedStatus"\)\.textContent=missionStatusLabel\(missionScore\.status\)/);
 });
 
-test("both guided cards have the same grid size on desktop and mobile",()=>{
-  assert.match(css,/\.guided-grid \{[\s\S]*?grid-template-columns:repeat\(2,minmax\(0,1fr\)\);[\s\S]*?grid-auto-rows:1fr;/);
-  assert.match(css,/@media \(max-width:760px\) \{\s*\.guided-grid \{ grid-template-columns:minmax\(0,1fr\); grid-auto-rows:1fr; \}/);
-  assert.match(css,/\.guided-card \{[\s\S]*?display:flex;[\s\S]*?flex-direction:column;/);
+test("wizard is responsive and tries the selected preset before alternatives",()=>{
+  assert.match(css,/\.wizard-wb-grid \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css,/@media \(max-width:760px\) \{[\s\S]*?\.wizard-wb-grid \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css,/@media \(max-width:430px\) \{[\s\S]*?\.wizard-result-row \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(app,/if\(!suggestion\) suggestion=tryModes\(\[state\.mode\],null\)/);
+  assert.match(app,/if\(!suggestion\) suggestion=tryModes\(otherModes,null\)/);
+  assert.match(app,/const altitudeFt=applyMissionOptimization\(suggestion,pendingKeepSelectedLevel\)/);
 });

@@ -71,7 +71,7 @@ test("GLIDE focuses an OFP point and keeps the full route navigable on narrow sc
   assert.doesNotMatch(index,/id="glideChart"/);
   assert.match(app,/glide\.samples\.map\(\(sample,index\)=>/);
   assert.match(app,/state\.glideSampleIndex=Number\(button\.dataset\.glideIndex\)/);
-  assert.match(app,/state\.glideSampleIndex=null;\s*state\.oxygen\.altitudeFt/);
+  assert.match(app,/state\.glideSampleIndex=null;\s*\$\("#missionDetails"\)\.open=false;\s*state\.oxygen\.altitudeFt/);
   assert.match(css,/\.glide-route \{[^}]*overflow-x:auto/);
   assert.match(css,/\.glide-focus \{[^}]*grid-template-columns:minmax\(0,1\.2fr\)/);
   assert.match(css,/\.glide-focus \{ grid-template-columns:minmax\(0,1fr\); \}/);

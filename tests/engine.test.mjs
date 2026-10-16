@@ -327,6 +327,25 @@ test("mission optimizer searches every preset without leaving the pilot-selected
   assert.ok(optimizer.variants.every((variant) => variant.candidates.every((candidate) => candidate.altitudeFt === lockedAltitudeFt)));
 });
 
+test("mission wizard can search the chosen preset separately before switching profiles", () => {
+  const weightBalance = { ...FIVE_SEAT_LOAD };
+  const options = {
+    plan: DEMO_PLAN,
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(weightBalance),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance,
+    oxygen: FULL_OXYGEN,
+  };
+  const preferred = calculateMissionOptimization({ ...options, allowedModes: ["NORMAL"] });
+  assert.ok(preferred.variants.length > 0);
+  assert.ok(preferred.variants.every((variant) => variant.mode === "NORMAL"));
+  if (preferred.feasible) assert.equal(preferred.mode, "NORMAL");
+  const fallback = calculateMissionOptimization({ ...options, allowedModes: ["ECON", "FAST"] });
+  assert.ok(fallback.variants.every((variant) => variant.mode !== "NORMAL"));
+});
+
 test("an impossible selected FL does not hide a revalidated viable alternative", () => {
   const weightBalance = { ...FIVE_SEAT_LOAD };
   const plan = { ...DEMO_PLAN, distanceNm: 120 };
