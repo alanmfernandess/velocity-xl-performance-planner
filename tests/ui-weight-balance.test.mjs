@@ -44,12 +44,32 @@ test("all cruise levels use expandable progressive rows with separate selection"
   assert.match(css,/@media \(max-width:760px\) \{[^]*\.level-summary \{ grid-column:1\/-1; grid-row:2; \}/);
 });
 
-test("mission recovery explains the blocker and requires explicit restoration of the same OFP",()=>{
-  assert.match(html,/id="missionRecovery"[^>]*hidden/);
-  assert.match(html,/id="missionRecoveryAction"/);
+test("mission recovery offers a revalidated level in a centered dialog and preserves the same OFP",()=>{
+  assert.match(html,/<dialog class="optimization-dialog" id="optimizationDialog"/);
+  assert.match(html,/id="optimizationDialogApply"/);
+  assert.match(html,/id="optimizationDialogReview"/);
   assert.match(html,/data-i18n="payloadAssignment"/);
-  assert.match(app,/pendingMissionRecovery=calculateMissionRecovery\(state,lastViableMission\)/);
+  assert.match(app,/const locked=calculateMissionOptimization\(\{\.\.\.state,lockedAltitudeFt:state\.selectedAltitudeFt\}\)/);
+  assert.match(app,/const recovery=global\.feasible&&global\.achievedStatus==="viable"\?null:calculateMissionRecovery\(state,lastViableMission\)/);
   assert.match(app,/savedViableMission\?\.planKey===missionPlanKey\(plan\)/);
-  assert.match(app,/\$\("#missionRecoveryAction"\)\.addEventListener\("click"/);
-  assert.match(css,/\.mission-recovery\[hidden\]/);
+  assert.match(app,/\$\("#optimizationDialogApply"\)\.addEventListener\("click"/);
+  assert.match(app,/\$\("#optimizationDialogReview"\)\.addEventListener\("click",reviewOptimizationBlocker\)/);
+  assert.match(css,/\.optimization-dialog::backdrop/);
+  assert.match(css,/@media \(max-width:430px\) \{ \.optimization-dialog-content/);
+});
+
+test("the top card separates the suggested and active FL; the route omits the imported FL",()=>{
+  assert.match(html,/class="kpi featured kpi-levels"/);
+  assert.match(html,/id="kpiSelectedAltitude"/);
+  assert.match(app,/\$\("#kpiSelectedAltitude"\)\.textContent=`FL\$\{selected\.fl\}`/);
+  assert.match(app,/\$\("#planTimestamp"\)\.textContent=`\$\{number\(plan\.distanceNm\)\} NM`/);
+  assert.match(css,/\.kpi-levels \{ display:grid; grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+});
+
+test("pilot FL selection survives preset changes and an invalid manual setting remains visible",()=>{
+  assert.match(app,/selectedAltitudeFt:null, selectedAltitudePinned:false/);
+  assert.match(app,/state\.selectedAltitudeFt=Number\(button\.dataset\.selectLevel\);state\.selectedAltitudePinned=true/);
+  assert.match(app,/state\.mode=button\.dataset\.mode;if\(!state\.selectedAltitudePinned\)state\.selectedAltitudeFt=null/);
+  assert.match(app,/selected=selectedCandidate\|\|recommended/);
+  assert.match(app,/if\(currentLevelIsViable\(\)\)\{\s*showToast/);
 });

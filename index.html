@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261014-10" />
+    <link rel="stylesheet" href="./styles.css?v=20261015-02" />
   </head>
   <body>
     <header class="topbar">
@@ -58,7 +58,7 @@
 
       <div id="plannerContent" hidden>
       <section class="kpi-grid" aria-label="Performance summary">
-        <article class="kpi featured"><span data-i18n="bestLevel">Melhor nível</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="recommendedLevel">Recomendado</small></article>
+        <article class="kpi featured kpi-levels"><div class="kpi-level"><span data-i18n="bestLevel">Melhor nível</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="recommendedLevel">Recomendado</small></div><div class="kpi-level"><span data-i18n="selectedLevel">Selecionado</span><strong id="kpiSelectedAltitude">FL120</strong><small id="kpiSelectedLevelMeta" data-i18n="selectedLevel">Selecionado</small></div></article>
         <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
         <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
         <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
@@ -112,11 +112,6 @@
             <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
             <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
-            <div class="mission-recovery" id="missionRecovery" role="status" aria-live="polite" hidden>
-              <p id="missionRecoveryReason"></p>
-              <button id="missionRecoveryAction" type="button" data-i18n="restoreViableMission">Usar última carga viável</button>
-              <small id="missionRecoveryWarning" data-i18n="restoreViableWarning">A carga anterior será reotimizada e substituirá ajustes de carga, combustível, preset e oxigênio. Confira os ocupantes e o W&amp;B.</small>
-            </div>
           </article>
           <article class="panel insight-panel mission-score-panel">
             <div class="mission-score-heading">
@@ -337,8 +332,18 @@
       </div>
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
     </main>
+    <dialog class="optimization-dialog" id="optimizationDialog" aria-labelledby="optimizationDialogTitle" aria-describedby="optimizationDialogMessage">
+      <div class="optimization-dialog-content">
+        <h2 id="optimizationDialogTitle"></h2>
+        <p id="optimizationDialogMessage"></p>
+        <div class="optimization-dialog-actions">
+          <button class="primary-button" id="optimizationDialogApply" type="button"></button>
+          <button class="text-button" id="optimizationDialogReview" type="button" data-i18n="reviewAdjustments">Revisar ajustes</button>
+        </div>
+      </div>
+    </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261015-01"></script>
+    <script type="module" src="./js/app.js?v=20261015-02"></script>
   </body>
 </html>

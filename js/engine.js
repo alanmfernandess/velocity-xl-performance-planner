@@ -1353,8 +1353,9 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
   return bestAttempt;
 }
 
-export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false }) {
-  const candidates = ALTITUDES_FT.map((altitudeFt) => calculateLoadOptimization({
+export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false, lockedAltitudeFt = null }) {
+  const altitudes = lockedAltitudeFt === null ? ALTITUDES_FT : ALTITUDES_FT.filter((altitudeFt) => altitudeFt === lockedAltitudeFt);
+  const candidates = altitudes.map((altitudeFt) => calculateLoadOptimization({
     plan,
     altitudeFt,
     mode,
@@ -1402,7 +1403,7 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
   return { ...winner, recommendedAltitudeFt: winner.altitudeFt, candidates };
 }
 
-export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
+export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, debriefs = [], lockedAltitudeFt = null }) {
   const loads = normalizeWeightBalance(weightBalance || {});
   const minimumPayloadLb = loads.pilot;
   const variants = [];
@@ -1421,6 +1422,7 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
         minimumPayloadLb,
         requireWeightBalanceViable: true,
         requireAlternateViable: true,
+        lockedAltitudeFt,
       });
       if (candidate) variants.push({ ...candidate, oxygen: oxygenVariant, bottles, requestedMode: mode });
     }
@@ -1434,7 +1436,11 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
       + (result.weightBalance?.status === "viable" ? 0 : 20)
       + (!candidate.alternateRequired || candidate.alternateAdvice?.destination?.status === "viable" ? 0 : candidate.alternateAdvice?.destination?.status === "marginal" ? 5 : 20);
   };
-  const achievedStatus = (candidate) => operationalPenalty(candidate) === 0 ? "viable" : "marginal";
+  const achievedStatus = (candidate) => {
+    if (operationalPenalty(candidate) !== 0) return "marginal";
+    const confidence = calculatePerformanceConfidence({ plan, result: candidate.result, calibration, debriefs, mode: candidate.mode });
+    return calculateMissionScore({ result: candidate.result, confidence, alternateAdvice: candidate.alternateAdvice }).status === "viable" ? "viable" : "marginal";
+  };
   const strictPool = viable.some((candidate) => achievedStatus(candidate) === "viable")
     ? viable.filter((candidate) => achievedStatus(candidate) === "viable")
     : viable;

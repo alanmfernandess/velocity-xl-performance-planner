@@ -305,6 +305,49 @@ test("mission optimizer removes baggage before changing occupants", () => {
   assert.equal(optimizer.achievedStatus, "viable");
 });
 
+test("mission optimizer searches every preset without leaving the pilot-selected FL", () => {
+  const weightBalance = { ...FIVE_SEAT_LOAD };
+  const lockedAltitudeFt = 14000;
+  const optimizer = calculateMissionOptimization({
+    plan: DEMO_PLAN,
+    mode: "FAST",
+    payloadLb: weightBalancePayloadLb(weightBalance),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance,
+    oxygen: FULL_OXYGEN,
+    lockedAltitudeFt,
+  });
+  assert.equal(optimizer.feasible, true);
+  assert.equal(optimizer.achievedStatus, "viable");
+  assert.equal(optimizer.recommendedAltitudeFt, lockedAltitudeFt);
+  assert.ok(optimizer.variants.some((variant) => variant.mode === "ECON"));
+  assert.ok(optimizer.variants.some((variant) => variant.mode === "NORMAL"));
+  assert.ok(optimizer.variants.some((variant) => variant.mode === "FAST"));
+  assert.ok(optimizer.variants.every((variant) => variant.candidates.every((candidate) => candidate.altitudeFt === lockedAltitudeFt)));
+});
+
+test("an impossible selected FL does not hide a revalidated viable alternative", () => {
+  const weightBalance = { ...FIVE_SEAT_LOAD };
+  const plan = { ...DEMO_PLAN, distanceNm: 120 };
+  const options = {
+    plan,
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(weightBalance),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance,
+    oxygen: FULL_OXYGEN,
+  };
+  const locked = calculateMissionOptimization({ ...options, lockedAltitudeFt: 25000 });
+  const global = calculateMissionOptimization(options);
+  assert.equal(locked.feasible, false);
+  assert.equal(locked.recommendedAltitudeFt, 25000);
+  assert.equal(global.feasible, true);
+  assert.equal(global.achievedStatus, "viable");
+  assert.notEqual(global.recommendedAltitudeFt, 25000);
+});
+
 test("mission optimizer can reduce payload and select a compatible preset", () => {
   const overweight = { pilot: 190, copilot: 170, rearLeft: 170, rearCenter: 170, rearRight: 162, baggage: 0 };
   const optimizer = calculateMissionOptimization({
