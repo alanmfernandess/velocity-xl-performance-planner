@@ -624,7 +624,3 @@ body :is(
 .mission-score-copy strong[data-status="unknown"] { color:var(--blue); }
 @media (max-width:760px) { .terrain-panel { padding:16px; } .terrain-facts { grid-template-columns:repeat(2,minmax(0,1fr)); } .terrain-manual form { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .terrain-manual form>span { grid-column:1/-1; } }
 @media (max-width:430px) { .terrain-chart svg { height:190px; } .terrain-decision { align-items:flex-start; } .terrain-facts { grid-template-columns:1fr 1fr; } .terrain-facts>div:last-child { grid-column:1/-1; } .terrain-manual form { grid-template-columns:1fr; } .terrain-manual form>span { grid-column:auto; } }
-.plan-form { grid-template-columns:minmax(190px,420px) 124px 122px; }
-#loadDemo { height:38px; font-size:.625rem; }
-@media (max-width:760px) { .plan-form { grid-template-columns:minmax(0,1fr) 124px; } #loadDemo { grid-column:1/-1; } }
-@media (max-width:430px) { .plan-form { grid-template-columns:1fr; } }
