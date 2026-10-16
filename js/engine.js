@@ -1431,7 +1431,7 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
   const operationalPenalty = (candidate) => {
     const result = candidate.result;
     return (result.icing.status === "low" || (result.icing.status === "watch" && result.icing.confidence !== "weather") ? 0 : result.icing.status === "watch" ? 1 : result.icing.status === "caution" ? 3 : 20)
-      + (result.turbulence.status === "smooth" || result.turbulence.status === "light" ? 0 : result.turbulence.status === "moderate" ? 3 : 20)
+      + (result.turbulence.status === "smooth" || result.turbulence.status === "light" || (result.turbulence.status === "unknown" && !result.turbulence.unboundedAdvisory) ? 0 : result.turbulence.status === "moderate" || result.turbulence.status === "unknown" ? 3 : 20)
       + (result.oxygen.status === "not-required" || result.oxygen.status === "compliant" ? 0 : result.oxygen.status === "marginal" ? 3 : 20)
       + (result.weightBalance?.status === "viable" ? 0 : 20)
       + (!candidate.alternateRequired || candidate.alternateAdvice?.destination?.status === "viable" ? 0 : candidate.alternateAdvice?.destination?.status === "marginal" ? 5 : 20);

@@ -1,5 +1,5 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261014-05";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261015-02";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261015-03";
 import { fetchLatestOFP } from "./simbrief.js?v=20261015-01";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 
@@ -291,7 +291,8 @@ function rememberViableMission() {
 }
 
 function strictlyViableMission(result, missionScore, alternateAdvice) {
-  return missionScore.status==="viable"&&result.feasibility.status==="viable"&&result.weightBalance?.status==="viable"&&(result.icing.status==="low"||(result.icing.status==="watch"&&result.icing.confidence!=="weather"))&&["smooth","light"].includes(result.turbulence.status)&&["not-required","compliant"].includes(result.oxygen.status)&&(!alternateAdvice.destination||alternateAdvice.destination.status==="viable");
+  const turbulenceAcceptable=["smooth","light"].includes(result.turbulence.status)||(result.turbulence.status==="unknown"&&!result.turbulence.unboundedAdvisory);
+  return missionScore.status==="viable"&&result.feasibility.status==="viable"&&result.weightBalance?.status==="viable"&&(result.icing.status==="low"||(result.icing.status==="watch"&&result.icing.confidence!=="weather"))&&turbulenceAcceptable&&["not-required","compliant"].includes(result.oxygen.status)&&(!alternateAdvice.destination||alternateAdvice.destination.status==="viable");
 }
 
 function showToast(message, error=false) {
@@ -322,7 +323,7 @@ function metricConfig() {
 
 function levelStatus(result) {
   if(!operationallyAvailable(result)) return "unavailable";
-  return result.feasibility.status==="marginal"||result.oxygen.status==="marginal"||result.icing.status==="caution"||["moderate","severe"].includes(result.turbulence.status)?"marginal":"viable";
+  return result.feasibility.status==="marginal"||result.oxygen.status==="marginal"||result.icing.status==="caution"||result.turbulence.unboundedAdvisory||["moderate","severe"].includes(result.turbulence.status)?"marginal":"viable";
 }
 
 function renderPerformanceRanking(results,recommended,selectedResult) {

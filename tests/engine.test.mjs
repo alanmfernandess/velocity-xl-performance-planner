@@ -348,6 +348,57 @@ test("an impossible selected FL does not hide a revalidated viable alternative",
   assert.notEqual(global.recommendedAltitudeFt, 25000);
 });
 
+test("missing OFP turbulence evidence does not falsely eliminate every viable FL", () => {
+  const plan = {
+    ...DEMO_PLAN,
+    source: "SIMBRIEF",
+    waypoints: DEMO_PLAN.waypoints.map(({ windLevels, windDir, windSpd, oatC, ...point }) => ({ ...point, windLevels: [] })),
+    meteorology: { originText: "", destinationText: "", enrouteText: "" },
+  };
+  const weightBalance = { ...FIVE_SEAT_LOAD };
+  const options = {
+    plan,
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(weightBalance),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance,
+    oxygen: { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] },
+  };
+  const analysis = calculatePlan(options);
+  assert.ok(analysis.results.every((result) => result.turbulence.status === "unknown"));
+  assert.ok(analysis.results.every((result) => result.turbulence.riskScore === null));
+  assert.ok(analysis.results.every((result) => result.missionScore.status === "viable"));
+  const optimized = calculateMissionOptimization(options);
+  assert.equal(optimized.feasible, true);
+  assert.equal(optimized.achievedStatus, "viable");
+  assert.equal(optimized.result.turbulence.status, "unknown");
+  assert.equal(optimized.result.turbulence.riskScore, null);
+});
+
+test("an unbounded OFP turbulence advisory remains a caution, not invented calm air", () => {
+  const plan = {
+    ...DEMO_PLAN,
+    source: "SIMBRIEF",
+    waypoints: DEMO_PLAN.waypoints.map(({ windLevels, windDir, windSpd, oatC, ...point }) => ({ ...point, windLevels: [] })),
+    meteorology: { originText: "", destinationText: "", enrouteText: "SEV TURB" },
+  };
+  const weightBalance = { ...FIVE_SEAT_LOAD };
+  const optimized = calculateMissionOptimization({
+    plan,
+    mode: "NORMAL",
+    payloadLb: weightBalancePayloadLb(weightBalance),
+    fuelOnboardGal: 77,
+    reserveMinutes: 45,
+    weightBalance,
+    oxygen: { bottleModel: "SK-12-24", bottles: 0, seats: [true, true, true, true, true] },
+  });
+  assert.equal(optimized.result.turbulence.status, "unknown");
+  assert.equal(optimized.result.turbulence.unboundedAdvisory, true);
+  assert.equal(optimized.result.turbulence.riskScore, null);
+  assert.equal(optimized.achievedStatus, "marginal");
+});
+
 test("mission optimizer can reduce payload and select a compatible preset", () => {
   const overweight = { pilot: 190, copilot: 170, rearLeft: 170, rearCenter: 170, rearRight: 162, baggage: 0 };
   const optimizer = calculateMissionOptimization({
