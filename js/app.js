@@ -160,6 +160,13 @@ const COPY = {
 };
 
 Object.assign(COPY["pt-BR"], {
+  guidedHow: "Como você quer voar?",
+  guidedChoose: "Escolha o perfil. A calculadora considera automaticamente o melhor nível para a missão.",
+  guidedOptimizeHint: "Ajusta a missão para buscar uma configuração viável.",
+  guidedRecommendation: "Recomendação da missão",
+  guidedDetails: "Ver níveis e ajustes manuais",
+  guidedTools: "Níveis, controles e ferramentas da missão",
+  guidedFlight: "voo estimado",
   selectedLevelUnviable: "FL selecionado inviável",
   selectedLevelAlreadyViable: "FL{level} mantido: já está viável.",
   suggestedLevelViable: "FL{selected} não atende aos limites. FL{suggested} está viável.",
@@ -187,6 +194,13 @@ Object.assign(COPY["pt-BR"], {
   randomizeWeightBalanceFailed: "Não foi encontrada uma carga segura com o piloto, combustível e oxigênio atuais. Revise esses valores.",
 });
 Object.assign(COPY["en-US"], {
+  guidedHow: "How do you want to fly?",
+  guidedChoose: "Choose a profile. The planner automatically considers the best level for the mission.",
+  guidedOptimizeHint: "Adjusts the mission to seek a viable configuration.",
+  guidedRecommendation: "Mission recommendation",
+  guidedDetails: "View levels and manual settings",
+  guidedTools: "Levels, controls and mission tools",
+  guidedFlight: "estimated flight",
   selectedLevelUnviable: "Selected level not viable",
   selectedLevelAlreadyViable: "FL{level} kept: already viable.",
   suggestedLevelViable: "FL{selected} is outside the limits. FL{suggested} is viable.",
@@ -784,6 +798,12 @@ function render() {
   const stepPlan=calculateStepClimbs({...state,oxygenWeightLb,initialAltitudeFt:selected.altitudeFt,manual:state.manual.active?state.manual:null,availableAltitudesFt:analysis.results.filter(operationallyAvailable).map((result)=>result.altitudeFt)});
   const alternateAdvice=calculateAlternateDiversion({...state,oxygenWeightLb,altitudeFt:selected.altitudeFt,waypointIndex:state.diversionWaypointIndex,manual:state.manual.active?state.manual:null});
   const missionScore=calculateMissionScore({result:selected,confidence:selected.confidence,alternateAdvice});
+  $("#guidedLevelLabel").textContent=t(hasManualSelection?"selectedLevel":"bestLevel");
+  $("#guidedLevel").textContent=`FL${selected.fl}`;
+  $("#guidedScore").textContent=`${missionScore.score}/100`;
+  $("#guidedStatus").textContent=missionStatusLabel(missionScore.status);
+  $("#guidedStatus").dataset.status=missionScore.status;
+  $("#guidedSummary").textContent=`${formatFuel(selected.fuelRequiredGal,1)} · ${formatTime(selected.tripTimeHr)} ${t("guidedFlight")}`;
   if(strictlyViableMission(selected,missionScore,alternateAdvice)) rememberViableMission();
   const scenarioComparison=compareScenarios({plan,calibration:state.calibration,scenarioA:{altitudeFt:selected.altitudeFt,mode:state.mode,payloadLb:state.payloadLb,fuelOnboardGal:state.fuelOnboardGal,oxygenWeightLb,reserveMinutes:state.reserveMinutes,powerSetting:state.powerSetting},scenarioB:{...state.scenarioB,oxygenWeightLb,reserveMinutes:state.reserveMinutes,powerSetting:{type:"AUTO"}}});
   const loadOptimizer=calculateModeLoadOptimization({...state,minimumPayloadLb:state.weightBalance.pilot,requireWeightBalanceViable:true});
@@ -875,6 +895,8 @@ function openOptimizationDialog({ title, message, suggestion=null, reason="COMBI
 
 function reviewOptimizationBlocker() {
   $("#optimizationDialog").close();
+  $("#missionDetails").open=true;
+  $("#openMissionDetails").setAttribute("aria-expanded","true");
   const target={CG_AFT:"wb",CG_FORWARD:"wb",WEIGHT:"payload",FUEL_CAPACITY:"fuel",ALTERNATE:"alternate",WEATHER:"ride",OXYGEN:"oxygen",COMBINED:"payload"}[pendingReviewReason]||"payload";
   const tabTarget=["wb","alternate","ride","oxygen"].includes(target)?$(`[data-tool-view="${target}"]`):null;
   if(tabTarget) tabTarget.click();
@@ -883,6 +905,14 @@ function reviewOptimizationBlocker() {
   element?.scrollIntoView({behavior:"smooth",block:"center"});
   if(element instanceof HTMLElement&&element.tabIndex>=0) element.focus({preventScroll:true});
 }
+
+$("#openMissionDetails").addEventListener("click",()=>{
+  const details=$("#missionDetails");
+  details.open=!details.open;
+  $("#openMissionDetails").setAttribute("aria-expanded",String(details.open));
+  if(details.open) details.scrollIntoView({behavior:"smooth",block:"start"});
+});
+$("#missionDetails").addEventListener("toggle",()=>$("#openMissionDetails").setAttribute("aria-expanded",String($("#missionDetails").open)));
 
 function currentLevelIsViable() {
   const analysis=calculatePlan(state);
