@@ -58,18 +58,25 @@ test("mission recovery offers a revalidated level in a centered dialog and prese
   assert.match(css,/@media \(max-width:430px\) \{ \.optimization-dialog-content/);
 });
 
-test("the top card separates the suggested and active FL; the route omits the imported FL",()=>{
+test("an imported OFP uses the automatic best FL without displaying a manual selection",()=>{
   assert.match(html,/class="kpi featured kpi-levels"/);
-  assert.match(html,/id="kpiSelectedAltitude"/);
-  assert.match(app,/\$\("#kpiSelectedAltitude"\)\.textContent=`FL\$\{selected\.fl\}`/);
+  assert.match(html,/id="kpiSelectedAltitude"><\/strong><small id="kpiSelectedLevelMeta"><\/small>/);
+  assert.match(app,/state\.selectedAltitudeFt=null;state\.selectedAltitudePinned=false;state\.glideSampleIndex=null/);
+  assert.match(app,/selectedCandidate=state\.selectedAltitudePinned\?analysis\.results\.find\(\(r\)=>r\.altitudeFt===state\.selectedAltitudeFt\):null,selected=selectedCandidate\|\|recommended,hasManualSelection=Boolean\(selectedCandidate\)/);
+  assert.match(app,/\$\("#kpiSelectedAltitude"\)\.textContent=hasManualSelection\?`FL\$\{selected\.fl\}`:""/);
+  assert.match(app,/\$\("#kpiSelectedLevelMeta"\)\.textContent=hasManualSelection\?missionStatusLabel\(missionScore\.status\):""/);
+  assert.match(app,/state\.oxygen\.altitudeFt=calculatePlan\(state\)\.winners\.overall\.altitudeFt/);
   assert.match(app,/\$\("#planTimestamp"\)\.textContent=`\$\{number\(plan\.distanceNm\)\} NM`/);
   assert.match(css,/\.kpi-levels \{ display:grid; grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 });
 
-test("pilot FL selection survives preset changes and an invalid manual setting remains visible",()=>{
+test("only a pilot-chosen FL is marked selected, including after optimization",()=>{
   assert.match(app,/selectedAltitudeFt:null, selectedAltitudePinned:false/);
   assert.match(app,/state\.selectedAltitudeFt=Number\(button\.dataset\.selectLevel\);state\.selectedAltitudePinned=true/);
   assert.match(app,/state\.mode=button\.dataset\.mode;if\(!state\.selectedAltitudePinned\)state\.selectedAltitudeFt=null/);
-  assert.match(app,/selected=selectedCandidate\|\|recommended/);
+  assert.match(app,/const current=hasManualSelection&&result\.altitudeFt===selected\.altitudeFt/);
+  assert.match(app,/hasManualSelection&&result\.altitudeFt===selectedResult\.altitudeFt/);
+  assert.match(app,/state\.selectedAltitudeFt=keepSelectedLevel\?optimizer\.recommendedAltitudeFt:null/);
+  assert.match(app,/applyMissionOptimization\(suggestion,true\)/);
   assert.match(app,/if\(currentLevelIsViable\(\)\)\{\s*showToast/);
 });

@@ -32,7 +32,7 @@ test("flight phases stay live in the icing card after Route and Profile tabs are
   assert.doesNotMatch(index,/data-view="(?:route|profile)"/);
   assert.doesNotMatch(index,/id="(?:routeMap|verticalProfile)"/);
   assert.match(index,/class="icing-summary" id="icingSummary"[\s\S]*?class="phase-footer"[\s\S]*?id="climbStats"[\s\S]*?id="cruiseStats"[\s\S]*?id="descentStats"/);
-  assert.match(app,/\$\("#phaseLevel"\)\.textContent=`\$\{t\("selectedLevel"\)\} · FL\$\{selected\.fl\}`/);
+  assert.match(app,/\$\("#phaseLevel"\)\.textContent=`\$\{t\(hasManualSelection\?"selectedLevel":"bestLevel"\)\} · FL\$\{selected\.fl\}`/);
   assert.match(app,/\$\("#climbStats"\)\.textContent=`\$\{Math\.round\(selected\.climb\.timeHr/);
   assert.match(app,/\$\("#cruiseStats"\)\.textContent=`\$\{Math\.round\(selected\.cruiseTimeHr/);
   assert.match(app,/\$\("#descentStats"\)\.textContent=`\$\{Math\.round\(selected\.descent\.timeHr/);
