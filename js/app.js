@@ -444,13 +444,8 @@ function renderTerrainProfile(plan,result) {
   $("#terrainCritical").textContent=terrain.critical?`${terrain.critical.from.ident||"—"} → ${terrain.critical.to.ident||"—"} · ${number(terrain.critical.feet)} ft`:"—";
   $("#terrainCoverage").textContent=`${terrain.assessedCount-terrain.missingCount}/${terrain.assessedCount} ${pt?"trechos":"legs"}`;
   $("#terrainSelected").textContent=`FL${result.fl} · TOC ${number(terrain.tocNm)} / TOD ${number(terrain.todNm)} NM`;
-  $("#terrainRefresh").textContent=state.elevationLoading?(pt?"Carregando…":"Loading…"):(pt?"Atualizar relevo":"Refresh terrain");
+  $("#terrainRefresh").textContent=state.elevationLoading?(pt?"Carregando…":"Loading…"):state.elevationError?(pt?"Tentar relevo novamente":"Retry terrain"):(pt?"Atualizar relevo":"Refresh terrain");
   $("#terrainRefresh").disabled=state.elevationLoading;
-  $("#terrainSource").textContent=state.elevationLoading?(pt?"Buscando elevação da linha central…":"Loading centerline elevation…")
-    :state.elevationProfile?(pt?"Relevo da linha central: Open-Meteo / Copernicus GLO-90 (visual).":"Centerline terrain: Open-Meteo / Copernicus GLO-90 (visual).")
-      :state.elevationError?(pt?`Relevo indisponível: ${state.elevationError}`:`Terrain unavailable: ${state.elevationError}`)
-        :(pt?"Relevo ainda não carregado; a MORA continua disponível.":"Terrain not loaded; MORA remains available.");
-  $("#terrainCaveat").textContent=pt?"Estimativa para simulador. A MORA do OFP cobre um corredor de 5 NM; o relevo amostrado da linha central não substitui cartas nem inclui todos os obstáculos.":"Simulator estimate. OFP MORA covers a 5 NM corridor; centerline elevation does not replace charts or include every obstacle.";
   const elevation=state.elevationProfile||[];
   const highest=Math.max(result.altitudeFt,2500,...legs.map((leg)=>terrainMinimumForLeg(leg,state.manualTerrainMora).feet).filter(Number.isFinite),...elevation.map((point)=>point.elevationFt).filter(Number.isFinite));
   const upper=Math.max(5000,highest*1.14),x=(distance)=>Math.max(0,Math.min(800,distance/totalNm*800)),y=(feet)=>200-Math.max(0,feet)/upper*184;

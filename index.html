@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261016-01" />
+    <link rel="stylesheet" href="./styles.css?v=20261016-02" />
   </head>
   <body>
     <header class="topbar">
@@ -81,10 +81,8 @@
         <div class="terrain-axis"><span id="terrainOrigin">ORIG · 0 NM</span><span id="terrainMidpoint">— NM</span><span id="terrainDestination">DEST · — NM</span></div>
         <div class="terrain-legend"><span><i class="terrain-key flight"></i><span id="terrainLegendFlight">Altitude planejada</span></span><span><i class="terrain-key mora"></i><span id="terrainLegendMora">MORA SimBrief</span></span><span><i class="terrain-key elevation"></i><span id="terrainLegendElevation">Relevo amostrado</span></span><span><i class="terrain-key critical"></i><span id="terrainLegendCritical">Trecho crítico</span></span></div>
         <div class="terrain-facts"><div><span id="terrainCriticalLabel">Trecho crítico</span><strong id="terrainCritical">—</strong></div><div><span id="terrainCoverageLabel">Cobertura da MORA</span><strong id="terrainCoverage">—</strong></div><div><span id="terrainSelectedLabel">Nível selecionado</span><strong id="terrainSelected">—</strong></div></div>
-        <div class="terrain-tools"><p id="terrainSource">O relevo é apenas ilustrativo até que dados de elevação sejam carregados.</p><button type="button" class="text-button" id="terrainRefresh">Carregar relevo</button></div>
+        <div class="terrain-tools"><button type="button" class="text-button" id="terrainRefresh">Carregar relevo</button></div>
         <div class="terrain-manual" id="terrainManual" hidden></div>
-        <small class="terrain-caveat" id="terrainCaveat">Planejamento estimado para simulador. A MORA do OFP cobre um corredor de 5 NM; a elevação amostrada da linha central não substitui cartas nem inclui todos os obstáculos.</small>
-        <small class="terrain-attribution"><a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Elevação: Open-Meteo / Copernicus DEM GLO-90</a> · <a href="https://forum.navigraph.com/t/ofp-wrong-msa/22775" target="_blank" rel="noreferrer">MORA: SimBrief</a></small>
       </section>
 
       <section class="dashboard-grid">
@@ -351,10 +349,10 @@
         <div class="levels-list" id="levelCards"></div>
       </section>
       </div>
-      <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
+      <footer><span>Velocity XL Performance Planner</span><span class="footer-sources"><a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Open-Meteo / Copernicus DEM GLO-90</a> · <a href="https://forum.navigraph.com/t/ofp-wrong-msa/22775" target="_blank" rel="noreferrer">SimBrief MORA</a></span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261016-01"></script>
+    <script type="module" src="./js/app.js?v=20261016-02"></script>
   </body>
 </html>
