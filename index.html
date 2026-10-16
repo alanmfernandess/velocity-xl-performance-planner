@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261014-10" />
+    <link rel="stylesheet" href="./styles.css?v=20261016-01" />
   </head>
   <body>
     <header class="topbar">
@@ -53,12 +53,13 @@
         <form class="plan-form" id="simbriefImportForm">
           <label class="field id-field"><span data-i18n="pilotId">Pilot ID / Alias</span><input id="quickPilotId" autocomplete="off" placeholder="123456" /></label>
           <button class="primary-button" id="importLatest" type="submit" data-i18n="importLatest">Importar OFP</button>
+          <button class="text-button" id="loadDemo" type="button" data-i18n="loadDemo">Ver demo</button>
         </form>
       </section>
 
       <div id="plannerContent" hidden>
       <section class="kpi-grid" aria-label="Performance summary">
-        <article class="kpi featured"><span data-i18n="bestLevel">Melhor nível</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="recommendedLevel">Recomendado</small></article>
+        <article class="kpi featured"><span data-i18n="bestLevel">Nível selecionado</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="selectedLevel">Selecionado</small></article>
         <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
         <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
         <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
@@ -69,6 +70,21 @@
         <div><span data-i18n="confidence">Confiança</span><strong id="confidenceValue">—</strong><small id="confidenceMeta">—</small></div>
         <div><span data-i18n="rideComfort">Conforto</span><strong id="rideValue">—</strong><small id="rideMeta">—</small></div>
         <div><span data-i18n="oxygen">Oxigênio</span><strong id="oxygenValue">—</strong><small id="oxygenMeta">—</small></div>
+      </section>
+
+      <section class="panel terrain-panel" aria-label="Perfil de elevação e MORA">
+        <div class="terrain-heading">
+          <div><span class="terrain-eyebrow" id="terrainEyebrow">TERRENO · OFP</span><h2 id="terrainTitle">Perfil de elevação</h2><p id="terrainIntro">MORA por trecho e relevo visual ao longo da rota.</p></div>
+          <div class="terrain-decision"><strong class="terrain-badge unknown" id="terrainStatus">TERRENO NÃO AVALIADO</strong><span id="terrainMargin">—</span></div>
+        </div>
+        <div class="terrain-chart" id="terrainProfile" role="img" aria-label="Perfil de terreno da rota"></div>
+        <div class="terrain-axis"><span id="terrainOrigin">ORIG · 0 NM</span><span id="terrainMidpoint">— NM</span><span id="terrainDestination">DEST · — NM</span></div>
+        <div class="terrain-legend"><span><i class="terrain-key flight"></i><span id="terrainLegendFlight">Altitude planejada</span></span><span><i class="terrain-key mora"></i><span id="terrainLegendMora">MORA SimBrief</span></span><span><i class="terrain-key elevation"></i><span id="terrainLegendElevation">Relevo amostrado</span></span><span><i class="terrain-key critical"></i><span id="terrainLegendCritical">Trecho crítico</span></span></div>
+        <div class="terrain-facts"><div><span id="terrainCriticalLabel">Trecho crítico</span><strong id="terrainCritical">—</strong></div><div><span id="terrainCoverageLabel">Cobertura da MORA</span><strong id="terrainCoverage">—</strong></div><div><span id="terrainSelectedLabel">Nível selecionado</span><strong id="terrainSelected">—</strong></div></div>
+        <div class="terrain-tools"><p id="terrainSource">O relevo é apenas ilustrativo até que dados de elevação sejam carregados.</p><button type="button" class="text-button" id="terrainRefresh">Carregar relevo</button></div>
+        <div class="terrain-manual" id="terrainManual" hidden></div>
+        <small class="terrain-caveat" id="terrainCaveat">Planejamento estimado para simulador. A MORA do OFP cobre um corredor de 5 NM; a elevação amostrada da linha central não substitui cartas nem inclui todos os obstáculos.</small>
+        <small class="terrain-attribution"><a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Elevação: Open-Meteo / Copernicus DEM GLO-90</a> · <a href="https://forum.navigraph.com/t/ofp-wrong-msa/22775" target="_blank" rel="noreferrer">MORA: SimBrief</a></small>
       </section>
 
       <section class="dashboard-grid">
@@ -264,7 +280,7 @@
         <div class="tool-view" data-tool-panel="oxygen">
           <div class="oxygen-layout">
             <div class="oxygen-controls">
-              <label><span data-i18n="cabinAltitude">Altitude cabine</span><select id="oxygenAltitude"></select></label>
+              <label><span data-i18n="cabinAltitude">Nível de voo</span><select id="oxygenAltitude"></select></label>
               <label><span data-i18n="bottle">Garrafa</span><select id="oxygenBottle"></select></label>
               <label><span data-i18n="quantity">Quantidade</span><select id="oxygenBottleCount"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
               <button class="text-button" id="applyOxygenRecommendation" type="button" data-i18n="applyOxygen">Aplicar recomendação</button>
@@ -339,6 +355,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261015-01"></script>
+    <script type="module" src="./js/app.js?v=20261016-01"></script>
   </body>
 </html>

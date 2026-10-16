@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261015-01";
+import { greatCircleNm } from "./engine.js?v=20261016-01";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;
@@ -103,6 +103,8 @@ export function parseSimBrief(data) {
       oatC: number(first(weather.oatC, weather.oat, fix.oat), NaN),
       shear: number(fix.shear, NaN),
       altitudeFt: number(first(fix.altitude_feet, fix.altitude), NaN),
+      // SimBrief navlog MORA applies to the leg ending at this fix.
+      moraFt: number(fix.mora, NaN),
       stage: first(fix.stage, ""),
       windLevels,
       weatherText: bulletinText(fix.weather, fix.wx, fix.conditions, fix.sigmet, fix.airmet),
@@ -158,7 +160,7 @@ export async function fetchLatestOFP(identifier, type = "userid") {
   const clean = identifier.trim();
   if (!clean) throw new Error("Informe seu Pilot ID ou Navigraph Alias.");
   const parameter = type === "username" ? "username" : "userid";
-  const endpoint = `https://www.simbrief.com/api/xml.fetcher.php?${parameter}=${encodeURIComponent(clean)}&json=v2`;
+  const endpoint = `https://www.simbrief.com/api/xml.fetcher.php?${parameter}=${encodeURIComponent(clean)}&json=v2&client=velocity-xl-performance-planner`;
   const response = await fetch(endpoint, { headers: { Accept: "application/json" } });
   if (!response.ok) {
     let message = `SimBrief respondeu com erro ${response.status}`;

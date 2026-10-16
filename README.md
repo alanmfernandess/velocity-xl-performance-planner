@@ -9,6 +9,8 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Importação por SimBrief Pilot ID ou Navigraph Alias usando o endpoint oficial `xml.fetcher.php` com `json=v2`.
 - Uso exclusivo da rota, dos waypoints e dos dados atmosféricos do OFP; o tipo e os cálculos de aeronave do SimBrief são ignorados.
 - Interpolação de vento e OAT por waypoint para comparar FL100 a FL250.
+- Perfil de elevação com relevo amostrado da linha central (Open-Meteo / Copernicus GLO-90), MORA do navlog por trecho, TOC/TOD e destaque do trecho crítico.
+- Classificação de terreno por FL: VIÁVEL com pelo menos 2.000 ft acima da MORA crítica, MARGINAL com margem menor, INVIÁVEL abaixo da MORA; sem MORA suficiente, TERRENO NÃO AVALIADO. Mínimos ausentes podem ser informados manualmente com fonte verificada.
 - Icing-Aware Level Optimizer usando OAT por waypoint/nível e evidências meteorológicas presentes no OFP para evitar ou penalizar faixas com risco de gelo.
 - Interface clara e minimalista em português do Brasil e inglês americano.
 - Tipografia compacta e responsiva, com controle A−/A/A+ salvo no dispositivo e unidades selecionáveis LB/KG e GAL/L.
@@ -16,7 +18,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Comparação de FL100 a FL250 nos modos ECON, NORMAL e FAST.
 - Potência automática por modo ou ajuste manual de MAP/RPM, refletida em TAS, fuel flow, tempo, combustível e alcance.
 - Indicador explícito de viabilidade usando combustível, peso, teto e espaço disponível para subida/cruzeiro/descida.
-- Lista progressiva de todos os níveis de cruzeiro: cada linha mostra combustível, ETE, GS e status; a expansão revela gelo, oxigênio e o motivo de restrição. Níveis inviáveis podem ser inspecionados, mas não selecionados nem recomendados.
+- Lista progressiva de todos os níveis de cruzeiro: cada linha mostra combustível, ETE, GS e status; a expansão revela gelo, oxigênio e o motivo de restrição. Níveis inviáveis podem ser selecionados para inspeção, mas não são recomendados.
 - TAS, GS, ISA deviation, componente de vento, climb/cruise/descent, combustível, endurance e alcance.
 - ETP e PNR calculados com velocidades de continuação e retorno corrigidas pelo vento.
 - Alternate & Diversion Advisor com distância direta, tempo, consumo, combustível estimado no pouso e viabilidade de reserva.
@@ -33,7 +35,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
 - Calibração local por modo usando somente TAS e fuel flow observados no Xbox; os fatores ficam salvos no dispositivo.
 - Gráficos de performance, perfil vertical, representação de rota e perfil de combustível organizados em abas.
-- Tela inicial vazia até a importação de um OFP real e armazenamento local somente do identificador SimBrief.
+- Tela inicial vazia até a importação de um OFP real ou a escolha da demonstração fictícia; somente o identificador SimBrief é salvo localmente.
 - Coeficientes centralizados em `js/config.js` para calibração manual futura.
 
 ## Executar localmente
@@ -66,7 +68,9 @@ Os presets estimados são ECON 20 inHg/2.300 RPM, NORMAL 24 inHg/2.450 RPM e FAS
 
 O Alternate & Diversion Advisor usa as coordenadas do alternado quando fornecidas pelo OFP; sem coordenadas, o cálculo fica indisponível. O combustível até o alternado inclui estimativas centralizadas de arremetida e aproximação. O Glide Corridor assume altitude sobre o nível do mar, não considera relevo, obstáculos, razão de planeio degradada, configuração, falhas adicionais ou locais de pouso; serve exclusivamente como referência visual para o simulador.
 
-A viabilidade considera o combustível requerido completo, peso máximo, teto de serviço e a distância necessária para subida e descida. Um nível marginal continua selecionável; um nível inviável é desabilitado e não participa da recomendação. Os limites de margem permanecem centralizados em `js/config.js`.
+A viabilidade considera o combustível requerido completo, peso máximo, teto de serviço, espaço para subida/cruzeiro/descida e MORA dos trechos percorridos em cruzeiro entre TOC e TOD. Todos os FLs podem ser selecionados para comparar o efeito sobre combustível, tempo, oxigênio e score; os inviáveis não participam da recomendação ou da otimização. A classificação de terreno permanece não avaliada se faltar MORA em qualquer trecho relevante, mesmo quando outros parâmetros são adequados. Os limites de margem permanecem centralizados em `js/config.js`.
+
+A MORA de cada fix do SimBrief é associada ao trecho que termina nele. Segundo a [explicação da Navigraph](https://forum.navigraph.com/t/ofp-wrong-msa/22775), ela cobre 5 NM de cada lado da rota entre os fixes; não equivale à Grid MORA. O perfil usa até 80 amostras da [API de elevação da Open-Meteo](https://open-meteo.com/en/docs/elevation-api) para representar somente a linha central, com dados Copernicus DEM GLO-90 de cerca de 90 m. Esse relevo não preenche MORA ausente, não contempla todos os obstáculos e não entra no score. Quando a MORA falta, o usuário pode informar para cada trecho uma altitude mínima obtida de uma fonte verificada; o valor e a fonte ficam na sessão e são descartados ao trocar de plano. A avaliação exclui trechos de subida e descida, que exigem análise própria de cartas e procedimentos. O modelo é estimado para simulador, não uma autorização operacional para voo real.
 
 O Icing-Aware Level Optimizer mantém separado o ótimo puro de performance do nível recomendado pela meteorologia. Indicações explícitas de gelo ou precipitação congelante tornam incompatíveis os níveis afetados e também consideram a passagem pela camada durante subida e descida. METAR e TAF de origem/destino são aplicados somente às transições locais; nuvens terminais sem topo informado recebem uma espessura e um peso conservadores configuráveis, sem serem estendidas por toda a rota. Quando há apenas OAT sem confirmação de umidade, o resultado é marcado como dado limitado e não bloqueia níveis. O indicador `ICE` é um índice heurístico de 0 a 100, não uma probabilidade meteorológica certificada. A diferença de combustível, tempo, GS e alcance é recalculada pelo modelo no FL alternativo, sem simular voo deliberado com gelo acumulado.
 

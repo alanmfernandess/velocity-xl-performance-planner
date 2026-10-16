@@ -245,6 +245,18 @@ test("load optimizer respects useful load, fuel capacity, and required fuel", ()
   assert.equal(assessFeasibility(applied, { plan: DEMO_PLAN, fuelOnboardGal: optimizer.recommendedFuelGal }).status, "viable");
 });
 
+test("load optimizer with terrain checks waits for a sourced minimum", () => {
+  const plan = structuredClone(DEMO_PLAN);
+  plan.waypoints[2].moraFt = 0;
+  const options = { plan, altitudeFt: 14000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, oxygen: FULL_OXYGEN, requireTerrainKnown: true };
+  const unassessed = calculateLoadOptimization(options);
+  assert.equal(unassessed.result.terrain.status, "unknown");
+  assert.equal(unassessed.feasible, false);
+  const assessed = calculateLoadOptimization({ ...options, manualTerrainMora: { 1: { feet: 6500, source: "verified chart" } } });
+  assert.equal(assessed.result.terrain.status, "viable");
+  assert.equal(assessed.feasible, true);
+});
+
 test("load optimizer computes payload reduction when fuel and load cannot coexist", () => {
   const optimizer = calculateLoadOptimization({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "FAST", payloadLb: 1100, fuelOnboardGal: 87, reserveMinutes: 60, oxygen: FULL_OXYGEN });
   assert.equal(optimizer.feasible, true);
@@ -716,6 +728,5 @@ test("mission score uses one ascending 0-100 viability scale", () => {
   const result = analysis.results.find((item) => item.altitudeFt === 10000);
   const score = calculateMissionScore({ result, confidence: result.confidence });
   assert.ok(score.score >= 0 && score.score <= 100);
-  assert.equal(score.status, score.score < 40 ? "not-viable" : score.score < 80 ? "marginal" : "viable");
-  assert.ok(["not-viable", "marginal", "viable"].includes(score.status));
+  assert.equal(score.status, score.score < 40 ? "not-viable" : score.score < 70 ? "marginal" : "viable");
 });

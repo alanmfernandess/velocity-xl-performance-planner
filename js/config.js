@@ -97,6 +97,11 @@ export const PERFORMANCE = {
     minimumCruiseSegmentNm: 10,
     marginalCruiseSegmentNm: 30,
   },
+  terrain: {
+    // Planning buffer above the SimBrief route MORA; not an aviation minimum.
+    marginalBufferFt: 2000,
+    profileSamples: 80,
+  },
   stepClimb: {
     weightLossLbPerStep: 90,
     minimumRemainingNm: 110,
@@ -222,13 +227,13 @@ export const DEMO_PLAN = {
     { ident: "SBSP", lat: -23.6261, lon: -46.6566, distanceNm: 0, windDir: 245, windSpd: 22, oatC: -7, windLevels: [
       { altitudeFt: 10000, windDir: 235, windSpd: 15, oatC: -5 }, { altitudeFt: 18000, windDir: 245, windSpd: 22, oatC: -20 }, { altitudeFt: 25000, windDir: 255, windSpd: 31, oatC: -34 },
     ] },
-    { ident: "KOVBI", lat: -23.48, lon: -45.88, distanceNm: 45, windDir: 249, windSpd: 25, oatC: -19, windLevels: [
+    { ident: "KOVBI", lat: -23.48, lon: -45.88, distanceNm: 45, moraFt: 5300, windDir: 249, windSpd: 25, oatC: -19, windLevels: [
       { altitudeFt: 10000, windDir: 238, windSpd: 17, oatC: -4 }, { altitudeFt: 18000, windDir: 249, windSpd: 25, oatC: -19 }, { altitudeFt: 25000, windDir: 261, windSpd: 35, oatC: -33 },
     ] },
-    { ident: "OPALA", lat: -23.02, lon: -44.56, distanceNm: 132, windDir: 257, windSpd: 31, oatC: -18, windLevels: [
+    { ident: "OPALA", lat: -23.02, lon: -44.56, distanceNm: 132, moraFt: 6500, windDir: 257, windSpd: 31, oatC: -18, windLevels: [
       { altitudeFt: 10000, windDir: 244, windSpd: 20, oatC: -3 }, { altitudeFt: 18000, windDir: 257, windSpd: 31, oatC: -18 }, { altitudeFt: 25000, windDir: 270, windSpd: 42, oatC: -32 },
     ] },
-    { ident: "SBGL", lat: -22.8099, lon: -43.2506, distanceNm: 246, windDir: 262, windSpd: 28, oatC: -17, windLevels: [
+    { ident: "SBGL", lat: -22.8099, lon: -43.2506, distanceNm: 246, moraFt: 4400, windDir: 262, windSpd: 28, oatC: -17, windLevels: [
       { altitudeFt: 10000, windDir: 248, windSpd: 18, oatC: -2 }, { altitudeFt: 18000, windDir: 262, windSpd: 28, oatC: -17 }, { altitudeFt: 25000, windDir: 275, windSpd: 38, oatC: -31 },
     ] },
   ],

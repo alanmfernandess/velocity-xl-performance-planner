@@ -1,4 +1,5 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261014-05";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261016-01";
+import { assessTerrain } from "./terrain.js?v=20261016-01";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -789,6 +790,14 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
     addReason("oxygen", PERFORMANCE.missionRisk.oxygenMarginal, false, result.oxygen.requiredLiters);
   }
 
+  if (result.terrain?.status === "unavailable") {
+    addReason("terrain", 52, true, result.terrain.marginFt);
+  } else if (result.terrain?.status === "marginal") {
+    addReason("terrain", 12, false, result.terrain.marginFt);
+  } else if (result.terrain?.status === "unknown") {
+    addReason("terrain", 8, false, null);
+  }
+
   addReason("confidence", (100 - confidence.score) * PERFORMANCE.missionRisk.confidenceWeight, false, confidence.score);
   const alternateStatus = alternateAdvice?.destination?.status;
   if (alternateStatus === "unavailable" || alternateStatus === "unknown") {
@@ -802,7 +811,8 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
   const blocked = reasons.some((reason) => reason.blocking);
   let score = clamp(Math.round(100 - penalty), 0, 100);
   if (blocked) score = Math.min(score, 39);
-  const status = score < 40 ? "not-viable" : score < 80 ? "marginal" : "viable";
+  const assessedStatus = score < 40 ? "not-viable" : score < 80 ? "marginal" : "viable";
+  const status = result.terrain?.status === "unknown" && assessedStatus !== "not-viable" ? "unknown" : assessedStatus;
   return { score, status, blocked, penalty: 100 - score, reasons };
 }
 
@@ -1013,7 +1023,7 @@ export function assessFeasibility(result, { plan, fuelOnboardGal }) {
   };
 }
 
-export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {}, oxygen = {}, debriefs = [], weightBalance = null }) {
+export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {}, oxygen = {}, debriefs = [], weightBalance = null, manualTerrainMora = {} }) {
   const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
   const results = ALTITUDES_FT.map((altitudeFt) => calculateAtAltitude({
     plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting,
@@ -1023,6 +1033,7 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
     item.icing = calculateIcingRisk({ plan, result: item });
     item.turbulence = calculateTurbulenceRisk({ plan, result: item });
     item.oxygen = calculateOxygenPlan({ result: item, oxygen });
+    item.terrain = assessTerrain(plan, item, manualTerrainMora);
     item.weightBalance = weightBalance ? calculateWeightBalance({
       weightBalance,
       fuelOnboardGal,
@@ -1041,12 +1052,12 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
       normalize(times, item.tripTimeHr, true) * 0.33 +
       normalize(ranges, item.maxRangeNm) * 0.25
     );
-    const feasibilityPenalty = item.feasibility.status === "unavailable" ? 50 : item.feasibility.status === "marginal" ? 8 : 0;
+    const feasibilityPenalty = item.feasibility.status === "unavailable" || item.terrain.status === "unavailable" ? 50 : item.feasibility.status === "marginal" || item.terrain.status === "marginal" ? 8 : 0;
     item.performanceScore = Math.max(0, Math.round(baseScore - feasibilityPenalty));
     item.score = Math.max(0, Math.round(item.performanceScore - item.icing.penalty - item.turbulence.penalty - item.oxygen.penalty - (item.weightBalance?.penalty || 0)));
   });
 
-  const available = results.filter((item) => item.feasibility.status !== "unavailable" && item.weightBalance?.status !== "unavailable");
+  const available = results.filter((item) => item.feasibility.status !== "unavailable" && item.weightBalance?.status !== "unavailable" && item.terrain.status !== "unavailable");
   const icingAvailable = available.filter((item) => item.icing.status !== "avoid");
   const turbulenceAvailable = available.filter((item) => !item.turbulence.blocking);
   const weatherAvailable = available.filter((item) => item.icing.status !== "avoid" && !item.turbulence.blocking && item.oxygen.status !== "insufficient");
@@ -1062,7 +1073,8 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
   const weatherWinnerPool = hasWeatherEvidence
     ? weatherAvailable.filter((item) => riskRank(item) === safestRank)
     : weatherAvailable;
-  const winnerPool = weatherWinnerPool.length ? weatherWinnerPool : available.length ? available : results;
+  const knownTerrain = weatherWinnerPool.filter((item) => item.terrain.status !== "unknown");
+  const winnerPool = knownTerrain.length ? knownTerrain : weatherWinnerPool.length ? weatherWinnerPool : available.length ? available : results;
   const performancePool = available.length ? available : results;
   const performanceWinner = [...performancePool].sort((a, b) => b.performanceScore - a.performanceScore)[0];
   const overallWinner = [...winnerPool].sort((a, b) => b.score - a.score)[0];
@@ -1219,7 +1231,7 @@ export function compareScenarios({ plan, scenarioA, scenarioB, calibration = {} 
   };
 }
 
-export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false }) {
+export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false, requireTerrainKnown = false, manualTerrainMora = {} }) {
   const requestedPayloadLb = Math.max(0, payloadLb);
   const payloadFloorLb = Number.isFinite(minimumPayloadLb)
     ? Math.min(requestedPayloadLb, Math.max(0, minimumPayloadLb))
@@ -1289,6 +1301,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
     result.icing = calculateIcingRisk({ plan, result });
     result.turbulence = calculateTurbulenceRisk({ plan, result });
     result.oxygen = calculateOxygenPlan({ result, oxygen });
+    result.terrain = assessTerrain(plan, result, manualTerrainMora);
     const alternateAdvice = calculateAlternateDiversion({
       plan,
       altitudeFt,
@@ -1326,6 +1339,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
         && result.icing.status !== "avoid"
         && !result.turbulence.blocking
         && result.oxygen.status !== "insufficient"
+        && (!requireTerrainKnown || ["viable", "marginal"].includes(result.terrain.status))
         && (!alternateRequired || alternateAdvice.destination.status === "viable")
         && (requireWeightBalanceViable ? result.weightBalance?.status === "viable" : result.weightBalance?.status !== "unavailable"),
       altitudeFt,
@@ -1353,7 +1367,7 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
   return bestAttempt;
 }
 
-export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false }) {
+export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false, requireTerrainKnown = false, manualTerrainMora = {} }) {
   const candidates = ALTITUDES_FT.map((altitudeFt) => calculateLoadOptimization({
     plan,
     altitudeFt,
@@ -1367,6 +1381,8 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
     minimumPayloadLb,
     requireWeightBalanceViable,
     requireAlternateViable,
+    requireTerrainKnown,
+    manualTerrainMora,
   }));
   const viable = candidates.filter((candidate) => candidate?.feasible);
   if (!viable.length) {
@@ -1402,7 +1418,7 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
   return { ...winner, recommendedAltitudeFt: winner.altitudeFt, candidates };
 }
 
-export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
+export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, requireTerrainKnown = false, manualTerrainMora = {} }) {
   const loads = normalizeWeightBalance(weightBalance || {});
   const minimumPayloadLb = loads.pilot;
   const variants = [];
@@ -1421,6 +1437,8 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
         minimumPayloadLb,
         requireWeightBalanceViable: true,
         requireAlternateViable: true,
+        requireTerrainKnown,
+        manualTerrainMora,
       });
       if (candidate) variants.push({ ...candidate, oxygen: oxygenVariant, bottles, requestedMode: mode });
     }
@@ -1504,6 +1522,7 @@ export function missionOptimizationFailureReason(optimization) {
   if (all((candidate) => candidate.result.weightBalance?.primaryReason === "WEIGHT")) return "WEIGHT";
   if (all((candidate) => candidate.rawRecommendedFuelGal > AIRCRAFT.usableFuelGal)) return "FUEL_CAPACITY";
   if (all((candidate) => candidate.alternateRequired && candidate.alternateAdvice?.destination?.status !== "viable")) return "ALTERNATE";
+  if (all((candidate) => candidate.result.terrain?.status === "unknown" || candidate.result.terrain?.status === "unavailable")) return "TERRAIN";
   if (all((candidate) => candidate.result.icing.status === "avoid" || candidate.result.turbulence.blocking)) return "WEATHER";
   if (all((candidate) => candidate.result.oxygen.status === "insufficient")) return "OXYGEN";
   return "COMBINED";

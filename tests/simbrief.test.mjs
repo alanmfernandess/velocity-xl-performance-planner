@@ -19,7 +19,7 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
         { altitude: "18000", wind_dir: "240", wind_spd: "18", oat: "-19" },
         { altitude: "24000", wind_dir: "270", wind_spd: "30", oat: "-31" },
       ] },
-      { ident: "SBGL", pos_lat: "-22.810", pos_long: "-43.251", wind_dir: "260", wind_spd: "25", oat: "-22" },
+      { ident: "SBGL", pos_lat: "-22.810", pos_long: "-43.251", wind_dir: "260", wind_spd: "25", oat: "-22", mora: "7600" },
     ],
   });
   assert.equal(result.origin.icao, "SBSP");
@@ -36,6 +36,7 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
   assert.equal(result.waypoints[0].shear, 2);
   assert.equal(result.waypoints[0].altitudeFt, 22000);
   assert.equal(result.waypoints[0].stage, "CLB");
+  assert.equal(result.waypoints[1].moraFt, 7600);
   assert.match(result.meteorology.originText, /BKN020/);
   assert.match(result.meteorology.destinationText, /OVC030/);
   assert.match(result.meteorology.enrouteText, /MOD ICE/);
