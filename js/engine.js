@@ -797,12 +797,6 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
     addReason("alternate", PERFORMANCE.missionRisk.alternateMarginal, false, alternateAdvice.destination.marginGal);
   }
 
-  // An unresolved enroute advisory is a caution, even when it has no numeric
-  // turbulence score. Keep the displayed score consistent with the optimizer.
-  if (result.turbulence.unboundedAdvisory && result.turbulence.status === "unknown") {
-    addReason("turbulence", Math.max(0, 21 - reasons.reduce((sum, reason) => sum + reason.impact, 0)), false, null);
-  }
-
   reasons.sort((a, b) => Number(b.blocking) - Number(a.blocking) || b.impact - a.impact);
   const penalty = reasons.reduce((sum, reason) => sum + reason.impact, 0);
   const blocked = reasons.some((reason) => reason.blocking);
@@ -1359,9 +1353,8 @@ export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, f
   return bestAttempt;
 }
 
-export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false, lockedAltitudeFt = null }) {
-  const altitudes = lockedAltitudeFt === null ? ALTITUDES_FT : ALTITUDES_FT.filter((altitudeFt) => altitudeFt === lockedAltitudeFt);
-  const candidates = altitudes.map((altitudeFt) => calculateLoadOptimization({
+export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false }) {
+  const candidates = ALTITUDES_FT.map((altitudeFt) => calculateLoadOptimization({
     plan,
     altitudeFt,
     mode,
@@ -1409,11 +1402,11 @@ export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboa
   return { ...winner, recommendedAltitudeFt: winner.altitudeFt, candidates };
 }
 
-export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, debriefs = [], lockedAltitudeFt = null, allowedModes = null }) {
+export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null }) {
   const loads = normalizeWeightBalance(weightBalance || {});
   const minimumPayloadLb = loads.pilot;
   const variants = [];
-  for (const candidateMode of Object.keys(PERFORMANCE.modes).filter((item) => allowedModes === null || allowedModes.includes(item))) {
+  for (const candidateMode of Object.keys(PERFORMANCE.modes)) {
     for (let bottles = 0; bottles <= 4; bottles += 1) {
       const oxygenVariant = { ...oxygen, bottles };
       const candidate = calculateModeLoadOptimization({
@@ -1428,7 +1421,6 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
         minimumPayloadLb,
         requireWeightBalanceViable: true,
         requireAlternateViable: true,
-        lockedAltitudeFt,
       });
       if (candidate) variants.push({ ...candidate, oxygen: oxygenVariant, bottles, requestedMode: mode });
     }
@@ -1437,16 +1429,12 @@ export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboar
   const operationalPenalty = (candidate) => {
     const result = candidate.result;
     return (result.icing.status === "low" || (result.icing.status === "watch" && result.icing.confidence !== "weather") ? 0 : result.icing.status === "watch" ? 1 : result.icing.status === "caution" ? 3 : 20)
-      + (result.turbulence.status === "smooth" || result.turbulence.status === "light" || (result.turbulence.status === "unknown" && !result.turbulence.unboundedAdvisory) ? 0 : result.turbulence.status === "moderate" || result.turbulence.status === "unknown" ? 3 : 20)
+      + (result.turbulence.status === "smooth" || result.turbulence.status === "light" ? 0 : result.turbulence.status === "moderate" ? 3 : 20)
       + (result.oxygen.status === "not-required" || result.oxygen.status === "compliant" ? 0 : result.oxygen.status === "marginal" ? 3 : 20)
       + (result.weightBalance?.status === "viable" ? 0 : 20)
       + (!candidate.alternateRequired || candidate.alternateAdvice?.destination?.status === "viable" ? 0 : candidate.alternateAdvice?.destination?.status === "marginal" ? 5 : 20);
   };
-  const achievedStatus = (candidate) => {
-    if (operationalPenalty(candidate) !== 0) return "marginal";
-    const confidence = calculatePerformanceConfidence({ plan, result: candidate.result, calibration, debriefs, mode: candidate.mode });
-    return calculateMissionScore({ result: candidate.result, confidence, alternateAdvice: candidate.alternateAdvice }).status === "viable" ? "viable" : "marginal";
-  };
+  const achievedStatus = (candidate) => operationalPenalty(candidate) === 0 ? "viable" : "marginal";
   const strictPool = viable.some((candidate) => achievedStatus(candidate) === "viable")
     ? viable.filter((candidate) => achievedStatus(candidate) === "viable")
     : viable;

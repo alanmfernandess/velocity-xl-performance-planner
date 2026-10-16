@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261016-01" />
+    <link rel="stylesheet" href="./styles.css?v=20261014-10" />
   </head>
   <body>
     <header class="topbar">
@@ -57,45 +57,8 @@
       </section>
 
       <div id="plannerContent" hidden>
-      <section class="mission-wizard" aria-label="Missão guiada">
-        <nav class="wizard-steps" aria-label="Etapas da missão">
-          <button class="wizard-step active" data-wizard-step="0" type="button" aria-current="step"><span>1</span><b data-i18n="wizardProfile">Perfil</b></button>
-          <button class="wizard-step" data-wizard-step="1" type="button"><span>2</span><b>W&amp;B</b></button>
-          <button class="wizard-step" data-wizard-step="2" type="button"><span>3</span><b data-i18n="wizardResult">Resultado</b></button>
-        </nav>
-        <div class="panel wizard-panel" data-wizard-panel="0">
-          <h2 data-i18n="guidedHow">Como você quer voar?</h2>
-          <p data-i18n="wizardProfileHint">Escolha um preset. O melhor nível será calculado automaticamente.</p>
-          <div class="mode-control" role="group" data-i18n-title="flightProfile" aria-label="Perfil de voo"><button data-mode="ECON" type="button">ECON</button><button class="active" data-mode="NORMAL" type="button">NORMAL</button><button data-mode="FAST" type="button">FAST</button></div>
-        </div>
-        <div class="panel wizard-panel" data-wizard-panel="1" hidden>
-          <h2 data-i18n="wizardWeightBalance">Pessoas e bagagem</h2>
-          <p data-i18n="wizardWeightBalanceHint">Preencha os valores ou sorteie uma distribuição válida de peso e CG.</p>
-          <div class="wizard-wb-grid">
-            <label><span data-i18n="pilot">Piloto</span><div><input data-wizard-wb-key="pilot" type="number" min="0" step="1" inputmode="decimal"><small data-wizard-wb-unit>kg</small></div></label>
-            <label><span data-i18n="copilot">Copiloto</span><div><input data-wizard-wb-key="copilot" type="number" min="0" step="1" inputmode="decimal"><small data-wizard-wb-unit>kg</small></div></label>
-            <label><span data-i18n="rearLeft">Traseiro E</span><div><input data-wizard-wb-key="rearLeft" type="number" min="0" step="1" inputmode="decimal"><small data-wizard-wb-unit>kg</small></div></label>
-            <label><span data-i18n="rearCenter">Traseiro C</span><div><input data-wizard-wb-key="rearCenter" type="number" min="0" step="1" inputmode="decimal"><small data-wizard-wb-unit>kg</small></div></label>
-            <label><span data-i18n="rearRight">Traseiro D</span><div><input data-wizard-wb-key="rearRight" type="number" min="0" step="1" inputmode="decimal"><small data-wizard-wb-unit>kg</small></div></label>
-            <label><span data-i18n="baggage">Bagagem</span><div><input data-wizard-wb-key="baggage" type="number" min="0" step="1" inputmode="decimal"><small data-wizard-wb-unit>kg</small></div></label>
-          </div>
-          <div class="wizard-wb-footer"><div><strong id="wizardWbStatus">—</strong><small id="wizardWbMeta">—</small></div><button class="text-button" id="wizardRandomizeWeightBalance" type="button" data-i18n="randomizeWeightBalance">Sortear passageiros e bagagem</button></div>
-        </div>
-        <div class="panel wizard-panel" data-wizard-panel="2" hidden>
-          <h2 data-i18n="wizardResultTitle">Resultado da missão</h2>
-          <p data-i18n="wizardResultHint">Confira o plano atual. A otimização só começa quando você solicitar.</p>
-          <div class="wizard-result-row"><div><span id="guidedLevelLabel" data-i18n="bestLevel">Melhor nível</span><strong id="guidedLevel">—</strong></div><div><span data-i18n="missionScore">Score da missão</span><strong id="guidedScore">—</strong></div><span id="guidedStatus" class="guided-status">—</span></div>
-          <div class="wizard-result-meta"><span id="wizardMode">NORMAL</span><span id="guidedSummary">—</span></div>
-          <ul class="wizard-reasons" id="wizardReasons"></ul>
-          <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
-          <button class="guided-details-button" id="openMissionDetails" type="button" aria-controls="missionDetails" aria-expanded="false" data-i18n="wizardOpenTools">Ver ferramentas completas</button>
-        </div>
-        <div class="wizard-navigation"><button class="text-button" id="wizardBack" type="button" data-i18n="wizardBack" hidden>Voltar</button><button class="primary-button" id="wizardNext" type="button" data-i18n="wizardNextWb">Continuar para W&amp;B</button></div>
-      </section>
-      <details class="mission-details" id="missionDetails">
-        <summary data-i18n="guidedTools">Níveis, controles e ferramentas da missão</summary>
       <section class="kpi-grid" aria-label="Performance summary">
-        <article class="kpi featured kpi-levels"><div class="kpi-level"><span data-i18n="bestLevel">Melhor nível</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="recommendedLevel">Recomendado</small></div><div class="kpi-level"><span data-i18n="selectedLevel">Selecionado</span><strong id="kpiSelectedAltitude"></strong><small id="kpiSelectedLevelMeta"></small></div></article>
+        <article class="kpi featured"><span data-i18n="bestLevel">Melhor nível</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="recommendedLevel">Recomendado</small></article>
         <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
         <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
         <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
@@ -132,6 +95,7 @@
 
         <aside class="control-stack">
           <article class="panel controls-panel">
+            <div class="mode-control"><button data-mode="ECON" type="button">ECON</button><button class="active" data-mode="NORMAL" type="button">NORMAL</button><button data-mode="FAST" type="button">FAST</button></div>
             <div class="power-control">
               <div class="power-heading">
                 <span data-i18n="power">Potência</span>
@@ -147,6 +111,12 @@
             <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
             <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
+            <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
+            <div class="mission-recovery" id="missionRecovery" role="status" aria-live="polite" hidden>
+              <p id="missionRecoveryReason"></p>
+              <button id="missionRecoveryAction" type="button" data-i18n="restoreViableMission">Usar última carga viável</button>
+              <small id="missionRecoveryWarning" data-i18n="restoreViableWarning">A carga anterior será reotimizada e substituirá ajustes de carga, combustível, preset e oxigênio. Confira os ocupantes e o W&amp;B.</small>
+            </div>
           </article>
           <article class="panel insight-panel mission-score-panel">
             <div class="mission-score-heading">
@@ -364,23 +334,11 @@
         <div class="section-heading"><h2 data-i18n="allLevels">Todos os níveis</h2><span id="selectionNote"></span></div>
         <div class="levels-list" id="levelCards"></div>
       </section>
-      </details>
       </div>
       <footer><span>Velocity XL Performance Planner</span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
     </main>
-    <dialog class="optimization-dialog" id="optimizationDialog" aria-labelledby="optimizationDialogTitle" aria-describedby="optimizationDialogMessage">
-      <div class="optimization-dialog-content">
-        <h2 id="optimizationDialogTitle"></h2>
-        <p id="optimizationDialogMessage"></p>
-        <ul class="optimization-dialog-changes" id="optimizationDialogChanges" hidden></ul>
-        <div class="optimization-dialog-actions">
-          <button class="primary-button" id="optimizationDialogApply" type="button"></button>
-          <button class="text-button" id="optimizationDialogReview" type="button" data-i18n="reviewAdjustments">Revisar ajustes</button>
-        </div>
-      </div>
-    </dialog>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261016-01"></script>
+    <script type="module" src="./js/app.js?v=20261015-01"></script>
   </body>
 </html>

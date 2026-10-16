@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261015-04";
+import { greatCircleNm } from "./engine.js?v=20261015-01";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;
@@ -43,77 +43,6 @@ function bulletinTexts(...values) {
 
 const bulletinText = (...values) => bulletinTexts(...values).join(" ");
 
-function advisoryValidityOverlapsFlight(text, departure, arrival) {
-  const match = String(text).match(/\bVALID\s+(\d{2})(\d{2})(\d{2})\s*\/\s*(\d{2})(\d{2})(\d{2})\b/i);
-  const departureMs = Date.parse(departure);
-  const arrivalMs = Date.parse(arrival);
-  if (!match || !Number.isFinite(departureMs) || !Number.isFinite(arrivalMs) || arrivalMs < departureMs) return true;
-  const [, startDay, startHour, startMinute, endDay, endHour, endMinute] = match.map(Number);
-  const reference = new Date(departureMs);
-  let hasValidWindow = false;
-  for (const monthOffset of [-1, 0, 1]) {
-    const month = reference.getUTCMonth() + monthOffset;
-    const start = new Date(Date.UTC(reference.getUTCFullYear(), month, startDay, startHour, startMinute));
-    if (start.getUTCDate() !== startDay) continue;
-    let end = new Date(Date.UTC(reference.getUTCFullYear(), month, endDay, endHour, endMinute));
-    if (end <= start) end = new Date(Date.UTC(reference.getUTCFullYear(), month + 1, endDay, endHour, endMinute));
-    if (end.getUTCDate() !== endDay) continue;
-    hasValidWindow = true;
-    if (start.getTime() <= arrivalMs && end.getTime() >= departureMs) return true;
-  }
-  return !hasValidWindow;
-}
-
-function advisoryPolygon(text) {
-  const coordinates = [...String(text).matchAll(/\b([NS])(\d{2})(\d{2})\s+([EW])(\d{3})(\d{2})\b/gi)].map((match) => ({
-    lat: (Number(match[2]) + Number(match[3]) / 60) * (match[1].toUpperCase() === "S" ? -1 : 1),
-    lon: (Number(match[5]) + Number(match[6]) / 60) * (match[4].toUpperCase() === "W" ? -1 : 1),
-  }));
-  return coordinates.length >= 3 ? coordinates : null;
-}
-
-function advisoryPolygonNearRoute(polygon, route) {
-  if (!polygon || route.length < 2) return true; // Missing geometry is not evidence that an advisory is clear.
-  const referenceLon = route[0].lon;
-  const referenceLat = route.reduce((sum, point) => sum + point.lat, 0) / route.length;
-  const longitudeScale = 60 * Math.cos(referenceLat * Math.PI / 180);
-  const project = ({ lat, lon }) => ({
-    x: (((lon - referenceLon + 540) % 360) - 180) * longitudeScale,
-    y: lat * 60,
-  });
-  const path = route.map(project);
-  const boundary = polygon.map(project);
-  const cross = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-  const pointInPolygon = (point) => boundary.reduce((inside, vertex, index) => {
-    const previous = boundary[(index + boundary.length - 1) % boundary.length];
-    return ((vertex.y > point.y) !== (previous.y > point.y))
-      && point.x < (previous.x - vertex.x) * (point.y - vertex.y) / (previous.y - vertex.y) + vertex.x ? !inside : inside;
-  }, false);
-  const pointToSegmentNm = (point, a, b) => {
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const fraction = dx * dx + dy * dy ? Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy))) : 0;
-    return Math.hypot(point.x - a.x - fraction * dx, point.y - a.y - fraction * dy);
-  };
-  const corridorNm = 20;
-  for (let index = 0; index < path.length - 1; index += 1) {
-    const a = path[index], b = path[index + 1];
-    if (pointInPolygon(a) || pointInPolygon(b)) return true;
-    for (let edge = 0; edge < boundary.length; edge += 1) {
-      const c = boundary[edge], d = boundary[(edge + 1) % boundary.length];
-      const abC = cross(a, b, c), abD = cross(a, b, d), cdA = cross(c, d, a), cdB = cross(c, d, b);
-      if (abC * abD <= 0 && cdA * cdB <= 0) return true;
-      if (pointToSegmentNm(c, a, b) <= corridorNm || pointToSegmentNm(d, a, b) <= corridorNm
-        || pointToSegmentNm(a, c, d) <= corridorNm || pointToSegmentNm(b, c, d) <= corridorNm) return true;
-    }
-  }
-  return false;
-}
-
-export function advisoryAppliesToFlight(text, route, departure, arrival) {
-  return advisoryValidityOverlapsFlight(text, departure, arrival)
-    && advisoryPolygonNearRoute(advisoryPolygon(text), route);
-}
-
 function parseWindLevels(fix) {
   const raw = fix.wind_data?.level || fix.wind_data || fix.wind;
   const levels = Array.isArray(raw) ? raw : raw && typeof raw === "object" && "altitude" in raw ? [raw] : arrayOf(raw);
@@ -157,7 +86,8 @@ export function parseSimBrief(data) {
   const plannedAltitudeFt = number(first(data.general?.initial_altitude, data.general?.cruise_altitude), 18000);
   const originWeatherText = weatherText(data.weather?.orig_metar, data.weather?.orig_taf, data.origin?.metar, data.origin?.taf, data.origin?.weather);
   const destinationWeatherText = weatherText(data.weather?.dest_metar, data.weather?.dest_taf, data.destination?.metar, data.destination?.taf, data.destination?.weather);
-  const rawEnrouteBulletins = bulletinTexts(data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.weather?.airmet, data.weather?.airmets, data.sigmets, data.airmets);
+  const enrouteBulletins = bulletinTexts(data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.weather?.airmet, data.weather?.airmets, data.sigmets, data.airmets);
+  const enrouteWeatherText = enrouteBulletins.join(" ");
   const rawFixes = arrayOf(data.navlog);
   let cumulativeNm = 0;
   const waypoints = rawFixes.map((fix, index) => {
@@ -191,12 +121,6 @@ export function parseSimBrief(data) {
     { ident: origin.icao, lat: origin.lat, lon: origin.lon, distanceNm: 0, windDir: 0, windSpd: 0, oatC: NaN, windLevels: [] },
     { ident: destination.icao, lat: destination.lat, lon: destination.lon, distanceNm: 0, windDir: 0, windSpd: 0, oatC: NaN, windLevels: [] },
   );
-
-  const route = [origin, ...waypoints, destination].filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
-  const departure = first(data.times?.sched_off, data.times?.est_off);
-  const arrival = first(data.times?.sched_on, data.times?.est_on);
-  const enrouteBulletins = rawEnrouteBulletins.filter((text) => advisoryAppliesToFlight(text, route, departure, arrival));
-  const enrouteWeatherText = enrouteBulletins.join(" ");
 
   const distanceNm = number(first(data.general?.route_distance, data.general?.air_distance, cumulativeNm), cumulativeNm);
   const rawGenerated = first(data.params?.time_generated, data.times?.sched_out);

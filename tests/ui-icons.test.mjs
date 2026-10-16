@@ -32,7 +32,7 @@ test("flight phases stay live in the icing card after Route and Profile tabs are
   assert.doesNotMatch(index,/data-view="(?:route|profile)"/);
   assert.doesNotMatch(index,/id="(?:routeMap|verticalProfile)"/);
   assert.match(index,/class="icing-summary" id="icingSummary"[\s\S]*?class="phase-footer"[\s\S]*?id="climbStats"[\s\S]*?id="cruiseStats"[\s\S]*?id="descentStats"/);
-  assert.match(app,/\$\("#phaseLevel"\)\.textContent=`\$\{t\(hasManualSelection\?"selectedLevel":"bestLevel"\)\} · FL\$\{selected\.fl\}`/);
+  assert.match(app,/\$\("#phaseLevel"\)\.textContent=`\$\{t\("selectedLevel"\)\} · FL\$\{selected\.fl\}`/);
   assert.match(app,/\$\("#climbStats"\)\.textContent=`\$\{Math\.round\(selected\.climb\.timeHr/);
   assert.match(app,/\$\("#cruiseStats"\)\.textContent=`\$\{Math\.round\(selected\.cruiseTimeHr/);
   assert.match(app,/\$\("#descentStats"\)\.textContent=`\$\{Math\.round\(selected\.descent\.timeHr/);
@@ -71,7 +71,7 @@ test("GLIDE focuses an OFP point and keeps the full route navigable on narrow sc
   assert.doesNotMatch(index,/id="glideChart"/);
   assert.match(app,/glide\.samples\.map\(\(sample,index\)=>/);
   assert.match(app,/state\.glideSampleIndex=Number\(button\.dataset\.glideIndex\)/);
-  assert.match(app,/state\.glideSampleIndex=null;\s*\$\("#missionDetails"\)\.open=false;\s*state\.oxygen\.altitudeFt/);
+  assert.match(app,/state\.glideSampleIndex=null;\s*state\.oxygen\.altitudeFt/);
   assert.match(css,/\.glide-route \{[^}]*overflow-x:auto/);
   assert.match(css,/\.glide-focus \{[^}]*grid-template-columns:minmax\(0,1\.2fr\)/);
   assert.match(css,/\.glide-focus \{ grid-template-columns:minmax\(0,1fr\); \}/);
