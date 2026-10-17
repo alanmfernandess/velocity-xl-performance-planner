@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261017-04";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261017-05";
 import { assessTerrain } from "./terrain.js?v=20261016-01";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -181,19 +181,22 @@ function icingTemperatureFactor(oatC) {
   return 0.35 - (Math.abs(oatC + 30) / 10) * 0.25;
 }
 
-function moistureFactor(evidence, altitudeFt = null, terminal = false) {
+function moistureFactor(evidence, altitudeFt = null, terminal = false, airportElevationFt = 0) {
   if (evidence.noIcing) return 0;
   if (evidence.explicitIcing || evidence.freezingPrecipitation) return 1;
   if (evidence.precipitation) {
     if (!terminal) return PERFORMANCE.icing.visibleMoistureFactor;
-    if (!Number.isFinite(altitudeFt) || altitudeFt <= 8000) return PERFORMANCE.icing.terminalCloudFactor;
+    if (!Number.isFinite(altitudeFt) || altitudeFt <= airportElevationFt + PERFORMANCE.icing.terminalPrecipitationTopAglFt) return PERFORMANCE.icing.terminalCloudFactor;
   }
   if (evidence.cloudLayers.length) {
     const insideEstimatedLayer = !terminal || !Number.isFinite(altitudeFt) || evidence.cloudLayers.some((layer) => (
-      altitudeFt >= layer.baseFt && altitudeFt <= layer.baseFt + (layer.coverage === "VV" ? 3000 : 6000)
+      altitudeFt >= airportElevationFt + layer.baseFt
+      && altitudeFt <= airportElevationFt + layer.baseFt + (layer.coverage === "VV" ? PERFORMANCE.icing.terminalVerticalVisibilityDepthFt : PERFORMANCE.icing.terminalCloudDepthFt)
     ));
     if (insideEstimatedLayer) return terminal ? PERFORMANCE.icing.terminalCloudFactor : PERFORMANCE.icing.visibleMoistureFactor;
+    if (terminal) return 0;
   }
+  if (terminal && evidence.precipitation) return 0;
   if (evidence.clear) return PERFORMANCE.icing.clearWeatherFactor;
   return PERFORMANCE.icing.unknownMoistureFactor;
 }
@@ -207,12 +210,28 @@ function metarTemperatureC(text = "") {
 export function calculateIcingRisk({ plan, result }) {
   const fixes = plan.waypoints?.filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) || [];
   const enrouteText = plan.meteorology?.enrouteText || "";
-  const globalEvidence = icingWeatherEvidence(enrouteText);
-  let maximumRisk = 0;
+  const advisories = (plan.meteorology?.enrouteAdvisories?.length
+    ? plan.meteorology.enrouteAdvisories
+    : enrouteText ? [{ text: enrouteText }] : []).map((advisory) => ({
+    evidence: icingWeatherEvidence(advisory.text),
+    legCoverage: advisory.legCoverage,
+  }));
+  const routeDistanceNm = Math.max(1, Number(fixes.at(-1)?.distanceNm) || Number(plan.distanceNm) || 1);
+  const planDistanceNm = Math.max(1, Number(plan.distanceNm) || routeDistanceNm);
+  const advisorySourcesAtLeg = (index) => advisories.map((advisory) => ({
+    evidence: advisory.evidence,
+    coverage: Array.isArray(advisory.legCoverage) ? Number(advisory.legCoverage[index]) || 0 : 1,
+  })).filter((source) => source.coverage > 0);
+  const legAtDistance = (distanceNm) => {
+    const targetNm = clamp(distanceNm / planDistanceNm, 0, 1) * routeDistanceNm;
+    const endIndex = fixes.findIndex((fix, index) => index > 0 && fix.distanceNm >= targetNm);
+    return endIndex < 0 ? Math.max(0, fixes.length - 2) : endIndex - 1;
+  };
+  let cruiseMaximumRisk = 0;
   let temperatureExposureMinutes = 0;
   let cruiseExposureMinutes = 0;
   let observedTemperatureSamples = 0;
-  let confirmedEvidenceSamples = globalEvidence.available ? 1 : 0;
+  let confirmedEvidenceSamples = 0;
   let estimatedEvidenceSamples = 0;
   let hardHazard = false;
   const segments = [];
@@ -225,16 +244,27 @@ export function calculateIcingRisk({ plan, result }) {
     const weather = weatherAtAltitude(from, result.altitudeFt);
     const hasTemperature = Number.isFinite(from.oatC) || (from.windLevels || []).some((level) => Number.isFinite(level.oatC));
     if (hasTemperature) observedTemperatureSamples += 1;
-    const evidence = evidenceAtAltitude(icingWeatherEvidence(`${enrouteText} ${from.weatherText || ""}`), result.altitudeFt);
-    if (evidence.available) confirmedEvidenceSamples += 1;
     const temperatureFactor = hasTemperature
       ? icingTemperatureFactor(weather.oatC)
-      : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0;
-    const risk = temperatureFactor * moistureFactor(evidence, result.altitudeFt, false);
-    if (evidence.available) maximumRisk = Math.max(maximumRisk, risk);
+      : 0;
+    let risk = 0;
+    let riskMinutes = 0;
+    let segmentHardHazard = false;
+    const sources = advisorySourcesAtLeg(index);
+    if (from.weatherText) sources.push({ evidence: icingWeatherEvidence(from.weatherText), coverage: 1 });
+    sources.forEach((source) => {
+      const evidence = evidenceAtAltitude(source.evidence, result.altitudeFt);
+      if (!evidence.available) return;
+      confirmedEvidenceSamples += 1;
+      const sourceRisk = (hasTemperature ? temperatureFactor : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0)
+        * moistureFactor(evidence, result.altitudeFt, false);
+      risk = Math.max(risk, sourceRisk);
+      riskMinutes = Math.max(riskMinutes, segmentMinutes * source.coverage * sourceRisk);
+      segmentHardHazard ||= evidence.explicitIcing || evidence.freezingPrecipitation;
+    });
+    cruiseMaximumRisk = Math.max(cruiseMaximumRisk, risk);
     if (temperatureFactor >= 0.3) temperatureExposureMinutes += segmentMinutes;
-    cruiseExposureMinutes += segmentMinutes * risk;
-    const segmentHardHazard = evidence.explicitIcing || evidence.freezingPrecipitation;
+    cruiseExposureMinutes += riskMinutes;
     hardHazard ||= segmentHardHazard;
     segments.push({
       from: from.ident,
@@ -247,49 +277,74 @@ export function calculateIcingRisk({ plan, result }) {
     });
   }
 
-  const transitionExposure = (fix, durationHr, text) => {
+  const transitionExposure = (fix, durationHr, text, airportElevationFt, distanceAtFraction) => {
     if (!fix || durationHr <= 0) return { minutes: 0, maximumRisk: 0, temperatureMinutes: 0, confirmedSamples: 0, estimatedSamples: 0 };
-    const rawEvidence = icingWeatherEvidence(`${fix.weatherText || ""} ${text || ""}`);
+    const terminalEvidence = icingWeatherEvidence(`${fix.weatherText || ""} ${text || ""}`);
     const hasTemperature = Number.isFinite(fix.oatC) || (fix.windLevels || []).some((level) => Number.isFinite(level.oatC));
+    const hasVerticalTemperatureProfile = (fix.windLevels || []).filter((level) => Number.isFinite(level.altitudeFt) && Number.isFinite(level.oatC)).length >= 2;
     const surfaceTemperatureC = metarTemperatureC(text);
     const cruiseTemperatureC = weatherAtAltitude(fix, result.altitudeFt).oatC;
     let weighted = 0;
     let transitionMaximumRisk = 0;
     let transitionTemperatureMinutes = 0;
-    const samples = 10;
+    let transitionConfirmed = false;
+    let transitionEstimated = false;
+    const altitudeSpanFt = Math.max(0, result.altitudeFt - airportElevationFt);
+    const samples = Math.max(10, Math.ceil(altitudeSpanFt / PERFORMANCE.icing.transitionSampleStepFt));
     for (let index = 1; index <= samples; index += 1) {
       const fraction = index / samples;
-      const altitudeFt = result.altitudeFt * fraction;
-      const evidence = evidenceAtAltitude(rawEvidence, altitudeFt);
-      const estimatedTemperatureC = Number.isFinite(surfaceTemperatureC) && Number.isFinite(cruiseTemperatureC)
+      const altitudeFt = airportElevationFt + altitudeSpanFt * fraction;
+      const estimatedTemperatureC = hasVerticalTemperatureProfile
+        ? weatherAtAltitude(fix, altitudeFt).oatC
+        : Number.isFinite(surfaceTemperatureC) && Number.isFinite(cruiseTemperatureC)
         ? surfaceTemperatureC + (cruiseTemperatureC - surfaceTemperatureC) * fraction
         : weatherAtAltitude(fix, altitudeFt).oatC;
-      const temperatureFactor = hasTemperature || Number.isFinite(surfaceTemperatureC)
-        ? icingTemperatureFactor(estimatedTemperatureC)
-        : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0;
-      hardHazard ||= evidence.explicitIcing || evidence.freezingPrecipitation;
-      const risk = temperatureFactor * moistureFactor(evidence, altitudeFt, true);
-      if (evidence.available) transitionMaximumRisk = Math.max(transitionMaximumRisk, risk);
+      const temperatureFactor = hasTemperature || Number.isFinite(surfaceTemperatureC) ? icingTemperatureFactor(estimatedTemperatureC) : 0;
+      let risk = 0;
+      const leg = legAtDistance(distanceAtFraction(fraction));
+      const sources = [{ evidence: terminalEvidence, coverage: 1, terminal: true },
+        ...advisorySourcesAtLeg(leg).map((source) => ({ ...source, terminal: false }))];
+      sources.forEach((source) => {
+        const evidence = evidenceAtAltitude(source.evidence, altitudeFt);
+        if (!evidence.available) return;
+        if (source.terminal) {
+          if (evidence.explicitIcing || evidence.freezingPrecipitation || evidence.noIcing) transitionConfirmed = true;
+          else transitionEstimated = true;
+        } else transitionConfirmed = true;
+        const sourceRisk = (hasTemperature || Number.isFinite(surfaceTemperatureC) ? temperatureFactor
+          : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0)
+          * moistureFactor(evidence, altitudeFt, source.terminal, source.terminal ? airportElevationFt : 0);
+        risk = Math.max(risk, sourceRisk * source.coverage);
+        hardHazard ||= evidence.explicitIcing || evidence.freezingPrecipitation;
+      });
+      transitionMaximumRisk = Math.max(transitionMaximumRisk, risk);
       if (temperatureFactor >= 0.3) transitionTemperatureMinutes += durationHr * 60 / samples;
-      weighted += evidence.available ? risk : 0;
+      weighted += risk;
     }
     return {
       minutes: durationHr * 60 * weighted / samples,
       maximumRisk: transitionMaximumRisk,
       temperatureMinutes: transitionTemperatureMinutes,
-      confirmedSamples: rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation ? 1 : 0,
-      estimatedSamples: rawEvidence.available && !(rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation) ? 1 : 0,
+      confirmedSamples: transitionConfirmed ? 1 : 0,
+      estimatedSamples: transitionEstimated ? 1 : 0,
     };
   };
-  const climbTransition = transitionExposure(fixes[0], result.climb.timeHr, `${enrouteText} ${plan.meteorology?.originText || ""}`);
-  const descentTransition = transitionExposure(fixes.at(-1), result.descent.timeHr, `${enrouteText} ${plan.meteorology?.destinationText || ""}`);
+  const climbTransition = transitionExposure(fixes[0], result.climb.timeHr, plan.meteorology?.originText || "", plan.origin?.elevationFt || 0,
+    (fraction) => (Number(result.climb.distanceNm) || 0) * fraction);
+  const descentTransition = transitionExposure(fixes.at(-1), result.descent.timeHr, plan.meteorology?.destinationText || "", plan.destination?.elevationFt || 0,
+    (fraction) => planDistanceNm - (Number(result.descent.distanceNm) || 0) * fraction);
   const transitionRiskMinutes = climbTransition.minutes + descentTransition.minutes;
-  maximumRisk = Math.max(maximumRisk, climbTransition.maximumRisk, descentTransition.maximumRisk);
   temperatureExposureMinutes += climbTransition.temperatureMinutes + descentTransition.temperatureMinutes;
   confirmedEvidenceSamples += climbTransition.confirmedSamples + descentTransition.confirmedSamples;
   estimatedEvidenceSamples += climbTransition.estimatedSamples + descentTransition.estimatedSamples;
   const exposureMinutes = cruiseExposureMinutes + transitionRiskMinutes;
-  const rawRiskScore = Math.round(maximumRisk * 100);
+  const cruiseDurationWeight = PERFORMANCE.icing.cruiseMinimumPeakWeight
+    + (1 - PERFORMANCE.icing.cruiseMinimumPeakWeight) * (1 - Math.exp(-cruiseExposureMinutes / PERFORMANCE.icing.cruiseExposureTimeScaleMin));
+  const rawRiskScore = Math.round(Math.max(
+    climbTransition.maximumRisk * 100,
+    descentTransition.maximumRisk * 100,
+    cruiseMaximumRisk * 100 * cruiseDurationWeight,
+  ));
   const status = hardHazard
     ? "avoid"
     : rawRiskScore >= PERFORMANCE.icing.cautionScore

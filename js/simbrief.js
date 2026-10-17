@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261017-04";
+import { greatCircleNm } from "./engine.js?v=20261017-05";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;
@@ -97,6 +97,41 @@ function advisoryApplies(advisory, route, flightStart, flightEnd) {
   )));
 }
 
+function advisoryLegCoverage(advisory, route, flightStart, flightEnd) {
+  const polygon = advisoryPolygon(bulletinText(advisory));
+  const validFrom = Date.parse(advisory?.start);
+  const validUntil = Date.parse(advisory?.end);
+  const lengths = route.slice(1).map((point, index) => greatCircleNm(route[index], point));
+  const totalLength = lengths.reduce((sum, length) => sum + length, 0) || 1;
+  let precedingLength = 0;
+  return lengths.map((length, index) => {
+    const from = route[index];
+    const to = route[index + 1];
+    const timed = Number.isFinite(flightStart) && Number.isFinite(flightEnd) && flightEnd > flightStart;
+    const samples = Math.max(24, Math.ceil(length / 5));
+    let overlapping = 0;
+    for (let sample = 0; sample < samples; sample += 1) {
+      const fraction = (sample + 0.5) / samples;
+      const point = { lat: from.lat + (to.lat - from.lat) * fraction, lon: from.lon + (to.lon - from.lon) * fraction };
+      if (polygon.length >= 3 && !pointInPolygon(point, polygon)) continue;
+      const sampleTime = timed ? flightStart + ((precedingLength + length * fraction) / totalLength) * (flightEnd - flightStart) : NaN;
+      if (Number.isFinite(sampleTime) && (Number.isFinite(validFrom) && sampleTime < validFrom
+        || Number.isFinite(validUntil) && sampleTime > validUntil)) continue;
+      overlapping += 1;
+    }
+    let coverage = overlapping / samples;
+    if (!overlapping && polygon.length >= 3
+      && polygon.some((corner, edge) => segmentsIntersect(from, to, corner, polygon[(edge + 1) % polygon.length]))) {
+      const legStart = timed ? flightStart + (precedingLength / totalLength) * (flightEnd - flightStart) : NaN;
+      const legEnd = timed ? flightStart + ((precedingLength + length) / totalLength) * (flightEnd - flightStart) : NaN;
+      if ((!Number.isFinite(validFrom) || !timed || validFrom <= legStart)
+        && (!Number.isFinite(validUntil) || !timed || validUntil >= legEnd)) coverage = 1 / samples;
+    }
+    precedingLength += length;
+    return coverage;
+  });
+}
+
 function parseWindLevels(fix) {
   const raw = fix.wind_data?.level || fix.wind_data || fix.wind;
   const levels = Array.isArray(raw) ? raw : raw && typeof raw === "object" && "altitude" in raw ? [raw] : arrayOf(raw);
@@ -130,12 +165,14 @@ export function parseSimBrief(data) {
     name: first(data.origin?.name, "Origem"),
     lat: number(first(data.origin?.pos_lat, data.origin?.latitude)),
     lon: number(first(data.origin?.pos_long, data.origin?.longitude)),
+    elevationFt: number(first(data.origin?.elevation, data.origin?.elevation_ft), 0),
   };
   const destination = {
     icao: first(data.destination?.icao_code, data.destination?.icao, "DEST"),
     name: first(data.destination?.name, "Destino"),
     lat: number(first(data.destination?.pos_lat, data.destination?.latitude)),
     lon: number(first(data.destination?.pos_long, data.destination?.longitude)),
+    elevationFt: number(first(data.destination?.elevation, data.destination?.elevation_ft), 0),
   };
   const plannedAltitudeFt = number(first(data.general?.initial_altitude, data.general?.cruise_altitude), 18000);
   const originWeatherText = weatherText(data.weather?.orig_metar, data.weather?.orig_taf, data.origin?.metar, data.origin?.taf, data.origin?.weather);
@@ -146,9 +183,21 @@ export function parseSimBrief(data) {
   if (route.length < 2) route.push(origin, destination);
   const flightStart = Date.parse(first(data.times?.sched_off, data.times?.est_off));
   const flightEnd = Date.parse(first(data.times?.sched_on, data.times?.est_on));
-  const sigmets = [data.weather?.sigmet, data.weather?.sigmets, data.sigmets].flatMap(advisoryItems)
-    .filter((advisory) => advisoryApplies(advisory, route, flightStart, flightEnd));
-  const enrouteBulletins = bulletinTexts(data.weather?.enroute, sigmets, data.weather?.airmet, data.weather?.airmets, data.airmets);
+  const advisoryMap = new Map();
+  [data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.sigmets,
+    data.weather?.airmet, data.weather?.airmets, data.airmets].flatMap(advisoryItems)
+    .filter((advisory) => advisoryApplies(advisory, route, flightStart, flightEnd))
+    .forEach((advisory) => {
+      const text = bulletinText(advisory);
+      if (!text) return;
+      const previous = advisoryMap.get(text);
+      if (!previous || (!previous.start && !previous.end && (advisory?.start || advisory?.end))) advisoryMap.set(text, advisory);
+    });
+  const enrouteAdvisories = [...advisoryMap.entries()].map(([text, advisory]) => ({
+    text,
+    legCoverage: advisoryLegCoverage(advisory, route, flightStart, flightEnd),
+  })).filter((advisory) => advisory.legCoverage.some((coverage) => coverage > 0));
+  const enrouteBulletins = enrouteAdvisories.map((advisory) => advisory.text);
   const enrouteWeatherText = enrouteBulletins.join("\n");
   let cumulativeNm = 0;
   const waypoints = rawFixes.map((fix, index) => {
@@ -212,6 +261,7 @@ export function parseSimBrief(data) {
       destinationText: destinationWeatherText,
       enrouteText: enrouteWeatherText,
       enrouteBulletins,
+      enrouteAdvisories,
     },
     waypoints,
   };

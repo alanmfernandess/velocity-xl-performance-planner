@@ -338,10 +338,11 @@ body :is(
 .level-detail > div { min-width:0; }
 .level-detail > div > span:first-child { display:block; margin-bottom:4px; color:var(--muted); font-size:var(--type-caption)!important; }
 .level-detail strong { display:block; overflow-wrap:anywhere; }
-.level-detail .ice-probability { display:inline-flex; align-items:center; gap:5px; max-width:100%; color:var(--green); white-space:nowrap; }
+.level-detail .ice-probability { display:inline-flex; align-items:center; flex-wrap:wrap; gap:5px; max-width:100%; color:var(--green); }
 .level-detail .ice-probability.ice-marginal { color:var(--orange); }
 .level-detail .ice-probability.ice-high { color:var(--red); }
 .level-detail .ice-probability span { display:inline; margin:0; color:inherit; }
+.level-detail .ice-probability small { color:var(--muted); font-size:var(--type-caption)!important; }
 .level-detail .level-warning,.level-item.unavailable .level-reason strong { color:var(--red); }
 .level-select { justify-self:end; grid-column:1/-1; min-height:34px; padding:7px 12px; border:1px solid var(--blue); border-radius:8px; background:#fff; color:var(--blue); }
 .level-select:hover { background:var(--blue-soft); }

@@ -39,6 +39,39 @@ test("a crossing SIGMET retains its FL070/120 band even after a long polygon", (
   assert.deepEqual(icingWeatherEvidence(plan.meteorology.enrouteText).icingBandsFt, [{ baseFt: 7000, topFt: 12000 }]);
 });
 
+test("SimBrief SIGMET affects only the intersected leg, time window and flight levels", () => {
+  const advisory = {
+    start: "2026-10-17T13:15:00Z", end: "2026-10-17T13:45:00Z",
+    text: "TEST SIGMET SEV ICE WI N0030 E00115 - N0030 E00145 - S0030 E00145 - S0030 E00115 FL140/180 STNR=",
+  };
+  const data = {
+    fetch: { status: "Success" }, general: { initial_altitude: "16000", route_distance: "180" },
+    times: { sched_off: "2026-10-17T12:00:00Z", sched_on: "2026-10-17T15:00:00Z" },
+    origin: { icao_code: "AAAA", pos_lat: 0, pos_long: 0, elevation: "500" },
+    destination: { icao_code: "BBBB", pos_lat: 0, pos_long: 3 },
+    sigmets: [advisory],
+    navlog: [0, 1, 2, 3].map((lon, index) => ({
+      ident: `W${index}`, pos_lat: 0, pos_long: lon,
+      wind_data: [{ altitude: "10000", oat: "-5" }, { altitude: "16000", oat: "-15" }, { altitude: "24000", oat: "-30" }],
+    })),
+  };
+  const plan = parseSimBrief(data);
+  assert.equal(plan.origin.elevationFt, 500);
+  assert.equal(plan.meteorology.enrouteAdvisories[0].legCoverage[0], 0);
+  assert.ok(plan.meteorology.enrouteAdvisories[0].legCoverage[1] > 0);
+  assert.equal(plan.meteorology.enrouteAdvisories[0].legCoverage[2], 0);
+  const atLevel = (altitudeFt) => calculateIcingRisk({ plan, result: {
+    altitudeFt, gsKt: 200, climb: { timeHr: 0.3, distanceNm: 10 }, descent: { timeHr: 0.3, distanceNm: 10 },
+  } });
+  assert.equal(atLevel(10000).riskScore, 0);
+  assert.equal(atLevel(16000).riskScore, 100);
+  assert.equal(atLevel(24000).riskScore, 0);
+  const later = parseSimBrief({ ...data, sigmets: [{ ...advisory, start: "2026-10-17T14:10:00Z", end: "2026-10-17T14:30:00Z" }] });
+  assert.equal(later.meteorology.enrouteAdvisories.length, 0);
+  const earlyOnSameLeg = parseSimBrief({ ...data, sigmets: [{ ...advisory, start: "2026-10-17T13:00:00Z", end: "2026-10-17T13:10:00Z" }] });
+  assert.equal(earlyOnSameLeg.meteorology.enrouteAdvisories.length, 0);
+});
+
 test("an expired structured SIGMET is excluded from the planned flight", () => {
   const plan = icingSigmetPlan({ route: [[-38.5, -70], [-39.5, -69], [-40, -68.5]], off: "2026-10-17T14:00:00Z" });
   assert.equal(plan.meteorology.enrouteBulletins.length, 0);

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateIcingRisk, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -119,6 +119,47 @@ test("missing OFP temperature data is not treated as an icing forecast", () => {
   assert.ok(analysis.results.every((result) => result.icing.status === "low"));
   assert.equal(analysis.icing.confidence, "limited");
   assert.equal(analysis.winners.overall.altitudeFt, analysis.winners.performance.altitudeFt);
+});
+
+test("different SimBrief OAT levels alone do not create different icing scores", () => {
+  const plan = { ...DEMO_PLAN, meteorology: { originText: "", destinationText: "", enrouteText: "" } };
+  const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
+  assert.ok(analysis.results.every((result) => result.icing.riskScore === 0));
+  assert.ok(analysis.results.every((result) => result.icing.confidence === "limited"));
+});
+
+test("reported enroute moisture weighs duration without masking the affected FL", () => {
+  const plan = {
+    distanceNm: 60,
+    waypoints: [
+      { ident: "A", lat: 0, lon: 0, distanceNm: 0, oatC: -7, windLevels: [] },
+      { ident: "B", lat: 0, lon: 1, distanceNm: 60, oatC: -7, windLevels: [] },
+    ],
+    meteorology: { enrouteText: "BKN030 -RA" },
+  };
+  const result = { altitudeFt: 14000, climb: { timeHr: 0, distanceNm: 0 }, descent: { timeHr: 0, distanceNm: 0 } };
+  const slow = calculateIcingRisk({ plan, result: { ...result, gsKt: 50 } });
+  const fast = calculateIcingRisk({ plan, result: { ...result, gsKt: 300 } });
+  assert.ok(slow.riskScore > fast.riskScore);
+  assert.ok(slow.exposureMinutes > fast.exposureMinutes);
+  assert.equal(slow.confidence, "weather");
+});
+
+test("terminal cloud bases use airport elevation before comparing with flight altitude", () => {
+  const plan = {
+    distanceNm: 40,
+    origin: { elevationFt: 5000 }, destination: { elevationFt: 5000 },
+    waypoints: [
+      { ident: "A", lat: 0, lon: 0, distanceNm: 0, oatC: -5, windLevels: [{ altitudeFt: 5000, oatC: -5 }, { altitudeFt: 10000, oatC: -10 }] },
+      { ident: "B", lat: 0, lon: 0.5, distanceNm: 40, oatC: -5, windLevels: [{ altitudeFt: 5000, oatC: -5 }, { altitudeFt: 10000, oatC: -10 }] },
+    ],
+    meteorology: { originText: "METAR AAAA 171200Z BKN020 M05/M10 Q1018", destinationText: "", enrouteText: "" },
+  };
+  const icing = calculateIcingRisk({ plan, result: {
+    altitudeFt: 6000, gsKt: 180, climb: { timeHr: 0.2, distanceNm: 10 }, descent: { timeHr: 0, distanceNm: 0 },
+  } });
+  assert.equal(icing.riskScore, 0);
+  assert.equal(icing.confidence, "estimated");
 });
 
 test("terminal cloud reports are limited to climb and descent instead of the cruise route", () => {
