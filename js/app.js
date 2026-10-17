@@ -389,9 +389,9 @@ function renderLevelCards(results,recommended,selected) {
     const detailId=`level-detail-${result.altitudeFt}`;
     const stateIcon=blocked?"triangle-alert":isRecommended?"star":["marginal","unknown"].includes(status)?"triangle-alert":"circle-check";
     return `<article class="level-item ${status} ${current?"selected":""} ${isRecommended?"recommended":""} ${expanded?"expanded":""}" data-level="${result.altitudeFt}">
-      <button class="level-expand" type="button" aria-expanded="${expanded}" aria-controls="${detailId}" aria-label="FL${result.fl} · ${escapeHtml(statusLabel)} · ${formatFuel(result.fuelRequiredGal,1)} · ETE ${formatTime(result.tripTimeHr)} · ${Math.round(result.gsKt)} kt GS">
+      <button class="level-expand" type="button" aria-expanded="${expanded}" aria-controls="${detailId}" aria-label="FL${result.fl} · ${escapeHtml(statusLabel)} · ${formatFuel(result.fuelRequiredGal,1)} · ETE ${formatTime(result.tripTimeHr)} · ${Math.round(result.tasKt)} kt TAS">
         <strong class="level-fl">FL${result.fl}</strong>
-        <span class="level-summary">${formatFuel(result.fuelRequiredGal,1)} <span aria-hidden="true">·</span> ${formatTime(result.tripTimeHr)} <span aria-hidden="true">·</span> ${Math.round(result.gsKt)} kt GS</span>
+        <span class="level-summary">${formatFuel(result.fuelRequiredGal,1)} <span aria-hidden="true">·</span> ${formatTime(result.tripTimeHr)} <span aria-hidden="true">·</span> ${Math.round(result.tasKt)} kt TAS</span>
         <span class="level-status">${iconMarkup(stateIcon,"level-state-icon")}${escapeHtml(statusLabel)}</span>
         ${iconMarkup("chevron-down","level-chevron")}
       </button>

@@ -18,7 +18,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Comparação de FL100 a FL250 nos modos ECON, NORMAL e FAST.
 - Potência automática por modo ou ajuste manual de MAP/RPM, refletida em TAS, fuel flow, tempo, combustível e alcance.
 - Indicador explícito de viabilidade usando combustível, peso, teto e espaço disponível para subida/cruzeiro/descida.
-- Lista progressiva de todos os níveis de cruzeiro: cada linha mostra combustível, ETE, GS e status; a expansão revela gelo, oxigênio e o motivo de restrição. Níveis inviáveis podem ser selecionados para inspeção, mas não são recomendados.
+- Lista progressiva de todos os níveis de cruzeiro: cada linha mostra combustível, ETE, TAS e status; a expansão revela gelo, oxigênio e o motivo de restrição. O ETE continua usando GS com o vento previsto. Níveis inviáveis podem ser selecionados para inspeção, mas não são recomendados.
 - TAS, GS, ISA deviation, componente de vento, climb/cruise/descent, combustível, endurance e alcance.
 - ETP e PNR calculados com velocidades de continuação e retorno corrigidas pelo vento.
 - Alternate & Diversion Advisor com distância direta, tempo, consumo, combustível estimado no pouso e viabilidade de reserva.
