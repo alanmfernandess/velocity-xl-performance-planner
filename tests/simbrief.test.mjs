@@ -1,7 +1,48 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseSimBrief } from "../js/simbrief.js";
-import { calculatePlan, calculateTurbulenceRisk } from "../js/engine.js";
+import { calculateIcingRisk, calculatePlan, calculateTurbulenceRisk, icingWeatherEvidence } from "../js/engine.js";
+
+const SCEL_SUMU_SIGMET = "SAEF SIGMET 2 VALID 170938/171338 SABE- SAEF EZEIZA FIR SEV ICE FCST AT 0938Z WI S3817 W07005 - S3809 W06819 - S3940 W06811 - S4005 W06900 - S4121 W07037 - S4138 W07042 - S4043 W07146 - S3817 W07005 FL070/120 STNR WKN=";
+
+function icingSigmetPlan({ route = [[-33.53, -70.79], [-34.18, -69.82], [-34.83, -56.03]], off = "2026-10-17T13:15:00Z" } = {}) {
+  return parseSimBrief({
+    fetch: { status: "Success" },
+    general: { initial_altitude: "21000", route_distance: "770" },
+    times: { sched_off: off, sched_on: "2026-10-17T17:02:00Z" },
+    origin: { icao_code: "SCEL", pos_lat: route[0][0], pos_long: route[0][1] },
+    destination: { icao_code: "SUMU", pos_lat: route.at(-1)[0], pos_long: route.at(-1)[1] },
+    weather: { dest_metar: "SUMU 171200Z 17013KT 9999 -RA BKN020 OVC030 11/07 Q1020" },
+    sigmets: [{ start: "2026-10-17T09:38:00Z", end: "2026-10-17T13:38:00Z", text: SCEL_SUMU_SIGMET }],
+    navlog: route.map(([lat, lon], index) => ({
+      ident: `W${index}`, pos_lat: lat, pos_long: lon, altitude_feet: "21000", oat: "-24",
+      wind_data: [{ altitude: "10000", wind_dir: "220", wind_spd: "15", oat: "-3" },
+        { altitude: "25000", wind_dir: "220", wind_spd: "30", oat: "-35" }],
+    })),
+  });
+}
+
+test("a SimBrief icing SIGMET outside the route does not mark FL250 as severe icing", () => {
+  const plan = icingSigmetPlan();
+  assert.equal(plan.meteorology.enrouteBulletins.length, 0);
+  const icing = calculateIcingRisk({ plan, result: {
+    altitudeFt: 25000, gsKt: 200, climb: { timeHr: 0.35 }, descent: { timeHr: 0.35 },
+  } });
+  assert.equal(icing.status, "watch");
+  assert.equal(icing.riskScore, 35);
+  assert.equal(icing.confidence, "estimated");
+});
+
+test("a crossing SIGMET retains its FL070/120 band even after a long polygon", () => {
+  const plan = icingSigmetPlan({ route: [[-38.5, -70], [-39.5, -69], [-40, -68.5]] });
+  assert.equal(plan.meteorology.enrouteBulletins.length, 1);
+  assert.deepEqual(icingWeatherEvidence(plan.meteorology.enrouteText).icingBandsFt, [{ baseFt: 7000, topFt: 12000 }]);
+});
+
+test("an expired structured SIGMET is excluded from the planned flight", () => {
+  const plan = icingSigmetPlan({ route: [[-38.5, -70], [-39.5, -69], [-40, -68.5]], off: "2026-10-17T14:00:00Z" });
+  assert.equal(plan.meteorology.enrouteBulletins.length, 0);
+});
 
 test("parses SimBrief JSON v2 arrays and strings", () => {
   const result = parseSimBrief({

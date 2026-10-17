@@ -173,7 +173,7 @@ body :is(
   background:var(--green);
 }
 
-/* Compact icing probability: icon, label, percentage. */
+/* Compact icing index: icon, label, score out of 100. */
 .ice-probability {
   display:grid;
   grid-template-columns:auto minmax(0,1fr) auto;

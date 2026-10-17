@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261016-04";
+import { greatCircleNm } from "./engine.js?v=20261017-01";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;
@@ -43,6 +43,60 @@ function bulletinTexts(...values) {
 
 const bulletinText = (...values) => bulletinTexts(...values).join(" ");
 
+function advisoryItems(value) {
+  if (Array.isArray(value)) return value.flatMap(advisoryItems);
+  return value == null ? [] : [value];
+}
+
+function advisoryPolygon(text) {
+  const area = String(text).match(/\bWI\s+([\s\S]*?)(?=\s+(?:FL\d{2,3}|TOP|STNR|MOV|WKN|INTSF)\b|$)/i)?.[1];
+  if (!area) return [];
+  return [...area.matchAll(/\b([NS])(\d{2})(\d{2})\s+([EW])(\d{3})(\d{2})\b/gi)].map((match) => ({
+    lat: (Number(match[2]) + Number(match[3]) / 60) * (match[1].toUpperCase() === "S" ? -1 : 1),
+    lon: (Number(match[5]) + Number(match[6]) / 60) * (match[4].toUpperCase() === "W" ? -1 : 1),
+  }));
+}
+
+function pointInPolygon(point, polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i];
+    const b = polygon[j];
+    if ((a.lat > point.lat) !== (b.lat > point.lat)
+      && point.lon < (b.lon - a.lon) * (point.lat - a.lat) / (b.lat - a.lat) + a.lon) inside = !inside;
+  }
+  return inside;
+}
+
+function segmentsIntersect(a, b, c, d) {
+  const cross = (p, q, r) => (q.lon - p.lon) * (r.lat - p.lat) - (q.lat - p.lat) * (r.lon - p.lon);
+  const abC = cross(a, b, c);
+  const abD = cross(a, b, d);
+  const cdA = cross(c, d, a);
+  const cdB = cross(c, d, b);
+  if ([abC, abD, cdA, cdB].every((value) => Math.abs(value) < 1e-10)) {
+    return Math.max(Math.min(a.lat, b.lat), Math.min(c.lat, d.lat)) <= Math.min(Math.max(a.lat, b.lat), Math.max(c.lat, d.lat))
+      && Math.max(Math.min(a.lon, b.lon), Math.min(c.lon, d.lon)) <= Math.min(Math.max(a.lon, b.lon), Math.max(c.lon, d.lon));
+  }
+  return abC * abD <= 0 && cdA * cdB <= 0;
+}
+
+function advisoryApplies(advisory, route, flightStart, flightEnd) {
+  const text = bulletinText(advisory);
+  const start = Date.parse(advisory?.start);
+  const end = Date.parse(advisory?.end);
+  if (Number.isFinite(flightStart) && Number.isFinite(flightEnd)) {
+    if (Number.isFinite(start) && flightEnd < start) return false;
+    if (Number.isFinite(end) && flightStart > end) return false;
+  }
+  const polygon = advisoryPolygon(text);
+  if (polygon.length < 3 || route.length < 2) return true;
+  if (route.some((point) => pointInPolygon(point, polygon))) return true;
+  return route.slice(1).some((point, index) => polygon.some((corner, edge) => (
+    segmentsIntersect(route[index], point, corner, polygon[(edge + 1) % polygon.length])
+  )));
+}
+
 function parseWindLevels(fix) {
   const raw = fix.wind_data?.level || fix.wind_data || fix.wind;
   const levels = Array.isArray(raw) ? raw : raw && typeof raw === "object" && "altitude" in raw ? [raw] : arrayOf(raw);
@@ -86,9 +140,16 @@ export function parseSimBrief(data) {
   const plannedAltitudeFt = number(first(data.general?.initial_altitude, data.general?.cruise_altitude), 18000);
   const originWeatherText = weatherText(data.weather?.orig_metar, data.weather?.orig_taf, data.origin?.metar, data.origin?.taf, data.origin?.weather);
   const destinationWeatherText = weatherText(data.weather?.dest_metar, data.weather?.dest_taf, data.destination?.metar, data.destination?.taf, data.destination?.weather);
-  const enrouteBulletins = bulletinTexts(data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.weather?.airmet, data.weather?.airmets, data.sigmets, data.airmets);
-  const enrouteWeatherText = enrouteBulletins.join(" ");
   const rawFixes = arrayOf(data.navlog);
+  const route = rawFixes.map((fix) => ({ lat: number(fix.pos_lat, NaN), lon: number(fix.pos_long, NaN) }))
+    .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+  if (route.length < 2) route.push(origin, destination);
+  const flightStart = Date.parse(first(data.times?.sched_off, data.times?.est_off));
+  const flightEnd = Date.parse(first(data.times?.sched_on, data.times?.est_on));
+  const sigmets = [data.weather?.sigmet, data.weather?.sigmets, data.sigmets].flatMap(advisoryItems)
+    .filter((advisory) => advisoryApplies(advisory, route, flightStart, flightEnd));
+  const enrouteBulletins = bulletinTexts(data.weather?.enroute, sigmets, data.weather?.airmet, data.weather?.airmets, data.airmets);
+  const enrouteWeatherText = enrouteBulletins.join("\n");
   let cumulativeNm = 0;
   const waypoints = rawFixes.map((fix, index) => {
     const windLevels = parseWindLevels(fix);

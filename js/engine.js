@@ -131,8 +131,8 @@ export function icingWeatherEvidence(text = "") {
   const explicitIcing = !noIcing && /\b(?:SEV(?:ERE)?|MOD(?:ERATE)?|LGT|LIGHT)?\s*(?:ICE|ICING)\b/.test(source);
   const icingBandsFt = [];
   const bandPatterns = [
-    /(?:ICE|ICING)[^.\n]{0,50}?\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})\b/g,
-    /\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})[^.\n]{0,50}?(?:ICE|ICING)\b/g,
+    /(?:ICE|ICING)[^\n]{0,400}?\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})\b/g,
+    /\bFL(\d{2,3})\s*(?:\/|-|TO)\s*(?:FL)?(\d{2,3})[^\n]{0,400}?(?:ICE|ICING)\b/g,
   ];
   bandPatterns.forEach((pattern) => {
     for (const match of source.matchAll(pattern)) {
@@ -185,7 +185,8 @@ function moistureFactor(evidence, altitudeFt = null, terminal = false) {
   if (evidence.noIcing) return 0;
   if (evidence.explicitIcing || evidence.freezingPrecipitation) return 1;
   if (evidence.precipitation) {
-    if (!terminal || !Number.isFinite(altitudeFt) || altitudeFt <= 8000) return PERFORMANCE.icing.visibleMoistureFactor;
+    if (!terminal) return PERFORMANCE.icing.visibleMoistureFactor;
+    if (!Number.isFinite(altitudeFt) || altitudeFt <= 8000) return PERFORMANCE.icing.terminalCloudFactor;
   }
   if (evidence.cloudLayers.length) {
     const insideEstimatedLayer = !terminal || !Number.isFinite(altitudeFt) || evidence.cloudLayers.some((layer) => (
@@ -276,8 +277,8 @@ export function calculateIcingRisk({ plan, result }) {
       minutes: durationHr * 60 * weighted / samples,
       maximumRisk: transitionMaximumRisk,
       temperatureMinutes: transitionTemperatureMinutes,
-      confirmedSamples: rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation || rawEvidence.precipitation ? 1 : 0,
-      estimatedSamples: rawEvidence.available && !(rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation || rawEvidence.precipitation) ? 1 : 0,
+      confirmedSamples: rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation ? 1 : 0,
+      estimatedSamples: rawEvidence.available && !(rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation) ? 1 : 0,
     };
   };
   const climbTransition = transitionExposure(fixes[0], result.climb.timeHr, `${enrouteText} ${plan.meteorology?.originText || ""}`);
