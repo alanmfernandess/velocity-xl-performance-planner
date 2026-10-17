@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261017-06";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261017-10";
 import { assessTerrain } from "./terrain.js?v=20261016-01";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -698,7 +698,7 @@ export function randomizeWeightBalance({ weightBalance = {}, fuelOnboardGal = 0,
 
 export function calculateOxygenPlan({ result, oxygen = {} }) {
   const cylinder = OXYGEN_CYLINDERS[oxygen.bottleModel] || OXYGEN_CYLINDERS["SK-12-24"];
-  const bottles = clamp(Math.round(Number(oxygen.bottles) || 0), 0, 6);
+  const bottles = clamp(Math.round(Number(oxygen.bottles) || 0), 0, PERFORMANCE.oxygen.maxBottles);
   const seats = Array.from({ length: AIRCRAFT.seats }, (_, index) => index === 0 || oxygen.seats?.[index] !== false);
   const occupiedCrew = seats.slice(0, AIRCRAFT.crewSeats).filter(Boolean).length;
   const occupiedPassengers = seats.slice(AIRCRAFT.crewSeats).filter(Boolean).length;
@@ -738,9 +738,20 @@ export function calculateOxygenPlan({ result, oxygen = {} }) {
   const installedLiters = bottles * cylinder.capacityLiters * PERFORMANCE.oxygen.usableCapacityFraction;
   const installedOutlets = bottles * cylinder.outlets;
   const capacityRatio = requiredLiters > 0 ? installedLiters / requiredLiters : Infinity;
-  const recommendedBottles = requiredLiters > 0
-    ? Math.max(Math.ceil(requiredLiters / (cylinder.capacityLiters * PERFORMANCE.oxygen.usableCapacityFraction)), Math.ceil(maximumUsers / cylinder.outlets))
-    : 0;
+  const bottlesForMargin = (model) => Math.max(
+    Math.ceil(requiredLiters * PERFORMANCE.oxygen.marginalCapacityRatio / (model.capacityLiters * PERFORMANCE.oxygen.usableCapacityFraction)),
+    Math.ceil(maximumUsers / model.outlets),
+  );
+  let recommendedCylinder = cylinder;
+  let recommendedBottles = requiredLiters > 0 ? bottlesForMargin(cylinder) : 0;
+  if (recommendedBottles > PERFORMANCE.oxygen.maxBottles) {
+    const alternatives = Object.values(OXYGEN_CYLINDERS)
+      .map((model) => ({ model, count: bottlesForMargin(model) }))
+      .filter(({ count }) => count <= PERFORMANCE.oxygen.maxBottles)
+      .sort((a, b) => a.count * a.model.fullWeightLb - b.count * b.model.fullWeightLb || a.count - b.count);
+    recommendedCylinder = alternatives[0]?.model || null;
+    recommendedBottles = alternatives[0]?.count ?? null;
+  }
   const capacityOkay = installedLiters >= requiredLiters;
   const outletsOkay = installedOutlets >= maximumUsers;
   const status = requiredLiters <= 0
@@ -772,7 +783,8 @@ export function calculateOxygenPlan({ result, oxygen = {} }) {
     bottleModel: cylinder.label,
     bottleWeightLb: oxygenSystemWeightLb({ ...oxygen, bottles }),
     recommendedBottles,
-    recommendedWeightLb: recommendedBottles * cylinder.fullWeightLb,
+    recommendedBottleModel: recommendedCylinder?.label ?? null,
+    recommendedWeightLb: recommendedCylinder ? recommendedBottles * recommendedCylinder.fullWeightLb : null,
     enduranceMinutes: cruiseFlow > 0 ? installedLiters / cruiseFlow : Infinity,
     penalty: status === "insufficient" ? 100 : status === "marginal" ? 12 : 0,
   };

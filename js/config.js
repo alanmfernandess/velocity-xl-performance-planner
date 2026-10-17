@@ -139,6 +139,7 @@ export const PERFORMANCE = {
   oxygen: {
     usableCapacityFraction: 0.9,
     reserveMinutes: 15,
+    maxBottles: 4,
     crewThresholdFt: 12500,
     crewImmediateFt: 14000,
     occupantsThresholdFt: 15000,

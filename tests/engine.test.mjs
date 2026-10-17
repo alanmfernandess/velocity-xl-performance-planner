@@ -535,6 +535,38 @@ test("oxygen planner applies international crew and passenger thresholds", () =>
   assert.ok(at160.recommendedBottles >= 2);
 });
 
+test("oxygen recommendation clears a low margin and its mission-score penalty", () => {
+  const oxygen = { ...FULL_OXYGEN, bottleModel: "SK-12-15" };
+  const options = { plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 };
+  const before = calculatePlan({ ...options, oxygen }).results.find((item) => item.fl === 250);
+  assert.equal(before.oxygen.status, "marginal");
+  assert.ok(before.missionScore.reasons.some((reason) => reason.code === "oxygen"));
+  assert.equal(before.oxygen.recommendedBottleModel, "SK-12-15");
+  assert.equal(before.oxygen.recommendedBottles, 3);
+  const after = calculatePlan({ ...options, oxygen: {
+    ...oxygen,
+    bottleModel: before.oxygen.recommendedBottleModel,
+    bottles: before.oxygen.recommendedBottles,
+  } }).results.find((item) => item.fl === 250);
+  assert.equal(after.oxygen.status, "compliant");
+  assert.ok(!after.missionScore.reasons.some((reason) => reason.code === "oxygen"));
+});
+
+test("oxygen recommendation switches models when four small bottles cannot clear the margin", () => {
+  const options = { plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 };
+  const result = calculatePlan({ ...options, oxygen: { ...FULL_OXYGEN, bottleModel: "SK-12-6", bottles: 4 } }).results.find((item) => item.fl === 220);
+  const oxygen = { ...FULL_OXYGEN, bottleModel: "SK-12-6", bottles: 4 };
+  const before = calculateOxygenPlan({ result, oxygen });
+  assert.equal(before.status, "marginal");
+  assert.notEqual(before.recommendedBottleModel, oxygen.bottleModel);
+  assert.ok(before.recommendedBottles <= PERFORMANCE.oxygen.maxBottles);
+  const after = calculatePlan({ ...options, oxygen: { ...oxygen, bottleModel: before.recommendedBottleModel, bottles: before.recommendedBottles } }).results.find((item) => item.fl === 220).oxygen;
+  assert.equal(after.status, "compliant");
+  const impossible = calculateOxygenPlan({ result: { ...result, cruiseTimeHr: 100 }, oxygen });
+  assert.equal(impossible.recommendedBottles, null);
+  assert.equal(impossible.recommendedBottleModel, null);
+});
+
 test("oxygen bottle weight is included in takeoff weight", () => {
   const oxygenWeightLb = oxygenSystemWeightLb(FULL_OXYGEN);
   const result = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, oxygenWeightLb, reserveMinutes: 45 });
