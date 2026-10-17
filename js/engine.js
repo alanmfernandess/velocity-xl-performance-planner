@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261017-03";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261016-01";
 import { assessTerrain } from "./terrain.js?v=20261016-01";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -207,16 +207,14 @@ function metarTemperatureC(text = "") {
 export function calculateIcingRisk({ plan, result }) {
   const fixes = plan.waypoints?.filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) || [];
   const enrouteText = plan.meteorology?.enrouteText || "";
+  const globalEvidence = icingWeatherEvidence(enrouteText);
   let maximumRisk = 0;
   let temperatureExposureMinutes = 0;
   let cruiseExposureMinutes = 0;
   let observedTemperatureSamples = 0;
-  let confirmedEvidenceSamples = 0;
+  let confirmedEvidenceSamples = globalEvidence.available ? 1 : 0;
   let estimatedEvidenceSamples = 0;
   let hardHazard = false;
-  let cruiseMaximumRisk = 0;
-  let cruiseEvidenceSamples = 0;
-  let cruiseHardHazard = false;
   const segments = [];
 
   for (let index = 0; index < fixes.length - 1; index += 1) {
@@ -233,59 +231,45 @@ export function calculateIcingRisk({ plan, result }) {
       ? icingTemperatureFactor(weather.oatC)
       : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0;
     const risk = temperatureFactor * moistureFactor(evidence, result.altitudeFt, false);
-    if (evidence.available) {
-      maximumRisk = Math.max(maximumRisk, risk);
-      cruiseMaximumRisk = Math.max(cruiseMaximumRisk, risk);
-      cruiseEvidenceSamples += 1;
-    }
+    if (evidence.available) maximumRisk = Math.max(maximumRisk, risk);
     if (temperatureFactor >= 0.3) temperatureExposureMinutes += segmentMinutes;
-    cruiseExposureMinutes += evidence.available ? segmentMinutes * risk : 0;
+    cruiseExposureMinutes += segmentMinutes * risk;
     const segmentHardHazard = evidence.explicitIcing || evidence.freezingPrecipitation;
     hardHazard ||= segmentHardHazard;
-    cruiseHardHazard ||= segmentHardHazard;
     segments.push({
       from: from.ident,
       to: to.ident,
       startNm: Number(from.distanceNm) || 0,
       endNm: Number(to.distanceNm) || Math.min(plan.distanceNm, (Number(from.distanceNm) || 0) + segmentNm),
       oatC: weather.oatC,
-      riskScore: evidence.available ? Math.round(risk * 100) : null,
-      status: !evidence.available ? "unknown" : segmentHardHazard ? "avoid" : risk * 100 >= PERFORMANCE.icing.cautionScore ? "caution" : risk * 100 >= PERFORMANCE.icing.watchScore ? "watch" : "low",
+      riskScore: Math.round(risk * 100),
+      status: segmentHardHazard ? "avoid" : risk * 100 >= PERFORMANCE.icing.cautionScore ? "caution" : risk * 100 >= PERFORMANCE.icing.watchScore ? "watch" : "low",
     });
   }
 
   const transitionExposure = (fix, durationHr, text) => {
-    if (!fix || durationHr <= 0) return { minutes: 0, maximumRisk: 0, temperatureMinutes: 0, confirmedSamples: 0, estimatedSamples: 0, evidenceSamples: 0, hardHazard: false };
+    if (!fix || durationHr <= 0) return { minutes: 0, maximumRisk: 0, temperatureMinutes: 0, confirmedSamples: 0, estimatedSamples: 0 };
     const rawEvidence = icingWeatherEvidence(`${fix.weatherText || ""} ${text || ""}`);
     const hasTemperature = Number.isFinite(fix.oatC) || (fix.windLevels || []).some((level) => Number.isFinite(level.oatC));
-    const hasVerticalTemperatureProfile = (fix.windLevels || []).filter((level) => Number.isFinite(level.altitudeFt) && Number.isFinite(level.oatC)).length >= 2;
     const surfaceTemperatureC = metarTemperatureC(text);
     const cruiseTemperatureC = weatherAtAltitude(fix, result.altitudeFt).oatC;
     let weighted = 0;
     let transitionMaximumRisk = 0;
     let transitionTemperatureMinutes = 0;
-    let transitionEvidenceSamples = 0;
-    let transitionHardHazard = false;
-    const samples = Math.max(10, Math.ceil(result.altitudeFt / PERFORMANCE.icing.transitionSampleStepFt));
+    const samples = 10;
     for (let index = 1; index <= samples; index += 1) {
       const fraction = index / samples;
       const altitudeFt = result.altitudeFt * fraction;
       const evidence = evidenceAtAltitude(rawEvidence, altitudeFt);
-      const estimatedTemperatureC = hasVerticalTemperatureProfile
-        ? weatherAtAltitude(fix, altitudeFt).oatC
-        : Number.isFinite(surfaceTemperatureC) && Number.isFinite(cruiseTemperatureC)
+      const estimatedTemperatureC = Number.isFinite(surfaceTemperatureC) && Number.isFinite(cruiseTemperatureC)
         ? surfaceTemperatureC + (cruiseTemperatureC - surfaceTemperatureC) * fraction
         : weatherAtAltitude(fix, altitudeFt).oatC;
       const temperatureFactor = hasTemperature || Number.isFinite(surfaceTemperatureC)
         ? icingTemperatureFactor(estimatedTemperatureC)
         : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0;
-      transitionHardHazard ||= evidence.explicitIcing || evidence.freezingPrecipitation;
-      hardHazard ||= transitionHardHazard;
+      hardHazard ||= evidence.explicitIcing || evidence.freezingPrecipitation;
       const risk = temperatureFactor * moistureFactor(evidence, altitudeFt, true);
-      if (evidence.available) {
-        transitionMaximumRisk = Math.max(transitionMaximumRisk, risk);
-        transitionEvidenceSamples += 1;
-      }
+      if (evidence.available) transitionMaximumRisk = Math.max(transitionMaximumRisk, risk);
       if (temperatureFactor >= 0.3) transitionTemperatureMinutes += durationHr * 60 / samples;
       weighted += evidence.available ? risk : 0;
     }
@@ -293,10 +277,8 @@ export function calculateIcingRisk({ plan, result }) {
       minutes: durationHr * 60 * weighted / samples,
       maximumRisk: transitionMaximumRisk,
       temperatureMinutes: transitionTemperatureMinutes,
-      evidenceSamples: transitionEvidenceSamples,
-      hardHazard: transitionHardHazard,
-      confirmedSamples: rawEvidence.noIcing || transitionHardHazard ? 1 : 0,
-      estimatedSamples: transitionEvidenceSamples > 0 && !(rawEvidence.noIcing || transitionHardHazard) ? 1 : 0,
+      confirmedSamples: rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation ? 1 : 0,
+      estimatedSamples: rawEvidence.available && !(rawEvidence.noIcing || rawEvidence.explicitIcing || rawEvidence.freezingPrecipitation) ? 1 : 0,
     };
   };
   const climbTransition = transitionExposure(fixes[0], result.climb.timeHr, `${enrouteText} ${plan.meteorology?.originText || ""}`);
@@ -308,15 +290,6 @@ export function calculateIcingRisk({ plan, result }) {
   estimatedEvidenceSamples += climbTransition.estimatedSamples + descentTransition.estimatedSamples;
   const exposureMinutes = cruiseExposureMinutes + transitionRiskMinutes;
   const rawRiskScore = Math.round(maximumRisk * 100);
-  const phaseSummary = (maximum, evidenceSamples, phaseHardHazard, confidence) => {
-    if (!evidenceSamples) return { status: "unknown", riskScore: null, confidence: "limited" };
-    const score = phaseHardHazard ? 100 : Math.round(maximum * 100);
-    return {
-      status: phaseHardHazard ? "avoid" : score >= PERFORMANCE.icing.cautionScore ? "caution" : score >= PERFORMANCE.icing.watchScore ? "watch" : "low",
-      riskScore: score,
-      confidence,
-    };
-  };
   const status = hardHazard
     ? "avoid"
     : rawRiskScore >= PERFORMANCE.icing.cautionScore
@@ -340,11 +313,6 @@ export function calculateIcingRisk({ plan, result }) {
     transitionRiskMinutes,
     confidence: confirmedEvidenceSamples > 0 ? "weather" : estimatedEvidenceSamples > 0 ? "estimated" : "limited",
     temperatureCoverage: fixes.length > 1 ? observedTemperatureSamples / (fixes.length - 1) : 0,
-    phases: {
-      cruise: phaseSummary(cruiseMaximumRisk, cruiseEvidenceSamples, cruiseHardHazard, "weather"),
-      climb: phaseSummary(climbTransition.maximumRisk, climbTransition.evidenceSamples, climbTransition.hardHazard, climbTransition.confirmedSamples ? "weather" : "estimated"),
-      descent: phaseSummary(descentTransition.maximumRisk, descentTransition.evidenceSamples, descentTransition.hardHazard, descentTransition.confirmedSamples ? "weather" : "estimated"),
-    },
     segments,
   };
 }

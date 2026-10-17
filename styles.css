@@ -338,16 +338,10 @@ body :is(
 .level-detail > div { min-width:0; }
 .level-detail > div > span:first-child { display:block; margin-bottom:4px; color:var(--muted); font-size:var(--type-caption)!important; }
 .level-detail strong { display:block; overflow-wrap:anywhere; }
-.level-icing-phases { grid-column:1/-1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding-bottom:12px; border-bottom:1px solid var(--line); }
-.level-icing-phases > div { min-width:0; }
-.level-icing-phases > div > span:first-child { display:block; margin-bottom:5px; color:var(--muted); font-size:var(--type-caption)!important; }
 .level-detail .ice-probability { display:inline-flex; align-items:center; gap:5px; max-width:100%; color:var(--green); white-space:nowrap; }
 .level-detail .ice-probability.ice-marginal { color:var(--orange); }
 .level-detail .ice-probability.ice-high { color:var(--red); }
-.level-detail .ice-probability.ice-unknown { color:var(--muted); }
-.level-icing-phases .ice-probability { flex-wrap:wrap; white-space:normal; }
-.level-icing-phases .ice-probability strong { font-size:var(--type-caption)!important; }
-.level-icing-phases .ice-probability small { color:var(--muted); font-size:var(--type-caption)!important; }
+.level-detail .ice-probability span { display:inline; margin:0; color:inherit; }
 .level-detail .level-warning,.level-item.unavailable .level-reason strong { color:var(--red); }
 .level-select { justify-self:end; grid-column:1/-1; min-height:34px; padding:7px 12px; border:1px solid var(--blue); border-radius:8px; background:#fff; color:var(--blue); }
 .level-select:hover { background:var(--blue-soft); }
@@ -358,7 +352,6 @@ body :is(
   .level-status { grid-column:2; grid-row:1; }
   .level-chevron { grid-column:3; grid-row:1; }
   .level-summary { grid-column:1/-1; grid-row:2; }
-  .level-icing-phases { grid-template-columns:minmax(0,1fr); gap:10px; }
 }
 @media (max-width:430px) {
   .app-toolbar { flex-wrap:wrap; justify-content:flex-start; }

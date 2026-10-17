@@ -121,7 +121,6 @@ export const PERFORMANCE = {
   icing: {
     warmBoundaryC: 5,
     coldBoundaryC: -40,
-    transitionSampleStepFt: 500,
     cautionScore: 45,
     watchScore: 12,
     unknownMoistureFactor: 0.25,

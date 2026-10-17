@@ -31,8 +31,6 @@ test("a SimBrief icing SIGMET outside the route does not mark FL250 as severe ic
   assert.equal(icing.status, "watch");
   assert.equal(icing.riskScore, 35);
   assert.equal(icing.confidence, "estimated");
-  assert.deepEqual(icing.phases.cruise, { status: "unknown", riskScore: null, confidence: "limited" });
-  assert.deepEqual(icing.phases.descent, { status: "watch", riskScore: 35, confidence: "estimated" });
 });
 
 test("a crossing SIGMET retains its FL070/120 band even after a long polygon", () => {

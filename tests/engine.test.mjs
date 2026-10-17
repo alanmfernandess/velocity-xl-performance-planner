@@ -101,7 +101,6 @@ test("explicit enroute icing leaves no acceptable cruise profile", () => {
   assert.equal(analysis.icing.hasAcceptableProfile, false);
   assert.equal(analysis.icing.acceptableCount, 0);
   assert.ok(analysis.results.every((result) => result.icing.status === "avoid"));
-  assert.ok(analysis.results.every((result) => result.icing.phases.cruise.status === "avoid"));
 });
 
 test("an OFP icing altitude band blocks the band and levels that require crossing it", () => {
@@ -111,9 +110,6 @@ test("an OFP icing altitude band blocks the band and levels that require crossin
   assert.equal(analysis.results.find((result) => result.fl === 100).icing.status, "low");
   assert.equal(analysis.results.find((result) => result.fl === 140).icing.status, "avoid");
   assert.equal(analysis.results.find((result) => result.fl === 240).icing.status, "avoid");
-  assert.equal(analysis.results.find((result) => result.fl === 100).icing.phases.cruise.status, "unknown");
-  assert.equal(analysis.results.find((result) => result.fl === 140).icing.phases.cruise.status, "avoid");
-  assert.equal(analysis.results.find((result) => result.fl === 240).icing.phases.cruise.status, "unknown");
 });
 
 test("missing OFP temperature data is not treated as an icing forecast", () => {
@@ -121,8 +117,6 @@ test("missing OFP temperature data is not treated as an icing forecast", () => {
   const plan = { ...DEMO_PLAN, waypoints, meteorology: { originText: "", destinationText: "", enrouteText: "" } };
   const analysis = calculatePlan({ plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 });
   assert.ok(analysis.results.every((result) => result.icing.status === "low"));
-  assert.ok(analysis.results.every((result) => result.icing.phases.cruise.riskScore === null));
-  assert.ok(analysis.results.every((result) => result.icing.phases.cruise.status === "unknown"));
   assert.equal(analysis.icing.confidence, "limited");
   assert.equal(analysis.winners.overall.altitudeFt, analysis.winners.performance.altitudeFt);
 });
