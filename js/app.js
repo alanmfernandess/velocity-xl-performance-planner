@@ -425,18 +425,57 @@ function renderIcingSummary(analysis,selected) {
   $("#icingSource").textContent=`SIMBRIEF OFP · ${source} · ${t("tempWindow")} ${number(icing.temperatureExposureMinutes,0)} min`;
 }
 
+// Monotone interpolation keeps the visual terrain curve between its sampled elevations.
+function terrainCurvePath(points) {
+  if(!points.length)return "";
+  if(points.length===1)return `M${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  const slopes=points.slice(1).map((point,index)=>(point.y-points[index].y)/(point.x-points[index].x||1));
+  const tangents=points.map((point,index)=>{
+    if(index===0)return slopes[0];
+    if(index===points.length-1)return slopes.at(-1);
+    const left=slopes[index-1],right=slopes[index];
+    return left*right<=0?0:2*left*right/(left+right);
+  });
+  let path=`M${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for(let index=0;index<points.length-1;index++){
+    const a=points[index],b=points[index+1],third=(b.x-a.x)/3,low=Math.min(a.y,b.y),high=Math.max(a.y,b.y);
+    const controlA=Math.max(low,Math.min(high,a.y+tangents[index]*third));
+    const controlB=Math.max(low,Math.min(high,b.y-tangents[index+1]*third));
+    path+=` C${(a.x+third).toFixed(1)} ${controlA.toFixed(1)} ${(b.x-third).toFixed(1)} ${controlB.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
+  }
+  return path;
+}
+
+// Round only the visual ribbon. Its transitions stay at or above the exact MORA on either leg.
+function terrainSafetyBandPath(run,x,y) {
+  const first=run[0],last=run.at(-1);
+  let path=`M${x(first.leg.startNm).toFixed(1)} ${y(first.feet).toFixed(1)}`;
+  for(let index=0;index<run.length-1;index++){
+    const current=run[index],next=run[index+1],boundary=x(current.leg.endNm),from=y(current.feet),to=y(next.feet);
+    if(to<from){
+      const width=Math.min(30,(boundary-x(current.leg.startNm))*.35),start=boundary-width;
+      path+=` H${start.toFixed(1)} C${(start+width*.45).toFixed(1)} ${from.toFixed(1)} ${(boundary-width*.45).toFixed(1)} ${to.toFixed(1)} ${boundary.toFixed(1)} ${to.toFixed(1)}`;
+    } else if(to>from){
+      const width=Math.min(30,(x(next.leg.endNm)-boundary)*.35),end=boundary+width;
+      path+=` H${boundary.toFixed(1)} C${(boundary+width*.45).toFixed(1)} ${from.toFixed(1)} ${(end-width*.45).toFixed(1)} ${to.toFixed(1)} ${end.toFixed(1)} ${to.toFixed(1)}`;
+    } else path+=` H${boundary.toFixed(1)}`;
+  }
+  return `${path} H${x(last.leg.endNm).toFixed(1)}`;
+}
+
 function renderTerrainProfile(plan,result) {
   const pt=state.language==="pt-BR",terrain=result.terrain,legs=routeTerrainLegs(plan),totalNm=Math.max(1,legs.at(-1)?.endNm||plan.distanceNm||1);
   const statusKey=terrain.status==="unknown"?"terrainUnknown":terrain.status==="unavailable"?"notViable":terrain.status==="marginal"?"marginalStatus":"viable";
   const badge=$("#terrainStatus");badge.textContent=t(statusKey);badge.className=`terrain-badge ${terrain.status}`;
   $("#terrainMargin").textContent=Number.isFinite(terrain.marginFt)?signedNumber(terrain.marginFt,0," ft"):"—";
   $("#terrainEyebrow").textContent=pt?"TERRENO · OFP":"TERRAIN · OFP";
-  $("#terrainTitle").textContent=pt?"Perfil de elevação":"Elevation profile";
-  $("#terrainIntro").textContent=pt?"MORA por trecho e relevo visual ao longo da rota.":"Leg-by-leg MORA and visual terrain along the route.";
-  $("#terrainLegendFlight").textContent=pt?"Altitude planejada":"Planned altitude";
+  $("#terrainTitle").textContent=pt?"Faixa de segurança":"Safety band";
+  $("#terrainIntro").textContent=`${plan.origin.icao} → ${plan.destination.icao} · FL${result.fl} · ${number(totalNm)} NM`;
+  $("#terrainLegendFlight").textContent=pt?"Perfil do voo":"Flight profile";
   $("#terrainLegendMora").textContent="MORA SimBrief";
   $("#terrainLegendElevation").textContent=pt?"Relevo amostrado":"Sampled terrain";
   $("#terrainLegendCritical").textContent=pt?"Trecho crítico":"Critical leg";
+  $("#terrainNote").textContent=pt?"As curvas são visuais; MORA e score usam os valores exatos de cada trecho.":"Curves are visual; MORA and score use each leg's exact values.";
   $("#terrainCriticalLabel").textContent=pt?"Trecho crítico":"Critical leg";
   $("#terrainCoverageLabel").textContent=pt?"Cobertura da MORA":"MORA coverage";
   $("#terrainSelectedLabel").textContent=pt?"Nível selecionado":"Selected level";
@@ -453,12 +492,25 @@ function renderTerrainProfile(plan,result) {
   const upper=Math.max(5000,highest*1.14),x=(distance)=>Math.max(0,Math.min(800,distance/totalNm*800)),y=(feet)=>200-Math.max(0,feet)/upper*184;
   const grid=[0.25,0.5,0.75].map((fraction)=>`<path class="terrain-grid" d="M0 ${y(upper*fraction).toFixed(1)} H800"/>`).join("");
   const critical=terrain.critical?`<rect class="terrain-critical-zone" x="${x(terrain.critical.startNm).toFixed(1)}" y="0" width="${Math.max(0,x(terrain.critical.endNm)-x(terrain.critical.startNm)).toFixed(1)}" height="220"/>`:"";
-  const ground=elevation.length?`<path class="terrain-ground-back" d="M0 220 ${elevation.map((point)=>`L${x(point.distanceNm).toFixed(1)} ${y(point.elevationFt*.82).toFixed(1)}`).join(" ")} L800 220 Z"/><path class="terrain-ground" d="M0 220 ${elevation.map((point)=>`L${x(point.distanceNm).toFixed(1)} ${y(point.elevationFt).toFixed(1)}`).join(" ")} L800 220 Z"/>`:"";
-  const mora=legs.map((leg)=>{const minimum=terrainMinimumForLeg(leg,state.manualTerrainMora);return Number.isFinite(minimum.feet)?`<path class="terrain-mora" d="M${x(leg.startNm).toFixed(1)} ${y(minimum.feet).toFixed(1)} H${x(leg.endNm).toFixed(1)}"/>`:"";}).join("");
+  const terrainPoints=elevation.filter((point)=>Number.isFinite(point.distanceNm)&&Number.isFinite(point.elevationFt)).map((point)=>({x:x(point.distanceNm),y:y(point.elevationFt)}));
+  const backPoints=elevation.filter((point)=>Number.isFinite(point.distanceNm)&&Number.isFinite(point.elevationFt)).map((point)=>({x:x(point.distanceNm),y:y(point.elevationFt*.82)}));
+  const ground=terrainPoints.length?`<path class="terrain-ground-back" d="${terrainCurvePath(backPoints)} L800 220 H0 Z"/><path class="terrain-ground" d="${terrainCurvePath(terrainPoints)} L800 220 H0 Z"/>`:"";
+  const minima=legs.map((leg)=>({leg,...terrainMinimumForLeg(leg,state.manualTerrainMora)}));
+  const moraRuns=[];
+  for(const item of minima){
+    if(!Number.isFinite(item.feet))continue;
+    if(!moraRuns.length||moraRuns.at(-1).at(-1).leg.index!==item.leg.index-1)moraRuns.push([]);
+    moraRuns.at(-1).push(item);
+  }
+  const moraBand=moraRuns.map((run)=>`<path class="terrain-mora-band" d="${terrainSafetyBandPath(run,x,y)}"/>`).join("");
+  const mora=minima.map(({leg,feet,source})=>Number.isFinite(feet)?`<path class="terrain-mora" d="M${x(leg.startNm).toFixed(1)} ${y(feet).toFixed(1)} H${x(leg.endNm).toFixed(1)}"><title>${escapeHtml(`${leg.from.ident||"—"} → ${leg.to.ident||"—"} · ${Math.round(feet)} ft · ${source}`)}</title></path>`:`<path class="terrain-mora-missing" d="M${x(leg.startNm).toFixed(1)} 200 H${x(leg.endNm).toFixed(1)}"/>`).join("");
   const startElevation=elevation[0]?.elevationFt??0,endElevation=elevation.at(-1)?.elevationFt??0;
-  const flight=`<path class="terrain-flight" d="M0 ${y(startElevation).toFixed(1)} L${x(terrain.tocNm).toFixed(1)} ${y(result.altitudeFt).toFixed(1)} H${x(terrain.todNm).toFixed(1)} L800 ${y(endElevation).toFixed(1)}"/>`;
+  const toc=x(terrain.tocNm),tod=x(terrain.todNm),cruiseY=y(result.altitudeFt),startY=y(startElevation),endY=y(endElevation);
+  const flight=`<path class="terrain-flight" d="M0 ${startY.toFixed(1)} C${(toc*.4).toFixed(1)} ${startY.toFixed(1)} ${(toc*.7).toFixed(1)} ${cruiseY.toFixed(1)} ${toc.toFixed(1)} ${cruiseY.toFixed(1)} H${tod.toFixed(1)} C${(tod+(800-tod)*.3).toFixed(1)} ${cruiseY.toFixed(1)} ${(tod+(800-tod)*.65).toFixed(1)} ${endY.toFixed(1)} 800 ${endY.toFixed(1)}"/>`;
   const markers=`<path class="terrain-toc" d="M${x(terrain.tocNm).toFixed(1)} 0 V220"/><path class="terrain-tod" d="M${x(terrain.todNm).toFixed(1)} 0 V220"/>`;
-  $("#terrainProfile").innerHTML=`<svg viewBox="0 0 800 220" preserveAspectRatio="none" aria-hidden="true">${grid}${critical}${ground}${mora}${flight}${markers}</svg>`;
+  const criticalNm=terrain.critical?(Math.max(terrain.critical.startNm,terrain.tocNm)+Math.min(terrain.critical.endNm,terrain.todNm))/2:NaN;
+  const criticalPoint=terrain.critical?`<path class="terrain-critical-marker" d="M${x(criticalNm).toFixed(1)} ${cruiseY.toFixed(1)} V${y(terrain.critical.feet).toFixed(1)}"/><circle class="terrain-critical-point" cx="${x(criticalNm).toFixed(1)}" cy="${y(terrain.critical.feet).toFixed(1)}" r="5"/>`:"";
+  $("#terrainProfile").innerHTML=`<svg viewBox="0 0 800 220" preserveAspectRatio="none" aria-hidden="true">${grid}${critical}${moraBand}${ground}${mora}${flight}${markers}${criticalPoint}</svg>`;
   $("#terrainProfile").setAttribute("aria-label",pt?`Perfil estimado: FL${result.fl}; ${t(statusKey)}; ${terrain.missingCount} trechos sem MORA.`:`Estimated profile: FL${result.fl}; ${t(statusKey)}; ${terrain.missingCount} legs without MORA.`);
   const missing=terrain.legs.filter((leg)=>!Number.isFinite(leg.feet));
   $("#terrainManual").hidden=!missing.length;
