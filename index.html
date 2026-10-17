@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261017-08" />
+    <link rel="stylesheet" href="./styles.css?v=20261017-09" />
   </head>
   <body>
     <header class="topbar">
@@ -71,17 +71,16 @@
         <div><span data-i18n="oxygen">Oxigênio</span><strong id="oxygenValue">—</strong><small id="oxygenMeta">—</small></div>
       </section>
 
-      <section class="panel terrain-panel" aria-label="Faixa de segurança de MORA e relevo">
+      <section class="panel terrain-panel" id="routeMatrix" aria-label="Matriz de níveis por trecho">
         <div class="terrain-heading">
-          <div><span class="terrain-eyebrow" id="terrainEyebrow">TERRENO · OFP</span><h2 id="terrainTitle">Faixa de segurança</h2><p id="terrainIntro">MORA por trecho e relevo visual ao longo da rota.</p></div>
+          <div><span class="terrain-eyebrow" id="terrainEyebrow">ROTA · OFP</span><h2 id="terrainTitle">Matriz de níveis</h2><p id="terrainIntro">MORA, fase, vento e gelo por trecho.</p></div>
           <div class="terrain-decision"><strong class="terrain-badge unknown" id="terrainStatus">TERRENO NÃO AVALIADO</strong><span id="terrainMargin">—</span></div>
         </div>
-        <div class="terrain-legend"><span><i class="terrain-key flight"></i><span id="terrainLegendFlight">Perfil do voo</span></span><span><i class="terrain-key mora"></i><span id="terrainLegendMora">MORA SimBrief</span></span><span><i class="terrain-key elevation"></i><span id="terrainLegendElevation">Relevo amostrado</span></span><span><i class="terrain-key critical"></i><span id="terrainLegendCritical">Trecho crítico</span></span></div>
-        <div class="terrain-chart" id="terrainProfile" role="img" aria-label="Perfil de terreno da rota"></div>
-        <div class="terrain-axis"><span id="terrainOrigin">ORIG · 0 NM</span><span id="terrainMidpoint">— NM</span><span id="terrainDestination">DEST · — NM</span></div>
-        <div class="terrain-facts"><div><span id="terrainCriticalLabel">Trecho crítico</span><strong id="terrainCritical">—</strong></div><div><span id="terrainCoverageLabel">Cobertura da MORA</span><strong id="terrainCoverage">—</strong></div><div><span id="terrainSelectedLabel">Nível selecionado</span><strong id="terrainSelected">—</strong></div></div>
-        <p class="terrain-note" id="terrainNote">A curva é visual; a MORA e o score usam os valores exatos de cada trecho.</p>
-        <div class="terrain-tools"><button type="button" class="text-button" id="terrainRefresh">Carregar relevo</button></div>
+        <div class="matrix-route" id="routeMatrixOverview" aria-label="Trechos da rota"></div>
+        <div class="matrix-toolbar"><div><strong id="routeMatrixLegTitle">—</strong><small id="routeMatrixPosition">—</small></div><div class="matrix-nav"><button type="button" data-matrix-prev aria-label="Trecho anterior">‹</button><button type="button" data-matrix-next aria-label="Próximo trecho">›</button></div></div>
+        <div class="matrix-grid" id="routeMatrixGrid" aria-label="Níveis por trecho"></div>
+        <div class="matrix-detail" id="routeMatrixDetail" aria-live="polite"></div>
+        <p class="terrain-note" id="terrainNote">Margem de terreno durante o cruzeiro. Vento e gelo são estimativas do OFP; — indica dado insuficiente.</p>
         <div class="terrain-manual" id="terrainManual" hidden></div>
       </section>
 
@@ -349,10 +348,10 @@
         <div class="levels-list" id="levelCards"></div>
       </section>
       </div>
-      <footer><span>Velocity XL Performance Planner</span><span class="footer-sources"><a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Open-Meteo / Copernicus DEM GLO-90</a> · <a href="https://forum.navigraph.com/t/ofp-wrong-msa/22775" target="_blank" rel="noreferrer">SimBrief MORA</a></span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
+      <footer><span>Velocity XL Performance Planner</span><span class="footer-sources"><a href="https://forum.navigraph.com/t/ofp-wrong-msa/22775" target="_blank" rel="noreferrer">SimBrief MORA</a></span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261017-08"></script>
+    <script type="module" src="./js/app.js?v=20261017-09"></script>
   </body>
 </html>

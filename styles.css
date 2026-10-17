@@ -639,3 +639,53 @@ body :is(
 .mission-score-copy strong[data-status="unknown"] { color:var(--blue); }
 @media (max-width:760px) { .terrain-panel { padding:16px; } .terrain-facts { grid-template-columns:repeat(2,minmax(0,1fr)); } .terrain-manual form { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .terrain-manual form>span { grid-column:1/-1; } }
 @media (max-width:430px) { .terrain-chart { min-height:190px; } .terrain-chart svg { height:190px; } .terrain-axis span:nth-child(2) { display:none; } .terrain-decision { align-items:flex-start; } .terrain-facts { grid-template-columns:1fr 1fr; } .terrain-facts>div:last-child { grid-column:1/-1; } .terrain-manual form { grid-template-columns:1fr; } .terrain-manual form>span { grid-column:auto; } }
+
+/* Route matrix: terrain status stays distinct from the overall mission score. */
+.matrix-route { display:flex; gap:3px; overflow-x:auto; align-items:flex-end; min-height:53px; margin:17px 0 5px; padding-bottom:4px; }
+.matrix-route button { flex:1 0 16px; min-width:16px; height:30px; border:0; border-radius:5px 5px 2px 2px; background:var(--green-soft); color:var(--green); font-size:var(--type-caption); }
+.matrix-route button.marginal { background:#fff4e7; color:var(--orange); }
+.matrix-route button.unavailable { background:#fdecef; color:var(--red); }
+.matrix-route button.unknown,.matrix-route button.outside-cruise { background:var(--panel-soft); color:var(--muted); }
+.matrix-route button.active { height:40px; outline:2px solid var(--blue); outline-offset:-2px; }
+.matrix-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:14px 0 10px; }
+.matrix-toolbar strong,.matrix-toolbar small { display:block; }
+.matrix-toolbar strong { font-size:var(--type-body); }
+.matrix-toolbar small { margin-top:3px; color:var(--muted); font-size:var(--type-caption); }
+.matrix-nav { display:flex; gap:6px; }
+.matrix-nav button { width:36px; height:36px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--blue); font-size:1.2rem; }
+.matrix-nav button:disabled { opacity:.35; }
+.matrix-grid { display:grid; gap:6px; }
+.matrix-row { display:grid; grid-template-columns:48px repeat(5,minmax(0,1fr)); gap:6px; }
+.matrix-fl { display:flex; align-items:center; color:var(--muted); font-size:var(--type-caption); font-weight:600; }
+.matrix-fl.selected { color:var(--blue); }
+.matrix-head { min-width:0; padding:7px 8px; border-radius:8px; background:var(--panel-soft); font-size:var(--type-caption); color:var(--muted); }
+.matrix-head.active { background:var(--blue-soft); }
+.matrix-head strong,.matrix-head span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.matrix-head strong { margin-bottom:3px; color:var(--text); }
+.matrix-cell { min-width:0; min-height:86px; padding:9px 8px; border:0; border-radius:9px; background:var(--green-soft); text-align:left; color:var(--text); }
+.matrix-cell.marginal { background:#fff4e7; }
+.matrix-cell.unavailable { background:#fdecef; }
+.matrix-cell.unknown { background:var(--blue-soft); }
+.matrix-cell.outside-cruise { background:var(--panel-soft); }
+.matrix-cell.selected { outline:2px solid var(--blue); outline-offset:-2px; }
+.matrix-cell strong,.matrix-cell span { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.matrix-cell strong { font-size:var(--type-body); }
+.matrix-cell span { margin-top:6px; color:var(--muted); font-size:var(--type-caption); }
+.matrix-cell .matrix-wind { display:inline; margin:0; }
+.matrix-wind.positive { color:var(--green)!important; }
+.matrix-wind.negative { color:var(--orange)!important; }
+.matrix-wind.zero { color:var(--blue)!important; }
+.matrix-wind.missing { color:var(--muted)!important; }
+.matrix-detail { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:13px; padding:12px; border-radius:10px; background:var(--panel-soft); }
+.matrix-detail>div { min-width:0; }
+.matrix-detail span,.matrix-detail strong { display:block; }
+.matrix-detail span { color:var(--muted); font-size:var(--type-caption); }
+.matrix-detail strong { margin-top:4px; font-size:var(--type-body); overflow-wrap:anywhere; }
+.matrix-cell:focus-visible,.matrix-route button:focus-visible,.matrix-nav button:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+@media (max-width:760px) {
+  .matrix-row { grid-template-columns:48px minmax(0,1fr); }
+  .matrix-row .matrix-head:not(.active),.matrix-row .matrix-cell:not(.active) { display:none; }
+  .matrix-cell { min-height:67px; }
+  .matrix-cell span { display:inline; margin-right:9px; }
+  .matrix-detail { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}

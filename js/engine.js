@@ -250,11 +250,13 @@ export function calculateIcingRisk({ plan, result }) {
     let risk = 0;
     let riskMinutes = 0;
     let segmentHardHazard = false;
+    let evidenceAvailable = false;
     const sources = advisorySourcesAtLeg(index);
     if (from.weatherText) sources.push({ evidence: icingWeatherEvidence(from.weatherText), coverage: 1 });
     sources.forEach((source) => {
       const evidence = evidenceAtAltitude(source.evidence, result.altitudeFt);
       if (!evidence.available) return;
+      evidenceAvailable = true;
       confirmedEvidenceSamples += 1;
       const sourceRisk = (hasTemperature ? temperatureFactor : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0)
         * moistureFactor(evidence, result.altitudeFt, false);
@@ -273,6 +275,7 @@ export function calculateIcingRisk({ plan, result }) {
       endNm: Number(to.distanceNm) || Math.min(plan.distanceNm, (Number(from.distanceNm) || 0) + segmentNm),
       oatC: weather.oatC,
       riskScore: Math.round(risk * 100),
+      evidenceAvailable,
       status: segmentHardHazard ? "avoid" : risk * 100 >= PERFORMANCE.icing.cautionScore ? "caution" : risk * 100 >= PERFORMANCE.icing.watchScore ? "watch" : "low",
     });
   }
