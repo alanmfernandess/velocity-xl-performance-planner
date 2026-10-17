@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261017-05" />
+    <link rel="stylesheet" href="./styles.css?v=20261017-06" />
   </head>
   <body>
     <header class="topbar">
@@ -66,7 +66,7 @@
 
       <section class="mission-strip" aria-label="Mission status">
         <div><span data-i18n="missionScore">Score da missão</span><strong id="missionRiskValue">—</strong><small id="missionRiskStatus">—</small></div>
-        <div><span data-i18n="confidence">Confiança</span><strong id="confidenceValue">—</strong><small id="confidenceMeta">—</small></div>
+        <div><span data-i18n="cruiseIcing">Índice de gelo</span><strong id="cruiseIcingValue">—</strong><small id="cruiseIcingMeta">—</small></div>
         <div><span data-i18n="rideComfort">Conforto</span><strong id="rideValue">—</strong><small id="rideMeta">—</small></div>
         <div><span data-i18n="oxygen">Oxigênio</span><strong id="oxygenValue">—</strong><small id="oxygenMeta">—</small></div>
       </section>
@@ -141,7 +141,7 @@
               <div class="mission-score-copy"><strong id="missionScoreStatus">—</strong><p id="missionScoreSummary">—</p></div>
             </div>
             <div class="mission-score-scale" aria-hidden="true"><i></i><i></i><i></i></div>
-            <div class="mission-score-thresholds"><span>0</span><span>40</span><span>80</span><span>100</span></div>
+            <div class="mission-score-thresholds"><span>0</span><span>40</span><span>70</span><span>100</span></div>
             <div class="mission-score-reasons" id="missionScoreReasons"></div>
             <p class="mission-score-action"><span data-i18n="mainAdjustment">Ajuste principal</span><strong id="missionScoreAction">—</strong></p>
           </article>
@@ -352,6 +352,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261017-05"></script>
+    <script type="module" src="./js/app.js?v=20261017-06"></script>
   </body>
 </html>

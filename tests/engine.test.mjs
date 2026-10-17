@@ -805,3 +805,19 @@ test("mission score uses one ascending 0-100 viability scale", () => {
   assert.ok(score.score >= 0 && score.score <= 100);
   assert.equal(score.status, score.score < 40 ? "not-viable" : score.score < 70 ? "marginal" : "viable");
 });
+
+test("a manually selected 79-point level remains viable unless an operational limit is marginal", () => {
+  const result = {
+    feasibility: { reasons: [], fuelMarginGal: 10, status: "viable" },
+    weightBalance: { status: "viable" },
+    icing: { status: "watch", riskScore: 35 },
+    turbulence: { status: "light", riskScore: 40, blocking: false },
+    oxygen: { status: "compliant" },
+    terrain: { status: "viable" },
+  };
+  const confidence = { score: 50 };
+  const selected = calculateMissionScore({ result, confidence });
+  assert.equal(selected.score, 79);
+  assert.equal(selected.status, "viable");
+  assert.equal(calculateMissionScore({ result: { ...result, terrain: { status: "marginal", marginFt: 100 } }, confidence }).status, "marginal");
+});

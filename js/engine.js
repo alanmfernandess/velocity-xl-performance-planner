@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261017-05";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261017-06";
 import { assessTerrain } from "./terrain.js?v=20261016-01";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -867,7 +867,14 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
   const blocked = reasons.some((reason) => reason.blocking);
   let score = clamp(Math.round(100 - penalty), 0, 100);
   if (blocked) score = Math.min(score, 39);
-  const assessedStatus = score < 40 ? "not-viable" : score < 80 ? "marginal" : "viable";
+  const operationallyMarginal = result.terrain?.status === "marginal"
+    || result.feasibility.status === "marginal"
+    || result.weightBalance?.status === "marginal"
+    || result.oxygen.status === "marginal"
+    || result.icing.status === "caution"
+    || ["moderate", "severe"].includes(result.turbulence.status)
+    || alternateStatus === "marginal";
+  const assessedStatus = score < 40 ? "not-viable" : score < PERFORMANCE.missionRisk.viableScoreMin || operationallyMarginal ? "marginal" : "viable";
   const status = result.terrain?.status === "unknown" && assessedStatus !== "not-viable" ? "unknown" : assessedStatus;
   return { score, status, blocked, penalty: 100 - score, reasons };
 }

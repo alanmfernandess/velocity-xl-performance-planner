@@ -168,6 +168,7 @@ export const PERFORMANCE = {
     debriefReductionPerFlight: 0.012,
   },
   missionRisk: {
+    viableScoreMin: 70,
     feasibilityMarginal: 14,
     feasibilityUnavailable: 35,
     fuelMarginWeight: 18,
