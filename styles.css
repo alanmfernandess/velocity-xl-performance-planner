@@ -652,6 +652,12 @@ body :is(
 .debrief-delete .ui-icon { width:15px; height:15px; }
 
 /* Compact, phase-aware debrief. */
+.manual-mode-top { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px; margin-bottom:15px; }
+.manual-mode-tabs { display:inline-flex; gap:3px; padding:3px; border:1px solid var(--line); border-radius:11px; background:var(--panel-soft); }
+.manual-mode-tabs button { min-height:34px; padding:5px 14px; border:0; border-radius:8px; background:transparent; color:var(--muted); font-size:var(--type-caption); cursor:pointer; }
+.manual-mode-tabs button.active { background:var(--panel); color:var(--blue); box-shadow:0 1px 5px #17202a14; }
+#manualConfidence { color:var(--muted); font-size:var(--type-caption); }
+.manual-mode-panel[hidden] { display:none; }
 .debrief-layout { display:block; }
 .debrief-form { display:block; max-width:760px; padding:16px; }
 .debrief-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }

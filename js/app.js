@@ -52,7 +52,6 @@ const UI_ICON_RULES = [
   ['[data-tool-view="oxygen"]',"heart-pulse","button"],
   ['[data-tool-view="confidence"]',"shield-check","button"],
   ['[data-tool-view="ride"]',"waves","button"],
-  ['[data-tool-view="debrief"]',"history","button"],
   ['[data-tool-view="steps"]',"trending-up","button"],
   ['[data-tool-view="update"]',"refresh-cw","button"],
   [".etp-point > span","route","inline"],
@@ -199,12 +198,12 @@ Object.assign(COPY["en-US"], {
   randomizeWeightBalanceApplied: "Random load has viable weight and CG. Other indicators have been recalculated.",
   randomizeWeightBalanceFailed: "No safe load was found with the current pilot, fuel, and oxygen. Review those values.",
 });
-Object.assign(COPY["pt-BR"], { terrainUnknown:"TERRENO NÃO AVALIADO", bestLevel:"Nível selecionado", cabinAltitude:"Nível de voo", deleteDebrief:"Excluir debrief", debriefAverage:(count)=>`Média de ${count} debriefs` });
-Object.assign(COPY["en-US"], { terrainUnknown:"TERRAIN UNASSESSED", bestLevel:"Selected level", cabinAltitude:"Flight level", deleteDebrief:"Delete debrief", debriefAverage:(count)=>`Average of ${count} debriefs` });
+Object.assign(COPY["pt-BR"], { terrainUnknown:"TERRENO NÃO AVALIADO", bestLevel:"Nível selecionado", cabinAltitude:"Nível de voo", deleteDebrief:"Excluir registro" });
+Object.assign(COPY["en-US"], { terrainUnknown:"TERRAIN UNASSESSED", bestLevel:"Selected level", cabinAltitude:"Flight level", deleteDebrief:"Delete record" });
 Object.assign(COPY["pt-BR"], { cruiseIcing:"Índice de gelo" });
 Object.assign(COPY["en-US"], { cruiseIcing:"Icing index" });
-Object.assign(COPY["pt-BR"], { debriefResultTitle:"Resultado do voo", debriefHistory:"Histórico", debriefPhases:"Fases", phaseTime:"Tempo", phaseFuel:"Combustível", debriefConfidence:"Confiança da calibração", debriefSaved:"Voo registrado", debriefPhasePair:"Preencha tempo e combustível da fase.", debriefPhaseTotals:"Os valores das fases excedem o total do voo.", debriefNoLevel:"Selecione um nível antes de registrar o voo.", glideCaveat:"Alcance teórico · terreno e obstáculos não avaliados" });
-Object.assign(COPY["en-US"], { debriefResultTitle:"Flight result", debriefHistory:"History", debriefPhases:"Phases", phaseTime:"Time", phaseFuel:"Fuel", debriefConfidence:"Calibration confidence", debriefSaved:"Flight recorded", debriefPhasePair:"Enter both time and fuel for this phase.", debriefPhaseTotals:"Phase values exceed flight totals.", debriefNoLevel:"Select a level before saving the flight.", glideCaveat:"Theoretical range · terrain and obstacles not assessed" });
+Object.assign(COPY["pt-BR"], { manualInFlight:"Em voo", manualFinished:"Voo concluído", saveDebrief:"Registrar voo", noDebriefs:"SEM VOOS REGISTRADOS", debriefResultTitle:"Resultado do voo", debriefHistory:"Histórico de calibração", debriefPhases:"Fases", phaseTime:"Tempo", phaseFuel:"Combustível", debriefSaved:"Voo registrado", debriefPhasePair:"Preencha tempo e combustível da fase.", debriefPhaseTotals:"Os valores das fases excedem o total do voo.", debriefNoLevel:"Selecione um nível antes de registrar o voo.", glideCaveat:"Alcance teórico · terreno e obstáculos não avaliados" });
+Object.assign(COPY["en-US"], { manualInFlight:"In flight", manualFinished:"Flight complete", saveDebrief:"Record flight", noDebriefs:"NO FLIGHTS RECORDED", debriefResultTitle:"Flight result", debriefHistory:"Calibration history", debriefPhases:"Phases", phaseTime:"Time", phaseFuel:"Fuel", debriefSaved:"Flight recorded", debriefPhasePair:"Enter both time and fuel for this phase.", debriefPhaseTotals:"Phase values exceed flight totals.", debriefNoLevel:"Select a level before saving the flight.", glideCaveat:"Theoretical range · terrain and obstacles not assessed" });
 Object.assign(COPY["pt-BR"], { calibrationNeedsUpdate:"Atualize posição, FL e combustível antes de calibrar.", calibrationReady:"Posição, FL e combustível confirmados." });
 Object.assign(COPY["en-US"], { calibrationNeedsUpdate:"Update position, FL and fuel before calibrating.", calibrationReady:"Position, FL and fuel confirmed." });
 Object.assign(COPY["pt-BR"], { remainingFuelTitle:"Combustível · trecho restante", remainingFuelViable:"SUFICIENTE", remainingFuelMarginal:"MARGEM BAIXA", remainingFuelUnavailable:"INSUFICIENTE", remainingUnknown:"NÃO AVALIADO", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Necessário ${fuel}`, remainingMargin:(fuel)=>`Margem ${fuel}` });
@@ -822,17 +821,8 @@ function renderDebrief(result) {
   $("#debriefFuelUnit").textContent=fuelLabel();
   $$('[data-debrief-fuel-unit]').forEach((item)=>item.textContent=fuelLabel());
   $("#debriefFlightContext").textContent=`${state.plan.origin.icao} → ${state.plan.destination.icao} · FL${result.fl} · ${state.mode}`;
-  const confidence=debriefCalibrationConfidence(state.debriefs,state.mode);
-  $("#debriefResult").textContent=confidence===null?"—":`${t("debriefConfidence")} ${confidence}%`;
+  $("#manualConfidence").textContent=`${t("modelConfidence")} ${number(result.confidence.score)}%`;
   $("#debriefHistory").innerHTML=state.debriefs.map((entry,index)=>({entry,index})).reverse().map(({entry,index})=>`<div><span>${iconMarkup("history")}${escapeHtml(entry.route)} · ${escapeHtml(entry.mode)} · FL${escapeHtml(entry.fl)}</span><button class="debrief-delete" type="button" data-delete-debrief="${index}" aria-label="${escapeHtml(t("deleteDebrief"))}: ${escapeHtml(entry.route)} · ${escapeHtml(entry.mode)} · FL${escapeHtml(entry.fl)}" title="${escapeHtml(t("deleteDebrief"))}">${iconMarkup("trash-2")}</button><strong>${number(entry.accuracyScore)}%</strong></div>`).join("");
-}
-
-function debriefCalibrationConfidence(debriefs,mode) {
-  const records=debriefs.filter((entry)=>entry.mode===mode&&Number.isFinite(entry.timeErrorPct)&&Number.isFinite(entry.fuelErrorPct));
-  if(!records.length)return null;
-  const recent=records.slice(-8);
-  const meanError=recent.reduce((sum,entry)=>sum+(Math.abs(entry.timeErrorPct)+Math.abs(entry.fuelErrorPct))/2,0)/recent.length;
-  return Math.round(clamp(15+75*(1-Math.exp(-recent.length/5))*Math.max(.25,1-meanError/35),0,90));
 }
 
 function render() {
@@ -902,6 +892,10 @@ $("#performanceChart").addEventListener("click",(event)=>{
   render();
 });
 $$('[data-tool-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-tool-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-tool-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.toolPanel===button.dataset.toolView));if(button.dataset.toolView==="glide")centerGlideRoutePoint();}));
+$$('[data-manual-mode]').forEach((button)=>button.addEventListener("click",()=>{
+  $$('[data-manual-mode]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
+  $$('[data-manual-panel]').forEach((panel)=>panel.hidden=panel.dataset.manualPanel!==button.dataset.manualMode);
+}));
 $("#payloadInput").addEventListener("input",(event)=>{setPayloadAndScaleStations(Number(event.target.value));render();}); $("#fuelInput").addEventListener("input",(event)=>{state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{state.reserveMinutes=Number(event.target.value);render();});
 $("#diversionWaypoint").addEventListener("change",(event)=>{state.diversionWaypointIndex=Number(event.target.value);render();});
 $("#scenarioBMode").addEventListener("change",(event)=>{state.scenarioB.mode=event.target.value;render();});
@@ -1070,7 +1064,7 @@ $("#debriefForm").addEventListener("submit",(event)=>{
   localStorage.setItem("velocityxl.debriefs",JSON.stringify(state.debriefs));
   $("#debriefForm").reset();
   render();
-  showToast(`${t("debriefSaved")} · ${t("debriefConfidence")} ${debriefCalibrationConfidence(state.debriefs,state.mode)}%`);
+  showToast(t("debriefSaved"));
 });
 
 $("#debriefHistory").addEventListener("click",(event)=>{

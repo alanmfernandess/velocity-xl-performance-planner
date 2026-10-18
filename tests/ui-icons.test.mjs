@@ -94,9 +94,18 @@ test("discrete icon rules cover every primary calculator surface",()=>{
     '[data-view-panel="performance"] .view-heading h2', '.phase-grid > div:nth-child(1) > span',
     '[data-tool-view="alternate"]', '[data-tool-view="compare"]', '[data-tool-view="load"]',
     '[data-tool-view="wb"]', '[data-tool-view="glide"]', '[data-tool-view="oxygen"]',
-    '[data-tool-view="confidence"]', '[data-tool-view="ride"]', '[data-tool-view="debrief"]',
+    '[data-tool-view="confidence"]', '[data-tool-view="ride"]',
     '[data-tool-view="steps"]', '[data-tool-view="update"]', ".section-heading h2",
   ].forEach((selector)=>assert.ok(app.includes(selector),`missing icon rule for ${selector}`));
+});
+
+test("completed-flight calibration lives under Manual Update without a separate DEBRIEF tab",()=>{
+  assert.doesNotMatch(index,/data-tool-view="debrief"|data-tool-panel="debrief"/);
+  const manualPanel=index.slice(index.indexOf('data-tool-panel="update"'),index.indexOf('class="kpi-grid"'));
+  assert.match(manualPanel,/data-manual-mode="flight"[\s\S]*data-manual-mode="finished"/);
+  assert.match(manualPanel,/data-manual-panel="flight"[\s\S]*id="manualUpdateForm"[\s\S]*id="calibrationForm"/);
+  assert.match(manualPanel,/data-manual-panel="finished"[\s\S]*id="debriefForm"[\s\S]*id="debriefHistory"/);
+  assert.match(app,/localStorage\.setItem\("velocityxl\.debriefs"/);
 });
 
 test("dynamic operational cards use semantic line icons",()=>{
