@@ -35,6 +35,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
 - Calibração local por modo usando somente TAS e fuel flow observados no Xbox; os fatores ficam salvos no dispositivo.
 - Gráficos de performance, perfil vertical, representação de rota e perfil de combustível organizados em abas.
+- O painel de ferramentas permanece fixo abaixo da barra superior durante a rolagem; em telas menores, seu conteúdo rola dentro do card. No aplicativo instalado em dispositivos de toque, a pinça para ampliar a página é desativada e os controles A−/A/A+ continuam disponíveis.
 - Tela inicial vazia até a importação de um OFP real; somente o identificador SimBrief é salvo localmente.
 - Coeficientes centralizados em `js/config.js` para calibração manual futura.
 

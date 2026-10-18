@@ -1047,5 +1047,10 @@ $("#simbriefImportForm").addEventListener("submit",async(event)=>{
 });
 
 const savedIdentifier=localStorage.getItem("velocityxl.simbriefIdentifier"); if(savedIdentifier)$("#quickPilotId").value=savedIdentifier;
+const topbar=$(".topbar");
+const updateStickyOffset=()=>document.documentElement.style.setProperty("--topbar-height",`${Math.ceil(topbar.getBoundingClientRect().height)}px`);
+updateStickyOffset();
+if("ResizeObserver" in window)new ResizeObserver(updateStickyOffset).observe(topbar);
+window.addEventListener("resize",updateStickyOffset);
 window.addEventListener("load",refreshUiIcons,{once:true});
 render();
