@@ -34,6 +34,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Turbulence & Ride Comfort Optimizer usando avisos meteorológicos do OFP e gradientes de vento por nível/trecho para comparar conforto entre FLs.
 - Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
 - Calibração local por modo usando TAS e fuel flow observados no Xbox, após confirmar posição, FL e combustível restante em Atualização manual; os fatores ficam salvos no dispositivo.
+- Atualização manual mostra separadamente a margem estimada de combustível para o trecho restante, incluindo contingência, reserva e alternado quando calculável; ela não substitui o score da missão planejada.
 - Gráficos de performance, perfil vertical, representação de rota e perfil de combustível organizados em abas.
 - O painel de ferramentas permanece fixo abaixo da barra superior durante a rolagem; em telas menores, seu conteúdo rola dentro do card. No aplicativo instalado em dispositivos de toque, a pinça para ampliar a página é desativada e os controles A−/A/A+ continuam disponíveis.
 - Tela inicial vazia até a importação de um OFP real; somente o identificador SimBrief é salvo localmente.

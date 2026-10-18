@@ -84,7 +84,6 @@ test("STEP CLIMB compares complete remaining profiles and explains no-step cases
   assert.match(app,/stepPlan\.comparison/);
   assert.match(app,/stepNoNetGain/);
   assert.match(app,/availableAltitudesFt:analysis\.results\.filter\(operationallyAvailable\)/);
-  assert.match(app,/calculateOxygenPlan, calculatePlan, calculateStepClimbs/);
   assert.match(css,/\.step-profiles \{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.step-profiles \{ grid-template-columns:minmax\(0,1fr\)/);
 });

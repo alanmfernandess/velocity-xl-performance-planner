@@ -1293,14 +1293,21 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
   };
 }
 
-function fuelUsedToDistance(result, distanceNm) {
-  if (distanceNm <= 0) return PERFORMANCE.taxiFuelGal;
-  if (distanceNm <= result.climb.distanceNm) {
-    const ratio = clamp(distanceNm / Math.max(1, result.climb.distanceNm), 0, 1);
-    return PERFORMANCE.taxiFuelGal + result.climb.fuelGal * ratio;
+function tripFuelUsedToDistance(result, distanceNm) {
+  let remainingDistanceNm = Math.max(0, distanceNm);
+  let usedGal = 0;
+  for (const phase of [result.climb, { distanceNm: result.cruiseDistanceNm, fuelGal: result.cruiseFuelGal }, result.descent]) {
+    if (phase.distanceNm <= 0) continue;
+    const coveredNm = Math.min(remainingDistanceNm, phase.distanceNm);
+    usedGal += phase.fuelGal * coveredNm / phase.distanceNm;
+    remainingDistanceNm -= coveredNm;
+    if (remainingDistanceNm <= 0) break;
   }
-  const cruiseDistanceNm = Math.min(result.cruiseDistanceNm, Math.max(0, distanceNm - result.climb.distanceNm));
-  return PERFORMANCE.taxiFuelGal + result.climb.fuelGal + cruiseDistanceNm / result.gsKt * result.fuelFlowGph;
+  return usedGal;
+}
+
+function fuelUsedToDistance(result, distanceNm) {
+  return PERFORMANCE.taxiFuelGal + tripFuelUsedToDistance(result, distanceNm);
 }
 
 function diversionLeg({ from, to, result, fallbackDistanceNm = NaN }) {
@@ -1321,6 +1328,33 @@ function diversionLeg({ from, to, result, fallbackDistanceNm = NaN }) {
     timeHr,
     fuelGal: timeHr * result.fuelFlowGph + PERFORMANCE.diversion.approachFuelGal,
   };
+}
+
+export function calculateRemainingFlightAssessment({
+  plan, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {}, manual,
+}) {
+  if (!manual?.active) return null;
+  const positionNm = Number(manual.distanceNm);
+  const remainingFuelGal = Number(manual.fuelRemainingGal);
+  if (!Number.isFinite(positionNm) || positionNm < 0 || positionNm > plan.distanceNm
+    || !Number.isFinite(remainingFuelGal) || remainingFuelGal < 0 || !ALTITUDES_FT.includes(Number(manual.altitudeFt))) {
+    return { status: "unknown" };
+  }
+  const result = calculateAtAltitude({ plan, altitudeFt: manual.altitudeFt, mode, payloadLb,
+    fuelOnboardGal: remainingFuelGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting });
+  const remainingDistanceNm = Math.max(0, plan.distanceNm - positionNm);
+  const remainingTripFuelGal = Math.max(0, result.tripFuelGal - tripFuelUsedToDistance(result, positionNm));
+  const contingencyFuelGal = remainingTripFuelGal * PERFORMANCE.contingencyPercent / 100;
+  const alternate = plan.alternates?.[0] || (plan.alternate ? { icao: plan.alternate } : null);
+  const alternateLeg = alternate ? diversionLeg({ from: plan.destination, to: alternate, result, fallbackDistanceNm: alternate.distanceNm }) : null;
+  if (alternate && !alternateLeg) return { status: "unknown", remainingDistanceNm, remainingFuelGal };
+  const alternateFuelGal = alternateLeg ? PERFORMANCE.diversion.missedApproachFuelGal + alternateLeg.fuelGal : 0;
+  const requiredFuelGal = remainingTripFuelGal + contingencyFuelGal + result.reserveFuelGal + alternateFuelGal;
+  const marginGal = remainingFuelGal - requiredFuelGal;
+  const status = marginGal < 0 ? "not-viable"
+    : marginGal < PERFORMANCE.diversion.marginalFuelMarginGal ? "marginal" : "viable";
+  return { status, remainingDistanceNm, remainingFuelGal, remainingTripFuelGal, reserveFuelGal: result.reserveFuelGal,
+    contingencyFuelGal, alternateFuelGal, requiredFuelGal, marginGal };
 }
 
 export function calculateAlternateDiversion({

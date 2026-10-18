@@ -1,5 +1,5 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261018-02";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261018-03";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateRemainingFlightAssessment, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261018-04";
 import { fetchLatestOFP } from "./simbrief.js?v=20261017-06";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 import { buildRouteMatrix } from "./route-matrix.js?v=20261017-01";
@@ -207,6 +207,8 @@ Object.assign(COPY["pt-BR"], { debriefResultTitle:"Resultado do voo", debriefHis
 Object.assign(COPY["en-US"], { debriefResultTitle:"Flight result", debriefHistory:"History", debriefPhases:"Phases", phaseTime:"Time", phaseFuel:"Fuel", debriefConfidence:"Calibration confidence", debriefSaved:"Flight recorded", debriefPhasePair:"Enter both time and fuel for this phase.", debriefPhaseTotals:"Phase values exceed flight totals.", debriefNoLevel:"Select a level before saving the flight.", glideCaveat:"Theoretical range · terrain and obstacles not assessed" });
 Object.assign(COPY["pt-BR"], { calibrationNeedsUpdate:"Atualize posição, FL e combustível antes de calibrar.", calibrationReady:"Posição, FL e combustível confirmados." });
 Object.assign(COPY["en-US"], { calibrationNeedsUpdate:"Update position, FL and fuel before calibrating.", calibrationReady:"Position, FL and fuel confirmed." });
+Object.assign(COPY["pt-BR"], { remainingFuelTitle:"Combustível · trecho restante", remainingFuelViable:"SUFICIENTE", remainingFuelMarginal:"MARGEM BAIXA", remainingFuelUnavailable:"INSUFICIENTE", remainingUnknown:"NÃO AVALIADO", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Necessário ${fuel}`, remainingMargin:(fuel)=>`Margem ${fuel}` });
+Object.assign(COPY["en-US"], { remainingFuelTitle:"Fuel · remaining route", remainingFuelViable:"SUFFICIENT", remainingFuelMarginal:"LOW MARGIN", remainingFuelUnavailable:"INSUFFICIENT", remainingUnknown:"UNASSESSED", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Required ${fuel}`, remainingMargin:(fuel)=>`Margin ${fuel}` });
 
 function storedJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
@@ -518,6 +520,19 @@ function renderFlightTools(plan,navigation,stepPlan,selected) {
   const factors=state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1};
   $("#calibrationFactors").textContent=`TAS ×${number(factors.tasFactor||1,2)} · FF ×${number(factors.fuelFlowFactor||1,2)}`;
   updateCalibrationGate();
+  renderRemainingAssessment();
+}
+
+function renderRemainingAssessment(){
+  const panel=$("#remainingAssessment");
+  panel.hidden=!state.manual.active;
+  if(panel.hidden)return;
+  const assessment=calculateRemainingFlightAssessment({...state,oxygenWeightLb:currentOxygenWeightLb()});
+  panel.dataset.status=assessment.status;
+  $("#remainingStatus").textContent=t(assessment.status==="viable"?"remainingFuelViable":assessment.status==="marginal"?"remainingFuelMarginal":assessment.status==="not-viable"?"remainingFuelUnavailable":"remainingUnknown");
+  $("#remainingDistance").textContent=Number.isFinite(assessment.remainingDistanceNm)?t("remainingDistance",number(assessment.remainingDistanceNm),Math.round(state.manual.altitudeFt/100)):"—";
+  $("#remainingRequired").textContent=Number.isFinite(assessment.requiredFuelGal)?t("remainingRequired",formatFuel(assessment.requiredFuelGal,1)):"—";
+  $("#remainingMargin").textContent=Number.isFinite(assessment.marginGal)?t("remainingMargin",signedNumber(fuelValue(assessment.marginGal),1,` ${fuelLabel()}`)):"—";
 }
 
 function statusLabel(status) {

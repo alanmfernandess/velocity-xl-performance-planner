@@ -25,7 +25,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-03" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-04" />
   </head>
   <body>
     <header class="topbar">
@@ -263,6 +263,10 @@
               <label><span data-i18n="fuelRemaining">Combustível restante</span><span class="input-with-unit"><input id="manualFuel" type="number" min="0" step="0.1" required /><small id="manualFuelUnit">gal</small></span></label>
               <button class="primary-button" type="submit" data-i18n="update">Atualizar</button>
             </form>
+            <div class="remaining-assessment" id="remainingAssessment" hidden aria-live="polite">
+              <div class="remaining-assessment-head"><span data-i18n="remainingFuelTitle">Combustível · trecho restante</span><strong id="remainingStatus">—</strong></div>
+              <div class="remaining-assessment-values"><span id="remainingDistance">—</span><span id="remainingRequired">—</span><strong id="remainingMargin">—</strong></div>
+            </div>
             <form id="calibrationForm" class="compact-form calibration-form">
               <div class="calibration-head"><span data-i18n="calibration">Calibração</span><div class="calibration-value"><strong id="calibrationMode">NORMAL</strong><output id="calibrationFactors">TAS ×1,00 · FF ×1,00</output></div><small id="calibrationGate" class="calibration-gate" role="status"></small></div>
               <label><span data-i18n="observedTas">TAS observada</span><span class="input-with-unit"><input id="observedTas" type="number" min="100" max="350" step="1" required /><small>kt</small></span></label>
@@ -377,6 +381,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-05"></script>
+    <script type="module" src="./js/app.js?v=20261018-06"></script>
   </body>
 </html>

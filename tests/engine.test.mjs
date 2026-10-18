@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateIcingRisk, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateIcingRisk, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateRemainingFlightAssessment, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -262,6 +262,20 @@ test("alternate and diversion advisor computes both legs and landing fuel", () =
   assert.ok(advice.destination.fuelGal > 0);
   assert.ok(advice.diversion.distanceNm > 0);
   assert.ok(Number.isFinite(advice.diversion.landingFuelGal));
+});
+
+test("remaining-route fuel status uses reported fuel without changing the planned mission", () => {
+  const base = { plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 };
+  const plannedFuel = calculateAtAltitude({ ...base, altitudeFt: 18000 }).fuelRequiredGal;
+  const assess = (fuelRemainingGal, distanceNm = 100) => calculateRemainingFlightAssessment({ ...base,
+    manual: { active: true, distanceNm, fuelRemainingGal, altitudeFt: 18000 } });
+  assert.equal(assess(10).status, "not-viable");
+  assert.equal(assess(24).status, "marginal");
+  assert.equal(assess(30).status, "viable");
+  assert.ok(assess(30, 150).requiredFuelGal < assess(30, 100).requiredFuelGal);
+  assert.ok(assess(30).alternateFuelGal > 0);
+  assert.equal(calculateAtAltitude({ ...base, altitudeFt: 18000 }).fuelRequiredGal, plannedFuel);
+  assert.equal(calculateRemainingFlightAssessment({ ...base, manual: { active: false } }), null);
 });
 
 test("scenario comparison returns operational deltas", () => {
