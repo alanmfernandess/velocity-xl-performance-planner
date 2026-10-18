@@ -25,7 +25,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-01" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-02" />
   </head>
   <body>
     <header class="topbar">
@@ -190,7 +190,7 @@
                 <div><span data-i18n="glidePointAltitude">Altitude no ponto</span><strong id="glideFocusAltitude">—</strong></div>
               </div>
             </div>
-            <small class="glide-note" data-i18n="glideCaveat">Alcance teórico com vento estimado; não considera terreno, obstáculos ou local de pouso.</small>
+            <small class="glide-note" data-i18n="glideCaveat">Alcance teórico · terreno e obstáculos não avaliados</small>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="oxygen">
@@ -232,12 +232,24 @@
         <div class="tool-view" data-tool-panel="debrief">
           <div class="debrief-layout">
             <form id="debriefForm" class="debrief-form">
-              <label><span data-i18n="actualTime">Tempo real</span><span class="input-with-unit"><input id="debriefTime" type="number" min="1" step="1" required /><small>min</small></span></label>
-              <label><span data-i18n="actualFuel">Combustível usado</span><span class="input-with-unit"><input id="debriefFuel" type="number" min="0.1" step="0.1" required /><small id="debriefFuelUnit">gal</small></span></label>
-              <button class="primary-button" type="submit" data-i18n="saveDebrief">Salvar debrief</button>
+              <div class="debrief-head"><strong data-i18n="debriefResultTitle">Resultado do voo</strong><span id="debriefFlightContext">—</span></div>
+              <div class="debrief-inputs">
+                <label><span data-i18n="actualTime">Tempo real</span><span class="input-with-unit"><input id="debriefTime" type="number" min="1" step="1" required /><small>min</small></span></label>
+                <label><span data-i18n="actualFuel">Combustível usado</span><span class="input-with-unit"><input id="debriefFuel" type="number" min="0.1" step="0.1" required /><small id="debriefFuelUnit">gal</small></span></label>
+              </div>
+              <div class="debrief-phase-tabs" role="tablist" data-i18n-aria-label="debriefPhases">
+                <button class="active" type="button" role="tab" data-debrief-phase="climb" aria-selected="true" data-i18n="climb">Subida</button>
+                <button type="button" role="tab" data-debrief-phase="cruise" aria-selected="false" data-i18n="cruise">Cruzeiro</button>
+                <button type="button" role="tab" data-debrief-phase="descent" aria-selected="false" data-i18n="descent">Descida</button>
+              </div>
+              <div class="debrief-phase-panels">
+                <div class="debrief-phase-panel active" data-debrief-panel="climb"><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="climb" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="climb" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
+                <div class="debrief-phase-panel" data-debrief-panel="cruise" hidden><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="cruise" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="cruise" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
+                <div class="debrief-phase-panel" data-debrief-panel="descent" hidden><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="descent" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="descent" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
+              </div>
+              <div class="debrief-actions"><span id="debriefResult">—</span><button class="primary-button" type="submit" data-i18n="saveDebrief">Salvar debrief</button></div>
             </form>
-            <div class="debrief-result" id="debriefResult"><strong>—</strong><span>—</span></div>
-            <div class="debrief-history" id="debriefHistory"></div>
+            <details class="debrief-history-wrap"><summary data-i18n="debriefHistory">Histórico</summary><div class="debrief-history" id="debriefHistory"></div></details>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="steps">
@@ -285,7 +297,7 @@
         <div class="matrix-toolbar"><div><strong id="routeMatrixLegTitle">—</strong><small id="routeMatrixPosition">—</small></div><div class="matrix-nav"><button type="button" data-matrix-prev aria-label="Trecho anterior">‹</button><button type="button" data-matrix-next aria-label="Próximo trecho">›</button></div></div>
         <div class="matrix-grid" id="routeMatrixGrid" aria-label="Níveis por trecho"></div>
         <div class="matrix-detail" id="routeMatrixDetail" aria-live="polite"></div>
-        <p class="terrain-note" id="terrainNote">Margem de terreno durante o cruzeiro. Vento e gelo são estimativas do OFP; — indica dado insuficiente.</p>
+        <p class="terrain-note" id="terrainNote">— = dado insuficiente</p>
         <div class="terrain-manual" id="terrainManual" hidden></div>
       </section>
 
@@ -325,7 +337,7 @@
                 <label><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label>
               </div>
             </div>
-            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /><small data-i18n="payloadAssignment">Acréscimos vão para bagagem; ajuste ocupantes em W&amp;B.</small></label>
+            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /></label>
             <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
             <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
@@ -365,6 +377,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-01"></script>
+    <script type="module" src="./js/app.js?v=20261018-02"></script>
   </body>
 </html>

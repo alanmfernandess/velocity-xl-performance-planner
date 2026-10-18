@@ -47,7 +47,7 @@ test("all cruise levels use expandable progressive rows with separate selection"
 test("mission recovery explains the blocker and requires explicit restoration of the same OFP",()=>{
   assert.match(html,/id="missionRecovery"[^>]*hidden/);
   assert.match(html,/id="missionRecoveryAction"/);
-  assert.match(html,/data-i18n="payloadAssignment"/);
+  assert.doesNotMatch(html,/data-i18n="payloadAssignment"/);
   assert.match(app,/pendingMissionRecovery=calculateMissionRecovery\(\{\.\.\.state,requireTerrainKnown:true\},lastViableMission\)/);
   assert.match(app,/savedViableMission\?\.planKey===missionPlanKey\(plan\)/);
   assert.match(app,/\$\("#missionRecoveryAction"\)\.addEventListener\("click"/);

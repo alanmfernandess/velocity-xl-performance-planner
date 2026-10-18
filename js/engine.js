@@ -793,14 +793,15 @@ export function calculateOxygenPlan({ result, oxygen = {} }) {
 export function calculatePerformanceConfidence({ plan, result, calibration = {}, debriefs = [], mode }) {
   const modeDebriefs = debriefs.filter((entry) => entry.mode === mode);
   const factors = calibrationForMode(calibration, mode);
-  const calibrated = Math.abs(factors.tasFactor - 1) > 0.001 || Math.abs(factors.fuelFlowFactor - 1) > 0.001;
+  const tasCalibrated = Math.abs(factors.tasFactor - 1) > 0.001;
+  const fuelCalibrated = Math.abs(factors.fuelFlowFactor - 1) > 0.001 || Math.abs(factors.tripFuelFactor - 1) > 0.001 || debriefPhaseKeys.some((key) => Math.abs(factors[`${key}FuelFactor`] - 1) > 0.001);
   const temperatureSamples = (plan.waypoints || []).filter((fix) => Number.isFinite(fix.oatC) || (fix.windLevels || []).some((level) => Number.isFinite(level.oatC))).length;
   const weatherCoverage = (plan.waypoints || []).length ? temperatureSamples / plan.waypoints.length : 0;
   const learnedReduction = Math.min(0.05, modeDebriefs.length * PERFORMANCE.confidence.debriefReductionPerFlight);
-  const tasUncertainty = Math.max(PERFORMANCE.confidence.minimumTasUncertainty, PERFORMANCE.confidence.baseTasUncertainty - learnedReduction - (calibrated ? 0.01 : 0));
-  const fuelUncertainty = Math.max(PERFORMANCE.confidence.minimumFuelUncertainty, PERFORMANCE.confidence.baseFuelUncertainty - learnedReduction - (calibrated ? 0.015 : 0));
-  const timeUncertainty = tasUncertainty + (1 - weatherCoverage) * PERFORMANCE.confidence.weatherTimeUncertainty;
-  const score = clamp(Math.round(100 - tasUncertainty * 260 - fuelUncertainty * 220 - (1 - weatherCoverage) * 22), 0, 100);
+  const tasUncertainty = Math.max(PERFORMANCE.confidence.minimumTasUncertainty, PERFORMANCE.confidence.baseTasUncertainty - (tasCalibrated ? 0.01 : 0));
+  const fuelUncertainty = Math.max(PERFORMANCE.confidence.minimumFuelUncertainty, PERFORMANCE.confidence.baseFuelUncertainty - learnedReduction - (fuelCalibrated ? 0.015 : 0));
+  const timeUncertainty = Math.max(PERFORMANCE.confidence.minimumTasUncertainty, tasUncertainty + (1 - weatherCoverage) * PERFORMANCE.confidence.weatherTimeUncertainty - learnedReduction);
+  const score = clamp(Math.round(100 - tasUncertainty * 180 - timeUncertainty * 80 - fuelUncertainty * 220 - (1 - weatherCoverage) * 22), 0, 100);
   return {
     score,
     sampleCount: modeDebriefs.length,
@@ -900,14 +901,31 @@ export function calculateMissionRisk(options) {
   return calculateMissionScore(options);
 }
 
-export function calculateDebrief({ result, actualTimeMinutes, actualFuelGal, currentCalibration = {} }) {
+const debriefPhaseKeys = ["climb", "cruise", "descent"];
+const debriefPhaseResult = (result, key) => key === "cruise"
+  ? { timeHr: result.cruiseTimeHr, fuelGal: result.cruiseFuelGal }
+  : result[key];
+
+export function calculateDebrief({ result, actualTimeMinutes, actualFuelGal, actualPhases = {}, currentCalibration = {} }) {
   const actualTimeHr = Math.max(1, Number(actualTimeMinutes)) / 60;
   const actualFuel = Math.max(0.1, Number(actualFuelGal));
   const timeErrorPct = (actualTimeHr - result.tripTimeHr) / result.tripTimeHr * 100;
   const fuelErrorPct = (actualFuel - result.tripFuelGal) / result.tripFuelGal * 100;
   const accuracyScore = clamp(Math.round(100 - Math.abs(timeErrorPct) * 0.45 - Math.abs(fuelErrorPct) * 0.55), 0, 100);
-  return { accuracyScore, timeErrorPct, fuelErrorPct, actualTimeHr, actualFuelGal: actualFuel,
-    calibration: applyDebriefCalibration(currentCalibration, { timeErrorPct, fuelErrorPct }) };
+  const phaseErrors = {};
+  for (const key of debriefPhaseKeys) {
+    const observed = actualPhases[key];
+    const predicted = debriefPhaseResult(result, key);
+    if (!Number.isFinite(observed?.timeMinutes) || observed.timeMinutes <= 0
+      || !Number.isFinite(observed?.fuelGal) || observed.fuelGal <= 0
+      || predicted.timeHr <= 0 || predicted.fuelGal <= 0) continue;
+    phaseErrors[key] = {
+      timeErrorPct: (observed.timeMinutes / 60 / predicted.timeHr - 1) * 100,
+      fuelErrorPct: (observed.fuelGal / predicted.fuelGal - 1) * 100,
+    };
+  }
+  return { accuracyScore, timeErrorPct, fuelErrorPct, actualTimeHr, actualFuelGal: actualFuel, phaseErrors,
+    calibration: applyDebriefCalibration(currentCalibration, { timeErrorPct, fuelErrorPct, phaseErrors }) };
 }
 
 export function summarizeDebriefs(debriefs = []) {
@@ -927,17 +945,28 @@ function applyDebriefCalibration(currentCalibration = {}, entry = {}) {
   const learningRate = PERFORMANCE.debrief.learningRate;
   const currentTas = Number(currentCalibration?.tasFactor) || 1;
   const currentFuel = Number(currentCalibration?.fuelFlowFactor) || 1;
-  const timeRatio = 1 + Number(entry.timeErrorPct) / 100;
-  const fuelRatio = 1 + Number(entry.fuelErrorPct) / 100;
-  return {
-    tasFactor: clamp(timeRatio > 0 ? currentTas * (1 + learningRate * (1 / timeRatio - 1)) : currentTas, ...PERFORMANCE.calibrationLimits.tasFactor),
-    fuelFlowFactor: clamp(Number.isFinite(fuelRatio) ? currentFuel * (1 + learningRate * (fuelRatio - 1)) : currentFuel, ...PERFORMANCE.calibrationLimits.fuelFlowFactor),
+  const hasPhases = debriefPhaseKeys.some((key) => entry.phaseErrors?.[key]);
+  const next = { ...currentCalibration,
+    tasFactor: currentTas,
+    fuelFlowFactor: currentFuel,
   };
+  if (!hasPhases) {
+    next.tripTimeFactor = clamp((Number(next.tripTimeFactor) || 1) * (1 + learningRate * Number(entry.timeErrorPct) / 100), ...PERFORMANCE.calibrationLimits.tripTimeFactor);
+    next.tripFuelFactor = clamp((Number(next.tripFuelFactor) || 1) * (1 + learningRate * Number(entry.fuelErrorPct) / 100), ...PERFORMANCE.calibrationLimits.tripFuelFactor);
+  }
+  for (const key of debriefPhaseKeys) {
+    const errors = entry.phaseErrors?.[key];
+    if (!errors) continue;
+    const timeKey = `${key}TimeFactor`, fuelKey = `${key}FuelFactor`;
+    next[timeKey] = clamp((Number(next[timeKey]) || 1) * (1 + learningRate * errors.timeErrorPct / 100), ...PERFORMANCE.calibrationLimits.phaseTimeFactor);
+    next[fuelKey] = clamp((Number(next[fuelKey]) || 1) * (1 + learningRate * errors.fuelErrorPct / 100), ...PERFORMANCE.calibrationLimits.phaseFuelFactor);
+  }
+  return next;
 }
 
+const calibrationKeys = ["tasFactor", "fuelFlowFactor", "tripTimeFactor", "tripFuelFactor", ...debriefPhaseKeys.flatMap((key) => [`${key}TimeFactor`, `${key}FuelFactor`])];
 const sameCalibration = (a, b) => a && b
-  && Math.abs(Number(a.tasFactor) - Number(b.tasFactor)) < 1e-8
-  && Math.abs(Number(a.fuelFlowFactor) - Number(b.fuelFlowFactor)) < 1e-8;
+  && calibrationKeys.every((key) => Math.abs((Number(a[key]) || 1) - (Number(b[key]) || 1)) < 1e-8);
 
 export function deleteDebrief({ debriefs = [], calibration = {} }, index) {
   if (!Number.isInteger(index) || index < 0 || index >= debriefs.length) return null;
@@ -1026,10 +1055,17 @@ function climbProfile(altitudeFt, weightLb, weather, phaseName = "climb") {
 
 function calibrationForMode(calibration, mode) {
   const values = calibration?.[mode] || calibration || {};
-  return {
+  const factors = {
     tasFactor: clamp(Number(values.tasFactor) || 1, ...PERFORMANCE.calibrationLimits.tasFactor),
     fuelFlowFactor: clamp(Number(values.fuelFlowFactor) || 1, ...PERFORMANCE.calibrationLimits.fuelFlowFactor),
+    tripTimeFactor: clamp(Number(values.tripTimeFactor) || 1, ...PERFORMANCE.calibrationLimits.tripTimeFactor),
+    tripFuelFactor: clamp(Number(values.tripFuelFactor) || 1, ...PERFORMANCE.calibrationLimits.tripFuelFactor),
   };
+  for (const key of debriefPhaseKeys) {
+    factors[`${key}TimeFactor`] = clamp(Number(values[`${key}TimeFactor`]) || 1, ...PERFORMANCE.calibrationLimits.phaseTimeFactor);
+    factors[`${key}FuelFactor`] = clamp(Number(values[`${key}FuelFactor`]) || 1, ...PERFORMANCE.calibrationLimits.phaseFuelFactor);
+  }
+  return factors;
 }
 
 export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, calibration = {}, powerSetting = {} }) {
@@ -1069,28 +1105,35 @@ export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnb
   const takeoffWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const cruise = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, calibration, powerSetting });
   const { weather, tasKt, gsKt, fuelFlowGph } = cruise;
-
-  const climb = climbProfile(altitudeFt, takeoffWeightLb, weather);
-  const descent = descentProfile(altitudeFt);
+  const factors = cruise.factors;
+  const scaledPhase = (profile, key) => {
+    const timeScale = factors[`${key}TimeFactor`] * factors.tripTimeFactor;
+    const timeHr = profile.timeHr * timeScale;
+    const fuelGal = profile.fuelGal * factors[`${key}FuelFactor`] * factors.tripFuelFactor;
+    return { ...profile, timeHr, distanceNm: profile.distanceNm * timeScale, fuelGal, fuelFlowGph: fuelGal / timeHr };
+  };
+  const climb = scaledPhase(climbProfile(altitudeFt, takeoffWeightLb, weather), "climb");
+  const descent = scaledPhase(descentProfile(altitudeFt), "descent");
   const cruiseDistanceNm = Math.max(0, plan.distanceNm - climb.distanceNm - descent.distanceNm);
-  const cruiseTimeHr = cruiseDistanceNm / gsKt;
-  const cruiseFuelGal = cruiseTimeHr * fuelFlowGph;
+  const cruiseTimeHr = cruiseDistanceNm / gsKt * factors.cruiseTimeFactor * factors.tripTimeFactor;
+  const cruiseFuelGal = cruiseDistanceNm / gsKt * fuelFlowGph * factors.cruiseFuelFactor * factors.tripFuelFactor;
+  const calibratedCruiseFlowGph = cruiseTimeHr > 0 ? cruiseFuelGal / cruiseTimeHr : fuelFlowGph;
   const tripFuelGal = climb.fuelGal + cruiseFuelGal + descent.fuelGal;
   const tripTimeHr = climb.timeHr + cruiseTimeHr + descent.timeHr;
   const reserveFuelGal = (reserveMinutes / 60) * PERFORMANCE.modes.ECON.fuelFlowGph;
   const contingencyFuelGal = tripFuelGal * (PERFORMANCE.contingencyPercent / 100);
   const fuelRequiredGal = tripFuelGal + reserveFuelGal + contingencyFuelGal + PERFORMANCE.taxiFuelGal;
-  const specificRangeNmGal = gsKt / fuelFlowGph;
+  const specificRangeNmGal = cruiseFuelGal > 0 ? cruiseDistanceNm / cruiseFuelGal : gsKt / calibratedCruiseFlowGph;
   const usableForCruise = Math.max(0, AIRCRAFT.usableFuelGal - reserveFuelGal - PERFORMANCE.taxiFuelGal - climb.fuelGal - descent.fuelGal);
   const maxRangeNm = usableForCruise * specificRangeNmGal + climb.distanceNm + descent.distanceNm;
-  const enduranceHr = AIRCRAFT.usableFuelGal / fuelFlowGph;
+  const enduranceHr = AIRCRAFT.usableFuelGal / calibratedCruiseFlowGph;
 
   return {
     altitudeFt,
     fl: Math.round(altitudeFt / 100),
     tasKt,
     gsKt,
-    fuelFlowGph,
+    fuelFlowGph: calibratedCruiseFlowGph,
     power: cruise.power,
     weather,
     climb,

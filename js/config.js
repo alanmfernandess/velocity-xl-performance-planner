@@ -90,6 +90,10 @@ export const PERFORMANCE = {
   calibrationLimits: {
     tasFactor: [0.85, 1.15],
     fuelFlowFactor: [0.75, 1.3],
+    phaseTimeFactor: [0.7, 1.3],
+    phaseFuelFactor: [0.7, 1.3],
+    tripTimeFactor: [0.8, 1.2],
+    tripFuelFactor: [0.8, 1.2],
   },
   viability: {
     minimumFuelMarginGal: 5,

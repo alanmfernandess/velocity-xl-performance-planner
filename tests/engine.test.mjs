@@ -821,13 +821,47 @@ test("debrief updates calibration and mission score blocks mandatory hazards", (
   const result = analysis.results.find((item) => item.altitudeFt === 18000);
   const debrief = calculateDebrief({ result, actualTimeMinutes: result.tripTimeHr * 60 * 1.08, actualFuelGal: result.tripFuelGal * 1.1 });
   assert.ok(debrief.accuracyScore < 100);
-  assert.ok(debrief.calibration.tasFactor < 1);
-  assert.ok(debrief.calibration.fuelFlowFactor > 1);
+  assert.equal(debrief.calibration.tasFactor, 1);
+  assert.equal(debrief.calibration.fuelFlowFactor, 1);
+  assert.ok(debrief.calibration.tripTimeFactor > 1);
+  assert.ok(debrief.calibration.tripFuelFactor > 1);
+  const learned = calculateAtAltitude({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, calibration: { NORMAL: debrief.calibration } });
+  assert.ok(learned.tripTimeHr > result.tripTimeHr);
+  assert.ok(learned.tripFuelGal > result.tripFuelGal);
+  assert.equal(learned.tasKt, result.tasKt);
   const score = calculateMissionScore({ result, confidence: result.confidence });
   assert.ok(score.score < 40);
   assert.equal(score.status, "not-viable");
   assert.equal(score.blocked, true);
   assert.ok(score.reasons.some((reason) => reason.code === "oxygen" && reason.blocking));
+});
+
+test("phase debrief adjusts only observed phases and can be replayed after deletion", () => {
+  const options = { plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45 };
+  const result = calculateAtAltitude(options);
+  const baseline = { tasFactor: 1, fuelFlowFactor: 1 };
+  const actualPhases = { climb: { timeMinutes: result.climb.timeHr * 60 * 1.1, fuelGal: result.climb.fuelGal * 1.15 }, cruise: { timeMinutes: result.cruiseTimeHr * 60 * 1.05, fuelGal: result.cruiseFuelGal * 1.08 } };
+  const first = calculateDebrief({ result, actualTimeMinutes: result.tripTimeHr * 60 * 1.05, actualFuelGal: result.tripFuelGal * 1.08, actualPhases, currentCalibration: baseline });
+  assert.equal(first.calibration.tasFactor, 1);
+  assert.equal(first.calibration.fuelFlowFactor, 1);
+  assert.equal(first.calibration.tripTimeFactor, undefined);
+  assert.ok(first.calibration.climbTimeFactor > 1);
+  assert.ok(first.calibration.climbFuelFactor > 1);
+  assert.ok(first.calibration.cruiseFuelFactor > 1);
+  assert.equal(first.calibration.descentTimeFactor, undefined);
+  const calibrated = calculateAtAltitude({ ...options, calibration: { NORMAL: first.calibration } });
+  assert.ok(calibrated.climb.timeHr > result.climb.timeHr);
+  assert.ok(calibrated.climb.fuelGal > result.climb.fuelGal);
+  assert.ok(calibrated.cruiseFuelGal > result.cruiseFuelGal);
+  assert.equal(calibrated.descent.timeHr, result.descent.timeHr);
+  const second = calculateDebrief({ result, actualTimeMinutes: result.tripTimeHr * 60 * 1.02, actualFuelGal: result.tripFuelGal * 1.03, currentCalibration: first.calibration });
+  const entries = [
+    { mode: "NORMAL", ...first, calibrationBefore: baseline, calibrationAfter: first.calibration },
+    { mode: "NORMAL", ...second, calibrationBefore: first.calibration, calibrationAfter: second.calibration },
+  ];
+  const withoutFirst = deleteDebrief({ debriefs: entries, calibration: { NORMAL: second.calibration } }, 0);
+  const replayed = calculateDebrief({ result, actualTimeMinutes: result.tripTimeHr * 60 * 1.02, actualFuelGal: result.tripFuelGal * 1.03, currentCalibration: baseline });
+  assert.deepEqual(withoutFirst.calibration.NORMAL, replayed.calibration);
 });
 
 test("mission score uses one ascending 0-100 viability scale", () => {
