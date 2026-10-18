@@ -22,10 +22,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-05" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-07" />
   </head>
   <body>
     <header class="topbar">
@@ -68,9 +65,17 @@
       </section>
 
       <div id="plannerContent" hidden>
+      <section class="kpi-grid" aria-label="Performance summary">
+        <article class="kpi featured" id="kpiSelectedLevel"><span data-i18n="bestLevel">Nível selecionado</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="selectedLevel">Selecionado</small></article>
+        <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
+        <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
+        <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
+      </section>
+
       <section class="panel flight-tools-panel" aria-label="Flight tools">
-        <div class="tool-tabs" role="tablist">
-          <button class="active" data-tool-view="etp" type="button">ETP / PNR</button>
+        <div class="tool-cards-heading"><h2 data-i18n="flightTools">Ferramentas de voo</h2><small data-i18n="chooseTool">Escolha um módulo</small></div>
+        <div class="tool-card-grid">
+          <button data-tool-view="etp" type="button">ETP / PNR</button>
           <button data-tool-view="alternate" type="button">ALT / DIV</button>
           <button data-tool-view="compare" type="button">A / B</button>
           <button data-tool-view="load" type="button">LOAD</button>
@@ -82,7 +87,7 @@
           <button data-tool-view="steps" type="button">STEP CLIMB</button>
           <button data-tool-view="update" type="button" data-i18n="manualUpdate">Atualização manual</button>
         </div>
-        <div class="tool-view active" data-tool-panel="etp">
+        <div class="tool-view" data-tool-panel="etp">
           <div class="navigation-grid">
             <div class="navigation-point etp-point">
               <span>ETP</span>
@@ -286,12 +291,6 @@
         </div>
       </section>
 
-      <section class="kpi-grid" aria-label="Performance summary">
-        <article class="kpi featured" id="kpiSelectedLevel"><span data-i18n="bestLevel">Nível selecionado</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="selectedLevel">Selecionado</small></article>
-        <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
-        <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
-        <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
-      </section>
 
       <section class="mission-strip" aria-label="Mission status">
         <div><span data-i18n="missionScore">Score da missão</span><strong id="missionRiskValue">—</strong><small id="missionRiskStatus">—</small></div>
@@ -389,6 +388,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-07"></script>
+    <script type="module" src="./js/app.js?v=20261018-08"></script>
   </body>
 </html>

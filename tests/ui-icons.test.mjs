@@ -101,11 +101,20 @@ test("discrete icon rules cover every primary calculator surface",()=>{
 
 test("completed-flight calibration lives under Manual Update without a separate DEBRIEF tab",()=>{
   assert.doesNotMatch(index,/data-tool-view="debrief"|data-tool-panel="debrief"/);
-  const manualPanel=index.slice(index.indexOf('data-tool-panel="update"'),index.indexOf('class="kpi-grid"'));
+  const manualPanel=index.slice(index.indexOf('data-tool-panel="update"'),index.indexOf('class="mission-strip"'));
   assert.match(manualPanel,/data-manual-mode="flight"[\s\S]*data-manual-mode="finished"/);
   assert.match(manualPanel,/data-manual-panel="flight"[\s\S]*id="manualUpdateForm"[\s\S]*id="calibrationForm"/);
   assert.match(manualPanel,/data-manual-panel="finished"[\s\S]*id="debriefForm"[\s\S]*id="debriefHistory"/);
   assert.match(app,/localStorage\.setItem\("velocityxl\.debriefs"/);
+});
+
+test("flight tools open as individual cards in the page flow",()=>{
+  assert.match(index,/class="tool-card-grid"/);
+  assert.doesNotMatch(index,/class="tool-tabs"/);
+  assert.match(app,/function setOpenTool\(key\)/);
+  assert.match(app,/toolCardGrid\.insertBefore\(panel,toolCardButtons\[rowEnd\+1\]\|\|null\)/);
+  assert.match(css,/\.flight-tools-panel \{ position:static; display:block; max-height:none; overflow:visible/);
+  assert.match(css,/\.tool-card-grid \{ display:grid; grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
 });
 
 test("dynamic operational cards use semantic line icons",()=>{

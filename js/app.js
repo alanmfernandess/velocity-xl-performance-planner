@@ -208,6 +208,8 @@ Object.assign(COPY["pt-BR"], { calibrationNeedsUpdate:"Atualize posição, FL e 
 Object.assign(COPY["en-US"], { calibrationNeedsUpdate:"Update position, FL and fuel before calibrating.", calibrationReady:"Position, FL and fuel confirmed." });
 Object.assign(COPY["pt-BR"], { remainingFuelTitle:"Combustível · trecho restante", remainingFuelViable:"SUFICIENTE", remainingFuelMarginal:"MARGEM BAIXA", remainingFuelUnavailable:"INSUFICIENTE", remainingUnknown:"NÃO AVALIADO", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Necessário ${fuel}`, remainingMargin:(fuel)=>`Margem ${fuel}` });
 Object.assign(COPY["en-US"], { remainingFuelTitle:"Fuel · remaining route", remainingFuelViable:"SUFFICIENT", remainingFuelMarginal:"LOW MARGIN", remainingFuelUnavailable:"INSUFFICIENT", remainingUnknown:"UNASSESSED", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Required ${fuel}`, remainingMargin:(fuel)=>`Margin ${fuel}` });
+Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Escolha um módulo", closeTool:"Fechar", toolHintEtp:"Pontos de decisão", toolHintAlternate:"Alternados", toolHintCompare:"Comparar cenários", toolHintLoad:"Carga e combustível", toolHintWb:"Peso e centro de gravidade", toolHintGlide:"Alcance planado", toolHintOxygen:"Oxigênio", toolHintConfidence:"Confiança do modelo", toolHintRide:"Conforto de voo", toolHintSteps:"Subida em etapas", toolHintUpdate:"Em voo · Voo concluído" });
+Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete" });
 
 function storedJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
@@ -891,7 +893,47 @@ $("#performanceChart").addEventListener("click",(event)=>{
   state.manuallySelectedLevel=true;
   render();
 });
-$$('[data-tool-view]').forEach((button)=>button.addEventListener("click",()=>{$$('[data-tool-view]').forEach((item)=>item.classList.toggle("active",item===button));$$('[data-tool-panel]').forEach((panel)=>panel.classList.toggle("active",panel.dataset.toolPanel===button.dataset.toolView));if(button.dataset.toolView==="glide")centerGlideRoutePoint();}));
+const toolCardGrid=$(".tool-card-grid");
+const toolCardButtons=$$('[data-tool-view]');
+const toolCardPanels=$$('[data-tool-panel]');
+const toolHintKeys={etp:"toolHintEtp",alternate:"toolHintAlternate",compare:"toolHintCompare",load:"toolHintLoad",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",confidence:"toolHintConfidence",ride:"toolHintRide",steps:"toolHintSteps",update:"toolHintUpdate"};
+let openToolKey=null;
+toolCardButtons.forEach((button)=>{
+  const key=button.dataset.toolView,label=button.textContent;
+  button.classList.add("tool-card");
+  button.id=`tool-card-${key}`;
+  button.removeAttribute("data-i18n");
+  button.setAttribute("aria-controls",`tool-panel-${key}`);
+  button.setAttribute("aria-expanded","false");
+  button.innerHTML=`<span class="tool-card-label" ${key==="update"?'data-i18n="manualUpdate"':''}>${escapeHtml(label)}</span><small data-i18n="${toolHintKeys[key]}">${escapeHtml(t(toolHintKeys[key]))}</small>`;
+  button.addEventListener("click",()=>setOpenTool(openToolKey===key?null:key));
+});
+toolCardPanels.forEach((panel)=>{
+  const key=panel.dataset.toolPanel;
+  panel.id=`tool-panel-${key}`;
+  panel.setAttribute("role","region");
+  panel.setAttribute("aria-labelledby",`tool-card-${key}`);
+  panel.classList.remove("active");
+  const heading=document.createElement("div");
+  heading.className="tool-view-heading";
+  heading.innerHTML=`<h3>${escapeHtml(toolCardButtons.find((button)=>button.dataset.toolView===key)?.querySelector(".tool-card-label")?.textContent||key)}</h3><button type="button" class="tool-close" data-i18n="closeTool">${escapeHtml(t("closeTool"))}</button>`;
+  if(key==="update") heading.querySelector("h3").dataset.i18n="manualUpdate";
+  heading.querySelector("button").addEventListener("click",()=>setOpenTool(null));
+  panel.prepend(heading);
+  toolCardGrid.append(panel);
+});
+function setOpenTool(key){
+  openToolKey=key;
+  toolCardButtons.forEach((button)=>{const active=button.dataset.toolView===key;button.classList.toggle("active",active);button.setAttribute("aria-expanded",String(active));});
+  toolCardPanels.forEach((panel)=>{panel.classList.toggle("active",panel.dataset.toolPanel===key);if(panel.dataset.toolPanel!==key)toolCardGrid.append(panel);});
+  if(!key)return;
+  const panel=toolCardPanels.find((item)=>item.dataset.toolPanel===key),index=toolCardButtons.findIndex((button)=>button.dataset.toolView===key);
+  const columns=getComputedStyle(toolCardGrid).gridTemplateColumns.split(" ").length;
+  const rowEnd=Math.min(toolCardButtons.length-1,Math.floor(index/columns)*columns+columns-1);
+  toolCardGrid.insertBefore(panel,toolCardButtons[rowEnd+1]||null);
+  if(key==="glide")centerGlideRoutePoint();
+}
+window.addEventListener("resize",()=>{if(openToolKey)setOpenTool(openToolKey);});
 $$('[data-manual-mode]').forEach((button)=>button.addEventListener("click",()=>{
   $$('[data-manual-mode]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
   $$('[data-manual-panel]').forEach((panel)=>panel.hidden=panel.dataset.manualPanel!==button.dataset.manualMode);

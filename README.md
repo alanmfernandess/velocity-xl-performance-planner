@@ -12,7 +12,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Matriz responsiva de níveis por trecho da rota, com MORA exata do navlog, fase do voo, componente de vento por FL e índice de gelo onde houver evidência aplicável no OFP. A faixa superior permite navegar por 10, 20 ou mais waypoints; no celular, um trecho é mostrado por vez. A seleção de um FL na matriz recalcula o score e os demais painéis.
 - Classificação de terreno por FL: VIÁVEL com pelo menos 2.000 ft acima da MORA crítica, MARGINAL com margem menor, INVIÁVEL abaixo da MORA; sem MORA suficiente, TERRENO NÃO AVALIADO. Mínimos ausentes podem ser informados manualmente com fonte verificada.
 - Icing-Aware Level Optimizer usando OAT por waypoint/nível e evidências meteorológicas presentes no OFP para evitar ou penalizar faixas com risco de gelo.
-- Interface clara e minimalista em português do Brasil e inglês americano.
+- Interface clara e minimalista em português do Brasil e inglês americano, com paleta, tipografia de sistema, ícones e espaçamento compartilhados por toda a calculadora.
 - Tipografia compacta e responsiva, com controle A−/A/A+ salvo no dispositivo e unidades selecionáveis LB/KG e GAL/L.
 - Manifesto instalável com apresentação standalone, semelhante a um aplicativo.
 - Comparação de FL100 a FL250 nos modos ECON, NORMAL e FAST.
@@ -36,7 +36,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Calibração local por modo usando TAS e fuel flow observados no Xbox, após confirmar posição, FL e combustível restante em Atualização manual; os fatores ficam salvos no dispositivo.
 - Atualização manual mostra separadamente a margem estimada de combustível para o trecho restante, incluindo contingência, reserva e alternado quando calculável; ela não substitui o score da missão planejada.
 - Gráficos de performance, perfil vertical, representação de rota e perfil de combustível organizados em abas.
-- O painel de ferramentas permanece fixo abaixo da barra superior durante a rolagem; em telas menores, seu conteúdo rola dentro do card. No aplicativo instalado em dispositivos de toque, a pinça para ampliar a página é desativada e os controles A−/A/A+ continuam disponíveis.
+- Cada ferramenta de voo tem um card próprio. O módulo escolhido abre logo abaixo de sua linha, no fluxo normal da página, sem painel fixo ou rolagem interna. No aplicativo instalado em dispositivos de toque, a pinça para ampliar a página é desativada e os controles A−/A/A+ continuam disponíveis.
 - Tela inicial vazia até a importação de um OFP real; somente o identificador SimBrief é salvo localmente.
 - Coeficientes centralizados em `js/config.js` para calibração manual futura.
 
