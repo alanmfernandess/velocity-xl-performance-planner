@@ -15,10 +15,11 @@
   --radius: 15px;
   --shadow: none;
   --font-base: 18px;
-  --type-caption: .625rem;
-  --type-body: .75rem;
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --type-caption: .667rem;
+  --type-body: .778rem;
   --type-heading: 1rem;
-  --type-display: 1.35rem;
+  --type-display: 1.5rem;
 }
 
 * { box-sizing: border-box; }
@@ -26,7 +27,7 @@
 html { scroll-behavior: smooth; font-size:var(--font-base); }
 html[data-font-size="small"] { --font-base:16px; }
 html[data-font-size="large"] { --font-base:20px; }
-body { margin: 0; min-width: 320px; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+body { margin: 0; min-width: 320px; background: var(--bg); color: var(--text); font-family: var(--font-family); line-height:1.4; -webkit-font-smoothing: antialiased; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 .shell { width: min(1380px, calc(100% - 48px)); margin-inline: auto; }
@@ -105,9 +106,9 @@ html.standalone-app :is(input,select,textarea) { font-size:max(16px, .625rem); }
 .debrief-layout { display:grid; grid-template-columns:minmax(310px,.9fr) minmax(200px,.65fr) minmax(260px,1fr); gap:12px; align-items:stretch; }.debrief-form { display:grid; grid-template-columns:1fr 1fr 120px; gap:8px; align-items:end; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--panel-soft); }.debrief-form label { min-width:0; }.debrief-form label>span:first-child { display:block; margin:0 0 4px 2px; color:var(--muted); font-size:.4375rem; }.debrief-form input { width:100%; min-width:0; height:36px; border:0; background:transparent; padding:0 8px; font-size:.5625rem; font-weight:600; }.debrief-result { display:grid; align-content:center; justify-items:center; padding:12px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(145deg,#fff,var(--green-soft)); text-align:center; }.debrief-result strong { font:700 .875rem "Manrope"; }.debrief-result span { margin-top:5px; color:var(--muted); font-size:.5rem; }.debrief-history { display:grid; align-content:start; gap:5px; max-height:200px; overflow:auto; }.debrief-history div { display:flex; justify-content:space-between; gap:8px; padding:7px 9px; border-radius:8px; background:var(--panel-soft); font-size:.4375rem; }.debrief-history span { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px 18px; border-top:1px solid var(--line); color:var(--muted); padding:20px 2px 28px; font-size:.5rem; }.toast { position:fixed; z-index:100; left:50%; bottom:24px; transform:translate(-50%,20px); opacity:0; pointer-events:none; background:var(--text); color:#fff; padding:11px 15px; border-radius:10px; font-size:.625rem; font-weight:600; box-shadow:0 12px 34px #17202a33; transition:.2s ease; }.toast.show { opacity:1; transform:translate(-50%,0); }.toast.error { background:#8c2630; }
 
-/* Unified typography: one family and four intentional, scalable roles. */
+/* One typeface and four scalable roles across every calculator module. */
 body * {
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font-family:var(--font-family)!important;
   font-size:var(--type-body)!important;
 }
 body :is(strong,b,button) { font-weight:500!important; }
@@ -129,7 +130,16 @@ body :is(
   .wb-inputs label>span:first-child,
   .wb-table-head,
   .oxygen-controls label>span,
-  .envelope-head span
+  .envelope-head span,
+  .toolbar-group button,
+  .route-source,
+  .feasibility-badge,
+  .status-pill,
+  .chart-tabs button,
+  .power-toggle button,
+  .tool-card small,
+  .tool-close,
+  .plan-status-row small
 ) {
   font-size:var(--type-caption)!important;
 }
@@ -737,8 +747,8 @@ body :is(
 body :is(strong,b) { font-weight:600!important; }
 .topbar { position:static; min-height:60px; background:var(--panel); backdrop-filter:none; }
 .brand { letter-spacing:.08em; }
-.brand strong { font-size:.75rem!important; font-weight:600!important; }
-.brand small { font-size:.5rem!important; letter-spacing:.1em; }
+.brand strong { font-size:var(--type-body)!important; font-weight:600!important; }
+.brand small { font-size:var(--type-caption)!important; letter-spacing:.1em; }
 .brand-mark { border-color:var(--line); }
 .brand-mark > .ui-icon { width:17px; height:17px; }
 .toolbar-group { background:var(--panel-soft); border-color:var(--line); }
@@ -786,13 +796,13 @@ body :is(strong,b) { font-weight:600!important; }
 .tool-card.active { border-color:var(--blue); background:var(--blue-soft); }
 .tool-card:focus-visible,.tool-close:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
 .tool-card > .ui-icon { grid-column:1; grid-row:1; width:15px; height:15px; color:var(--blue); }
-.tool-card-label { grid-column:2; grid-row:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.69rem!important; font-weight:600!important; }
+.tool-card-label { grid-column:2; grid-row:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--type-body)!important; font-weight:600!important; }
 .tool-card small { grid-column:1/-1; grid-row:2; min-width:0; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:var(--type-caption)!important; }
 .tool-view { grid-column:1/-1; min-width:0; padding:16px; border:1px solid var(--line); border-radius:15px; background:var(--panel); }
 .tool-view.active { display:block; }
 .flight-tools-panel .tool-view.active { max-height:none; overflow:visible; }
 .tool-view-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; padding-bottom:11px; border-bottom:1px solid var(--line); }
-.tool-view-heading h3 { margin:0; font-size:.875rem!important; font-weight:600!important; }
+.tool-view-heading h3 { margin:0; font-size:var(--type-heading)!important; font-weight:600!important; }
 .tool-close { min-height:34px; padding:6px 10px; border:0; border-radius:8px; background:transparent; color:var(--blue); font-size:var(--type-caption)!important; }
 .tool-close:hover { background:var(--blue-soft); }
 .tool-view .scenario-matrix-module,.tool-view .wb-layout,.tool-view .oxygen-layout { min-width:0; }
@@ -802,7 +812,6 @@ body :is(strong,b) { font-weight:600!important; }
   .plan-bar { padding:15px; }
   .tool-card-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
   .tool-card { min-height:68px; padding:8px; border-radius:11px; }
-  .tool-card-label { font-size:.65rem!important; }
   .tool-view { padding:13px; border-radius:12px; }
   .tool-view-heading { margin-bottom:11px; }
   .visual-panel,.terrain-panel,.levels-section { padding:15px; }
@@ -814,8 +823,9 @@ body :is(strong,b) { font-weight:600!important; }
   .toolbar-group { padding:2px; }
   .toolbar-group button { min-width:24px; padding:4px; }
   .font-switch button { min-width:29px; min-height:30px; }
-  .tool-cards-heading h2 { font-size:.8rem!important; }
   .tool-card { min-height:63px; }
   .tool-card-label { white-space:normal; line-height:1.2; }
-  .tool-card small { font-size:.56rem!important; }
 }
+
+/* iOS standalone mode needs 16px form controls to avoid focus zoom. */
+html.standalone-app body :is(input,select,textarea) { font-size:max(16px,var(--type-body))!important; }
