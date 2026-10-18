@@ -205,6 +205,8 @@ Object.assign(COPY["pt-BR"], { cruiseIcing:"Índice de gelo" });
 Object.assign(COPY["en-US"], { cruiseIcing:"Icing index" });
 Object.assign(COPY["pt-BR"], { debriefResultTitle:"Resultado do voo", debriefHistory:"Histórico", debriefPhases:"Fases", phaseTime:"Tempo", phaseFuel:"Combustível", debriefConfidence:"Confiança da calibração", debriefSaved:"Voo registrado", debriefPhasePair:"Preencha tempo e combustível da fase.", debriefPhaseTotals:"Os valores das fases excedem o total do voo.", debriefNoLevel:"Selecione um nível antes de registrar o voo.", glideCaveat:"Alcance teórico · terreno e obstáculos não avaliados" });
 Object.assign(COPY["en-US"], { debriefResultTitle:"Flight result", debriefHistory:"History", debriefPhases:"Phases", phaseTime:"Time", phaseFuel:"Fuel", debriefConfidence:"Calibration confidence", debriefSaved:"Flight recorded", debriefPhasePair:"Enter both time and fuel for this phase.", debriefPhaseTotals:"Phase values exceed flight totals.", debriefNoLevel:"Select a level before saving the flight.", glideCaveat:"Theoretical range · terrain and obstacles not assessed" });
+Object.assign(COPY["pt-BR"], { calibrationNeedsUpdate:"Atualize posição, FL e combustível antes de calibrar.", calibrationReady:"Posição, FL e combustível confirmados." });
+Object.assign(COPY["en-US"], { calibrationNeedsUpdate:"Update position, FL and fuel before calibrating.", calibrationReady:"Position, FL and fuel confirmed." });
 
 function storedJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
@@ -515,6 +517,7 @@ function renderFlightTools(plan,navigation,stepPlan,selected) {
   $("#calibrationMode").textContent=state.mode;
   const factors=state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1};
   $("#calibrationFactors").textContent=`TAS ×${number(factors.tasFactor||1,2)} · FF ×${number(factors.fuelFlowFactor||1,2)}`;
+  updateCalibrationGate();
 }
 
 function statusLabel(status) {
@@ -976,18 +979,41 @@ $("#terrainManual").addEventListener("submit",(event)=>{
   render();
 });
 
+function manualCalibrationReady(){
+  const waypointIndex=Number($("#manualWaypoint").value),altitudeFt=Number($("#manualAltitude").value);
+  const fuelInput=$("#manualFuel"),fuelRemainingGal=fuelFromDisplay(Number(fuelInput.value));
+  return state.manual.active
+    && Number.isInteger(waypointIndex) && waypointIndex>=0 && waypointIndex<state.plan.waypoints.length
+    && ALTITUDES_FT.includes(altitudeFt)
+    && fuelInput.value!=="" && fuelInput.validity.valid
+    && Number.isFinite(fuelRemainingGal) && fuelRemainingGal>0 && fuelRemainingGal<=AIRCRAFT.usableFuelGal
+    && waypointIndex===state.manual.waypointIndex && altitudeFt===state.manual.altitudeFt
+    && fuelInput.value===number(fuelValue(state.manual.fuelRemainingGal),1).replace(/[^0-9,.-]/g,"").replace(",",".");
+}
+
+function updateCalibrationGate(){
+  const ready=manualCalibrationReady();
+  $("#calibrateObserved").disabled=!ready;
+  $("#calibrationGate").textContent=t(ready?"calibrationReady":"calibrationNeedsUpdate");
+}
+
+$("#manualUpdateForm").addEventListener("input",updateCalibrationGate);
+$("#manualUpdateForm").addEventListener("change",updateCalibrationGate);
+
 $("#manualUpdateForm").addEventListener("submit",(event)=>{
   event.preventDefault();
   const waypointIndex=Number($("#manualWaypoint").value),waypoint=state.plan.waypoints[waypointIndex];
-  state.manual={active:true,waypointIndex,distanceNm:Number(waypoint?.distanceNm)||0,fuelRemainingGal:fuelFromDisplay(Number($("#manualFuel").value)),altitudeFt:Number($("#manualAltitude").value)};
+  const altitudeFt=Number($("#manualAltitude").value),fuelRemainingGal=fuelFromDisplay(Number($("#manualFuel").value));
+  if(!waypoint||!ALTITUDES_FT.includes(altitudeFt)||!Number.isFinite(fuelRemainingGal)||fuelRemainingGal<0||fuelRemainingGal>AIRCRAFT.usableFuelGal){showToast(t("calibrationNeedsUpdate"),true);return;}
+  state.manual={active:true,waypointIndex,distanceNm:Number(waypoint.distanceNm)||0,fuelRemainingGal,altitudeFt};
   state.diversionWaypointIndex=waypointIndex;
   render();
 });
 
 $("#calibrationForm").addEventListener("submit",(event)=>{
   event.preventDefault();
-  const altitudeFt=Number($("#manualAltitude").value),fuelRemainingGal=state.manual.active?state.manual.fuelRemainingGal:fuelFromDisplay(Number($("#manualFuel").value));
-  state.calibration[state.mode]=deriveCalibration({plan:state.plan,mode:state.mode,payloadLb:state.payloadLb,fuelRemainingGal,oxygenWeightLb:currentOxygenWeightLb(),altitudeFt,observedTasKt:Number($("#observedTas").value),observedFuelFlowGph:fuelFromDisplay(Number($("#observedFuelFlow").value)),positionFix:state.plan.waypoints[Number($("#manualWaypoint").value)],powerSetting:state.powerSetting});
+  if(!manualCalibrationReady()){showToast(t("calibrationNeedsUpdate"),true);updateCalibrationGate();return;}
+  state.calibration[state.mode]=deriveCalibration({plan:state.plan,mode:state.mode,payloadLb:state.payloadLb,fuelRemainingGal:state.manual.fuelRemainingGal,oxygenWeightLb:currentOxygenWeightLb(),altitudeFt:state.manual.altitudeFt,observedTasKt:Number($("#observedTas").value),observedFuelFlowGph:fuelFromDisplay(Number($("#observedFuelFlow").value)),positionFix:state.plan.waypoints[state.manual.waypointIndex],powerSetting:state.powerSetting});
   localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
   render();
 });

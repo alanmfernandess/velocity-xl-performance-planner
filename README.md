@@ -33,7 +33,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Flight Debrief & Model Accuracy, que compara tempo e combustível reais com a previsão, exibe a média de ACCURACY do histórico e permite excluir cada registro. A exclusão atualiza imediatamente ACCURACY e confiança; fatores estimados de TAS/fuel flow são refeitos quando o histórico de calibração permite reconstituição exata.
 - Turbulence & Ride Comfort Optimizer usando avisos meteorológicos do OFP e gradientes de vento por nível/trecho para comparar conforto entre FLs.
 - Step Climb Advisor com pontos vinculados aos waypoints e atualização manual por posição, FL e combustível restante.
-- Calibração local por modo usando somente TAS e fuel flow observados no Xbox; os fatores ficam salvos no dispositivo.
+- Calibração local por modo usando TAS e fuel flow observados no Xbox, após confirmar posição, FL e combustível restante em Atualização manual; os fatores ficam salvos no dispositivo.
 - Gráficos de performance, perfil vertical, representação de rota e perfil de combustível organizados em abas.
 - O painel de ferramentas permanece fixo abaixo da barra superior durante a rolagem; em telas menores, seu conteúdo rola dentro do card. No aplicativo instalado em dispositivos de toque, a pinça para ampliar a página é desativada e os controles A−/A/A+ continuam disponíveis.
 - Tela inicial vazia até a importação de um OFP real; somente o identificador SimBrief é salvo localmente.
