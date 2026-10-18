@@ -821,7 +821,26 @@ export function calculatePerformanceConfidence({ plan, result, calibration = {},
   };
 }
 
-export function calculateMissionScore({ result, confidence, alternateAdvice = null }) {
+export function calculateFinancialImpact({ currentCost, minimumViableCost }) {
+  const current = Number(currentCost);
+  const minimum = Number(minimumViableCost);
+  if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(minimum) || minimum <= 0) {
+    return { assessed: false, efficiencyScore: null, premiumPercent: null, penalty: 0 };
+  }
+  const premiumPercent = Math.max(0, (current / minimum - 1) * 100);
+  const { tolerancePercent, fullPenaltyPercent, maximumMissionPenalty } = PERFORMANCE.financial;
+  const penalty = premiumPercent <= tolerancePercent
+    ? 0
+    : clamp(Math.round((premiumPercent - tolerancePercent) / (fullPenaltyPercent - tolerancePercent) * maximumMissionPenalty), 0, maximumMissionPenalty);
+  return {
+    assessed: true,
+    efficiencyScore: clamp(Math.round(minimum / current * 100), 0, 100),
+    premiumPercent,
+    penalty,
+  };
+}
+
+export function calculateMissionScore({ result, confidence, alternateAdvice = null, financial = null }) {
   const reasons = [];
   const addReason = (code, impact, blocking = false, detail = null) => {
     if (impact <= 0) return;
@@ -881,6 +900,9 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
     addReason("alternate", PERFORMANCE.missionRisk.alternateUnavailable, false, alternateAdvice?.destination?.marginGal ?? alternateStatus);
   } else if (alternateStatus === "marginal") {
     addReason("alternate", PERFORMANCE.missionRisk.alternateMarginal, false, alternateAdvice.destination.marginGal);
+  }
+  if (financial?.assessed && financial.penalty > 0) {
+    addReason("financial", financial.penalty, false, financial);
   }
 
   reasons.sort((a, b) => Number(b.blocking) - Number(a.blocking) || b.impact - a.impact);

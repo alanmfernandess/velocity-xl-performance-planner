@@ -22,7 +22,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-11" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-12" />
   </head>
   <body>
     <header class="topbar">
@@ -85,6 +85,7 @@
           <button data-tool-view="confidence" type="button">CONF</button>
           <button data-tool-view="ride" type="button">RIDE</button>
           <button data-tool-view="ice" type="button">ICE</button>
+          <button data-tool-view="cost" type="button">CUSTO</button>
           <button data-tool-view="steps" type="button">STEP CLIMB</button>
           <button data-tool-view="update" type="button" data-i18n="manualUpdate">Atualização manual</button>
         </div>
@@ -264,6 +265,33 @@
             </div>
           </div>
         </div>
+        <div class="tool-view" data-tool-panel="cost">
+          <div class="cost-module">
+            <div class="cost-price-row">
+              <div><span data-i18n="fuelPrice">Preço do combustível</span><strong id="costOrigin">—</strong></div>
+              <label class="cost-currency"><span data-i18n="currency">Moeda</span><select id="fuelPriceCurrency"><option value="BRL">BRL</option><option value="USD">USD</option></select></label>
+              <label class="cost-price"><span data-i18n="pricePerLiter">Valor por litro</span><span class="input-with-unit"><input id="fuelPricePerLiter" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" /><small id="fuelPriceSymbol">R$</small></span></label>
+            </div>
+            <div class="cost-unassessed" id="costUnassessed" data-i18n="costUnassessed">Informe o valor por litro para avaliar o custo.</div>
+            <div class="cost-content" id="costContent" hidden>
+              <div class="cost-summary">
+                <div><span data-i18n="estimatedFlightCost">Custo estimado do voo</span><strong id="estimatedFlightCost">—</strong><small id="costFuelBasis">—</small></div>
+                <div class="cost-efficiency"><span data-i18n="financialEfficiency">Eficiência financeira</span><strong id="financialEfficiency">—</strong><small id="financialPenalty">—</small></div>
+              </div>
+              <div class="cost-kpis">
+                <span><b data-i18n="costPerNm">Por NM</b><strong id="costPerNm">—</strong></span>
+                <span><b data-i18n="costPerHour">Por hora</b><strong id="costPerHour">—</strong></span>
+                <span><b data-i18n="costPerPerson">Por pessoa</b><strong id="costPerPerson">—</strong></span>
+                <span><b data-i18n="requiredFuelValue">Abastecimento requerido</b><strong id="requiredFuelValue">—</strong></span>
+              </div>
+              <div class="cost-detail-grid">
+                <section><div class="cost-section-heading"><span data-i18n="costBreakdown">Custo por fase</span><strong id="costBreakdownTotal">—</strong></div><div class="cost-phase-list" id="costPhaseList"></div></section>
+                <section><div class="cost-section-heading"><span data-i18n="modeComparison">Comparação de modos</span><strong id="possibleSavings">—</strong></div><div class="cost-mode-list" id="costModeList"></div></section>
+              </div>
+              <div class="cost-live" id="costLive" hidden><span data-i18n="costInFlight">Projeção após atualização manual</span><strong id="costLiveValue">—</strong><small id="costLiveDelta">—</small></div>
+            </div>
+          </div>
+        </div>
         <div class="tool-view" data-tool-panel="steps">
           <div class="step-comparison" id="stepComparison" aria-live="polite"></div>
         </div>
@@ -419,6 +447,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-12"></script>
+    <script type="module" src="./js/app.js?v=20261018-13"></script>
   </body>
 </html>

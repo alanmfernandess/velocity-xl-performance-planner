@@ -930,3 +930,57 @@ body.tool-focus-active .tool-view.active {
   .topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer,
   .tool-cards-heading,.tool-card,.matrix-row { transition:none; }
 }
+
+/* Flight cost: manual price, comparable configurations, and live calibration effect. */
+.cost-module { display:grid; gap:14px; min-width:0; --cost-green:#3f9b70; }
+.cost-price-row { display:grid; grid-template-columns:minmax(140px,1fr) 120px minmax(170px,220px); align-items:end; gap:10px; }
+.cost-price-row>div>span,.cost-price-row label>span { display:block; margin-bottom:6px; color:var(--muted); font-size:var(--type-caption); }
+.cost-price-row>div>strong { display:block; font-size:1.25rem; }
+.cost-price-row select,.cost-price-row input { width:100%; }
+.cost-unassessed { padding:18px; border:1px dashed var(--line-strong); border-radius:12px; color:var(--muted); text-align:center; background:var(--panel-soft); }
+.cost-content { display:grid; gap:10px; }
+.cost-summary { display:grid; grid-template-columns:1.35fr 1fr; gap:1px; overflow:hidden; border:1px solid var(--line); border-radius:12px; background:var(--line); }
+.cost-summary>div { padding:14px; background:var(--panel-soft); }
+.cost-summary span,.cost-summary strong,.cost-summary small { display:block; }
+.cost-summary span { color:var(--muted); font-size:var(--type-caption); }
+.cost-summary strong { margin-top:5px; font-size:1.55rem; font-weight:600; }
+.cost-summary small { margin-top:4px; color:var(--muted); font-size:var(--type-caption); }
+.cost-efficiency strong { color:var(--cost-green); }
+.cost-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; overflow:hidden; border:1px solid var(--line); border-radius:12px; background:var(--line); }
+.cost-kpis>span { min-width:0; padding:11px; background:var(--panel); }
+.cost-kpis b,.cost-kpis strong { display:block; }
+.cost-kpis b { color:var(--muted); font-size:var(--type-caption); font-weight:500; }
+.cost-kpis strong { margin-top:5px; overflow:hidden; text-overflow:ellipsis; font-size:var(--type-body); white-space:nowrap; }
+.cost-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.cost-detail-grid>section { min-width:0; padding:13px; border:1px solid var(--line); border-radius:12px; background:var(--panel-soft); }
+.cost-section-heading { display:flex; justify-content:space-between; gap:10px; margin-bottom:11px; }
+.cost-section-heading span { color:var(--muted); font-size:var(--type-caption); }
+.cost-section-heading strong { color:var(--cost-green); font-size:var(--type-caption); }
+.cost-phase-list { display:grid; gap:9px; }
+.cost-phase-list>div { display:grid; grid-template-columns:70px minmax(0,1fr) 88px; align-items:center; gap:8px; }
+.cost-phase-list span,.cost-phase-list strong { font-size:var(--type-caption); }
+.cost-phase-list span { color:var(--muted); }
+.cost-phase-list strong { text-align:right; }
+.cost-phase-list>div>div { height:7px; overflow:hidden; border-radius:999px; background:var(--panel); }
+.cost-phase-list i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#89caae,var(--cost-green)); }
+.cost-mode-list { display:grid; gap:6px; }
+.cost-mode-list button,.cost-mode-list>div { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:9px; min-width:0; padding:9px 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel); color:var(--text); text-align:left; }
+.cost-mode-list button:hover,.cost-mode-list button.active { border-color:var(--cost-green); background:#eff8f3; }
+.cost-mode-list span,.cost-mode-list small { font-size:var(--type-caption); }
+.cost-mode-list small { color:var(--muted); }
+.cost-mode-list strong { color:var(--cost-green); font-size:var(--type-body); }
+.cost-live { display:grid; grid-template-columns:1fr auto; align-items:center; gap:4px 12px; padding:11px 13px; border:1px solid #a9d8c1; border-radius:11px; background:#eff8f3; }
+.cost-live span { color:var(--muted); font-size:var(--type-caption); }
+.cost-live strong { color:var(--cost-green); font-size:var(--type-body); }
+.cost-live small { grid-column:1/-1; color:var(--muted); font-size:var(--type-caption); }
+@media (max-width:700px) {
+  .cost-price-row { grid-template-columns:1fr 1fr; }
+  .cost-price-row>div { grid-column:1/-1; }
+  .cost-kpis { grid-template-columns:1fr 1fr; }
+  .cost-detail-grid { grid-template-columns:1fr; }
+}
+@media (max-width:430px) {
+  .cost-summary { grid-template-columns:1fr; }
+  .cost-mode-list button { grid-template-columns:1fr auto; }
+  .cost-mode-list button small { grid-column:1/-1; }
+}

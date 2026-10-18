@@ -94,9 +94,19 @@ test("discrete icon rules cover every primary calculator surface",()=>{
     '[data-view-panel="performance"] .view-heading h2', '.phase-grid > div:nth-child(1) > span',
     '[data-tool-view="alternate"]', '[data-tool-view="compare"]', '[data-tool-view="load"]',
     '[data-tool-view="wb"]', '[data-tool-view="glide"]', '[data-tool-view="oxygen"]',
-    '[data-tool-view="confidence"]', '[data-tool-view="ride"]',
+    '[data-tool-view="confidence"]', '[data-tool-view="ride"]', '[data-tool-view="cost"]',
     '[data-tool-view="steps"]', '[data-tool-view="update"]', ".section-heading h2",
   ].forEach((selector)=>assert.ok(app.includes(selector),`missing icon rule for ${selector}`));
+});
+
+test("flight cost uses a manual per-liter price and a bounded mission-score penalty",()=>{
+  assert.match(index,/data-tool-view="cost"[\s\S]*data-tool-panel="cost"/);
+  assert.match(index,/id="fuelPriceCurrency"[\s\S]*id="fuelPricePerLiter"/);
+  assert.match(app,/localStorage\.setItem\("velocityxl\.financial"/);
+  assert.match(app,/calculateFinancialImpact\(\{currentCost:cost,minimumViableCost\}\)/);
+  assert.match(app,/preflightSnapshot=\{missionScore:structuredClone\(lastRenderedMissionScore\),financial:structuredClone\(lastRenderedFinancial\)\}/);
+  assert.match(css,/\.cost-detail-grid \{[^}]*grid-template-columns:1fr 1fr/);
+  assert.match(css,/@media \(max-width:700px\) \{[\s\S]*?\.cost-detail-grid \{ grid-template-columns:1fr/);
 });
 
 test("completed-flight calibration lives under Manual Update without a separate DEBRIEF tab",()=>{

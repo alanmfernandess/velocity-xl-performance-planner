@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateGlideCorridor, calculateIcingRisk, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateRemainingFlightAssessment, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateIcingRisk, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateRemainingFlightAssessment, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -900,4 +900,24 @@ test("a manually selected 79-point level remains viable unless an operational li
   assert.equal(selected.score, 79);
   assert.equal(selected.status, "viable");
   assert.equal(calculateMissionScore({ result: { ...result, terrain: { status: "marginal", marginFt: 100 } }, confidence }).status, "marginal");
+});
+
+test("financial efficiency adds a bounded soft mission-score penalty", () => {
+  const financial = calculateFinancialImpact({ currentCost: 125, minimumViableCost: 100 });
+  assert.equal(financial.assessed, true);
+  assert.equal(financial.efficiencyScore, 80);
+  assert.equal(financial.penalty, 10);
+  const result = {
+    feasibility: { reasons: [], fuelMarginGal: 12, status: "viable" },
+    weightBalance: { status: "viable" },
+    icing: { status: "low", riskScore: 0 },
+    turbulence: { status: "smooth", riskScore: 0, blocking: false },
+    oxygen: { status: "compliant" },
+    terrain: { status: "viable" },
+  };
+  const score = calculateMissionScore({ result, confidence: { score: 100 }, financial });
+  assert.equal(score.score, 90);
+  assert.equal(score.status, "viable");
+  assert.equal(score.reasons.find((reason) => reason.code === "financial")?.blocking, false);
+  assert.equal(calculateFinancialImpact({ currentCost: null, minimumViableCost: 100 }).penalty, 0);
 });

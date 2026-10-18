@@ -187,6 +187,12 @@ export const PERFORMANCE = {
     weightBalanceMarginal: 10,
     weightBalanceUnavailable: 35,
   },
+  financial: {
+    litersPerGal: 3.785411784,
+    tolerancePercent: 3,
+    fullPenaltyPercent: 25,
+    maximumMissionPenalty: 10,
+  },
   debrief: {
     learningRate: 0.2,
     maximumHistory: 20,
