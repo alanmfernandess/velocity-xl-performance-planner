@@ -924,6 +924,7 @@ toolCardPanels.forEach((panel)=>{
 });
 function setOpenTool(key){
   openToolKey=key;
+  document.body.classList.toggle("tool-focus-active",Boolean(key));
   toolCardButtons.forEach((button)=>{const active=button.dataset.toolView===key;button.classList.toggle("active",active);button.setAttribute("aria-expanded",String(active));});
   toolCardPanels.forEach((panel)=>{panel.classList.toggle("active",panel.dataset.toolPanel===key);if(panel.dataset.toolPanel!==key)toolCardGrid.append(panel);});
   if(!key)return;

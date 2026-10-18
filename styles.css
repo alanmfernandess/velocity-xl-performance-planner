@@ -829,3 +829,22 @@ body :is(strong,b) { font-weight:600!important; }
 
 /* iOS standalone mode needs 16px form controls to avoid focus zoom. */
 html.standalone-app body :is(input,select,textarea) { font-size:max(16px,var(--type-body))!important; }
+
+/* Keep the expanded flight tool in the page flow while gently defocusing its surroundings. */
+body.tool-focus-active :is(.topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer),
+body.tool-focus-active :is(.tool-cards-heading,.tool-card:not(.active)) {
+  filter:blur(2px);
+  opacity:.76;
+}
+.topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer,
+.tool-cards-heading,.tool-card {
+  transition:filter .22s ease,opacity .22s ease;
+}
+body.tool-focus-active .tool-view.active {
+  border-color:var(--line-strong);
+  box-shadow:0 14px 36px #162f481c;
+}
+@media (prefers-reduced-motion:reduce) {
+  .topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer,
+  .tool-cards-heading,.tool-card { transition:none; }
+}
