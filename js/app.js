@@ -934,6 +934,10 @@ function setOpenTool(key){
   toolCardGrid.insertBefore(panel,toolCardButtons[rowEnd+1]||null);
   if(key==="glide")centerGlideRoutePoint();
 }
+document.addEventListener("click",(event)=>{
+  if(!openToolKey||event.target.closest?.(".tool-card, .tool-view.active"))return;
+  setOpenTool(null);
+});
 window.addEventListener("resize",()=>{if(openToolKey)setOpenTool(openToolKey);});
 $$('[data-manual-mode]').forEach((button)=>button.addEventListener("click",()=>{
   $$('[data-manual-mode]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
