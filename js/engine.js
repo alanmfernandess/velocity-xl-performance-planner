@@ -275,6 +275,8 @@ export function calculateIcingRisk({ plan, result }) {
       endNm: Number(to.distanceNm) || Math.min(plan.distanceNm, (Number(from.distanceNm) || 0) + segmentNm),
       oatC: weather.oatC,
       riskScore: Math.round(risk * 100),
+      minutes: segmentMinutes,
+      temperatureRelevant: temperatureFactor >= 0.3,
       evidenceAvailable,
       status: segmentHardHazard ? "avoid" : risk * 100 >= PERFORMANCE.icing.cautionScore ? "caution" : risk * 100 >= PERFORMANCE.icing.watchScore ? "watch" : "low",
     });
@@ -367,6 +369,9 @@ export function calculateIcingRisk({ plan, result }) {
     riskScore: status === "avoid" ? 100 : rawRiskScore,
     penalty,
     exposureMinutes,
+    climbExposureMinutes: climbTransition.minutes,
+    cruiseExposureMinutes,
+    descentExposureMinutes: descentTransition.minutes,
     temperatureExposureMinutes,
     transitionRiskMinutes,
     confidence: confirmedEvidenceSamples > 0 ? "weather" : estimatedEvidenceSamples > 0 ? "estimated" : "limited",

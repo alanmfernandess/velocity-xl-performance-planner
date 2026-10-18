@@ -12,6 +12,7 @@ Dashboard gráfico, bilíngue e responsivo de planejamento pré-voo para o **Bla
 - Matriz responsiva de níveis por trecho da rota, com MORA exata do navlog, fase do voo, componente de vento por FL e índice de gelo onde houver evidência aplicável no OFP. A faixa superior permite navegar por 10, 20 ou mais waypoints; no celular, um trecho é mostrado por vez. A seleção de um FL na matriz recalcula o score e os demais painéis.
 - Classificação de terreno por FL: VIÁVEL com pelo menos 2.000 ft acima da MORA crítica, MARGINAL com margem menor, INVIÁVEL abaixo da MORA; sem MORA suficiente, TERRENO NÃO AVALIADO. Mínimos ausentes podem ser informados manualmente com fonte verificada.
 - Icing-Aware Level Optimizer usando OAT por waypoint/nível e evidências meteorológicas presentes no OFP para evitar ou penalizar faixas com risco de gelo.
+- Card ICE dedicado, sincronizado com o FL selecionado, com comparação vertical, exposição por fase, evidências do OFP e faixa dinâmica da rota por waypoint. A intensidade visual usa uma única escala azul proporcional ao índice; trechos sem evidência permanecem identificados como dados limitados.
 - Interface clara e minimalista em português do Brasil e inglês americano, com paleta, tipografia de sistema, ícones e espaçamento compartilhados por toda a calculadora.
 - Tipografia compacta e responsiva, com controle A−/A/A+ salvo no dispositivo e unidades selecionáveis LB/KG e GAL/L.
 - Manifesto instalável com apresentação standalone, semelhante a um aplicativo.

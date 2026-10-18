@@ -84,6 +84,7 @@
           <button data-tool-view="oxygen" type="button">O₂</button>
           <button data-tool-view="confidence" type="button">CONF</button>
           <button data-tool-view="ride" type="button">RIDE</button>
+          <button data-tool-view="ice" type="button">ICE</button>
           <button data-tool-view="steps" type="button">STEP CLIMB</button>
           <button data-tool-view="update" type="button" data-i18n="manualUpdate">Atualização manual</button>
         </div>
@@ -231,6 +232,36 @@
           <div class="ride-layout">
             <div class="ride-summary"><strong id="rideHeadline">—</strong><span id="rideSummaryMeta">—</span></div>
             <div class="ride-levels" id="rideLevels"></div>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="ice">
+          <div class="ice-module">
+            <div class="ice-module-summary">
+              <div><span id="iceModuleLevel">ICE · FL—</span><strong id="iceModuleIndex">—</strong><small>/100</small></div>
+              <div><b id="iceModuleStatus">—</b><small id="iceModuleConfidence">—</small></div>
+            </div>
+            <div class="ice-index-track" id="iceIndexTrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="iceIndexFill"></span><i id="iceIndexMarker"></i></div>
+            <div class="ice-level-compare" id="iceLevelCompare" aria-label="Comparação de níveis"></div>
+            <div class="ice-route-window">
+              <div class="ice-section-heading"><div><span data-i18n="thermalWindow">Janela térmica</span><strong data-i18n="routeBand">Faixa da rota</strong></div><b id="iceRouteExposure">—</b></div>
+              <div class="ice-route-scroll"><div class="ice-route-labels" id="iceRouteLabels"></div><div class="ice-route-band" id="iceRouteBand"></div></div>
+              <div class="ice-route-focus" id="iceRouteFocus" aria-live="polite"></div>
+            </div>
+            <div class="ice-module-grid">
+              <section>
+                <div class="ice-section-heading"><div><span data-i18n="iceExposure">Exposição</span><strong data-i18n="flightPhases">Fases do voo</strong></div><b id="iceExposureTotal">—</b></div>
+                <div class="ice-phase-list" id="icePhaseList"></div>
+              </section>
+              <section>
+                <div class="ice-section-heading"><div><span data-i18n="ofpEvidence">Evidências do OFP</span><strong id="iceEvidenceCoverage">—</strong></div></div>
+                <div class="ice-evidence-list" id="iceEvidenceList"></div>
+              </section>
+            </div>
+            <div class="ice-composition">
+              <div class="ice-section-heading"><div><span data-i18n="indexReading">Leitura do índice</span><strong id="iceCompositionLabel">—</strong></div><b id="iceCompositionValue">—</b></div>
+              <div class="ice-composition-track"><span id="iceCompositionFill"></span></div>
+              <div class="ice-blue-scale" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="steps">
@@ -388,6 +419,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-11"></script>
+    <script type="module" src="./js/app.js?v=20261018-12"></script>
   </body>
 </html>
