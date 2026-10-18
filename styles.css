@@ -709,6 +709,9 @@ body :is(
 .matrix-nav button:disabled { opacity:.35; }
 .matrix-grid { display:grid; gap:6px; }
 .matrix-row { display:grid; grid-template-columns:48px repeat(5,minmax(0,1fr)); gap:6px; }
+.matrix-row.unselected-level { filter:blur(2px); opacity:.76; }
+.matrix-row.selected-level { filter:none; opacity:1; }
+.matrix-row { transition:filter .22s ease,opacity .22s ease; }
 .matrix-fl { display:flex; align-items:center; color:var(--muted); font-size:var(--type-caption); font-weight:600; }
 .matrix-fl.selected { color:var(--blue); }
 .matrix-head { min-width:0; padding:7px 8px; border-radius:8px; background:var(--panel-soft); font-size:var(--type-caption); color:var(--muted); }
@@ -846,5 +849,5 @@ body.tool-focus-active .tool-view.active {
 }
 @media (prefers-reduced-motion:reduce) {
   .topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer,
-  .tool-cards-heading,.tool-card { transition:none; }
+  .tool-cards-heading,.tool-card,.matrix-row { transition:none; }
 }
