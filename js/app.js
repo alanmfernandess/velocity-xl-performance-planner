@@ -55,7 +55,7 @@ const UI_ICON_RULES = [
   ['[data-tool-view="ice"]',"snowflake","button"],
   ['[data-tool-view="cost"]',"dollar-sign","button"],
   ['[data-tool-view="steps"]',"trending-up","button"],
-  ['[data-tool-view="update"]',"refresh-cw","button"],
+  [".manual-update-strip-icon","refresh-cw","inline"],
   [".etp-point > span","route","inline"],
   [".pnr-point > span","rotate-ccw","inline"],
   [".navigation-speeds > span:nth-child(1) b","move-right","inline"],
@@ -212,6 +212,8 @@ Object.assign(COPY["pt-BR"], { remainingFuelTitle:"Combustível · trecho restan
 Object.assign(COPY["en-US"], { remainingFuelTitle:"Fuel · remaining route", remainingFuelViable:"SUFFICIENT", remainingFuelMarginal:"LOW MARGIN", remainingFuelUnavailable:"INSUFFICIENT", remainingUnknown:"UNASSESSED", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Required ${fuel}`, remainingMargin:(fuel)=>`Margin ${fuel}` });
 Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Escolha um módulo", closeTool:"Fechar", toolHintEtp:"Pontos de decisão", toolHintAlternate:"Alternados", toolHintCompare:"Comparar cenários", toolHintLoad:"Carga e combustível", toolHintWb:"Peso e centro de gravidade", toolHintGlide:"Alcance planado", toolHintOxygen:"Oxigênio", toolHintConfidence:"Confiança do modelo", toolHintRide:"Conforto de voo", toolHintIce:"Gelo por trecho", toolHintSteps:"Subida em etapas", toolHintUpdate:"Em voo · Voo concluído", thermalWindow:"Janela térmica", routeBand:"Faixa da rota", iceExposure:"Exposição", flightPhases:"Fases do voo", ofpEvidence:"Evidências do OFP", indexReading:"Leitura do índice" });
 Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintIce:"Icing by leg", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete", thermalWindow:"Thermal window", routeBand:"Route band", iceExposure:"Exposure", flightPhases:"Flight phases", ofpEvidence:"OFP evidence", indexReading:"Index reading" });
+Object.assign(COPY["pt-BR"], { manualFlightStatusTitle:"ATUALIZAÇÃO EM VOO", manualNoUpdate:"Sem atualização registrada", manualUpdateRecorded:"Atualização registrada" });
+Object.assign(COPY["en-US"], { manualFlightStatusTitle:"IN-FLIGHT UPDATE", manualNoUpdate:"No update recorded", manualUpdateRecorded:"Update recorded" });
 Object.assign(COPY["pt-BR"], { toolHintCost:"Custo e eficiência", fuelPrice:"Preço do combustível", currency:"Moeda", pricePerLiter:"Valor por litro", costUnassessed:"Informe o valor por litro para avaliar o custo.", estimatedFlightCost:"Custo estimado do voo", financialEfficiency:"Eficiência financeira", costPerNm:"Por NM", costPerHour:"Por hora", costPerPerson:"Por pessoa", requiredFuelValue:"Abastecimento requerido", costBreakdown:"Custo por fase", modeComparison:"Comparação de modos", possibleSavings:"Economia possível", costInFlight:"Projeção após atualização manual" });
 Object.assign(COPY["en-US"], { toolHintCost:"Cost and efficiency", fuelPrice:"Fuel price", currency:"Currency", pricePerLiter:"Price per liter", costUnassessed:"Enter the price per liter to assess flight cost.", estimatedFlightCost:"Estimated flight cost", financialEfficiency:"Financial efficiency", costPerNm:"Per NM", costPerHour:"Per hour", costPerPerson:"Per person", requiredFuelValue:"Required fuel value", costBreakdown:"Cost by phase", modeComparison:"Mode comparison", possibleSavings:"Possible savings", costInFlight:"Projection after manual update" });
 Object.assign(COPY["pt-BR"], { alternateCost:"Custo do alternado", plannedFlightCost:"Voo planejado", diversionIncrement:"Acréscimo se desviar", diversionTotal:"Total com alternado", missedApproach:"Arremetida", alternateLeg:"Trecho ao alternado", alternateApproach:"Aproximação" });
@@ -673,6 +675,13 @@ function renderFlightTools(plan,navigation,stepPlan,selected) {
   $("#manualAltitude").value=String(state.manual.altitudeFt||selected.altitudeFt);
   $("#manualFuel").value=number(fuelValue(state.manual.active?state.manual.fuelRemainingGal:state.fuelOnboardGal),1).replace(/[^0-9,.-]/g,"").replace(",",".");
   $("#manualFuelUnit").textContent=fuelLabel();
+  const manualIdent=state.manual.active?plan.waypoints[state.manual.waypointIndex]?.ident:plan.origin.icao;
+  const stripAltitudeFt=state.manual.active?state.manual.altitudeFt:selected.altitudeFt;
+  const stripFuelGal=state.manual.active?state.manual.fuelRemainingGal:state.fuelOnboardGal;
+  $("#manualUpdateStripValue").textContent=`FL${Math.round(stripAltitudeFt/100)} · ${formatFuel(stripFuelGal,1)} · ${manualIdent||plan.origin.icao} · ${number(state.manual.active?state.manual.distanceNm:0)} NM`;
+  const stripState=$("#manualUpdateStripState");
+  stripState.dataset.i18n=state.manual.active?"manualUpdateRecorded":"manualNoUpdate";
+  stripState.textContent=t(stripState.dataset.i18n);
   $("#observedFuelFlowUnit").textContent=state.fuelUnit==="l"?"L/h":"gal/h";
   $("#calibrationMode").textContent=state.mode;
   const factors=state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1};
@@ -1167,6 +1176,9 @@ $("#performanceChart").addEventListener("click",(event)=>{
   render();
 });
 const toolCardGrid=$(".tool-card-grid");
+const flightToolsPanel=$(".flight-tools-panel");
+const toolCardsHeading=$(".tool-cards-heading");
+const manualUpdateStrip=$("#tool-card-update");
 const toolCardButtons=$$('[data-tool-view]');
 const toolCardPanels=$$('[data-tool-panel]');
 const toolHintKeys={etp:"toolHintEtp",alternate:"toolHintAlternate",compare:"toolHintCompare",load:"toolHintLoad",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",confidence:"toolHintConfidence",ride:"toolHintRide",ice:"toolHintIce",cost:"toolHintCost",steps:"toolHintSteps",update:"toolHintUpdate"};
@@ -1189,26 +1201,34 @@ toolCardPanels.forEach((panel)=>{
   panel.classList.remove("active");
   const heading=document.createElement("div");
   heading.className="tool-view-heading";
-  heading.innerHTML=`<h3>${escapeHtml(toolCardButtons.find((button)=>button.dataset.toolView===key)?.querySelector(".tool-card-label")?.textContent||key)}</h3><button type="button" class="tool-close" data-i18n="closeTool">${escapeHtml(t("closeTool"))}</button>`;
+  heading.innerHTML=`<h3>${escapeHtml(key==="update"?t("manualUpdate"):toolCardButtons.find((button)=>button.dataset.toolView===key)?.querySelector(".tool-card-label")?.textContent||key)}</h3><button type="button" class="tool-close" data-i18n="closeTool">${escapeHtml(t("closeTool"))}</button>`;
   if(key==="update") heading.querySelector("h3").dataset.i18n="manualUpdate";
   heading.querySelector("button").addEventListener("click",()=>setOpenTool(null));
   panel.prepend(heading);
   toolCardGrid.append(panel);
 });
+manualUpdateStrip.addEventListener("click",()=>setOpenTool(openToolKey==="update"?null:"update"));
 function setOpenTool(key){
   openToolKey=key;
   document.body.classList.toggle("tool-focus-active",Boolean(key));
   toolCardButtons.forEach((button)=>{const active=button.dataset.toolView===key;button.classList.toggle("active",active);button.setAttribute("aria-expanded",String(active));});
+  const manualActive=key==="update";
+  manualUpdateStrip.classList.toggle("active",manualActive);
+  manualUpdateStrip.setAttribute("aria-expanded",String(manualActive));
   toolCardPanels.forEach((panel)=>{panel.classList.toggle("active",panel.dataset.toolPanel===key);if(panel.dataset.toolPanel!==key)toolCardGrid.append(panel);});
   if(!key)return;
   const panel=toolCardPanels.find((item)=>item.dataset.toolPanel===key),index=toolCardButtons.findIndex((button)=>button.dataset.toolView===key);
+  if(key==="update"){
+    flightToolsPanel.insertBefore(panel,toolCardsHeading);
+    return;
+  }
   const columns=getComputedStyle(toolCardGrid).gridTemplateColumns.split(" ").length;
   const rowEnd=Math.min(toolCardButtons.length-1,Math.floor(index/columns)*columns+columns-1);
   toolCardGrid.insertBefore(panel,toolCardButtons[rowEnd+1]||null);
   if(key==="glide")centerGlideRoutePoint();
 }
 document.addEventListener("click",(event)=>{
-  if(!openToolKey||event.target.closest?.(".tool-card, .tool-view.active"))return;
+  if(!openToolKey||event.target.closest?.(".tool-card, .manual-update-strip, .tool-view.active"))return;
   setOpenTool(null);
 });
 window.addEventListener("resize",()=>{if(openToolKey)setOpenTool(openToolKey);});

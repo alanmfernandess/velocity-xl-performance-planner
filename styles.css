@@ -790,6 +790,17 @@ body :is(strong,b) { font-weight:600!important; }
 
 /* Every flight tool is an individual card; its panel opens in document flow. */
 .flight-tools-panel { position:static; display:block; max-height:none; overflow:visible; margin:0 0 15px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.manual-update-strip { width:100%; min-height:64px; margin:0 0 15px; padding:10px 12px; display:grid; grid-template-columns:36px minmax(190px,1fr) auto auto; align-items:center; gap:12px; border:1px solid #b8d7f0; border-radius:13px; background:var(--blue-soft); color:var(--text); text-align:left; }
+.manual-update-strip:hover,.manual-update-strip.active { border-color:var(--blue); }
+.manual-update-strip:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+.manual-update-strip-icon { width:36px; height:36px; display:grid; place-items:center; border-radius:10px; background:var(--panel); color:var(--blue); }
+.manual-update-strip-icon > .ui-icon { width:17px; height:17px; }
+.manual-update-strip-copy { min-width:0; }
+.manual-update-strip-copy small,.manual-update-strip-copy strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.manual-update-strip-copy small { color:var(--muted); font-size:var(--type-caption); font-weight:600; letter-spacing:.075em; }
+.manual-update-strip-copy strong { margin-top:3px; font-size:var(--type-body); font-weight:600; }
+.manual-update-strip-state { color:var(--muted); font-size:var(--type-caption); white-space:nowrap; }
+.manual-update-strip-action { min-width:130px; min-height:38px; padding:8px 14px; display:grid; place-items:center; border-radius:10px; background:var(--blue); color:#fff; font-size:var(--type-caption); font-weight:700; text-align:center; }
 .tool-cards-heading { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:0 2px 11px; }
 .tool-cards-heading h2 { margin:0; font-size:var(--type-heading)!important; font-weight:600!important; }
 .tool-cards-heading small { color:var(--muted); font-size:var(--type-caption)!important; }
@@ -819,6 +830,9 @@ body :is(strong,b) { font-weight:600!important; }
   .tool-view-heading { margin-bottom:11px; }
   .visual-panel,.terrain-panel,.levels-section { padding:15px; }
   .kpi { min-height:95px; padding:12px; }
+  .manual-update-strip { grid-template-columns:36px minmax(0,1fr); gap:8px 10px; padding:10px; }
+  .manual-update-strip-state { grid-column:2; white-space:normal; }
+  .manual-update-strip-action { grid-column:1/-1; width:100%; }
 }
 @media (max-width:430px) {
   .plan-form { grid-template-columns:1fr; }
@@ -835,12 +849,12 @@ html.standalone-app body :is(input,select,textarea) { font-size:max(16px,var(--t
 
 /* Keep the expanded flight tool in the page flow while gently defocusing its surroundings. */
 body.tool-focus-active :is(.topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer),
-body.tool-focus-active :is(.tool-cards-heading,.tool-card:not(.active)) {
+body.tool-focus-active :is(.tool-cards-heading,.tool-card:not(.active),.manual-update-strip:not(.active)) {
   filter:blur(2px);
   opacity:.76;
 }
 .topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer,
-.tool-cards-heading,.tool-card {
+.tool-cards-heading,.tool-card,.manual-update-strip {
   transition:filter .22s ease,opacity .22s ease;
 }
 body.tool-focus-active .tool-view.active {
@@ -1034,7 +1048,7 @@ body.tool-focus-active .tool-view.active {
 }
 @media (prefers-reduced-motion:reduce) {
   .topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer,
-  .tool-cards-heading,.tool-card,.matrix-row { transition:none; }
+  .tool-cards-heading,.tool-card,.manual-update-strip,.matrix-row { transition:none; }
 }
 
 /* Flight cost: manual price, comparable configurations, and live calibration effect. */

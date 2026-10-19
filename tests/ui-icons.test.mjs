@@ -102,7 +102,7 @@ test("discrete icon rules cover every primary calculator surface",()=>{
     '[data-tool-view="alternate"]', '[data-tool-view="compare"]', '[data-tool-view="load"]',
     '[data-tool-view="wb"]', '[data-tool-view="glide"]', '[data-tool-view="oxygen"]',
     '[data-tool-view="confidence"]', '[data-tool-view="ride"]', '[data-tool-view="cost"]',
-    '[data-tool-view="steps"]', '[data-tool-view="update"]', ".section-heading h2",
+    '[data-tool-view="steps"]', '.manual-update-strip-icon', ".section-heading h2",
   ].forEach((selector)=>assert.ok(app.includes(selector),`missing icon rule for ${selector}`));
 });
 
@@ -141,6 +141,15 @@ test("flight tools open as individual cards in the page flow",()=>{
   assert.match(app,/toolCardGrid\.insertBefore\(panel,toolCardButtons\[rowEnd\+1\]\|\|null\)/);
   assert.match(css,/\.flight-tools-panel \{ position:static; display:block; max-height:none; overflow:visible/);
   assert.match(css,/\.tool-card-grid \{ display:grid; grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+});
+
+test("Manual Update uses the approved situation strip outside the tool-card grid",()=>{
+  assert.match(index,/class="manual-update-strip"[^>]*data-tool-trigger="update"/);
+  assert.doesNotMatch(index,/data-tool-view="update"/);
+  assert.match(index,/id="manualUpdateStripValue"[\s\S]*id="manualUpdateStripState"/);
+  assert.match(app,/manualUpdateStrip\.addEventListener/);
+  assert.match(app,/if\(key==="update"\)[\s\S]*flightToolsPanel\.insertBefore\(panel,toolCardsHeading\)/);
+  assert.match(css,/\.manual-update-strip \{[^}]*grid-template-columns:36px minmax\(190px,1fr\) auto auto/);
 });
 
 test("dynamic operational cards use semantic line icons",()=>{

@@ -22,7 +22,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-16" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-17" />
   </head>
   <body>
     <header class="topbar">
@@ -73,6 +73,12 @@
       </section>
 
       <section class="panel flight-tools-panel" aria-label="Flight tools">
+        <button class="manual-update-strip" id="tool-card-update" data-tool-trigger="update" type="button" aria-controls="tool-panel-update" aria-expanded="false">
+          <span class="manual-update-strip-icon" aria-hidden="true"></span>
+          <span class="manual-update-strip-copy"><small data-i18n="manualFlightStatusTitle">ATUALIZAÇÃO EM VOO</small><strong id="manualUpdateStripValue">—</strong></span>
+          <small class="manual-update-strip-state" id="manualUpdateStripState" data-i18n="manualNoUpdate">Sem atualização registrada</small>
+          <span class="manual-update-strip-action" data-i18n="manualUpdate">Atualização manual</span>
+        </button>
         <div class="tool-cards-heading"><h2 data-i18n="flightTools">Ferramentas de voo</h2><small data-i18n="chooseTool">Escolha um módulo</small></div>
         <div class="tool-card-grid">
           <button data-tool-view="etp" type="button">ETP / PNR</button>
@@ -87,7 +93,6 @@
           <button data-tool-view="ice" type="button">ICE</button>
           <button data-tool-view="cost" type="button">CUSTO</button>
           <button data-tool-view="steps" type="button">STEP CLIMB</button>
-          <button data-tool-view="update" type="button" data-i18n="manualUpdate">Atualização manual</button>
         </div>
         <div class="tool-view" data-tool-panel="etp">
           <div class="navigation-grid">
@@ -506,6 +511,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-16"></script>
+    <script type="module" src="./js/app.js?v=20261018-17"></script>
   </body>
 </html>
