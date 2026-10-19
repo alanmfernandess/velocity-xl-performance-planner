@@ -793,7 +793,7 @@ body :is(strong,b) { font-weight:600!important; }
 .manual-update-strip { width:100%; min-height:64px; margin:0 0 15px; padding:10px 12px; display:grid; grid-template-columns:36px minmax(190px,1fr) auto auto; align-items:center; gap:12px; border:1px solid #b8d7f0; border-radius:13px; background:var(--blue-soft); color:var(--text); text-align:left; }
 .manual-update-strip:hover,.manual-update-strip.active { border-color:var(--blue); }
 .manual-update-strip:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
-.manual-update-strip-icon { width:36px; height:36px; display:grid; place-items:center; border-radius:10px; background:var(--panel); color:var(--blue); }
+.manual-update-strip-icon { width:36px; height:36px; display:grid; place-items:center; justify-content:center; padding:0; border-radius:10px; background:var(--panel); color:var(--blue); }
 .manual-update-strip-icon > .ui-icon { width:17px; height:17px; }
 .manual-update-strip-copy { min-width:0; }
 .manual-update-strip-copy small,.manual-update-strip-copy strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
