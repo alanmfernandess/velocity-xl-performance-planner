@@ -260,6 +260,7 @@ test("alternate and diversion advisor computes both legs and landing fuel", () =
   assert.equal(advice.alternate.icao, "SBRJ");
   assert.ok(advice.destination.distanceNm > 0);
   assert.ok(advice.destination.fuelGal > 0);
+  assert.ok(advice.destination.fuelGal > PERFORMANCE.diversion.missedApproachFuelGal + PERFORMANCE.diversion.approachFuelGal);
   assert.ok(advice.diversion.distanceNm > 0);
   assert.ok(Number.isFinite(advice.diversion.landingFuelGal));
 });

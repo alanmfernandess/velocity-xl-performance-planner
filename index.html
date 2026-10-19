@@ -22,7 +22,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-13" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-14" />
   </head>
   <body>
     <header class="topbar">
@@ -278,6 +278,22 @@
                 <div><span data-i18n="estimatedFlightCost">Custo estimado do voo</span><strong id="estimatedFlightCost">—</strong><small id="costFuelBasis">—</small></div>
                 <div class="cost-efficiency"><span data-i18n="financialEfficiency">Eficiência financeira</span><strong id="financialEfficiency">—</strong><small id="financialPenalty">—</small></div>
               </div>
+              <section class="cost-alternate" id="costAlternate" hidden>
+                <div class="cost-alternate-head">
+                  <div><span data-i18n="alternateCost">Custo do alternado</span><strong id="costAlternateRoute">—</strong></div>
+                  <strong id="costAlternateIncrement">—</strong>
+                </div>
+                <div class="cost-alternate-grid">
+                  <span><b data-i18n="plannedFlightCost">Voo planejado</b><strong id="costAlternatePlanned">—</strong></span>
+                  <span><b data-i18n="diversionIncrement">Acréscimo se desviar</b><strong id="costAlternateExtra">—</strong></span>
+                  <span><b data-i18n="diversionTotal">Total com alternado</b><strong id="costAlternateTotal">—</strong></span>
+                </div>
+                <div class="cost-alternate-phases">
+                  <span><b data-i18n="missedApproach">Arremetida</b><strong id="costAlternateMissed">—</strong></span>
+                  <span><b data-i18n="alternateLeg">Trecho ao alternado</b><strong id="costAlternateLeg">—</strong></span>
+                  <span><b data-i18n="alternateApproach">Aproximação</b><strong id="costAlternateApproach">—</strong></span>
+                </div>
+              </section>
               <div class="cost-kpis">
                 <span><b data-i18n="costPerNm">Por NM</b><strong id="costPerNm">—</strong></span>
                 <span><b data-i18n="costPerHour">Por hora</b><strong id="costPerHour">—</strong></span>
@@ -447,6 +463,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-13"></script>
+    <script type="module" src="./js/app.js?v=20261018-14"></script>
   </body>
 </html>

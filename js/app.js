@@ -214,6 +214,8 @@ Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Esc
 Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintIce:"Icing by leg", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete", thermalWindow:"Thermal window", routeBand:"Route band", iceExposure:"Exposure", flightPhases:"Flight phases", ofpEvidence:"OFP evidence", indexReading:"Index reading" });
 Object.assign(COPY["pt-BR"], { toolHintCost:"Custo e eficiência", fuelPrice:"Preço do combustível", currency:"Moeda", pricePerLiter:"Valor por litro", costUnassessed:"Informe o valor por litro para avaliar o custo.", estimatedFlightCost:"Custo estimado do voo", financialEfficiency:"Eficiência financeira", costPerNm:"Por NM", costPerHour:"Por hora", costPerPerson:"Por pessoa", requiredFuelValue:"Abastecimento requerido", costBreakdown:"Custo por fase", modeComparison:"Comparação de modos", possibleSavings:"Economia possível", costInFlight:"Projeção após atualização manual" });
 Object.assign(COPY["en-US"], { toolHintCost:"Cost and efficiency", fuelPrice:"Fuel price", currency:"Currency", pricePerLiter:"Price per liter", costUnassessed:"Enter the price per liter to assess flight cost.", estimatedFlightCost:"Estimated flight cost", financialEfficiency:"Financial efficiency", costPerNm:"Per NM", costPerHour:"Per hour", costPerPerson:"Per person", requiredFuelValue:"Required fuel value", costBreakdown:"Cost by phase", modeComparison:"Mode comparison", possibleSavings:"Possible savings", costInFlight:"Projection after manual update" });
+Object.assign(COPY["pt-BR"], { alternateCost:"Custo do alternado", plannedFlightCost:"Voo planejado", diversionIncrement:"Acréscimo se desviar", diversionTotal:"Total com alternado", missedApproach:"Arremetida", alternateLeg:"Trecho ao alternado", alternateApproach:"Aproximação" });
+Object.assign(COPY["en-US"], { alternateCost:"Alternate cost", plannedFlightCost:"Planned flight", diversionIncrement:"Diversion increment", diversionTotal:"Total with alternate", missedApproach:"Missed approach", alternateLeg:"Leg to alternate", alternateApproach:"Approach" });
 
 function storedJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
@@ -269,7 +271,7 @@ state.oxygen.bottleModel=OXYGEN_CYLINDERS[state.oxygen.bottleModel]?state.oxygen
 state.oxygen.bottles=clamp(Math.round(Number(state.oxygen.bottles)||0),0,4);
 state.financial={currency:["BRL","USD"].includes(state.financial?.currency)?state.financial.currency:"BRL",prices:state.financial?.prices&&typeof state.financial.prices==="object"?state.financial.prices:{}};
 
-function buildFinancialAnalysis(plan,selected) {
+function buildFinancialAnalysis(plan,selected,alternateAdvice=null) {
   const pricePerLiter=fuelPricePerLiter();
   const modes=["ECON","NORMAL","FAST"].map((mode)=>{
     const modeAnalysis=calculatePlan({...state,mode,powerSetting:{type:"AUTO",mapInHg:PERFORMANCE.modes[mode].mapInHg,rpm:PERFORMANCE.modes[mode].rpm}});
@@ -286,6 +288,20 @@ function buildFinancialAnalysis(plan,selected) {
   const occupants=Math.max(1,["pilot","copilot","rearLeft","rearCenter","rearRight"].filter((key)=>Number(state.weightBalance[key])>0).length);
   const phaseFuel={taxi:PERFORMANCE.taxiFuelGal,climb:selected.climb.fuelGal,cruise:selected.cruiseFuelGal,descent:selected.descent.fuelGal};
   const phaseCosts=Object.fromEntries(Object.entries(phaseFuel).map(([key,value])=>[key,pricePerLiter>0?value*PERFORMANCE.financial.litersPerGal*pricePerLiter:null]));
+  const alternateDestination=alternateAdvice?.destination;
+  const alternateFuelGal=Number(alternateDestination?.fuelGal);
+  const missedFuelGal=PERFORMANCE.diversion.missedApproachFuelGal;
+  const approachFuelGal=PERFORMANCE.diversion.approachFuelGal;
+  const legFuelGal=Math.max(0,alternateFuelGal-missedFuelGal-approachFuelGal);
+  const alternate=Number.isFinite(alternateFuelGal)&&alternateFuelGal>0&&pricePerLiter>0?{
+    ident:alternateAdvice.alternate?.icao||alternateAdvice.alternate?.ident||"—",
+    distanceNm:alternateDestination.distanceNm,
+    fuelGal:alternateFuelGal,
+    cost:alternateFuelGal*PERFORMANCE.financial.litersPerGal*pricePerLiter,
+    missedCost:missedFuelGal*PERFORMANCE.financial.litersPerGal*pricePerLiter,
+    legCost:legFuelGal*PERFORMANCE.financial.litersPerGal*pricePerLiter,
+    approachCost:approachFuelGal*PERFORMANCE.financial.litersPerGal*pricePerLiter,
+  }:null;
   return {
     ...impact,pricePerLiter,currency:state.financial.currency,cost,consumedGal,minimumViableCost,
     savings:Number.isFinite(cost)&&Number.isFinite(minimumViableCost)?Math.max(0,cost-minimumViableCost):null,
@@ -293,7 +309,7 @@ function buildFinancialAnalysis(plan,selected) {
     costPerHour:Number.isFinite(cost)?cost/Math.max(.01,selected.tripTimeHr):null,
     costPerPerson:Number.isFinite(cost)?cost/occupants:null,
     requiredFuelValue:pricePerLiter>0?selected.fuelRequiredGal*PERFORMANCE.financial.litersPerGal*pricePerLiter:null,
-    phaseCosts,modes,fl:selected.fl,mode:state.mode,
+    phaseCosts,modes,alternate,fl:selected.fl,mode:state.mode,
   };
 }
 
@@ -954,6 +970,18 @@ function renderFinancialCard(financial) {
   $("#financialPenalty").textContent=state.manual.active&&state.preflightSnapshot?.missionScore
     ? (pt?"Score pré-voo preservado":"Preflight score preserved")
     : financial.penalty?`−${financial.penalty} ${pt?"no score":"from score"}`:(pt?"Sem impacto no score":"No score impact");
+  const alternate=$("#costAlternate"),alternateData=financial.alternate;
+  alternate.hidden=!alternateData;
+  if(alternateData){
+    $("#costAlternateRoute").textContent=`${state.plan.destination.icao} → ${alternateData.ident} · ${number(alternateData.distanceNm)} NM`;
+    $("#costAlternateIncrement").textContent=`+ ${formatMoney(alternateData.cost)}`;
+    $("#costAlternatePlanned").textContent=formatMoney(financial.cost);
+    $("#costAlternateExtra").textContent=`${formatFuel(alternateData.fuelGal,1)} · ${formatMoney(alternateData.cost)}`;
+    $("#costAlternateTotal").textContent=formatMoney(financial.cost+alternateData.cost);
+    $("#costAlternateMissed").textContent=formatMoney(alternateData.missedCost);
+    $("#costAlternateLeg").textContent=formatMoney(alternateData.legCost);
+    $("#costAlternateApproach").textContent=formatMoney(alternateData.approachCost);
+  }
   $("#costPerNm").textContent=formatMoney(financial.costPerNm);
   $("#costPerHour").textContent=formatMoney(financial.costPerHour);
   $("#costPerPerson").textContent=formatMoney(financial.costPerPerson);
@@ -991,7 +1019,7 @@ function render() {
   const navigation=calculateEtpPnr({...state,oxygenWeightLb,altitudeFt:selected.altitudeFt});
   const stepPlan=calculateStepClimbs({...state,oxygenWeightLb,initialAltitudeFt:selected.altitudeFt,manual:state.manual.active?state.manual:null,availableAltitudesFt:analysis.results.filter(operationallyAvailable).map((result)=>result.altitudeFt)});
   const alternateAdvice=calculateAlternateDiversion({...state,oxygenWeightLb,altitudeFt:selected.altitudeFt,waypointIndex:state.diversionWaypointIndex,manual:state.manual.active?state.manual:null});
-  const financial=buildFinancialAnalysis(plan,selected);
+  const financial=buildFinancialAnalysis(plan,selected,alternateAdvice);
   selected.financial=financial;
   const calculatedMissionScore=calculateMissionScore({result:selected,confidence:selected.confidence,alternateAdvice,financial});
   const missionScore=state.manual.active&&state.preflightSnapshot?.missionScore?state.preflightSnapshot.missionScore:calculatedMissionScore;

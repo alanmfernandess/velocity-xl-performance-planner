@@ -109,6 +109,15 @@ test("flight cost uses a manual per-liter price and a bounded mission-score pena
   assert.match(css,/@media \(max-width:700px\) \{[\s\S]*?\.cost-detail-grid \{ grid-template-columns:1fr/);
 });
 
+test("flight cost separates the OFP alternate scenario without changing planned cost",()=>{
+  assert.match(index,/id="costAlternate"[\s\S]*id="costAlternatePlanned"[\s\S]*id="costAlternateTotal"/);
+  assert.match(index,/id="costAlternateMissed"[\s\S]*id="costAlternateLeg"[\s\S]*id="costAlternateApproach"/);
+  assert.match(app,/const alternate=Number\.isFinite\(alternateFuelGal\)/);
+  assert.match(app,/formatMoney\(financial\.cost\+alternateData\.cost\)/);
+  assert.match(app,/buildFinancialAnalysis\(plan,selected,alternateAdvice\)/);
+  assert.match(css,/\.cost-alternate-grid \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+});
+
 test("completed-flight calibration lives under Manual Update without a separate DEBRIEF tab",()=>{
   assert.doesNotMatch(index,/data-tool-view="debrief"|data-tool-panel="debrief"/);
   const manualPanel=index.slice(index.indexOf('data-tool-panel="update"'),index.indexOf('class="mission-strip"'));
