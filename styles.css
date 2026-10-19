@@ -868,6 +868,15 @@ body.tool-focus-active .tool-view.active {
 .ice-level-compare button>small { color:var(--muted); font-size:var(--type-caption); }
 .ice-level-compare button.active { border-color:var(--blue); background:var(--blue-soft); box-shadow:inset 0 -3px var(--ice-level-color); }
 .ice-level-compare button.active :is(span,strong) { color:var(--blue); }
+.ice-decision-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.ice-decision-grid>div,.ice-decision-grid>button { min-width:0; min-height:72px; padding:10px; border:1px solid var(--line); border-radius:10px; background:linear-gradient(145deg,var(--panel),rgba(37,129,217,.055)); color:var(--text); text-align:left; }
+.ice-decision-grid>button { cursor:pointer; }
+.ice-decision-grid>button:disabled { cursor:default; opacity:.65; }
+.ice-decision-grid span,.ice-decision-grid strong,.ice-decision-grid small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ice-decision-grid span { color:var(--muted); font-size:var(--type-caption); letter-spacing:.04em; }
+.ice-decision-grid strong { margin-top:5px; color:var(--blue); font-size:var(--type-body); }
+.ice-decision-grid small { margin-top:4px; color:var(--muted); font-size:var(--type-caption); }
+.ice-decision-grid>button:not(:disabled):hover { border-color:var(--blue); background:var(--blue-soft); }
 .ice-route-window,.ice-module-grid>section,.ice-composition { min-width:0; padding:13px; border:1px solid var(--line); border-radius:12px; background:var(--panel-soft); }
 .ice-section-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:12px; }
 .ice-section-heading span,.ice-section-heading strong { display:block; }
@@ -916,6 +925,7 @@ body.tool-focus-active .tool-view.active {
 
 @media (max-width:700px) {
   .ice-module-grid { grid-template-columns:1fr; }
+  .ice-decision-grid { grid-template-columns:1fr 1fr; }
   .ice-route-focus { grid-template-columns:1fr 1fr; }
   .ice-level-compare button { padding:8px 7px; }
 }
@@ -925,6 +935,7 @@ body.tool-focus-active .tool-view.active {
   .ice-module-summary>div:first-child>span { width:100%; }
   .ice-level-compare button>small { display:none; }
   .ice-evidence-list { grid-template-columns:1fr; }
+  .ice-decision-grid>div,.ice-decision-grid>button { min-height:68px; }
 }
 @media (prefers-reduced-motion:reduce) {
   .topbar,.shell > .plan-bar,#plannerContent > :not(.flight-tools-panel),.shell > footer,

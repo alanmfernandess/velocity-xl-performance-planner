@@ -22,15 +22,46 @@ function icingSigmetPlan({ route = [[-33.53, -70.79], [-34.18, -69.82], [-34.83,
   });
 }
 
-test("a SimBrief icing SIGMET outside the route does not mark FL250 as severe icing", () => {
+test("an off-route SIGMET and stale terminal report do not fabricate FL250 icing", () => {
   const plan = icingSigmetPlan();
   assert.equal(plan.meteorology.enrouteBulletins.length, 0);
   const icing = calculateIcingRisk({ plan, result: {
     altitudeFt: 25000, gsKt: 200, climb: { timeHr: 0.35 }, descent: { timeHr: 0.35 },
   } });
-  assert.equal(icing.status, "watch");
-  assert.equal(icing.riskScore, 35);
-  assert.equal(icing.confidence, "estimated");
+  assert.equal(icing.status, "low");
+  assert.equal(icing.riskScore, 0);
+  assert.equal(icing.confidence, "limited");
+});
+
+test("TAF change groups apply only inside the planned arrival window", () => {
+  const base = {
+    fetch: { status: "Success" }, general: { initial_altitude: "16000", route_distance: "120" },
+    times: { sched_off: "2026-10-17T12:00:00Z", sched_on: "2026-10-17T15:00:00Z" },
+    origin: { icao_code: "AAAA", pos_lat: 0, pos_long: 0 },
+    destination: { icao_code: "BBBB", pos_lat: 0, pos_long: 2 },
+    navlog: [0, 2].map((lon, index) => ({ ident: `W${index}`, pos_lat: 0, pos_long: lon,
+      wind_data: [{ altitude: "10000", oat: "-4" }, { altitude: "16000", oat: "-12" }] })),
+  };
+  const outside = parseSimBrief({ ...base, weather: { dest_taf: "TAF BBBB 171100Z 1712/1818 BKN020 TEMPO 1712/1714 FZRA OVC008" } });
+  const outsideRisk = calculateIcingRisk({ plan: outside, result: { altitudeFt: 16000, gsKt: 180, climb: { timeHr: .2, distanceNm: 10 }, descent: { timeHr: .3, distanceNm: 12 } } });
+  assert.notEqual(outsideRisk.status, "avoid");
+  const active = parseSimBrief({ ...base, weather: { dest_taf: "TAF BBBB 171100Z 1712/1818 BKN020 TEMPO 1714/1716 FZRA OVC008" } });
+  const activeRisk = calculateIcingRisk({ plan: active, result: { altitudeFt: 16000, gsKt: 180, climb: { timeHr: .2, distanceNm: 10 }, descent: { timeHr: .3, distanceNm: 12 } } });
+  assert.equal(activeRisk.status, "avoid");
+});
+
+test("PROB30 icing remains probabilistic instead of becoming a hard block", () => {
+  const plan = parseSimBrief({
+    fetch: { status: "Success" }, general: { initial_altitude: "12000", route_distance: "80" },
+    times: { sched_off: "2026-10-17T12:00:00Z", sched_on: "2026-10-17T13:00:00Z" },
+    origin: { icao_code: "AAAA", pos_lat: 0, pos_long: 0 }, destination: { icao_code: "BBBB", pos_lat: 0, pos_long: 1 },
+    weather: { dest_taf: "TAF BBBB 171100Z 1712/1812 BKN020 PROB30 1712/1714 FZRA OVC008" },
+    navlog: [0, 1].map((lon, index) => ({ ident: `W${index}`, pos_lat: 0, pos_long: lon,
+      wind_data: [{ altitude: "10000", oat: "-5" }, { altitude: "16000", oat: "-15" }] })),
+  });
+  const icing = calculateIcingRisk({ plan, result: { altitudeFt: 12000, gsKt: 170, climb: { timeHr: .2, distanceNm: 8 }, descent: { timeHr: .25, distanceNm: 10 } } });
+  assert.notEqual(icing.status, "avoid");
+  assert.ok(icing.riskScore >= 12);
 });
 
 test("a crossing SIGMET retains its FL070/120 band even after a long polygon", () => {
@@ -86,8 +117,10 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
     fuel: { plan_takeoff: "999999", reserve: "999999" },
     origin: { icao_code: "SBSP", name: "Congonhas", pos_lat: "-23.626", pos_long: "-46.657" },
     destination: { icao_code: "SBGL", name: "Galeão", pos_lat: "-22.810", pos_long: "-43.251" },
-    weather: { orig_metar: "SBSP 121200Z BKN020", dest_taf: "TAF SBGL 121100Z OVC030", sigmets: ["MOD ICE FL120/180"] },
+    weather: { orig_metar: "SBSP 121200Z BKN020", dest_taf: "TAF SBGL 121100Z OVC030", altn_taf: "TAF SBRJ 121100Z CAVOK", sigmets: ["MOD ICE FL120/180"] },
     alternate: [{ icao_code: "SBRJ", name: "Santos Dumont", pos_lat: "-22.9105", pos_long: "-43.1631", route_distance: "12" }],
+    alternate_navlog: [{ ident: "SBGL", pos_lat: "-22.810", pos_long: "-43.251", oat: "-20" },
+      { ident: "SBRJ", pos_lat: "-22.9105", pos_long: "-43.1631", oat: "-18" }],
     navlog: [
       { ident: "SBSP", pos_lat: "-23.626", pos_long: "-46.657", altitude_feet: "22000", wind_dir: "250", wind_spd: "20", oat: "-20", shear: "2", stage: "CLB", wind_data: [
         { altitude: "18000", wind_dir: "240", wind_spd: "18", oat: "-19" },
@@ -101,6 +134,8 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
   assert.equal(result.alternate, "SBRJ");
   assert.equal(result.alternates[0].icao, "SBRJ");
   assert.equal(result.alternates[0].distanceNm, 12);
+  assert.equal(result.alternateWaypoints.length, 2);
+  assert.match(result.meteorology.alternate.taf, /CAVOK/);
   assert.ok(Number.isFinite(result.alternates[0].lat));
   assert.equal(result.plannedAltitudeFt, 22000);
   assert.equal(result.distanceNm, 420);

@@ -1,4 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261018-02";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261018-04";
 import { assessTerrain } from "./terrain.js?v=20261016-01";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -207,6 +207,83 @@ function metarTemperatureC(text = "") {
   return Number(match[1].replace("M", "-"));
 }
 
+function aviationTimestamp(day, hour, minute, referenceMs) {
+  if (!Number.isFinite(referenceMs)) return NaN;
+  const reference = new Date(referenceMs);
+  const candidates = [-1, 0, 1].map((monthOffset) => Date.UTC(
+    reference.getUTCFullYear(), reference.getUTCMonth() + monthOffset, day, hour, minute,
+  ));
+  return candidates.sort((a, b) => Math.abs(a - referenceMs) - Math.abs(b - referenceMs))[0];
+}
+
+function forecastRange(token, referenceMs) {
+  const match = String(token).match(/(\d{2})(\d{2})\/(\d{2})(\d{2})/);
+  if (!match) return { start: NaN, end: NaN };
+  const start = aviationTimestamp(Number(match[1]), Number(match[2]), 0, referenceMs);
+  let end = aviationTimestamp(Number(match[3]), Number(match[4]), 0, start);
+  if (end <= start) end = aviationTimestamp(Number(match[3]), Number(match[4]), 0, start + 20 * 86400000);
+  return { start, end };
+}
+
+function reportTimestamp(text, referenceMs) {
+  const match = String(text).toUpperCase().match(/\b(\d{2})(\d{2})(\d{2})Z\b/);
+  return match ? aviationTimestamp(Number(match[1]), Number(match[2]), Number(match[3]), referenceMs) : NaN;
+}
+
+function tafSourcesAtTime(taf = "", timestampMs = NaN) {
+  const source = String(taf).toUpperCase().replace(/\s+/g, " ").trim();
+  if (!source) return { sources: [], valid: false };
+  const validityToken = source.match(/\b\d{4}\/\d{4}\b/)?.[0];
+  const validity = forecastRange(validityToken, timestampMs);
+  const valid = !Number.isFinite(timestampMs) || !Number.isFinite(validity.start)
+    || timestampMs >= validity.start && timestampMs <= validity.end;
+  if (!valid) return { sources: [], valid: false };
+  const marker = /\b(FM\d{6}|BECMG\s+\d{4}\/\d{4}|TEMPO\s+\d{4}\/\d{4}|PROB(?:30|40)(?:\s+TEMPO)?\s+\d{4}\/\d{4})\b/g;
+  const matches = [...source.matchAll(marker)];
+  const baseEnd = matches[0]?.index ?? source.length;
+  const sources = [{ text: source.slice(0, baseEnd), weight: 1, kind: "prevailing" }];
+  let latestPrevailing = null;
+  matches.forEach((match, index) => {
+    const token = match[1];
+    const text = source.slice(match.index, matches[index + 1]?.index ?? source.length);
+    if (token.startsWith("FM")) {
+      const start = aviationTimestamp(Number(token.slice(2, 4)), Number(token.slice(4, 6)), Number(token.slice(6, 8)), timestampMs);
+      if (!Number.isFinite(timestampMs) || timestampMs >= start) latestPrevailing = { text, weight: 1, kind: "prevailing" };
+      return;
+    }
+    if (token.startsWith("BECMG")) {
+      const range = forecastRange(token, timestampMs);
+      if (!Number.isFinite(timestampMs) || timestampMs >= range.end) latestPrevailing = { text, weight: 1, kind: "prevailing" };
+      else if (timestampMs >= range.start) sources.push({ text, weight: 0.75, kind: "becoming" });
+      return;
+    }
+    const range = forecastRange(token, timestampMs);
+    if (Number.isFinite(timestampMs) && (timestampMs < range.start || timestampMs > range.end)) return;
+    const probability = token.match(/PROB(30|40)/)?.[1];
+    sources.push({ text, weight: probability ? Number(probability) / 100 : 0.65, kind: probability ? `prob${probability}` : "temporary" });
+  });
+  if (latestPrevailing) sources[0] = latestPrevailing;
+  return { sources, valid: true };
+}
+
+export function terminalWeatherAtTime(plan, terminal, timestampMs) {
+  const raw = plan.meteorology?.[terminal] || {};
+  if (!raw.metar && !raw.taf) {
+    const fallback = terminal === "origin" ? plan.meteorology?.originText
+      : terminal === "destination" ? plan.meteorology?.destinationText : "";
+    return { sources: fallback ? [{ text: fallback, weight: 1, kind: "legacy" }] : [], tafValid: false, metarAgeMinutes: NaN };
+  }
+  const sources = [];
+  const metarTime = reportTimestamp(raw.metar, timestampMs);
+  const metarAgeMinutes = Number.isFinite(metarTime) && Number.isFinite(timestampMs) ? Math.abs(timestampMs - metarTime) / 60000 : NaN;
+  if (raw.metar && (!Number.isFinite(metarAgeMinutes) || metarAgeMinutes <= PERFORMANCE.icing.metarMaximumAgeMin)) {
+    sources.push({ text: raw.metar, weight: 1, kind: "metar" });
+  }
+  const taf = tafSourcesAtTime(raw.taf, timestampMs);
+  sources.push(...taf.sources);
+  return { sources, tafValid: taf.valid, metarAgeMinutes };
+}
+
 export function calculateIcingRisk({ plan, result }) {
   const fixes = plan.waypoints?.filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon)) || [];
   const enrouteText = plan.meteorology?.enrouteText || "";
@@ -282,18 +359,26 @@ export function calculateIcingRisk({ plan, result }) {
     });
   }
 
-  const transitionExposure = (fix, durationHr, text, airportElevationFt, distanceAtFraction) => {
+  const transitionExposure = (fix, durationHr, terminal, timestampMs, airportElevationFt, distanceAtFraction, includeAdvisories = true) => {
     if (!fix || durationHr <= 0) return { minutes: 0, maximumRisk: 0, temperatureMinutes: 0, confirmedSamples: 0, estimatedSamples: 0 };
-    const terminalEvidence = icingWeatherEvidence(`${fix.weatherText || ""} ${text || ""}`);
+    const terminalWeather = terminalWeatherAtTime(plan, terminal, timestampMs);
+    const terminalSources = terminalWeather.sources.map((source) => ({
+      evidence: icingWeatherEvidence(`${fix.weatherText || ""} ${source.text || ""}`),
+      coverage: source.weight,
+      terminal: true,
+      kind: source.kind,
+    }));
     const hasTemperature = Number.isFinite(fix.oatC) || (fix.windLevels || []).some((level) => Number.isFinite(level.oatC));
     const hasVerticalTemperatureProfile = (fix.windLevels || []).filter((level) => Number.isFinite(level.altitudeFt) && Number.isFinite(level.oatC)).length >= 2;
-    const surfaceTemperatureC = metarTemperatureC(text);
+    const surfaceTemperatureC = metarTemperatureC(plan.meteorology?.[terminal]?.metar
+      || terminalWeather.sources.map((source) => source.text).join(" "));
     const cruiseTemperatureC = weatherAtAltitude(fix, result.altitudeFt).oatC;
     let weighted = 0;
     let transitionMaximumRisk = 0;
     let transitionTemperatureMinutes = 0;
     let transitionConfirmed = false;
     let transitionEstimated = false;
+    let transitionHardHazard = false;
     const altitudeSpanFt = Math.max(0, result.altitudeFt - airportElevationFt);
     const samples = Math.max(10, Math.ceil(altitudeSpanFt / PERFORMANCE.icing.transitionSampleStepFt));
     for (let index = 1; index <= samples; index += 1) {
@@ -307,8 +392,8 @@ export function calculateIcingRisk({ plan, result }) {
       const temperatureFactor = hasTemperature || Number.isFinite(surfaceTemperatureC) ? icingTemperatureFactor(estimatedTemperatureC) : 0;
       let risk = 0;
       const leg = legAtDistance(distanceAtFraction(fraction));
-      const sources = [{ evidence: terminalEvidence, coverage: 1, terminal: true },
-        ...advisorySourcesAtLeg(leg).map((source) => ({ ...source, terminal: false }))];
+      const sources = [...terminalSources,
+        ...(includeAdvisories ? advisorySourcesAtLeg(leg).map((source) => ({ ...source, terminal: false })) : [])];
       sources.forEach((source) => {
         const evidence = evidenceAtAltitude(source.evidence, altitudeFt);
         if (!evidence.available) return;
@@ -320,7 +405,7 @@ export function calculateIcingRisk({ plan, result }) {
           : evidence.explicitIcing || evidence.freezingPrecipitation ? 1 : 0)
           * moistureFactor(evidence, altitudeFt, source.terminal, source.terminal ? airportElevationFt : 0);
         risk = Math.max(risk, sourceRisk * source.coverage);
-        hardHazard ||= evidence.explicitIcing || evidence.freezingPrecipitation;
+        transitionHardHazard ||= (evidence.explicitIcing || evidence.freezingPrecipitation) && source.coverage >= PERFORMANCE.icing.hardHazardProbability;
       });
       transitionMaximumRisk = Math.max(transitionMaximumRisk, risk);
       if (temperatureFactor >= 0.3) transitionTemperatureMinutes += durationHr * 60 / samples;
@@ -332,12 +417,22 @@ export function calculateIcingRisk({ plan, result }) {
       temperatureMinutes: transitionTemperatureMinutes,
       confirmedSamples: transitionConfirmed ? 1 : 0,
       estimatedSamples: transitionEstimated ? 1 : 0,
+      hardHazard: transitionHardHazard,
+      weather: terminalWeather,
     };
   };
-  const climbTransition = transitionExposure(fixes[0], result.climb.timeHr, plan.meteorology?.originText || "", plan.origin?.elevationFt || 0,
+  const climbTransition = transitionExposure(fixes[0], result.climb.timeHr, "origin", plan.scheduledOffMs, plan.origin?.elevationFt || 0,
     (fraction) => (Number(result.climb.distanceNm) || 0) * fraction);
-  const descentTransition = transitionExposure(fixes.at(-1), result.descent.timeHr, plan.meteorology?.destinationText || "", plan.destination?.elevationFt || 0,
+  const descentTransition = transitionExposure(fixes.at(-1), result.descent.timeHr, "destination", plan.scheduledOnMs, plan.destination?.elevationFt || 0,
     (fraction) => planDistanceNm - (Number(result.descent.distanceNm) || 0) * fraction);
+  const alternateFix = plan.alternateWaypoints?.at(-1) || (plan.alternates?.[0] ? {
+    ident: plan.alternates[0].icao, lat: plan.alternates[0].lat, lon: plan.alternates[0].lon,
+    windLevels: fixes.at(-1)?.windLevels || [], oatC: fixes.at(-1)?.oatC,
+  } : null);
+  const alternateEtaMs = Number.isFinite(plan.scheduledOnMs) ? plan.scheduledOnMs + PERFORMANCE.icing.alternateEtaOffsetMin * 60000 : NaN;
+  const alternateTransition = transitionExposure(alternateFix, Math.max(0.08, result.descent.timeHr * 0.45), "alternate", alternateEtaMs, 0, () => planDistanceNm, false);
+  hardHazard ||= climbTransition.hardHazard || descentTransition.hardHazard;
+  const alternateHardHazard = Boolean(alternateTransition.hardHazard);
   const transitionRiskMinutes = climbTransition.minutes + descentTransition.minutes;
   temperatureExposureMinutes += climbTransition.temperatureMinutes + descentTransition.temperatureMinutes;
   confirmedEvidenceSamples += climbTransition.confirmedSamples + descentTransition.confirmedSamples;
@@ -350,7 +445,7 @@ export function calculateIcingRisk({ plan, result }) {
     descentTransition.maximumRisk * 100,
     cruiseMaximumRisk * 100 * cruiseDurationWeight,
   ));
-  const status = hardHazard
+  const status = hardHazard || alternateHardHazard
     ? "avoid"
     : rawRiskScore >= PERFORMANCE.icing.cautionScore
       ? "caution"
@@ -376,6 +471,22 @@ export function calculateIcingRisk({ plan, result }) {
     transitionRiskMinutes,
     confidence: confirmedEvidenceSamples > 0 ? "weather" : estimatedEvidenceSamples > 0 ? "estimated" : "limited",
     temperatureCoverage: fixes.length > 1 ? observedTemperatureSamples / (fixes.length - 1) : 0,
+    evidenceCoverage: fixes.length > 1 ? segments.filter((segment) => segment.evidenceAvailable).length / (fixes.length - 1) : 0,
+    combinedCoverage: fixes.length > 1 ? segments.filter((segment) => segment.evidenceAvailable && Number.isFinite(segment.oatC)).length / (fixes.length - 1) : 0,
+    originWeather: climbTransition.weather,
+    destination: {
+      status: descentTransition.hardHazard ? "avoid" : descentTransition.maximumRisk * 100 >= PERFORMANCE.icing.cautionScore ? "caution" : descentTransition.maximumRisk * 100 >= PERFORMANCE.icing.watchScore ? "watch" : "low",
+      riskScore: Math.round(descentTransition.maximumRisk * 100),
+      exposureMinutes: descentTransition.minutes,
+      weather: descentTransition.weather,
+    },
+    alternate: alternateFix ? {
+      ident: plan.alternates?.[0]?.icao || plan.alternate || alternateFix.ident || "—",
+      status: alternateHardHazard ? "avoid" : alternateTransition.maximumRisk * 100 >= PERFORMANCE.icing.cautionScore ? "caution" : alternateTransition.maximumRisk * 100 >= PERFORMANCE.icing.watchScore ? "watch" : "low",
+      riskScore: Math.round(alternateTransition.maximumRisk * 100),
+      exposureMinutes: alternateTransition.minutes,
+      weather: alternateTransition.weather,
+    } : null,
     segments,
   };
 }
@@ -1253,6 +1364,20 @@ export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMi
     const feasibilityPenalty = item.feasibility.status === "unavailable" || item.terrain.status === "unavailable" ? 50 : item.feasibility.status === "marginal" || item.terrain.status === "marginal" ? 8 : 0;
     item.performanceScore = Math.max(0, Math.round(baseScore - feasibilityPenalty));
     item.score = Math.max(0, Math.round(item.performanceScore - item.icing.penalty - item.turbulence.penalty - item.oxygen.penalty - (item.weightBalance?.penalty || 0)));
+  });
+
+  const icingOrder = { low: 0, watch: 1, caution: 2, avoid: 3 };
+  results.forEach((item) => {
+    const currentRank = icingOrder[item.icing.status] ?? 3;
+    const alternatives = results.filter((candidate) => candidate.altitudeFt !== item.altitudeFt
+      && candidate.feasibility.status !== "unavailable"
+      && candidate.terrain.status !== "unavailable"
+      && (icingOrder[candidate.icing.status] ?? 3) < currentRank
+      && candidate.icing.riskScore <= item.icing.riskScore - 8);
+    const escape = alternatives.sort((a, b) => Math.abs(a.altitudeFt - item.altitudeFt) - Math.abs(b.altitudeFt - item.altitudeFt)
+      || a.icing.riskScore - b.icing.riskScore)[0];
+    item.icing.escapeAltitudeFt = escape?.altitudeFt ?? null;
+    item.icing.escapeRiskScore = escape?.icing.riskScore ?? null;
   });
 
   const available = results.filter((item) => item.feasibility.status !== "unavailable" && item.weightBalance?.status !== "unavailable" && item.terrain.status !== "unavailable");

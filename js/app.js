@@ -1,6 +1,6 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261018-03";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateRemainingFlightAssessment, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261018-06";
-import { fetchLatestOFP } from "./simbrief.js?v=20261017-06";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261018-04";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateRemainingFlightAssessment, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261018-07";
+import { fetchLatestOFP } from "./simbrief.js?v=20261018-07";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 import { buildRouteMatrix } from "./route-matrix.js?v=20261017-01";
 
@@ -496,6 +496,7 @@ function iceBlue(score, minimum=.08, maximum=.82) {
 
 function renderIceModule(plan,analysis,selected) {
   const pt=state.language==="pt-BR",icing=selected.icing,score=clamp(Math.round(icing.riskScore||0),0,100);
+  const exposureLabel=(minutes)=>minutes>0&&minutes<1?"<1 min":`${number(minutes||0,0)} min`;
   const source=icing.confidence==="weather"?t("icingWeather"):icing.confidence==="estimated"?t("weatherEstimated"):t("icingLimited");
   $("#iceModuleLevel").textContent=`ICE · FL${selected.fl}`;
   $("#iceModuleIndex").textContent=number(score);
@@ -516,6 +517,30 @@ function renderIceModule(plan,analysis,selected) {
   $$("[data-ice-level]").forEach((button)=>button.addEventListener("click",()=>{state.selectedAltitudeFt=Number(button.dataset.iceLevel);state.manuallySelectedLevel=true;render();}));
 
   const segments=icing.segments||[],temperatureSegments=segments.filter((segment)=>segment.temperatureRelevant);
+  const peakIndex=segments.reduce((best,segment,index)=>(segment.riskScore||0)>(segments[best]?.riskScore||0)?index:best,0);
+  let riskStart=peakIndex,riskEnd=peakIndex;
+  if((segments[peakIndex]?.riskScore||0)>=PERFORMANCE.icing.watchScore){
+    while(riskStart>0&&(segments[riskStart-1]?.riskScore||0)>=PERFORMANCE.icing.watchScore)riskStart-=1;
+    while(riskEnd<segments.length-1&&(segments[riskEnd+1]?.riskScore||0)>=PERFORMANCE.icing.watchScore)riskEnd+=1;
+  }
+  const riskSegments=(segments[peakIndex]?.riskScore||0)>=PERFORMANCE.icing.watchScore?segments.slice(riskStart,riskEnd+1):[];
+  const firstRisk=riskSegments[0],lastRisk=riskSegments.at(-1);
+  $("#iceRiskWindowLabel").textContent=pt?"TRECHO CRÍTICO":"CRITICAL LEG";
+  $("#iceRiskWindow").textContent=firstRisk?`${firstRisk.from||"—"} → ${lastRisk?.to||firstRisk.to||"—"}`:(pt?"SEM TRECHO":"NO LEG");
+  $("#iceRiskWindowMeta").textContent=firstRisk?`${number(firstRisk.startNm,0)}–${number(lastRisk?.endNm??firstRisk.endNm,0)} NM · ${number(riskSegments.reduce((sum,segment)=>sum+(segment.minutes||0),0),0)} min`:(pt?"abaixo do limite":"below threshold");
+  const terminalView=(terminal)=>terminal?`${number(terminal.riskScore||0)}/100`:"—";
+  $("#iceDestinationLabel").textContent=pt?"DESTINO":"DESTINATION";
+  $("#iceDestinationRisk").textContent=terminalView(icing.destination);
+  $("#iceDestinationMeta").textContent=icing.destination?`${exposureLabel(icing.destination.exposureMinutes)} · ${icingLabel(icing.destination)}`:"—";
+  $("#iceAlternateLabel").textContent=pt?"ALTERNADO":"ALTERNATE";
+  $("#iceAlternateRisk").textContent=icing.alternate?`${icing.alternate.ident} · ${terminalView(icing.alternate)}`:"—";
+  $("#iceAlternateMeta").textContent=icing.alternate?`${exposureLabel(icing.alternate.exposureMinutes)} · ${icingLabel(icing.alternate)}`:(pt?"não informado":"not filed");
+  const escapeButton=$("#iceEscapeLevel"),escapeAltitude=icing.escapeAltitudeFt;
+  $("#iceEscapeLabel").textContent=pt?"SAÍDA VERTICAL":"VERTICAL EXIT";
+  escapeButton.querySelector("strong").textContent=Number.isFinite(escapeAltitude)?`FL${Math.round(escapeAltitude/100)}`:"—";
+  escapeButton.querySelector("small").textContent=Number.isFinite(escapeAltitude)?`ICE ${number(icing.escapeRiskScore)}/100`:(pt?"sem ganho ≥ 8":"no gain ≥ 8");
+  escapeButton.disabled=!Number.isFinite(escapeAltitude);
+  escapeButton.onclick=Number.isFinite(escapeAltitude)?()=>{state.selectedAltitudeFt=escapeAltitude;state.manuallySelectedLevel=true;render();}:null;
   const temperatureNm=temperatureSegments.reduce((sum,segment)=>sum+Math.max(0,(Number(segment.endNm)||0)-(Number(segment.startNm)||0)),0);
   $("#iceRouteExposure").textContent=segments.length?`${temperatureSegments.length}/${segments.length} · ${number(temperatureNm,0)} NM`:"—";
   $("#iceRouteLabels").innerHTML=segments.length?`<span>${escapeHtml(segments[0].from||plan.origin.icao)}</span>${segments.map((segment)=>`<span>${escapeHtml(segment.to||"—")}</span>`).join("")}`:"";
@@ -541,14 +566,20 @@ function renderIceModule(plan,analysis,selected) {
     {label:pt?"DESCIDA":"DESCENT",minutes:icing.descentExposureMinutes||0},
   ];
   const maxPhase=Math.max(1,...phases.map((phase)=>phase.minutes));
-  $("#iceExposureTotal").textContent=`${number(icing.exposureMinutes||0,0)} min`;
-  $("#icePhaseList").innerHTML=phases.map((phase)=>`<div><span>${phase.label}</span><div><i style="width:${phase.minutes/maxPhase*100}%;background:${iceBlue(score,.28,.9)}"></i></div><strong>${number(phase.minutes,0)} min</strong></div>`).join("");
+  $("#iceExposureTotal").textContent=exposureLabel(icing.exposureMinutes);
+  $("#icePhaseList").innerHTML=phases.map((phase)=>`<div><span>${phase.label}</span><div><i style="width:${phase.minutes/maxPhase*100}%;background:${iceBlue(score,.28,.9)}"></i></div><strong>${exposureLabel(phase.minutes)}</strong></div>`).join("");
 
   const oats=segments.map((segment)=>segment.oatC).filter(Number.isFinite),evidenceCount=segments.filter((segment)=>segment.evidenceAvailable).length;
   const oatRange=oats.length?`${number(Math.min(...oats),0)}° a ${number(Math.max(...oats),0)}°C`:"—";
-  const coverage=Math.round((icing.temperatureCoverage||0)*100);
+  const coverage=Math.round((icing.combinedCoverage||0)*100);
+  const weatherPoints=[icing.originWeather,icing.destination?.weather,icing.alternate?.weather].filter(Boolean);
+  const validForecasts=weatherPoints.filter((weather)=>weather.tafValid||Number.isFinite(weather.metarAgeMinutes)&&weather.metarAgeMinutes<=PERFORMANCE.icing.metarMaximumAgeMin).length;
+  const ages=weatherPoints.map((weather)=>weather.metarAgeMinutes).filter(Number.isFinite);
+  const freshest=ages.length?Math.min(...ages):NaN;
+  const tafKinds=[...new Set(weatherPoints.flatMap((weather)=>weather.sources||[]).map((item)=>item.kind).filter((kind)=>!["metar","legacy"].includes(kind)))];
+  const tafModes=tafKinds.length?tafKinds.map((kind)=>kind.replace("prob","PROB").replace("temporary",pt?"TEMPO":"TEMPO").replace("becoming","BECMG").replace("prevailing",pt?"PREDOMINANTE":"PREVAILING").toUpperCase()).join(" · "):"—";
   $("#iceEvidenceCoverage").textContent=`${coverage}%`;
-  $("#iceEvidenceList").innerHTML=`<div><span>${pt?"TEMPERATURA":"TEMPERATURE"}</span><strong>${oatRange}</strong></div><div><span>${pt?"COBERTURA TÉRMICA":"THERMAL COVERAGE"}</span><strong>${coverage}%</strong></div><div><span>${pt?"EVIDÊNCIA APLICÁVEL":"APPLICABLE EVIDENCE"}</span><strong>${evidenceCount}/${segments.length||0} ${pt?"trechos":"legs"}</strong></div><div><span>${pt?"FONTE":"SOURCE"}</span><strong>SIMBRIEF OFP · ${source}</strong></div>`;
+  $("#iceEvidenceList").innerHTML=`<div><span>${pt?"TEMPERATURA":"TEMPERATURE"}</span><strong>${oatRange}</strong></div><div><span>${pt?"COBERTURA COMBINADA":"COMBINED COVERAGE"}</span><strong>${coverage}%</strong></div><div><span>${pt?"EVIDÊNCIA APLICÁVEL":"APPLICABLE EVIDENCE"}</span><strong>${evidenceCount}/${segments.length||0} ${pt?"trechos":"legs"}</strong></div><div><span>${pt?"VALIDADE TERMINAL":"TERMINAL VALIDITY"}</span><strong>${validForecasts}/${weatherPoints.length||0}</strong></div><div><span>${pt?"METAR MAIS PRÓXIMO":"NEAREST METAR"}</span><strong>${Number.isFinite(freshest)?`${number(freshest,0)} min`:"—"}</strong></div><div><span>${pt?"GRUPOS TAF":"TAF GROUPS"}</span><strong>${tafModes}</strong></div><div><span>${pt?"PROTEÇÃO":"PROTECTION"}</span><strong>${pt?"NÃO INSTALADA":"NOT INSTALLED"}</strong></div><div><span>${pt?"FONTE":"SOURCE"}</span><strong>SIMBRIEF OFP · ${source}</strong></div>`;
 
   const reading=score>=PERFORMANCE.icing.cautionScore?(pt?"ÍNDICE ELEVADO":"HIGH INDEX"):score>=PERFORMANCE.icing.watchScore?(pt?"ÍNDICE MODERADO":"MODERATE INDEX"):(pt?"ÍNDICE BAIXO":"LOW INDEX");
   $("#iceCompositionLabel").textContent=reading;

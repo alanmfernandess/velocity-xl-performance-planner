@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const index=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const app=readFileSync(new URL("../js/app.js",import.meta.url),"utf8");
+const engine=readFileSync(new URL("../js/engine.js",import.meta.url),"utf8");
 const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
@@ -39,6 +40,12 @@ test("flight phases stay live in the icing card after Route and Profile tabs are
   assert.match(app,/renderMissionScore\(selected,missionScore\)/);
   assert.match(css,/\.phase-footer \{ border-top:1px solid var\(--line\)/);
   assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.phase-grid \{ grid-template-columns:minmax\(0,1fr\)/);
+});
+
+test("ICE exposes route timing, terminal validity, alternate risk, and vertical exit",()=>{
+  assert.match(index,/id="iceRiskWindow"[\s\S]*id="iceDestinationRisk"[\s\S]*id="iceAlternateRisk"[\s\S]*id="iceEscapeLevel"/);
+  assert.match(app,/combinedCoverage[\s\S]*VALIDADE TERMINAL[\s\S]*METAR MAIS PRÓXIMO/);
+  assert.match(engine,/terminalWeatherAtTime[\s\S]*alternateEtaOffsetMin[\s\S]*escapeAltitudeFt/);
 });
 
 test("A/B matrix keeps B controls above four aligned comparison metrics",()=>{

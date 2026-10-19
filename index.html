@@ -22,7 +22,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-14" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-15" />
   </head>
   <body>
     <header class="topbar">
@@ -243,6 +243,12 @@
             </div>
             <div class="ice-index-track" id="iceIndexTrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="iceIndexFill"></span><i id="iceIndexMarker"></i></div>
             <div class="ice-level-compare" id="iceLevelCompare" aria-label="Comparação de níveis"></div>
+            <div class="ice-decision-grid">
+              <div><span id="iceRiskWindowLabel">TRECHO CRÍTICO</span><strong id="iceRiskWindow">—</strong><small id="iceRiskWindowMeta">—</small></div>
+              <div><span id="iceDestinationLabel">DESTINO</span><strong id="iceDestinationRisk">—</strong><small id="iceDestinationMeta">—</small></div>
+              <div><span id="iceAlternateLabel">ALTERNADO</span><strong id="iceAlternateRisk">—</strong><small id="iceAlternateMeta">—</small></div>
+              <button id="iceEscapeLevel" type="button"><span id="iceEscapeLabel">SAÍDA VERTICAL</span><strong>—</strong><small>—</small></button>
+            </div>
             <div class="ice-route-window">
               <div class="ice-section-heading"><div><span data-i18n="thermalWindow">Janela térmica</span><strong data-i18n="routeBand">Faixa da rota</strong></div><b id="iceRouteExposure">—</b></div>
               <div class="ice-route-scroll"><div class="ice-route-labels" id="iceRouteLabels"></div><div class="ice-route-band" id="iceRouteBand"></div></div>
@@ -463,6 +469,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-14"></script>
+    <script type="module" src="./js/app.js?v=20261018-15"></script>
   </body>
 </html>

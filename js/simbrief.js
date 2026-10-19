@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261017-06";
+import { greatCircleNm } from "./engine.js?v=20261018-07";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;
@@ -175,8 +175,14 @@ export function parseSimBrief(data) {
     elevationFt: number(first(data.destination?.elevation, data.destination?.elevation_ft), 0),
   };
   const plannedAltitudeFt = number(first(data.general?.initial_altitude, data.general?.cruise_altitude), 18000);
-  const originWeatherText = weatherText(data.weather?.orig_metar, data.weather?.orig_taf, data.origin?.metar, data.origin?.taf, data.origin?.weather);
-  const destinationWeatherText = weatherText(data.weather?.dest_metar, data.weather?.dest_taf, data.destination?.metar, data.destination?.taf, data.destination?.weather);
+  const originMetar = weatherText(data.weather?.orig_metar, data.origin?.metar);
+  const originTaf = weatherText(data.weather?.orig_taf, data.origin?.taf);
+  const destinationMetar = weatherText(data.weather?.dest_metar, data.destination?.metar);
+  const destinationTaf = weatherText(data.weather?.dest_taf, data.destination?.taf);
+  const alternateMetar = weatherText(data.weather?.altn_metar);
+  const alternateTaf = weatherText(data.weather?.altn_taf);
+  const originWeatherText = weatherText(originMetar, originTaf, data.origin?.weather);
+  const destinationWeatherText = weatherText(destinationMetar, destinationTaf, data.destination?.weather);
   const rawFixes = arrayOf(data.navlog);
   const route = rawFixes.map((fix) => ({ lat: number(fix.pos_lat, NaN), lon: number(fix.pos_long, NaN) }))
     .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
@@ -246,6 +252,29 @@ export function parseSimBrief(data) {
     distanceNm: number(first(alternate?.route_distance, alternate?.distance), NaN),
   }));
   const alternate = alternates[0];
+  const rawAlternateFixes = arrayOf(data.alternate_navlog);
+  let alternateCumulativeNm = 0;
+  const alternateWaypoints = rawAlternateFixes.map((fix, index) => {
+    const windLevels = parseWindLevels(fix);
+    const weather = windForAltitude(fix, plannedAltitudeFt, windLevels);
+    const point = {
+      ident: first(fix.ident, `ALT${index + 1}`),
+      lat: number(first(fix.pos_lat, fix.latitude), NaN),
+      lon: number(first(fix.pos_long, fix.longitude), NaN),
+      distanceNm: number(first(fix.cum_distance, fix.distance), alternateCumulativeNm),
+      windDir: number(first(weather.windDir, weather.wind_dir, fix.wind_dir), NaN),
+      windSpd: number(first(weather.windSpd, weather.wind_spd, fix.wind_spd), NaN),
+      oatC: number(first(weather.oatC, weather.oat, fix.oat), NaN),
+      windLevels,
+    };
+    if (index > 0 && Number.isFinite(point.lat) && Number.isFinite(point.lon)) {
+      const previous = rawAlternateFixes[index - 1];
+      const previousPoint = { lat: number(previous.pos_lat, NaN), lon: number(previous.pos_long, NaN) };
+      if (Number.isFinite(previousPoint.lat) && Number.isFinite(previousPoint.lon)) alternateCumulativeNm += greatCircleNm(previousPoint, point);
+    }
+    point.distanceNm = number(first(fix.cum_distance, alternateCumulativeNm), alternateCumulativeNm);
+    return point;
+  }).filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon));
   return {
     source: "SIMBRIEF",
     origin,
@@ -256,14 +285,21 @@ export function parseSimBrief(data) {
     distanceNm,
     plannedAltitudeFt,
     generatedAt: rawGenerated && !Number.isNaN(generatedDate.getTime()) ? generatedDate.toLocaleString("pt-BR", { timeZone: "UTC", hour12: false }) + "Z" : "OFP mais recente",
+    generatedAtMs: rawGenerated && !Number.isNaN(generatedDate.getTime()) ? generatedDate.getTime() : NaN,
+    scheduledOffMs: flightStart,
+    scheduledOnMs: flightEnd,
     meteorology: {
       originText: originWeatherText,
       destinationText: destinationWeatherText,
+      origin: { metar: originMetar, taf: originTaf },
+      destination: { metar: destinationMetar, taf: destinationTaf },
+      alternate: { metar: alternateMetar, taf: alternateTaf },
       enrouteText: enrouteWeatherText,
       enrouteBulletins,
       enrouteAdvisories,
     },
     waypoints,
+    alternateWaypoints,
   };
 }
 
