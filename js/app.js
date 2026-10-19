@@ -1,8 +1,8 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261018-04";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateRemainingFlightAssessment, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261018-07";
-import { fetchLatestOFP } from "./simbrief.js?v=20261018-07";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261018-05";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateRemainingFlightAssessment, calculateRideRecommendation, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261018-09";
+import { fetchLatestOFP } from "./simbrief.js?v=20261018-08";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
-import { buildRouteMatrix } from "./route-matrix.js?v=20261017-01";
+import { buildRouteMatrix } from "./route-matrix.js?v=20261018-02";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -232,6 +232,7 @@ const state = {
   weightBalance:storedJson("velocityxl.weightBalance", { pilot:190, copilot:170, rearLeft:55, rearCenter:50, rearRight:55, baggage:0 }),
   debriefs:storedJson("velocityxl.debriefs", []),
   financial:storedJson("velocityxl.financial", { currency:"BRL", prices:{} }),
+  ridePreference:["standard","comfort","maximum"].includes(localStorage.getItem("velocityxl.ridePreference"))?localStorage.getItem("velocityxl.ridePreference"):"standard",
   preflightSnapshot:null,
   manual:{ active:false, waypointIndex:0, distanceNm:0, fuelRemainingGal:77, altitudeFt:null },
   diversionWaypointIndex:0,
@@ -969,13 +970,73 @@ function renderConfidenceEnvelope(confidence) {
 }
 
 function renderRideOptimizer(analysis,selected) {
-  const eligible=analysis.results.filter(operationallyAvailable);
-  const best=[...(eligible.length?eligible:analysis.results)].sort((a,b)=>(a.turbulence.riskScore??Infinity)-(b.turbulence.riskScore??Infinity)||b.score-a.score)[0];
-  const source=best.turbulence.confidence==="weather"?t("icingWeather"):best.turbulence.confidence==="simbrief"?t("simbriefShear"):best.turbulence.confidence==="estimated"?t("weatherEstimated"):t("weatherLimited");
-  $("#rideHeadline").textContent=`FL${best.fl} · ${rideLabel(best.turbulence.status)}`;
-  $("#rideSummaryMeta").textContent=`${rideScoreLabel(best.turbulence)}${best.turbulence.riskScore===null?"":"/100"} · ${source}`;
-  $("#rideLevels").innerHTML=analysis.results.map((item)=>`<button type="button" data-ride-level="${item.altitudeFt}" ${!operationallyAvailable(item)?"disabled":""} class="ride-level ${item.turbulence.status} ${item.altitudeFt===selected.altitudeFt?"selected":""}"><b>${iconMarkup("wind")}FL${item.fl}</b><span>${rideLabel(item.turbulence.status)}</span><i><em style="width:${item.turbulence.riskScore??0}%"></em></i><strong>${rideScoreLabel(item.turbulence)}</strong></button>`).join("");
+  const pt=state.language==="pt-BR",ride=selected.turbulence,score=Number.isFinite(ride.riskScore)?clamp(Math.round(ride.riskScore),0,100):null;
+  const source=ride.confidence==="weather"?t("icingWeather"):ride.confidence==="simbrief"?t("simbriefShear"):ride.confidence==="estimated"?t("weatherEstimated"):t("weatherLimited");
+  const exposureLabel=(minutes)=>minutes>0&&minutes<1?"<1 min":`${number(minutes||0,0)} min`;
+  $("#rideModuleLevel").textContent=`RIDE · FL${selected.fl}`;
+  $("#rideModuleIndex").textContent=score===null?"—":number(score);
+  $("#rideModuleStatus").textContent=rideLabel(ride.status);
+  $("#rideModuleStatus").className=`ride-${ride.status}`;
+  $("#rideModuleConfidence").textContent=source;
+  $("#rideIndexTrack").setAttribute("aria-valuenow",String(score||0));
+  $("#rideIndexFill").style.width=`${score||0}%`;
+  $("#rideIndexMarker").style.left=`${score||0}%`;
+
+  const nearby=[...analysis.results].sort((a,b)=>Math.abs(a.altitudeFt-selected.altitudeFt)-Math.abs(b.altitudeFt-selected.altitudeFt)||a.altitudeFt-b.altitudeFt).slice(0,3).sort((a,b)=>a.altitudeFt-b.altitudeFt);
+  $("#rideLevels").innerHTML=nearby.map((item)=>`<button type="button" data-ride-level="${item.altitudeFt}" ${!operationallyAvailable(item)?"disabled":""} class="${item.turbulence.status} ${item.altitudeFt===selected.altitudeFt?"active":""}"><span>FL${item.fl}</span><strong>${rideScoreLabel(item.turbulence)}</strong><small>${item.turbulence.riskScore===null?"":"/100"}</small></button>`).join("");
   $$('[data-ride-level]:not(:disabled)').forEach((button)=>button.addEventListener("click",()=>{state.selectedAltitudeFt=Number(button.dataset.rideLevel);state.manuallySelectedLevel=true;render();}));
+
+  const preferenceCopy={standard:{pt:"Padrão",en:"Standard",notePt:"Equilibra conforto, combustível e tempo",noteEn:"Balances comfort, fuel, and time"},comfort:{pt:"Conforto",en:"Comfort",notePt:"Aumenta o peso do RIDE na recomendação",noteEn:"Gives RIDE more weight in the recommendation"},maximum:{pt:"Máx. conforto",en:"Max comfort",notePt:"Prioriza o menor RIDE entre os níveis viáveis",noteEn:"Prioritizes the lowest RIDE among viable levels"}};
+  $$('[data-ride-preference]').forEach((button)=>{const copy=preferenceCopy[button.dataset.ridePreference];button.textContent=pt?copy.pt:copy.en;button.classList.toggle("active",button.dataset.ridePreference===state.ridePreference);button.setAttribute("aria-pressed",String(button.dataset.ridePreference===state.ridePreference));});
+  $("#ridePreferenceLabel").textContent=pt?"PREFERÊNCIA DE CONFORTO":"COMFORT PREFERENCE";
+  $("#ridePreferenceNote").textContent=pt?preferenceCopy[state.ridePreference].notePt:preferenceCopy[state.ridePreference].noteEn;
+  const recommendation=calculateRideRecommendation({results:analysis.results,preference:state.ridePreference});
+  $("#rideRecommendationLabel").textContent=`${pt?"RECOMENDAÇÃO":"RECOMMENDATION"} · ${pt?preferenceCopy[state.ridePreference].pt:preferenceCopy[state.ridePreference].en}`.toUpperCase();
+  $("#rideRecommendationLevel").textContent=recommendation?`FL${recommendation.fl}`:"—";
+  const fuelDelta=recommendation?recommendation.fuelRequiredGal-selected.fuelRequiredGal:0,timeDelta=recommendation?(recommendation.tripTimeHr-selected.tripTimeHr)*60:0;
+  $("#rideRecommendationMeta").textContent=recommendation?`RIDE ${rideScoreLabel(recommendation.turbulence)}/100 · ${signedNumber(fuelValue(fuelDelta),1,` ${fuelLabel()}`)} · ${signedNumber(timeDelta,0," min")}`:t("rankingNoAvailable");
+  const apply=$("#applyRideRecommendation");
+  apply.textContent=recommendation?.altitudeFt===selected.altitudeFt?(pt?"Já aplicado":"Already applied"):(pt?"Aplicar recomendação":"Apply recommendation");
+  apply.disabled=!recommendation||recommendation.altitudeFt===selected.altitudeFt;
+  apply.onclick=recommendation&&recommendation.altitudeFt!==selected.altitudeFt?()=>{state.selectedAltitudeFt=recommendation.altitudeFt;state.manuallySelectedLevel=true;render();}:null;
+
+  const segments=ride.segments||[],threshold=PERFORMANCE.turbulence.lightScore;
+  const peakIndex=segments.reduce((best,segment,index)=>(segment.riskScore??-1)>(segments[best]?.riskScore??-1)?index:best,0);
+  let start=peakIndex,end=peakIndex;
+  if((segments[peakIndex]?.riskScore??-1)>=threshold){while(start>0&&(segments[start-1]?.riskScore??-1)>=threshold)start-=1;while(end<segments.length-1&&(segments[end+1]?.riskScore??-1)>=threshold)end+=1;}
+  const critical=(segments[peakIndex]?.riskScore??-1)>=threshold?segments.slice(start,end+1):[];
+  const first=critical[0],last=critical.at(-1);
+  $("#rideCriticalLabel").textContent=pt?"TRECHO CRÍTICO":"CRITICAL LEG";
+  $("#rideCriticalLeg").textContent=first?`${first.from} → ${last?.to||first.to}`:(pt?"SEM TRECHO":"NO LEG");
+  $("#rideCriticalMeta").textContent=first?`${number(first.startNm,0)}–${number(last?.endNm??first.endNm,0)} NM · ${exposureLabel(critical.reduce((sum,item)=>sum+(item.exposureMinutes||0),0))}`:(pt?"abaixo do limite":"below threshold");
+  const terminalMarkup=(terminal)=>terminal&&Number.isFinite(terminal.riskScore)?`${number(terminal.riskScore)}/100`:"—";
+  $("#rideDestinationLabel").textContent=pt?"DESTINO":"DESTINATION";
+  $("#rideDestinationRisk").textContent=terminalMarkup(ride.destination);
+  $("#rideDestinationMeta").textContent=ride.destination?`${exposureLabel(ride.destination.exposureMinutes)} · ${rideLabel(ride.destination.status)}`:"—";
+  $("#rideAlternateLabel").textContent=pt?"ALTERNADO":"ALTERNATE";
+  $("#rideAlternateRisk").textContent=ride.alternate?`${ride.alternate.ident} · ${terminalMarkup(ride.alternate)}`:"—";
+  $("#rideAlternateMeta").textContent=ride.alternate?`${exposureLabel(ride.alternate.exposureMinutes)} · ${rideLabel(ride.alternate.status)}`:(pt?"não informado":"not filed");
+  $("#rideTropopauseLabel").textContent=pt?"TROPOPAUSA":"TROPOPAUSE";
+  $("#rideTropopause").textContent=Number.isFinite(ride.tropopauseFt)?`FL${Math.round(ride.tropopauseFt/100)}`:"—";
+  $("#rideTropopauseMeta").textContent=Number.isFinite(ride.tropopauseFt)?`${signedNumber(ride.tropopauseFt-selected.altitudeFt,0," ft")}`:(pt?"sem dados":"no data");
+
+  $("#rideRouteLabel").textContent=pt?"EXPOSIÇÃO NA ROTA":"ROUTE EXPOSURE";
+  $("#rideRouteTitle").textContent=pt?"Fluxo por trecho":"Flow by leg";
+  $("#rideRouteExposure").textContent=`${exposureLabel(ride.exposureMinutes)} · ${number(state.plan.distanceNm,0)} NM`;
+  $("#rideRouteLabels").innerHTML=segments.length?`<span>${escapeHtml(segments[0].from||state.plan.origin.icao)}</span>${segments.map((segment)=>`<span>${escapeHtml(segment.to||"—")}</span>`).join("")}`:"";
+  $("#rideRouteBand").innerHTML=segments.map((segment,index)=>`<button type="button" class="${segment.status}" data-ride-segment="${index}" aria-label="${escapeHtml(segment.from)} → ${escapeHtml(segment.to)}, RIDE ${segment.riskScore??"—"}"><strong>${segment.riskScore??"—"}</strong><small>${Number.isFinite(segment.windSpeedKt)?`${number(segment.windSpeedKt)} kt`:"—"}</small></button>`).join("");
+  const renderSegment=(index)=>{const segment=segments[index];if(!segment){$("#rideRouteFocus").innerHTML=`<span>${escapeHtml(t("weatherLimited"))}</span>`;return;}$$('[data-ride-segment]').forEach((button)=>button.classList.toggle("active",Number(button.dataset.rideSegment)===index));$("#rideRouteFocus").innerHTML=`<div><span>${pt?"TRECHO":"LEG"}</span><strong>${escapeHtml(segment.from)} → ${escapeHtml(segment.to)}</strong></div><div><span>RIDE</span><strong>${segment.riskScore??"—"}${segment.riskScore===null?"":"/100"}</strong></div><div><span>${pt?"GRADIENTE":"GRADIENT"}</span><strong>${number(Math.max(segment.verticalShear||0,segment.horizontalShear||0),1)} kt</strong></div><div><span>${pt?"VENTO":"WIND"}</span><strong>${Number.isFinite(segment.windSpeedKt)?`${number(segment.windSpeedKt)} kt`:"—"}</strong></div><div><span>${pt?"EXPOSIÇÃO":"EXPOSURE"}</span><strong>${exposureLabel(segment.exposureMinutes)}</strong></div>`;};
+  renderSegment(peakIndex);
+  $$('[data-ride-segment]').forEach((button)=>button.addEventListener("click",()=>renderSegment(Number(button.dataset.rideSegment))));
+
+  $("#rideExposureLabel").textContent=pt?"EXPOSIÇÃO":"EXPOSURE";$("#ridePhasesLabel").textContent=pt?"Fases do voo":"Flight phases";$("#rideExposureTotal").textContent=exposureLabel(ride.exposureMinutes);
+  const phases=[{label:pt?"SUBIDA":"CLIMB",minutes:ride.phaseExposureMinutes?.climb||0},{label:pt?"CRUZEIRO":"CRUISE",minutes:ride.phaseExposureMinutes?.cruise||0},{label:pt?"DESCIDA":"DESCENT",minutes:ride.phaseExposureMinutes?.descent||0}],maxPhase=Math.max(1,...phases.map((phase)=>phase.minutes));
+  $("#ridePhaseList").innerHTML=phases.map((phase)=>`<div><span>${phase.label}</span><div><i style="width:${phase.minutes/maxPhase*100}%"></i></div><strong>${exposureLabel(phase.minutes)}</strong></div>`).join("");
+  const coverage=Math.round((ride.coverage||0)*100),shearCount=segments.filter((segment)=>Number.isFinite(segment.simbriefShear)).length,windCount=segments.filter((segment)=>Number.isFinite(segment.windSpeedKt)).length;
+  $("#rideEvidenceLabel").textContent=pt?"EVIDÊNCIAS DO OFP":"OFP EVIDENCE";$("#rideEvidenceCoverage").textContent=`${coverage}%`;
+  $("#rideEvidenceList").innerHTML=`<div><span>SHEAR NAVLOG</span><strong>${shearCount}/${segments.length||0} ${pt?"trechos":"legs"}</strong></div><div><span>${iconMarkup("wind")}${pt?"VENTOS POR FL":"WINDS BY FL"}</span><strong>${windCount}/${segments.length||0} ${pt?"trechos":"legs"}</strong></div><div><span>${pt?"GRADIENTE VERTICAL":"VERTICAL GRADIENT"}</span><strong>${number(ride.maximumVerticalShear||0,1)} kt/1.000 ft</strong></div><div><span>${pt?"GRADIENTE HORIZONTAL":"HORIZONTAL GRADIENT"}</span><strong>${number(ride.maximumHorizontalShear||0,1)} kt/150 NM</strong></div><div><span>SIGMET / CB</span><strong>${ride.unboundedAdvisory?(pt?"sem limite vertical":"no vertical bounds"):(pt?"sem interseção":"no intersection")}</strong></div><div><span>${pt?"FONTE":"SOURCE"}</span><strong>SIMBRIEF OFP · ${source}</strong></div>`;
+
+  $$('[data-ride-preference]').forEach((button)=>button.addEventListener("click",()=>{state.ridePreference=button.dataset.ridePreference;localStorage.setItem("velocityxl.ridePreference",state.ridePreference);render();}));
 }
 
 function renderDebrief(result) {

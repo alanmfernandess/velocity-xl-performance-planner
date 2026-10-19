@@ -122,7 +122,7 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
     alternate_navlog: [{ ident: "SBGL", pos_lat: "-22.810", pos_long: "-43.251", oat: "-20" },
       { ident: "SBRJ", pos_lat: "-22.9105", pos_long: "-43.1631", oat: "-18" }],
     navlog: [
-      { ident: "SBSP", pos_lat: "-23.626", pos_long: "-46.657", altitude_feet: "22000", wind_dir: "250", wind_spd: "20", oat: "-20", shear: "2", stage: "CLB", wind_data: [
+      { ident: "SBSP", pos_lat: "-23.626", pos_long: "-46.657", altitude_feet: "22000", tropopause_feet: "37000", wind_dir: "250", wind_spd: "20", oat: "-20", shear: "2", stage: "CLB", wind_data: [
         { altitude: "18000", wind_dir: "240", wind_spd: "18", oat: "-19" },
         { altitude: "24000", wind_dir: "270", wind_spd: "30", oat: "-31" },
       ] },
@@ -145,6 +145,7 @@ test("parses SimBrief JSON v2 arrays and strings", () => {
   assert.equal(result.waypoints[0].shear, 2);
   assert.equal(result.waypoints[0].altitudeFt, 22000);
   assert.equal(result.waypoints[0].stage, "CLB");
+  assert.equal(result.waypoints[0].tropopauseFt, 37000);
   assert.equal(result.waypoints[1].moraFt, 7600);
   assert.match(result.meteorology.originText, /BKN020/);
   assert.match(result.meteorology.destinationText, /OVC030/);

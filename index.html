@@ -22,7 +22,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-15" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-16" />
   </head>
   <body>
     <header class="topbar">
@@ -230,9 +230,46 @@
           </div>
         </div>
         <div class="tool-view" data-tool-panel="ride">
-          <div class="ride-layout">
-            <div class="ride-summary"><strong id="rideHeadline">—</strong><span id="rideSummaryMeta">—</span></div>
-            <div class="ride-levels" id="rideLevels"></div>
+          <div class="ride-module">
+            <div class="ride-module-summary">
+              <div><span id="rideModuleLevel">RIDE · FL—</span><strong id="rideModuleIndex">—</strong><small>/100</small></div>
+              <div><b id="rideModuleStatus">—</b><small id="rideModuleConfidence">—</small></div>
+            </div>
+            <div class="ride-index-track" id="rideIndexTrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="rideIndexFill"></span><i id="rideIndexMarker"></i></div>
+            <div class="ride-level-compare" id="rideLevels" aria-label="Comparação de níveis"></div>
+            <div class="ride-preference">
+              <div><span id="ridePreferenceLabel">PREFERÊNCIA DE CONFORTO</span><small id="ridePreferenceNote">Equilibra conforto, combustível e tempo</small></div>
+              <div role="group" aria-label="Preferência de conforto">
+                <button type="button" data-ride-preference="standard">Padrão</button>
+                <button type="button" data-ride-preference="comfort">Conforto</button>
+                <button type="button" data-ride-preference="maximum">Máx. conforto</button>
+              </div>
+            </div>
+            <div class="ride-recommendation">
+              <div><span id="rideRecommendationLabel">RECOMENDAÇÃO</span><strong id="rideRecommendationLevel">—</strong><small id="rideRecommendationMeta">—</small></div>
+              <button class="primary-button compact-action" id="applyRideRecommendation" type="button">Aplicar recomendação</button>
+            </div>
+            <div class="ride-decision-grid">
+              <div><span id="rideCriticalLabel">TRECHO CRÍTICO</span><strong id="rideCriticalLeg">—</strong><small id="rideCriticalMeta">—</small></div>
+              <div><span id="rideDestinationLabel">DESTINO</span><strong id="rideDestinationRisk">—</strong><small id="rideDestinationMeta">—</small></div>
+              <div><span id="rideAlternateLabel">ALTERNADO</span><strong id="rideAlternateRisk">—</strong><small id="rideAlternateMeta">—</small></div>
+              <div><span id="rideTropopauseLabel">TROPOPAUSA</span><strong id="rideTropopause">—</strong><small id="rideTropopauseMeta">—</small></div>
+            </div>
+            <div class="ride-route-window">
+              <div class="ride-section-heading"><div><span id="rideRouteLabel">EXPOSIÇÃO NA ROTA</span><strong id="rideRouteTitle">Fluxo por trecho</strong></div><b id="rideRouteExposure">—</b></div>
+              <div class="ride-route-scroll"><div class="ride-route-labels" id="rideRouteLabels"></div><div class="ride-route-band" id="rideRouteBand"></div></div>
+              <div class="ride-route-focus" id="rideRouteFocus" aria-live="polite"></div>
+            </div>
+            <div class="ride-module-grid">
+              <section>
+                <div class="ride-section-heading"><div><span id="rideExposureLabel">EXPOSIÇÃO</span><strong id="ridePhasesLabel">Fases do voo</strong></div><b id="rideExposureTotal">—</b></div>
+                <div class="ride-phase-list" id="ridePhaseList"></div>
+              </section>
+              <section>
+                <div class="ride-section-heading"><div><span id="rideEvidenceLabel">EVIDÊNCIAS DO OFP</span><strong id="rideEvidenceCoverage">—</strong></div></div>
+                <div class="ride-evidence-list" id="rideEvidenceList"></div>
+              </section>
+            </div>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="ice">
@@ -469,6 +506,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-15"></script>
+    <script type="module" src="./js/app.js?v=20261018-16"></script>
   </body>
 </html>

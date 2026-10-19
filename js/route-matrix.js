@@ -1,6 +1,6 @@
-import { bearingDeg, weatherAtAltitude, windComponentKt } from "./engine.js?v=20261017-07";
+import { bearingDeg, weatherAtAltitude, windComponentKt } from "./engine.js?v=20261018-09";
 import { routeTerrainLegs, terrainMinimumForLeg } from "./terrain.js?v=20261016-01";
-import { PERFORMANCE } from "./config.js?v=20261017-06";
+import { PERFORMANCE } from "./config.js?v=20261018-05";
 
 const validWindLevels = (fix) => (fix?.windLevels || []).filter((level) => Number.isFinite(level.altitudeFt)
   && Number.isFinite(level.windDir) && Number.isFinite(level.windSpd));

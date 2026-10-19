@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateIcingRisk, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateRemainingFlightAssessment, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
+import { assessFeasibility, calculateAlternateDiversion, calculateAtAltitude, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateIcingRisk, calculateLoadOptimization, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePerformanceConfidence, calculatePlan, calculateRemainingFlightAssessment, calculateRideRecommendation, calculateStepClimbs, calculateTurbulenceRisk, calculateWeightBalance, compareScenarios, densityAltitudeFt, deleteDebrief, deriveCalibration, icingDisplayTone, icingWeatherEvidence, isaTemperatureC, missionOptimizationFailureReason, oxygenSystemWeightLb, powerAtAltitude, randomizeWeightBalance, scaleWeightBalanceToPayload, summarizeDebriefs, turbulenceWeatherEvidence, weatherAtAltitude, weightBalancePayloadLb, windComponentKt } from "../js/engine.js";
 import { ALTITUDES_FT, DEMO_PLAN, PERFORMANCE, WEIGHT_BALANCE } from "../js/config.js";
 
 const FULL_OXYGEN = { bottleModel: "SK-12-24", bottles: 2, seats: [true, true, true, true, true] };
@@ -731,6 +731,54 @@ test("SimBrief shear only applies near the navlog altitude", () => {
   assert.equal(plannedRisk.blocking, true);
   assert.notEqual(otherRisk.status, "severe");
   assert.equal(otherRisk.blocking, false);
+});
+
+test("RIDE summarizes route exposure, flight phases, terminals, and tropopause", () => {
+  const waypoint = (ident, lon, distanceNm, stage) => ({
+    ident, lat: 0, lon, distanceNm, altitudeFt: 18000, stage, tropopauseFt: 19000,
+    windLevels: [
+      { altitudeFt: 16000, windDir: 190, windSpd: 18 },
+      { altitudeFt: 20000, windDir: 260, windSpd: 52 },
+    ],
+  });
+  const plan = {
+    ...DEMO_PLAN,
+    distanceNm: 120,
+    scheduledOffMs: Date.parse("2026-10-17T12:00:00Z"),
+    scheduledOnMs: Date.parse("2026-10-17T13:00:00Z"),
+    waypoints: [waypoint("DEP", 0, 0, "CLB"), waypoint("A", .17, 10, "CRZ"), waypoint("B", 1.83, 110, "CRZ"), waypoint("ARR", 2, 120, "DSC")],
+    meteorology: {
+      origin: { taf: "TAF DEP 171100Z 1712/1812 18008KT CAVOK" },
+      destination: { taf: "TAF ARR 171100Z 1712/1812 22012G28KT 9999 SCT030" },
+      enrouteText: "",
+    },
+  };
+  const result = calculateAtAltitude({ plan, altitudeFt: 18000, mode: "NORMAL", payloadLb: 300, fuelOnboardGal: 77, reserveMinutes: 45 });
+  const ride = calculateTurbulenceRisk({ plan, result });
+  assert.equal(ride.segments.length, 3);
+  assert.deepEqual(ride.segments.map((segment) => segment.phase), ["climb", "cruise", "descent"]);
+  assert.ok(ride.exposureMinutes > 0);
+  assert.ok(ride.phaseExposureMinutes.cruise > 0);
+  assert.equal(ride.tropopauseFt, 19000);
+  assert.ok(ride.destination.riskScore >= 40);
+  assert.ok(ride.coverage > 0);
+});
+
+test("RIDE comfort presets change only the recommended viable level", () => {
+  const candidate = (fl, score, riskScore, overrides = {}) => ({
+    fl, altitudeFt: fl * 100, score, turbulence: { riskScore, blocking: false },
+    feasibility: { status: "viable" }, terrain: { status: "viable" }, icing: { status: "low" },
+    oxygen: { status: "compliant" }, weightBalance: { status: "viable" },
+    missionScore: { score, status: "viable" }, ...overrides,
+  });
+  const fast = candidate(180, 95, 50);
+  const smooth = candidate(220, 80, 10);
+  const unavailable = candidate(240, 100, 0, { feasibility: { status: "unavailable" } });
+  const marginal = candidate(160, 99, 0, { missionScore: { score: 69, status: "marginal" } });
+  assert.equal(calculateRideRecommendation({ results: [fast, smooth, unavailable, marginal], preference: "standard" }), fast);
+  assert.equal(calculateRideRecommendation({ results: [fast, smooth, unavailable, marginal], preference: "maximum" }), smooth);
+  assert.equal(fast.turbulence.riskScore, 50);
+  assert.equal(smooth.turbulence.riskScore, 10);
 });
 
 test("unbounded turbulence advisory does not fabricate a per-level score", () => {

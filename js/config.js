@@ -166,6 +166,18 @@ export const PERFORMANCE = {
     moderateHorizontalShearKtPer150Nm: 18,
     simbriefShearApplicabilityFt: 3000,
     unboundedAdvisoryMaximumScore: 60,
+    tropopauseProximityFt: 4000,
+    tropopauseWindThresholdKt: 45,
+    tropopauseProximityScore: 18,
+    terminalGustBaseScore: 18,
+    terminalWindShearScore: 70,
+    terminalConvectiveScore: 82,
+    alternateEtaOffsetMin: 35,
+    recommendationWeights: {
+      standard: { mission: 1, ride: 0.15 },
+      comfort: { mission: 1, ride: 0.45 },
+      maximum: { mission: 0.25, ride: 1 },
+    },
   },
   confidence: {
     baseTasUncertainty: 0.08,

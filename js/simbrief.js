@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261018-07";
+import { greatCircleNm } from "./engine.js?v=20261018-09";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;
@@ -218,6 +218,7 @@ export function parseSimBrief(data) {
       windSpd: number(first(weather.windSpd, weather.wind_spd, fix.wind_spd), NaN),
       oatC: number(first(weather.oatC, weather.oat, fix.oat), NaN),
       shear: number(fix.shear, NaN),
+      tropopauseFt: number(first(fix.tropopause_feet, fix.tropopause), NaN),
       altitudeFt: number(first(fix.altitude_feet, fix.altitude), NaN),
       // SimBrief navlog MORA applies to the leg ending at this fix.
       moraFt: number(fix.mora, NaN),
@@ -265,6 +266,7 @@ export function parseSimBrief(data) {
       windDir: number(first(weather.windDir, weather.wind_dir, fix.wind_dir), NaN),
       windSpd: number(first(weather.windSpd, weather.wind_spd, fix.wind_spd), NaN),
       oatC: number(first(weather.oatC, weather.oat, fix.oat), NaN),
+      tropopauseFt: number(first(fix.tropopause_feet, fix.tropopause), NaN),
       windLevels,
     };
     if (index > 0 && Number.isFinite(point.lat) && Number.isFinite(point.lon)) {

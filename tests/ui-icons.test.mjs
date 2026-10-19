@@ -152,6 +152,19 @@ test("dynamic operational cards use semantic line icons",()=>{
   assert.match(app,/iconMarkup\("history"\)/);
 });
 
+test("RIDE exposes comfort preferences, route evidence, and explicit apply action",()=>{
+  const ridePanel=index.slice(index.indexOf('data-tool-panel="ride"'),index.indexOf('data-tool-panel="ice"'));
+  assert.match(ridePanel,/data-ride-preference="standard"/);
+  assert.match(ridePanel,/data-ride-preference="comfort"/);
+  assert.match(ridePanel,/data-ride-preference="maximum"/);
+  assert.match(ridePanel,/id="applyRideRecommendation"/);
+  assert.match(ridePanel,/id="rideRouteBand"/);
+  assert.match(ridePanel,/id="ridePhaseList"/);
+  assert.match(ridePanel,/id="rideEvidenceList"/);
+  assert.match(app,/calculateRideRecommendation/);
+  assert.match(app,/localStorage\.setItem\("velocityxl\.ridePreference"/);
+});
+
 test("icon styling remains discrete and preserves operational status colors",()=>{
   assert.match(css,/\.ui-icon\s*\{/);
   assert.match(css,/width:13px/);
