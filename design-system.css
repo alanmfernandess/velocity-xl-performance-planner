@@ -198,7 +198,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   .topbar { flex-wrap: wrap; }
   .app-toolbar { width: 100%; justify-content: space-between; }
   .toolbar-group button { min-width: 30px; }
-  .plan-form { grid-template-columns: minmax(0, 1fr); }
+  .plan-form { grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); }
   .plan-form .primary-button { width: 100%; }
   .area-heading h1 { font-size: calc(22px * var(--ui-scale)); }
   .area-context { max-width: 38%; }
@@ -208,6 +208,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   .recommendation-actions { display: grid; }
   .tool-choice .tool-card { min-width: 0; flex-basis: calc(50% - 4px); }
   .route-overview-card { min-height: 80px; }
+}
+@media (max-width: 360px) {
+  .plan-form { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 360px) {
   .mobile-area-nav button { font-size: 11px; }

@@ -17,7 +17,8 @@
       routeOverview: 'Resumo da rota', routeTerrain: 'Terreno', routeIce: 'Gelo', routeRide: 'Conforto',
       routeDecisions: 'ETP, alternado e desvio', missionAdjustment: 'Ajuste principal', openPlanning: 'Ajustar missão',
       openRoute: 'Analisar rota', loadOptimizer: 'LOAD Optimizer', flightTools: 'Ferramentas',
-      reviewScore: 'Mission Score', riskAssessment: 'Riscos e restrições', 
+      reviewScore: 'Mission Score', riskAssessment: 'Riscos e restrições',
+      planningShort: 'Planejar', routeShort: 'Rota',
     },
     'en-US': {
       mission: 'Mission', planning: 'Planning', route: 'Route & risks', flight: 'In flight',
@@ -31,6 +32,7 @@
       routeDecisions: 'ETP, alternate and diversion', missionAdjustment: 'Main adjustment', openPlanning: 'Adjust mission',
       openRoute: 'Review route', loadOptimizer: 'LOAD Optimizer', flightTools: 'Tools',
       reviewScore: 'Mission Score', riskAssessment: 'Risks and constraints',
+      planningShort: 'Plan', routeShort: 'Route',
     }
   };
   const areas = [
@@ -60,7 +62,8 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.dataset.areaButton = area;
-      button.innerHTML = `${icon(glyph)}<span data-layout-text="${area}">${text(area)}</span>`;
+      const label = target === mobileNav && ['planning', 'route'].includes(area) ? `${area}Short` : area;
+      button.innerHTML = `${icon(glyph)}<span data-layout-text="${label}">${text(label)}</span>`;
       target.append(button);
     }
     const section = document.createElement('section');
@@ -226,11 +229,22 @@
   function translateLayout() {
     document.querySelectorAll('[data-layout-text]').forEach(element => { element.textContent = text(element.dataset.layoutText); });
     noPlan.textContent = text('noPlan');
+    const compact = matchMedia('(max-width: 760px)').matches;
+    const labels = document.documentElement.lang === 'en-US'
+      ? [['Selected level', 'Level'], ['Required fuel', 'Fuel'], ['Estimated time', 'Time'], ['Maximum range', 'Range']]
+      : [['Nível selecionado', 'Nível'], ['Combustível requerido', 'Combustível'], ['Tempo estimado', 'Tempo'], ['Alcance máximo', 'Alcance']];
+    document.querySelectorAll('.kpi-grid .kpi > span:first-of-type').forEach((element, index) => {
+      const pair = labels[index];
+      if (!pair) return;
+      element.textContent = compact ? pair[1] : pair[0];
+      element.title = pair[0];
+    });
     document.querySelectorAll('.module-nav').forEach(element => { element.setAttribute('aria-label', text(element.closest('[data-area-panel]').dataset.areaPanel)); });
     nav.setAttribute('aria-label', document.documentElement.lang === 'en-US' ? 'Main areas' : 'Áreas principais');
     mobileNav.setAttribute('aria-label', nav.getAttribute('aria-label'));
   }
   document.querySelectorAll('[data-language]').forEach(button => button.addEventListener('click', () => setTimeout(translateLayout, 0)));
+  window.addEventListener('resize', translateLayout);
   window.VelocityLayout = { activate, translate: translateLayout, state };
   activate('mission', 'overview');
 })();
