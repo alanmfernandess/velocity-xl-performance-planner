@@ -22,7 +22,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261018-18" />
+    <link rel="stylesheet" href="./styles.css?v=20261019-01" />
   </head>
   <body>
     <header class="topbar">
@@ -380,10 +380,11 @@
               <div class="remaining-assessment-values"><span id="remainingDistance">—</span><span id="remainingRequired">—</span><strong id="remainingMargin">—</strong></div>
             </div>
             <form id="calibrationForm" class="compact-form calibration-form">
-              <div class="calibration-head"><span data-i18n="calibration">Calibração</span><div class="calibration-value"><strong id="calibrationMode">NORMAL</strong><output id="calibrationFactors">TAS ×1,00 · FF ×1,00</output></div><small id="calibrationGate" class="calibration-gate" role="status"></small></div>
+              <div class="calibration-head"><span data-i18n="cruiseCalibration">Calibração de cruzeiro</span><div class="calibration-value"><strong id="calibrationMode">NORMAL</strong></div><small id="calibrationGate" class="calibration-gate" role="status"></small></div>
               <label><span data-i18n="observedTas">TAS observada</span><span class="input-with-unit"><input id="observedTas" type="number" min="100" max="350" step="1" required /><small>kt</small></span></label>
               <label><span data-i18n="observedFuelFlow">Fuel flow observado</span><span class="input-with-unit"><input id="observedFuelFlow" type="number" min="1" step="0.1" required /><small id="observedFuelFlowUnit">gal/h</small></span></label>
-              <button class="primary-button" id="calibrateObserved" type="submit" data-i18n="calibrate" disabled>Calibrar</button>
+              <label><span data-i18n="observedOat">OAT observada</span><span class="input-with-unit"><input id="observedOat" type="number" min="-80" max="60" step="1" required /><small>°C</small></span></label>
+              <button class="primary-button" id="calibrateObserved" type="submit" data-i18n="calibrateModel" disabled>Calibrar modelo</button>
               <button class="text-button" id="resetCalibration" type="button" data-i18n="reset">Redefinir</button>
             </form>
           </div>
@@ -395,16 +396,6 @@
               <div class="debrief-inputs">
                 <label><span data-i18n="actualTime">Tempo real</span><span class="input-with-unit"><input id="debriefTime" type="number" min="1" step="1" required /><small>min</small></span></label>
                 <label><span data-i18n="actualFuel">Combustível usado</span><span class="input-with-unit"><input id="debriefFuel" type="number" min="0.1" step="0.1" required /><small id="debriefFuelUnit">gal</small></span></label>
-              </div>
-              <div class="debrief-phase-tabs" role="tablist" data-i18n-aria-label="debriefPhases">
-                <button class="active" type="button" role="tab" data-debrief-phase="climb" aria-selected="true" data-i18n="climb">Subida</button>
-                <button type="button" role="tab" data-debrief-phase="cruise" aria-selected="false" data-i18n="cruise">Cruzeiro</button>
-                <button type="button" role="tab" data-debrief-phase="descent" aria-selected="false" data-i18n="descent">Descida</button>
-              </div>
-              <div class="debrief-phase-panels">
-                <div class="debrief-phase-panel active" data-debrief-panel="climb"><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="climb" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="climb" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
-                <div class="debrief-phase-panel" data-debrief-panel="cruise" hidden><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="cruise" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="cruise" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
-                <div class="debrief-phase-panel" data-debrief-panel="descent" hidden><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="descent" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="descent" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
               </div>
               <div class="debrief-actions"><button class="primary-button" type="submit" data-i18n="saveDebrief">Registrar voo</button></div>
             </form>
@@ -511,6 +502,6 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-17"></script>
+    <script type="module" src="./js/app.js?v=20261019-01"></script>
   </body>
 </html>

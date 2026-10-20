@@ -134,6 +134,12 @@ test("completed-flight calibration lives under Manual Update without a separate 
   assert.match(app,/localStorage\.setItem\("velocityxl\.debriefs"/);
 });
 
+test("Manual Update keeps cruise calibration to TAS, fuel flow and OAT",()=>{
+  assert.match(index,/id="observedTas"[\s\S]*id="observedFuelFlow"[\s\S]*id="observedOat"/);
+  assert.doesNotMatch(index,/id="calibrationFactors"|data-debrief-phase|data-debrief-time|data-debrief-fuel/);
+  assert.match(app,/observedOatC:Number\(\$\("#observedOat"\)\.value\)/);
+});
+
 test("flight tools open as individual cards in the page flow",()=>{
   assert.match(index,/class="tool-card-grid"/);
   assert.doesNotMatch(index,/class="tool-tabs"/);
