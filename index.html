@@ -22,7 +22,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261019-02" />
+    <link rel="stylesheet" href="./styles.css?v=20261018-18" />
   </head>
   <body>
     <header class="topbar">
@@ -31,28 +31,23 @@
         <span><strong>VELOCITY XL</strong><small>PERFORMANCE PLANNER</small></span>
       </a>
       <div class="app-toolbar">
+        <div class="toolbar-group font-switch" role="group" data-i18n-title="fontSize" aria-label="Tamanho da fonte">
+          <button data-font-size="small" type="button" aria-pressed="false" aria-label="Fonte menor">A−</button>
+          <button class="active" data-font-size="normal" type="button" aria-pressed="true" aria-label="Fonte padrão">A</button>
+          <button data-font-size="large" type="button" aria-pressed="false" aria-label="Fonte maior">A+</button>
+        </div>
+        <div class="toolbar-group" aria-label="Weight unit">
+          <button class="active" data-weight-unit="lb" type="button">LB</button>
+          <button data-weight-unit="kg" type="button">KG</button>
+        </div>
+        <div class="toolbar-group" aria-label="Fuel unit">
+          <button class="active" data-fuel-unit="gal" type="button">GAL</button>
+          <button data-fuel-unit="l" type="button">L</button>
+        </div>
         <div class="toolbar-group language-switch" aria-label="Language">
           <button class="active" data-language="pt-BR" type="button">PT</button>
           <button data-language="en-US" type="button">EN</button>
         </div>
-        <details class="app-settings">
-          <summary aria-label="Configurações">⚙</summary>
-          <div class="settings-popover">
-            <div class="toolbar-group font-switch" role="group" data-i18n-title="fontSize" aria-label="Tamanho da fonte">
-              <button data-font-size="small" type="button" aria-pressed="false" aria-label="Fonte menor">A−</button>
-              <button class="active" data-font-size="normal" type="button" aria-pressed="true" aria-label="Fonte padrão">A</button>
-              <button data-font-size="large" type="button" aria-pressed="false" aria-label="Fonte maior">A+</button>
-            </div>
-            <div class="toolbar-group" aria-label="Weight unit">
-              <button class="active" data-weight-unit="lb" type="button">LB</button>
-              <button data-weight-unit="kg" type="button">KG</button>
-            </div>
-            <div class="toolbar-group" aria-label="Fuel unit">
-              <button class="active" data-fuel-unit="gal" type="button">GAL</button>
-              <button data-fuel-unit="l" type="button">L</button>
-            </div>
-          </div>
-        </details>
       </div>
     </header>
 
@@ -70,67 +65,36 @@
       </section>
 
       <div id="plannerContent" hidden>
-      <section class="decision-overview" aria-label="Performance summary">
-        <article class="mission-decision-card panel" id="kpiSelectedLevel">
-          <div class="decision-card-heading"><span data-i18n="missionScore">Score da missão</span><small id="missionScoreMode">NORMAL</small></div>
-          <div class="decision-card-body">
-            <div class="decision-level"><span data-i18n="bestLevel">Nível selecionado</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="selectedLevel">Selecionado</small></div>
-            <div class="decision-score"><span>MISSION SCORE</span><strong id="missionScoreValue">0</strong><small id="missionScoreStatus">—</small></div>
-            <div class="decision-reasons">
-              <strong id="missionScoreLevel">FL120</strong>
-              <p id="missionScoreSummary">—</p>
-              <div class="mission-score-reasons" id="missionScoreReasons"></div>
-              <button class="decision-details-toggle" type="button" aria-expanded="false" data-score-details>Ver composição</button>
-            </div>
-          </div>
-          <div class="decision-details" id="missionScoreDetails" hidden>
-            <p class="mission-score-action"><span data-i18n="mainAdjustment">Ajuste principal</span><strong id="missionScoreAction">—</strong></p>
-          </div>
-          <div class="mission-score-dial" id="missionScoreDial" role="img" aria-label="Score 0 de 100" hidden><span></span></div>
-        </article>
+      <section class="kpi-grid" aria-label="Performance summary">
+        <article class="kpi featured" id="kpiSelectedLevel"><span data-i18n="bestLevel">Nível selecionado</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="selectedLevel">Selecionado</small></article>
         <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
         <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
+        <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
       </section>
-
-      <article class="panel controls-panel compact-mission-controls">
-        <span class="configuration-label" data-i18n="configuration">CONFIGURAÇÃO</span>
-        <div class="mode-control"><button data-mode="ECON" type="button">ECON</button><button class="active" data-mode="NORMAL" type="button">NORMAL</button><button data-mode="FAST" type="button">FAST</button></div>
-        <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /></label>
-        <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
-        <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
-        <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
-        <details class="power-control compact-power-control">
-          <summary aria-label="Configuração avançada">•••</summary>
-          <div class="power-settings-popover">
-            <div class="power-heading"><span data-i18n="power">Potência</span><div class="power-toggle"><button class="active" data-power-type="AUTO" type="button" data-i18n="automatic">Automático</button><button data-power-type="MANUAL" type="button">MAP / RPM</button></div></div>
-            <div class="power-auto-readout" id="powerAutoReadout"><strong id="powerSettingValue">24,0&quot; · 2.450 RPM</strong><small id="powerPercent">74%</small></div>
-            <div class="power-manual-fields" id="powerManualFields" hidden><label><span>MAP</span><span class="input-with-unit"><input id="manualMap" type="number" min="10" max="32" step="0.1" inputmode="decimal" /><small>inHg</small></span></label><label><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label></div>
-          </div>
-        </details>
-        <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
-        <div class="mission-recovery" id="missionRecovery" role="status" aria-live="polite" hidden><p id="missionRecoveryReason"></p><button id="missionRecoveryAction" type="button" data-i18n="restoreViableMission">Usar última carga viável</button><small id="missionRecoveryWarning" data-i18n="restoreViableWarning">A carga anterior será reotimizada e substituirá ajustes de carga, combustível, preset e oxigênio. Confira os ocupantes e o W&amp;B.</small></div>
-      </article>
 
       <section class="panel flight-tools-panel" aria-label="Flight tools">
         <button class="manual-update-strip" id="tool-card-update" data-tool-trigger="update" type="button" aria-controls="tool-panel-update" aria-expanded="false">
           <span class="manual-update-strip-icon" aria-hidden="true"></span>
           <span class="manual-update-strip-copy"><small data-i18n="manualFlightStatusTitle">ATUALIZAÇÃO EM VOO</small><strong id="manualUpdateStripValue">—</strong></span>
           <small class="manual-update-strip-state" id="manualUpdateStripState" data-i18n="manualNoUpdate">Sem atualização registrada</small>
-          <span class="manual-update-strip-action" data-i18n="manualOpen">Abrir</span>
+          <span class="manual-update-strip-action" data-i18n="manualUpdate">Atualização manual</span>
         </button>
-        <div class="tool-cards-heading"><h2 data-i18n="flightTools">Ferramentas de voo</h2><small>7 módulos</small></div>
+        <div class="tool-cards-heading"><h2 data-i18n="flightTools">Ferramentas de voo</h2><small data-i18n="chooseTool">Escolha um módulo</small></div>
         <div class="tool-card-grid">
-          <button data-tool-view="contingency" type="button">CONTINGÊNCIA</button>
+          <button data-tool-view="etp" type="button">ETP / PNR</button>
+          <button data-tool-view="alternate" type="button">ALT / DIV</button>
+          <button data-tool-view="compare" type="button">A / B</button>
+          <button data-tool-view="load" type="button">LOAD</button>
           <button data-tool-view="wb" type="button">W&amp;B</button>
           <button data-tool-view="glide" type="button">GLIDE</button>
           <button data-tool-view="oxygen" type="button">O₂</button>
+          <button data-tool-view="confidence" type="button">CONF</button>
           <button data-tool-view="ride" type="button">RIDE</button>
           <button data-tool-view="ice" type="button">ICE</button>
           <button data-tool-view="cost" type="button">CUSTO</button>
+          <button data-tool-view="steps" type="button">STEP CLIMB</button>
         </div>
-        <div class="tool-view contingency-tool-view" data-tool-panel="contingency">
-          <section class="contingency-section">
-          <div class="compact-module-title"><span>ETP / PNR</span><small>Pontos de decisão</small></div>
+        <div class="tool-view" data-tool-panel="etp">
           <div class="navigation-grid">
             <div class="navigation-point etp-point">
               <span>ETP</span>
@@ -145,9 +109,8 @@
             </div>
             <div class="navigation-speeds"><span><b data-i18n="continueLabel">Continuar</b><strong id="outboundGs">256 kt</strong></span><span><b data-i18n="returnLabel">Retornar</b><strong id="returnGs">218 kt</strong></span></div>
           </div>
-          </section>
-          <section class="contingency-section">
-          <div class="compact-module-title"><span>ALT / DIV</span><small>Alternado e desvio</small></div>
+        </div>
+        <div class="tool-view" data-tool-panel="alternate">
           <div class="advisor-grid alternate-grid">
             <article class="advisor-card">
               <span data-i18n="destinationAlternate">Destino → alternado</span>
@@ -167,7 +130,6 @@
               <span><b data-i18n="alternateLanding">Pouso no alternado</b><strong id="alternateLandingFuel">—</strong></span>
             </div>
           </div>
-          </section>
         </div>
         <div class="tool-view" data-tool-panel="compare">
           <div class="scenario-matrix-module">
@@ -264,6 +226,12 @@
               <span><b data-i18n="oxygenWeight">Peso O₂</b><strong id="oxygenWeight">—</strong></span>
             </div>
             <div class="oxygen-status"><b class="status-pill" id="oxygenStatus">—</b><span id="oxygenRecommendation">—</span><small><a href="https://www.faa.gov/Air_traffic/publications/atpubs/aim_html/chap8_section_1.html" target="_blank" rel="noreferrer">FAA 91.211</a> · <a href="https://www.aerox.com/content/2022%20Use%20and%20care%20-%20Sky-ox.pdf" target="_blank" rel="noreferrer">Aerox Sky-Ox</a></small></div>
+          </div>
+        </div>
+        <div class="tool-view" data-tool-panel="confidence">
+          <div class="confidence-layout">
+            <div class="confidence-score"><strong id="confidenceScore">—</strong><span data-i18n="modelConfidence">Confiança do modelo</span><small id="confidenceSamples">—</small></div>
+            <div class="envelope-grid" id="confidenceEnvelope"></div>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="ride">
@@ -399,10 +367,6 @@
           </div>
           <span id="manualConfidence">—</span>
           </div>
-          <details class="manual-confidence-details">
-            <summary><span data-i18n="modelConfidence">Confiança do modelo</span><strong id="confidenceScore">—</strong><small id="confidenceSamples">—</small></summary>
-            <div class="confidence-layout"><div class="envelope-grid" id="confidenceEnvelope"></div></div>
-          </details>
           <div id="manualFlightPanel" class="manual-mode-panel" data-manual-panel="flight" role="tabpanel" aria-labelledby="manualFlightTab">
           <div class="update-grid">
             <form id="manualUpdateForm" class="compact-form">
@@ -416,11 +380,10 @@
               <div class="remaining-assessment-values"><span id="remainingDistance">—</span><span id="remainingRequired">—</span><strong id="remainingMargin">—</strong></div>
             </div>
             <form id="calibrationForm" class="compact-form calibration-form">
-              <div class="calibration-head"><span data-i18n="cruiseCalibration">Calibração de cruzeiro</span><div class="calibration-value"><strong id="calibrationMode">NORMAL</strong></div><small id="calibrationGate" class="calibration-gate" role="status"></small></div>
+              <div class="calibration-head"><span data-i18n="calibration">Calibração</span><div class="calibration-value"><strong id="calibrationMode">NORMAL</strong><output id="calibrationFactors">TAS ×1,00 · FF ×1,00</output></div><small id="calibrationGate" class="calibration-gate" role="status"></small></div>
               <label><span data-i18n="observedTas">TAS observada</span><span class="input-with-unit"><input id="observedTas" type="number" min="100" max="350" step="1" required /><small>kt</small></span></label>
               <label><span data-i18n="observedFuelFlow">Fuel flow observado</span><span class="input-with-unit"><input id="observedFuelFlow" type="number" min="1" step="0.1" required /><small id="observedFuelFlowUnit">gal/h</small></span></label>
-              <label><span data-i18n="observedOat">OAT observada</span><span class="input-with-unit"><input id="observedOat" type="number" min="-80" max="60" step="1" required /><small>°C</small></span></label>
-              <button class="primary-button" id="calibrateObserved" type="submit" data-i18n="calibrateModel" disabled>Calibrar modelo</button>
+              <button class="primary-button" id="calibrateObserved" type="submit" data-i18n="calibrate" disabled>Calibrar</button>
               <button class="text-button" id="resetCalibration" type="button" data-i18n="reset">Redefinir</button>
             </form>
           </div>
@@ -433,6 +396,16 @@
                 <label><span data-i18n="actualTime">Tempo real</span><span class="input-with-unit"><input id="debriefTime" type="number" min="1" step="1" required /><small>min</small></span></label>
                 <label><span data-i18n="actualFuel">Combustível usado</span><span class="input-with-unit"><input id="debriefFuel" type="number" min="0.1" step="0.1" required /><small id="debriefFuelUnit">gal</small></span></label>
               </div>
+              <div class="debrief-phase-tabs" role="tablist" data-i18n-aria-label="debriefPhases">
+                <button class="active" type="button" role="tab" data-debrief-phase="climb" aria-selected="true" data-i18n="climb">Subida</button>
+                <button type="button" role="tab" data-debrief-phase="cruise" aria-selected="false" data-i18n="cruise">Cruzeiro</button>
+                <button type="button" role="tab" data-debrief-phase="descent" aria-selected="false" data-i18n="descent">Descida</button>
+              </div>
+              <div class="debrief-phase-panels">
+                <div class="debrief-phase-panel active" data-debrief-panel="climb"><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="climb" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="climb" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
+                <div class="debrief-phase-panel" data-debrief-panel="cruise" hidden><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="cruise" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="cruise" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
+                <div class="debrief-phase-panel" data-debrief-panel="descent" hidden><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="descent" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="descent" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
+              </div>
               <div class="debrief-actions"><button class="primary-button" type="submit" data-i18n="saveDebrief">Registrar voo</button></div>
             </form>
             <details class="debrief-history-wrap"><summary data-i18n="debriefHistory">Histórico de calibração</summary><div class="debrief-history" id="debriefHistory"></div></details>
@@ -442,7 +415,7 @@
       </section>
 
 
-      <section class="mission-strip" aria-label="Mission status" hidden>
+      <section class="mission-strip" aria-label="Mission status">
         <div><span data-i18n="missionScore">Score da missão</span><strong id="missionRiskValue">—</strong><small id="missionRiskStatus">—</small></div>
         <div><span data-i18n="cruiseIcing">Índice de gelo</span><strong id="cruiseIcingValue">—</strong><small id="cruiseIcingMeta">—</small></div>
         <div><span data-i18n="rideComfort">Conforto</span><strong id="rideValue">—</strong><small id="rideMeta">—</small></div>
@@ -452,16 +425,14 @@
       <section class="panel terrain-panel" id="routeMatrix" aria-label="Matriz de níveis por trecho">
         <div class="terrain-heading">
           <div><span class="terrain-eyebrow" id="terrainEyebrow">ROTA · OFP</span><h2 id="terrainTitle">Matriz de níveis</h2><p id="terrainIntro">MORA, fase, vento e gelo por trecho.</p></div>
-          <div class="terrain-decision"><strong class="terrain-badge unknown" id="terrainStatus">TERRENO NÃO AVALIADO</strong><span id="terrainMargin">—</span><button class="terrain-toggle" id="routeMatrixToggle" type="button" aria-expanded="false">Ver matriz</button></div>
+          <div class="terrain-decision"><strong class="terrain-badge unknown" id="terrainStatus">TERRENO NÃO AVALIADO</strong><span id="terrainMargin">—</span></div>
         </div>
         <div class="matrix-route" id="routeMatrixOverview" aria-label="Trechos da rota"></div>
-        <div class="route-matrix-expanded" id="routeMatrixExpanded" hidden>
-          <div class="matrix-toolbar"><div><strong id="routeMatrixLegTitle">—</strong><small id="routeMatrixPosition">—</small></div><div class="matrix-nav"><button type="button" data-matrix-prev aria-label="Trecho anterior">‹</button><button type="button" data-matrix-next aria-label="Próximo trecho">›</button></div></div>
-          <div class="matrix-grid" id="routeMatrixGrid" aria-label="Níveis por trecho"></div>
-          <div class="matrix-detail" id="routeMatrixDetail" aria-live="polite"></div>
-          <p class="terrain-note" id="terrainNote">— = dado insuficiente</p>
-          <div class="terrain-manual" id="terrainManual" hidden></div>
-        </div>
+        <div class="matrix-toolbar"><div><strong id="routeMatrixLegTitle">—</strong><small id="routeMatrixPosition">—</small></div><div class="matrix-nav"><button type="button" data-matrix-prev aria-label="Trecho anterior">‹</button><button type="button" data-matrix-next aria-label="Próximo trecho">›</button></div></div>
+        <div class="matrix-grid" id="routeMatrixGrid" aria-label="Níveis por trecho"></div>
+        <div class="matrix-detail" id="routeMatrixDetail" aria-live="polite"></div>
+        <p class="terrain-note" id="terrainNote">— = dado insuficiente</p>
+        <div class="terrain-manual" id="terrainManual" hidden></div>
       </section>
 
       <section class="dashboard-grid">
@@ -472,10 +443,6 @@
               <div class="chart-tabs" role="tablist"><button class="active" data-metric="fuel" type="button">Fuel</button><button data-metric="time" type="button">Time</button><button data-metric="efficiency" type="button">Efficiency</button></div>
             </div>
             <div class="performance-ranking" id="performanceChart"></div>
-            <div class="level-tool-actions">
-              <button type="button" data-tool-trigger="compare" data-i18n="compareTwoLevels">Comparar dois níveis</button>
-              <button type="button" data-tool-trigger="steps">Step climb</button>
-            </div>
             <div class="icing-summary" id="icingSummary">
               <div class="icing-head"><b id="icingStatus">—</b><span id="icingDelta">—</span><small id="icingSource">—</small></div>
               <div class="phase-footer">
@@ -490,28 +457,60 @@
           </div>
         </article>
 
-        <aside class="control-stack compact-details-stack">
-          <details class="panel planning-details">
-            <summary><span data-i18n="fuelAndRange">Combustível e alcance</span><strong id="fuelRequiredSide">33,2 gal</strong></summary>
-            <div class="planning-details-grid">
-              <div class="fuel-panel"><div class="compact-heading"><span data-i18n="fuel">Combustível</span></div><div class="fuel-bar" id="fuelBar"></div><div class="fuel-legend" id="fuelLegend"></div></div>
-              <article class="kpi range-summary"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
+        <aside class="control-stack">
+          <article class="panel controls-panel">
+            <div class="mode-control"><button data-mode="ECON" type="button">ECON</button><button class="active" data-mode="NORMAL" type="button">NORMAL</button><button data-mode="FAST" type="button">FAST</button></div>
+            <div class="power-control">
+              <div class="power-heading">
+                <span data-i18n="power">Potência</span>
+                <div class="power-toggle"><button class="active" data-power-type="AUTO" type="button" data-i18n="automatic">Automático</button><button data-power-type="MANUAL" type="button">MAP / RPM</button></div>
+              </div>
+              <div class="power-auto-readout" id="powerAutoReadout"><strong id="powerSettingValue">24,0&quot; · 2.450 RPM</strong><small id="powerPercent">74%</small></div>
+              <div class="power-manual-fields" id="powerManualFields" hidden>
+                <label><span>MAP</span><span class="input-with-unit"><input id="manualMap" type="number" min="10" max="32" step="0.1" inputmode="decimal" /><small>inHg</small></span></label>
+                <label><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label>
+              </div>
             </div>
-          </details>
+            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /></label>
+            <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
+            <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
+            <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
+            <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
+            <div class="mission-recovery" id="missionRecovery" role="status" aria-live="polite" hidden>
+              <p id="missionRecoveryReason"></p>
+              <button id="missionRecoveryAction" type="button" data-i18n="restoreViableMission">Usar última carga viável</button>
+              <small id="missionRecoveryWarning" data-i18n="restoreViableWarning">A carga anterior será reotimizada e substituirá ajustes de carga, combustível, preset e oxigênio. Confira os ocupantes e o W&amp;B.</small>
+            </div>
+          </article>
+          <article class="panel insight-panel mission-score-panel">
+            <div class="mission-score-heading">
+              <div><span data-i18n="missionScore">Score da missão</span><strong id="missionScoreLevel">FL120</strong></div>
+              <small id="missionScoreMode">NORMAL</small>
+            </div>
+            <div class="mission-score-summary">
+              <div class="mission-score-dial" id="missionScoreDial" role="img" aria-label="Score 0 de 100"><span><strong id="missionScoreValue">0</strong></span></div>
+              <div class="mission-score-copy"><strong id="missionScoreStatus">—</strong><p id="missionScoreSummary">—</p></div>
+            </div>
+            <div class="mission-score-scale" aria-hidden="true"><i></i><i></i><i></i></div>
+            <div class="mission-score-thresholds"><span>0</span><span>40</span><span>70</span><span>100</span></div>
+            <div class="mission-score-reasons" id="missionScoreReasons"></div>
+            <p class="mission-score-action"><span data-i18n="mainAdjustment">Ajuste principal</span><strong id="missionScoreAction">—</strong></p>
+          </article>
+          <article class="panel fuel-panel"><div class="compact-heading"><span data-i18n="fuel">Combustível</span><strong id="fuelRequiredSide">33,2 gal</strong></div><div class="fuel-bar" id="fuelBar"></div><div class="fuel-legend" id="fuelLegend"></div></article>
         </aside>
       </section>
 
 
 
-      <details class="levels-section">
-        <summary class="section-heading"><h2 data-i18n="technicalLevelDetails">Detalhes técnicos por nível</h2><span id="selectionNote"></span></summary>
+      <section class="levels-section">
+        <div class="section-heading"><h2 data-i18n="allLevels">Todos os níveis</h2><span id="selectionNote"></span></div>
         <div class="levels-list" id="levelCards"></div>
-      </details>
+      </section>
       </div>
       <footer><span>Velocity XL Performance Planner</span><span class="footer-sources"><a href="https://forum.navigraph.com/t/ofp-wrong-msa/22775" target="_blank" rel="noreferrer">SimBrief MORA</a></span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261019-02"></script>
+    <script type="module" src="./js/app.js?v=20261018-17"></script>
   </body>
 </html>

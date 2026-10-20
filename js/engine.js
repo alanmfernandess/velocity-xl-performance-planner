@@ -2228,11 +2228,10 @@ export function calculateStepClimbs({
   };
 }
 
-export function deriveCalibration({ plan, mode, payloadLb, fuelRemainingGal, oxygenWeightLb = 0, altitudeFt, observedTasKt, observedFuelFlowGph, observedOatC = NaN, positionFix = null, powerSetting = {} }) {
+export function deriveCalibration({ plan, mode, payloadLb, fuelRemainingGal, oxygenWeightLb = 0, altitudeFt, observedTasKt, observedFuelFlowGph, positionFix = null, powerSetting = {} }) {
   const baseline = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: fuelRemainingGal, oxygenWeightLb, calibration: {}, powerSetting });
   const localWeather = positionFix ? weatherAtAltitude(positionFix, altitudeFt) : baseline.weather;
-  const oatC = Number.isFinite(observedOatC) ? observedOatC : localWeather.oatC;
-  const localIsaDeviationC = oatC - isaTemperatureC(altitudeFt);
+  const localIsaDeviationC = localWeather.oatC - isaTemperatureC(altitudeFt);
   const localTasKt = baseline.tasKt + (localIsaDeviationC - baseline.weather.isaDeviationC) * PERFORMANCE.isaTasGainKtPerC;
   return {
     tasFactor: clamp(observedTasKt / localTasKt, ...PERFORMANCE.calibrationLimits.tasFactor),

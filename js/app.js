@@ -1,5 +1,5 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261018-05";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateRemainingFlightAssessment, calculateRideRecommendation, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261019-01";
+import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateRemainingFlightAssessment, calculateRideRecommendation, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261018-09";
 import { fetchLatestOFP } from "./simbrief.js?v=20261018-08";
 import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
 import { buildRouteMatrix } from "./route-matrix.js?v=20261018-02";
@@ -16,8 +16,10 @@ const UI_ICON_RULES = [
   [".language-switch","languages","group"],
   ["#planTimestamp","route","inline"],
   ["#importLatest","cloud-download","button"],
-  [".decision-overview .kpi:nth-of-type(2)","fuel","card"],
-  [".decision-overview .kpi:nth-of-type(3)","clock-3","card"],
+  [".kpi-grid .kpi:nth-child(1)","navigation","card"],
+  [".kpi-grid .kpi:nth-child(2)","fuel","card"],
+  [".kpi-grid .kpi:nth-child(3)","clock-3","card"],
+  [".kpi-grid .kpi:nth-child(4)","trending-up","card"],
   [".mission-strip > div:nth-child(1)","activity","card"],
   [".mission-strip > div:nth-child(2)","snowflake","card"],
   [".mission-strip > div:nth-child(3)","waves","card"],
@@ -41,15 +43,18 @@ const UI_ICON_RULES = [
   [".mission-score-heading > div > span","activity","inline"],
   [".mission-score-action > span","wrench","inline"],
   [".compact-heading > span","fuel","inline"],
-  ['[data-tool-view="contingency"]',"route","button"],
+  ['[data-tool-view="etp"]',"route","button"],
+  ['[data-tool-view="alternate"]',"map-pinned","button"],
+  ['[data-tool-view="compare"]',"git-compare-arrows","button"],
+  ['[data-tool-view="load"]',"package-check","button"],
   ['[data-tool-view="wb"]',"scale","button"],
   ['[data-tool-view="glide"]',"wind","button"],
   ['[data-tool-view="oxygen"]',"heart-pulse","button"],
+  ['[data-tool-view="confidence"]',"shield-check","button"],
   ['[data-tool-view="ride"]',"waves","button"],
   ['[data-tool-view="ice"]',"snowflake","button"],
   ['[data-tool-view="cost"]',"dollar-sign","button"],
-  ['[data-tool-trigger="compare"]',"git-compare-arrows","button"],
-  ['[data-tool-trigger="steps"]',"trending-up","button"],
+  ['[data-tool-view="steps"]',"trending-up","button"],
   [".manual-update-strip-icon","refresh-cw","inline"],
   [".etp-point > span","route","inline"],
   [".pnr-point > span","rotate-ccw","inline"],
@@ -98,7 +103,6 @@ const UI_ICON_RULES = [
   [".calibration-head > span","sliders-horizontal","inline"],
   ["#calibrationForm > label:nth-of-type(1) > span:first-child","gauge","inline"],
   ["#calibrationForm > label:nth-of-type(2) > span:first-child","fuel","inline"],
-  ["#calibrationForm > label:nth-of-type(3) > span:first-child","thermometer","inline"],
   ["#calibrationForm .primary-button","check","button"],
   ["#resetCalibration","rotate-ccw","button"],
   [".section-heading h2","layers-3","heading"],
@@ -140,7 +144,7 @@ const COPY = {
     payload:"Carga útil", fuelOnboard:"Combustível a bordo", reserve:"Reserva", takeoffWeight:"Peso de decolagem", fuel:"Combustível", allLevels:"Todos os níveis", fontSize:"Tamanho da fonte", fontSmall:"Fonte menor", fontNormal:"Fonte padrão", fontLarge:"Fonte maior", selectLevel:"Selecionar nível", levelReason:"Motivo", levelSelection:"Seleção", climb:"SUBIDA", cruise:"CRUZEIRO", descent:"DESCIDA", power:"Potência", automatic:"Automático", viable:"VIÁVEL", marginalStatus:"MARGINAL", notViable:"INVIÁVEL", profileLimit:"PERFIL", ceilingLimit:"TETO", disclaimer:"Alan Fernandes - 2026",
     simbrief:"SIMBRIEF", fuelHint:"Menor valor", timeHint:"Menor valor", efficiencyHint:"Maior valor", margin:"de margem", belowMax:"abaixo do máximo", aboveMax:"acima do máximo", missingId:"Informe o Pilot ID ou Alias.", importError:"Não foi possível importar o OFP.",
     fuelRank:(rank)=>`${rank}º em consumo`, timeRank:(rank,gs)=>`${rank}º em tempo · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingência", taxi:"Taxi", rankingOthers:(count)=>`Outros níveis (${count})`, rankingShow:"Mostrar todos", rankingHide:"Ocultar", rankingNoAvailable:"Nenhum nível operacionalmente disponível.", rankingNote:"Ranking dos níveis disponíveis; a recomendação considera a missão completa.",
-    manualUpdate:"Atualização manual", continueLabel:"Continuar", returnLabel:"Retornar", position:"Posição", fuelRemaining:"Combustível restante", update:"Atualizar", calibration:"Calibração", cruiseCalibration:"Calibração de cruzeiro", observedTas:"TAS observada", observedFuelFlow:"Fuel flow observado", observedOat:"OAT observada", calibrate:"Calibrar", calibrateModel:"Calibrar modelo", reset:"Redefinir", beyondDestination:"Além do destino", noStep:"Sem step climb", nextStep:"Próximo", updated:"MANUAL", preflight:"PRÉ-VOO",
+    manualUpdate:"Atualização manual", continueLabel:"Continuar", returnLabel:"Retornar", position:"Posição", fuelRemaining:"Combustível restante", update:"Atualizar", calibration:"Calibração", observedTas:"TAS observada", observedFuelFlow:"Fuel flow observado", calibrate:"Calibrar", reset:"Redefinir", beyondDestination:"Além do destino", noStep:"Sem step climb", nextStep:"Próximo", updated:"MANUAL", preflight:"PRÉ-VOO",
     destinationAlternate:"Destino → alternado", diversionFrom:"Desvio a partir de", fuelAtDestination:"Combustível no destino", alternateFuel:"Combustível até alternado", alternateLanding:"Pouso no alternado", currentScenario:"ATUAL", comparisonScenario:"COMPARAÇÃO", scenarioMetric:"MÉTRICA", scenarioModeB:"MODE B", scenarioPayloadB:"Carga útil B", scenarioFuelB:"Combustível B", scenarioMargin:"Margem", applyScenario:"Aplicar B", recommendedFuel:"Combustível recomendado", presetLevel:"Preset / nível", recommendedPayload:"Payload recomendado", optimizedWeight:"Peso otimizado", applyOptimization:"Aplicar otimização", optimizeMission:"Otimizar missão", optimizationFailed:"Nenhuma configuração viável", alternateOptimizationFailed:"Alternado: faltam {fuel} para a margem viável", glideRatio:"Razão de planeio", bestGlide:"Melhor planeio", glideRange:"Alcance sem vento", glideTime:"Tempo estimado", glideAlongRoute:"Alcance ao longo da rota", glideInFocus:"em foco", glidePoint:"Ponto da rota", glideForward:"Rumo da rota →", glideReverse:"Sentido oposto ←", glidePointAltitude:"Altitude no ponto", glideCaveat:"Alcance teórico com vento estimado; não considera terreno, obstáculos ou local de pouso.", reducePayload:"reduzir payload", noAdjustment:"sem ajuste", noAlternateData:"SEM COORDENADAS", icingLow:"GELO BAIXO", icingWatch:"GELO POSSÍVEL", icingCaution:"CAUTELA GELO", icingAvoid:"EVITAR GELO", icingLimited:"DADOS LIMITADOS", icingWeather:"EVIDÊNCIA OFP", weatherEstimated:"ESTIMADO", simbriefShear:"SHEAR SIMBRIEF", icingNoProfile:"SEM PERFIL ACEITÁVEL", icingNoCost:"SEM CUSTO METEO", tempWindow:"JANELA TÉRMICA", iceProbability:"ICE", iceProbabilityAria:"Índice estimado de gelo, não é probabilidade",
     missionRisk:"Risco da missão", missionScore:"Score da missão", mainAdjustment:"Ajuste principal", confidence:"Confiança", rideComfort:"Conforto", oxygen:"Oxigênio", cabinAltitude:"Altitude cabine", bottle:"Garrafa", quantity:"Quantidade", applyOxygen:"Aplicar recomendação", oxygenNoSolution:"Nenhuma configuração de garrafas disponível atende à margem de O₂.", pilot:"Piloto", copilot:"Copiloto", rearLeft:"Traseiro E", rearCenter:"Traseiro C", rearRight:"Traseiro D", baggage:"Bagagem", oxygenRequired:"Requerido", oxygenInstalled:"Disponível", oxygenEndurance:"Autonomia", oxygenWeight:"Peso O₂", modelConfidence:"Confiança do modelo", actualTime:"Tempo real", actualFuel:"Combustível usado", saveDebrief:"Salvar debrief", flights:"voos", low:"BAIXO", moderate:"MODERADO", high:"ALTO", critical:"CRÍTICO", smooth:"SUAVE", light:"LEVE", severe:"SEVERA", oxygenNotRequired:"NÃO REQUERIDO", oxygenCompliant:"ADEQUADO", oxygenMarginal:"MARGINAL", oxygenInsufficient:"INSUFICIENTE", maskRequired:"MÁSCARA", cannula:"CÂNULA", expected:"ESPERADO", accuracy:"PRECISÃO", noDebriefs:"SEM DEBRIEFS", weatherLimited:"DADOS LIMITADOS", weightBalance:"Peso e CG", cgEnvelope:"Envelope de CG", weight:"Peso", zeroFuel:"Sem combustível", takeoff:"Decolagem", landing:"Pouso", grossWeight:"Peso total", cgTravel:"Variação do CG", station:"Estação", arm:"Braço", moment:"Momento", emptyAircraft:"Aeronave vazia", headerFuel:"Header fuel", mainFuel:"Combustível principal", cgForward:"Limite dianteiro", cgAft:"Limite traseiro",
     stepDecisionTitle:"Vale a pena subir?", stepRemainingCruise:"TRECHO RESTANTE EM ROTA", stepConstant:"Nível constante", stepSuggested:"PERFIL SUGERIDO", stepAlternative:"ALTERNATIVA", stepEfficient:"Menor consumo estimado", stepNoProposal:"SEM PROPOSTA", stepNoSuggestion:"Nenhuma subida sugerida", stepNoProposed:"Sem subida", stepCountLabel:(count)=>`${count} ${count===1?"subida":"subidas"}`, stepFuelUsed:"Combustível", stepTravelTime:"Tempo", stepClimbsCount:"Subidas", stepTradeoff:"Troca proposta", stepMaintain:"Manter", stepNoWaypoint:"Sem waypoint elegível entre a posição atual e o destino.", stepNoNetGain:"Subir não reduz o consumo total estimado nesta rota.", stepNoBenefit:"Nenhuma etapa atende ao ganho mínimo estimado.", stepLevelUnavailable:"Níveis superiores indisponíveis nas condições atuais.", stepCaveat:"Estimativa para o trecho restante em rota; exclui subida inicial, descida e reserva. Confirme meteorologia, oxigênio e limites de cada nível.",
@@ -151,7 +155,7 @@ const COPY = {
     payload:"Payload", fuelOnboard:"Fuel onboard", reserve:"Reserve", takeoffWeight:"Takeoff weight", fuel:"Fuel", allLevels:"All levels", fontSize:"Font size", fontSmall:"Smaller font", fontNormal:"Default font", fontLarge:"Larger font", selectLevel:"Select level", levelReason:"Reason", levelSelection:"Selection", climb:"CLIMB", cruise:"CRUISE", descent:"DESCENT", power:"Power", automatic:"Automatic", viable:"VIABLE", marginalStatus:"MARGINAL", notViable:"NOT VIABLE", profileLimit:"PROFILE", ceilingLimit:"CEILING", disclaimer:"Alan Fernandes - 2026",
     simbrief:"SIMBRIEF", fuelHint:"Lower is better", timeHint:"Lower is better", efficiencyHint:"Higher is better", margin:"margin", belowMax:"below maximum", aboveMax:"above maximum", missingId:"Enter a Pilot ID or Alias.", importError:"Could not import the OFP.",
     fuelRank:(rank)=>`#${rank} fuel`, timeRank:(rank,gs)=>`#${rank} time · ${gs} kt GS`, windLine:(wind,isa)=>`${wind} kt · ISA ${isa}`, trip:"Trip", contingency:"Contingency", taxi:"Taxi", rankingOthers:(count)=>`Other levels (${count})`, rankingShow:"Show all", rankingHide:"Hide", rankingNoAvailable:"No operationally available level.", rankingNote:"Ranking of available levels; the recommendation considers the full mission.",
-    manualUpdate:"Manual update", continueLabel:"Continue", returnLabel:"Return", position:"Position", fuelRemaining:"Fuel remaining", update:"Update", calibration:"Calibration", cruiseCalibration:"Cruise calibration", observedTas:"Observed TAS", observedFuelFlow:"Observed fuel flow", observedOat:"Observed OAT", calibrate:"Calibrate", calibrateModel:"Calibrate model", reset:"Reset", beyondDestination:"Beyond destination", noStep:"No step climb", nextStep:"Next", updated:"MANUAL", preflight:"PREFLIGHT",
+    manualUpdate:"Manual update", continueLabel:"Continue", returnLabel:"Return", position:"Position", fuelRemaining:"Fuel remaining", update:"Update", calibration:"Calibration", observedTas:"Observed TAS", observedFuelFlow:"Observed fuel flow", calibrate:"Calibrate", reset:"Reset", beyondDestination:"Beyond destination", noStep:"No step climb", nextStep:"Next", updated:"MANUAL", preflight:"PREFLIGHT",
     destinationAlternate:"Destination → alternate", diversionFrom:"Diversion from", fuelAtDestination:"Fuel at destination", alternateFuel:"Fuel to alternate", alternateLanding:"Alternate landing", currentScenario:"CURRENT", comparisonScenario:"COMPARISON", scenarioMetric:"METRIC", scenarioModeB:"MODE B", scenarioPayloadB:"Payload B", scenarioFuelB:"Fuel onboard B", scenarioMargin:"Margin", applyScenario:"Apply B", recommendedFuel:"Recommended fuel", presetLevel:"Preset / level", recommendedPayload:"Recommended payload", optimizedWeight:"Optimized weight", applyOptimization:"Apply optimization", optimizeMission:"Optimize mission", optimizationFailed:"No viable configuration", alternateOptimizationFailed:"Alternate: {fuel} short of the viable margin", glideRatio:"Glide ratio", bestGlide:"Best glide", glideRange:"Still-air range", glideTime:"Estimated time", glideAlongRoute:"Glide range along the route", glideInFocus:"in focus", glidePoint:"Route point", glideForward:"Along route →", glideReverse:"Opposite direction ←", glidePointAltitude:"Altitude at point", glideCaveat:"Theoretical range with estimated wind; terrain, obstacles, and landing sites are not considered.", reducePayload:"reduce payload", noAdjustment:"no adjustment", noAlternateData:"NO COORDINATES", icingLow:"LOW ICE", icingWatch:"POSSIBLE ICE", icingCaution:"ICE CAUTION", icingAvoid:"AVOID ICE", icingLimited:"LIMITED DATA", icingWeather:"OFP EVIDENCE", weatherEstimated:"ESTIMATED", simbriefShear:"SIMBRIEF SHEAR", icingNoProfile:"NO ACCEPTABLE PROFILE", icingNoCost:"NO WEATHER COST", tempWindow:"TEMP WINDOW", iceProbability:"ICE", iceProbabilityAria:"Estimated icing index, not a probability",
     missionRisk:"Mission risk", missionScore:"Mission score", mainAdjustment:"Main adjustment", confidence:"Confidence", rideComfort:"Ride", oxygen:"Oxygen", cabinAltitude:"Cabin altitude", bottle:"Bottle", quantity:"Quantity", applyOxygen:"Apply recommendation", oxygenNoSolution:"No available bottle setup meets the O₂ margin.", pilot:"Pilot", copilot:"Copilot", rearLeft:"Rear left", rearCenter:"Rear center", rearRight:"Rear right", baggage:"Baggage", oxygenRequired:"Required", oxygenInstalled:"Available", oxygenEndurance:"Endurance", oxygenWeight:"O₂ weight", modelConfidence:"Model confidence", actualTime:"Actual time", actualFuel:"Fuel used", saveDebrief:"Save debrief", flights:"flights", low:"LOW", moderate:"MODERATE", high:"HIGH", critical:"CRITICAL", smooth:"SMOOTH", light:"LIGHT", severe:"SEVERE", oxygenNotRequired:"NOT REQUIRED", oxygenCompliant:"COMPLIANT", oxygenMarginal:"MARGINAL", oxygenInsufficient:"INSUFFICIENT", maskRequired:"MASK", cannula:"CANNULA", expected:"EXPECTED", accuracy:"ACCURACY", noDebriefs:"NO DEBRIEFS", weatherLimited:"LIMITED DATA", weightBalance:"Weight & CG", cgEnvelope:"CG envelope", weight:"Weight", zeroFuel:"Zero fuel", takeoff:"Takeoff", landing:"Landing", grossWeight:"Gross weight", cgTravel:"CG travel", station:"Station", arm:"Arm", moment:"Moment", emptyAircraft:"Empty aircraft", headerFuel:"Header fuel", mainFuel:"Main fuel", cgForward:"Forward limit", cgAft:"Aft limit",
     stepDecisionTitle:"Is it worth climbing?", stepRemainingCruise:"REMAINING ENROUTE SEGMENT", stepConstant:"Constant level", stepSuggested:"SUGGESTED PROFILE", stepAlternative:"ALTERNATIVE", stepEfficient:"Lower estimated fuel", stepNoProposal:"NO PROPOSAL", stepNoSuggestion:"No step climb suggested", stepNoProposed:"No step climb", stepCountLabel:(count)=>`${count} ${count===1?"climb":"climbs"}`, stepFuelUsed:"Fuel", stepTravelTime:"Time", stepClimbsCount:"Climbs", stepTradeoff:"Proposed tradeoff", stepMaintain:"Maintain", stepNoWaypoint:"No eligible waypoint between the current position and destination.", stepNoNetGain:"Climbing does not reduce estimated total fuel on this route.", stepNoBenefit:"No step meets the minimum estimated fuel saving.", stepLevelUnavailable:"Higher levels are unavailable under current conditions.", stepCaveat:"Estimate for the remaining enroute segment; initial climb, descent and reserve are excluded. Confirm weather, oxygen and each level's limits.",
@@ -198,8 +202,6 @@ Object.assign(COPY["en-US"], {
 });
 Object.assign(COPY["pt-BR"], { terrainUnknown:"TERRENO NÃO AVALIADO", bestLevel:"Nível selecionado", cabinAltitude:"Nível de voo", deleteDebrief:"Excluir registro" });
 Object.assign(COPY["en-US"], { terrainUnknown:"TERRAIN UNASSESSED", bestLevel:"Selected level", cabinAltitude:"Flight level", deleteDebrief:"Delete record" });
-Object.assign(COPY["pt-BR"], { manualOpen:"Abrir", configuration:"CONFIGURAÇÃO", compareTwoLevels:"Comparar dois níveis", fuelAndRange:"Combustível e alcance", technicalLevelDetails:"Detalhes técnicos por nível" });
-Object.assign(COPY["en-US"], { manualOpen:"Open", configuration:"SETUP", compareTwoLevels:"Compare two levels", fuelAndRange:"Fuel and range", technicalLevelDetails:"Technical details by level" });
 Object.assign(COPY["pt-BR"], { cruiseIcing:"Índice de gelo" });
 Object.assign(COPY["en-US"], { cruiseIcing:"Icing index" });
 Object.assign(COPY["pt-BR"], { manualInFlight:"Em voo", manualFinished:"Voo concluído", saveDebrief:"Registrar voo", noDebriefs:"SEM VOOS REGISTRADOS", debriefResultTitle:"Resultado do voo", debriefHistory:"Histórico de calibração", debriefPhases:"Fases", phaseTime:"Tempo", phaseFuel:"Combustível", debriefSaved:"Voo registrado", debriefPhasePair:"Preencha tempo e combustível da fase.", debriefPhaseTotals:"Os valores das fases excedem o total do voo.", debriefNoLevel:"Selecione um nível antes de registrar o voo.", glideCaveat:"Alcance teórico · terreno e obstáculos não avaliados" });
@@ -208,8 +210,8 @@ Object.assign(COPY["pt-BR"], { calibrationNeedsUpdate:"Atualize posição, FL e 
 Object.assign(COPY["en-US"], { calibrationNeedsUpdate:"Update position, FL and fuel before calibrating.", calibrationReady:"Position, FL and fuel confirmed." });
 Object.assign(COPY["pt-BR"], { remainingFuelTitle:"Combustível · trecho restante", remainingFuelViable:"SUFICIENTE", remainingFuelMarginal:"MARGEM BAIXA", remainingFuelUnavailable:"INSUFICIENTE", remainingUnknown:"NÃO AVALIADO", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Necessário ${fuel}`, remainingMargin:(fuel)=>`Margem ${fuel}` });
 Object.assign(COPY["en-US"], { remainingFuelTitle:"Fuel · remaining route", remainingFuelViable:"SUFFICIENT", remainingFuelMarginal:"LOW MARGIN", remainingFuelUnavailable:"INSUFFICIENT", remainingUnknown:"UNASSESSED", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Required ${fuel}`, remainingMargin:(fuel)=>`Margin ${fuel}` });
-Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Escolha um módulo", closeTool:"Fechar", toolHintContingency:"ETP · PNR · Alternado", toolHintEtp:"Pontos de decisão", toolHintAlternate:"Alternados", toolHintCompare:"Comparar cenários", toolHintLoad:"Carga e combustível", toolHintWb:"Peso e centro de gravidade", toolHintGlide:"Alcance planado", toolHintOxygen:"Oxigênio", toolHintConfidence:"Confiança do modelo", toolHintRide:"Conforto de voo", toolHintIce:"Gelo por trecho", toolHintSteps:"Subida em etapas", toolHintUpdate:"Em voo · Voo concluído", thermalWindow:"Janela térmica", routeBand:"Faixa da rota", iceExposure:"Exposição", flightPhases:"Fases do voo", ofpEvidence:"Evidências do OFP", indexReading:"Leitura do índice" });
-Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintContingency:"ETP · PNR · Alternate", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintIce:"Icing by leg", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete", thermalWindow:"Thermal window", routeBand:"Route band", iceExposure:"Exposure", flightPhases:"Flight phases", ofpEvidence:"OFP evidence", indexReading:"Index reading" });
+Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Escolha um módulo", closeTool:"Fechar", toolHintEtp:"Pontos de decisão", toolHintAlternate:"Alternados", toolHintCompare:"Comparar cenários", toolHintLoad:"Carga e combustível", toolHintWb:"Peso e centro de gravidade", toolHintGlide:"Alcance planado", toolHintOxygen:"Oxigênio", toolHintConfidence:"Confiança do modelo", toolHintRide:"Conforto de voo", toolHintIce:"Gelo por trecho", toolHintSteps:"Subida em etapas", toolHintUpdate:"Em voo · Voo concluído", thermalWindow:"Janela térmica", routeBand:"Faixa da rota", iceExposure:"Exposição", flightPhases:"Fases do voo", ofpEvidence:"Evidências do OFP", indexReading:"Leitura do índice" });
+Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintIce:"Icing by leg", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete", thermalWindow:"Thermal window", routeBand:"Route band", iceExposure:"Exposure", flightPhases:"Flight phases", ofpEvidence:"OFP evidence", indexReading:"Index reading" });
 Object.assign(COPY["pt-BR"], { manualFlightStatusTitle:"ATUALIZAÇÃO EM VOO", manualNoUpdate:"Sem atualização registrada", manualUpdateRecorded:"Atualização registrada" });
 Object.assign(COPY["en-US"], { manualFlightStatusTitle:"IN-FLIGHT UPDATE", manualNoUpdate:"No update recorded", manualUpdateRecorded:"Update recorded" });
 Object.assign(COPY["pt-BR"], { toolHintCost:"Custo e eficiência", fuelPrice:"Preço do combustível", currency:"Moeda", pricePerLiter:"Valor por litro", costUnassessed:"Informe o valor por litro para avaliar o custo.", estimatedFlightCost:"Custo estimado do voo", financialEfficiency:"Eficiência financeira", costPerNm:"Por NM", costPerHour:"Por hora", costPerPerson:"Por pessoa", requiredFuelValue:"Abastecimento requerido", costBreakdown:"Custo por fase", modeComparison:"Comparação de modos", possibleSavings:"Economia possível", costInFlight:"Projeção após atualização manual" });
@@ -368,11 +370,6 @@ function applyTranslations() {
   $("#powerManualFields").hidden=state.powerSetting.type!=="MANUAL";
   const metricLabels={fuel:state.language==="pt-BR"?"Combustível":"Fuel",time:state.language==="pt-BR"?"Tempo":"Time",efficiency:state.language==="pt-BR"?"Eficiência":"Efficiency"};
   $$('[data-metric]').forEach((button)=>{ button.textContent=metricLabels[button.dataset.metric]; });
-  const matrixExpanded=!$("#routeMatrixExpanded")?.hidden;
-  if($("#routeMatrixToggle")) $("#routeMatrixToggle").textContent=state.language==="pt-BR"?(matrixExpanded?"Recolher":"Ver matriz"):(matrixExpanded?"Collapse":"View matrix");
-  if($("#terrainTitle")) $("#terrainTitle").textContent=state.language==="pt-BR"?(matrixExpanded?"Matriz de níveis":"Cobertura da rota"):(matrixExpanded?"Level matrix":"Route coverage");
-  const scoreExpanded=!$("#missionScoreDetails")?.hidden;
-  if($('[data-score-details]')) $('[data-score-details]').textContent=state.language==="pt-BR"?(scoreExpanded?"Recolher":"Ver composição"):(scoreExpanded?"Collapse":"View breakdown");
 }
 
 function metricConfig() {
@@ -600,7 +597,7 @@ function renderRouteMatrix(plan,results,result) {
   const badge=$("#terrainStatus");badge.textContent=t(statusKey);badge.className=`terrain-badge ${terrain.status}`;
   $("#terrainMargin").textContent=Number.isFinite(terrain.marginFt)?signedNumber(terrain.marginFt,0," ft"):"—";
   $("#terrainEyebrow").textContent=pt?"ROTA · OFP":"ROUTE · OFP";
-  $("#terrainTitle").textContent=pt?"Cobertura da rota":"Route coverage";
+  $("#terrainTitle").textContent=pt?"Matriz de níveis":"Level matrix";
   $("#terrainIntro").textContent=`${plan.origin.icao} → ${plan.destination.icao} · ${matrix.length} ${pt?"trechos":"legs"} · ${number(plan.distanceNm)} NM`;
   $("#terrainNote").textContent=pt?"MORA · cruzeiro  |  — = sem dados":"MORA · cruise  |  — = no data";
   if(!matrix.length){$("#routeMatrixOverview").innerHTML="";$("#routeMatrixGrid").innerHTML="";$("#routeMatrixDetail").innerHTML="";$("#routeMatrixLegTitle").textContent="—";$("#routeMatrixPosition").textContent="—";$("#terrainManual").hidden=true;return;}
@@ -687,6 +684,8 @@ function renderFlightTools(plan,navigation,stepPlan,selected) {
   stripState.textContent=t(stripState.dataset.i18n);
   $("#observedFuelFlowUnit").textContent=state.fuelUnit==="l"?"L/h":"gal/h";
   $("#calibrationMode").textContent=state.mode;
+  const factors=state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1};
+  $("#calibrationFactors").textContent=`TAS ×${number(factors.tasFactor||1,2)} · FF ×${number(factors.fuelFlowFactor||1,2)}`;
   updateCalibrationGate();
   renderRemainingAssessment();
 }
@@ -1142,7 +1141,7 @@ function render() {
   $("#powerPercent").classList.toggle("limited",power.turboLimited);
   if(document.activeElement!==$("#manualMap")) $("#manualMap").value=Number(state.powerSetting.mapInHg).toFixed(1);
   if(document.activeElement!==$("#manualRpm")) $("#manualRpm").value=String(Math.round(state.powerSetting.rpm));
-  $("#kpiAltitude").textContent=`FL${selected.fl}`; $("#kpiLevelMeta").textContent=t("selectedLevel"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-selected.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS · ${Math.round(selected.tasKt)} kt TAS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
+  $("#kpiAltitude").textContent=`FL${selected.fl}`; $("#kpiLevelMeta").textContent=t("selectedLevel"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-selected.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
   renderRouteMatrix(plan,analysis.results,selected); renderPerformanceRanking(analysis.results,recommended,selected); renderIcingSummary(analysis,selected); renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderLevelCards(analysis.results,recommended,selected); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderScenarioComparison(scenarioComparison,selected); renderLoadOptimizer(loadOptimizer); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore); renderOxygenPlanner(analysis); renderWeightBalance(selected.weightBalance); renderConfidenceEnvelope(selected.confidence); renderRideOptimizer(analysis,selected); renderDebrief(selected);
   $("#phaseLevel").textContent=`${t("selectedLevel")} · FL${selected.fl}`;
   $("#climbStats").textContent=`${Math.round(selected.climb.timeHr*60)} min · ${formatFuel(selected.climb.fuelGal,1)} · ${number(selected.climb.power.availableMapInHg,1)}\" / ${number(selected.climb.power.rpm)}`; $("#cruiseStats").textContent=`${Math.round(selected.cruiseTimeHr*60)} min · ${formatFuel(selected.cruiseFuelGal,1)} · ${number(selected.power.availableMapInHg,1)}\" / ${number(selected.power.rpm)}`; $("#descentStats").textContent=`${Math.round(selected.descent.timeHr*60)} min · ${formatFuel(selected.descent.fuelGal,1)} · ${number(PERFORMANCE.powerModel.phases.descent.mapInHg,1)}\" / ${number(PERFORMANCE.powerModel.phases.descent.rpm)}`;
@@ -1155,7 +1154,7 @@ function render() {
 $$('[data-language]').forEach((button)=>button.addEventListener("click",()=>{state.language=button.dataset.language;localStorage.setItem("velocityxl.language",state.language);render();}));
 $$('.font-switch button[data-font-size]').forEach((button)=>button.addEventListener("click",()=>{state.fontSize=button.dataset.fontSize;localStorage.setItem("velocityxl.fontSize",state.fontSize);applyTranslations();}));
 $$('[data-weight-unit]').forEach((button)=>button.addEventListener("click",()=>{state.weightUnit=button.dataset.weightUnit;localStorage.setItem("velocityxl.weightUnit",state.weightUnit);render();}));
-$$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit,observed=$("#observedFuelFlow"),value=Number(observed.value);state.fuelUnit=next;if(Number.isFinite(value)&&value>0&&previous!==next)observed.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);[$("#debriefFuel")].forEach((input)=>{const amount=Number(input.value);if(input.value&&Number.isFinite(amount)&&amount>0&&previous!==next)input.value=(next==="l"?amount*3.785411784:amount/3.785411784).toFixed(1);});localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
+$$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit,observed=$("#observedFuelFlow"),value=Number(observed.value);state.fuelUnit=next;if(Number.isFinite(value)&&value>0&&previous!==next)observed.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);[$("#debriefFuel"),...$$('[data-debrief-fuel]')].forEach((input)=>{const amount=Number(input.value);if(input.value&&Number.isFinite(amount)&&amount>0&&previous!==next)input.value=(next==="l"?amount*3.785411784:amount/3.785411784).toFixed(1);});localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
 $$('[data-mode]').forEach((button)=>button.addEventListener("click",()=>{state.mode=button.dataset.mode;state.selectedAltitudeFt=null;state.manuallySelectedLevel=false;$$('[data-mode]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
 $$('[data-power-type]').forEach((button)=>button.addEventListener("click",()=>{const type=button.dataset.powerType;if(type==="MANUAL"&&state.powerSetting.type!=="MANUAL"){const mode=PERFORMANCE.modes[state.mode];state.powerSetting={type,mapInHg:mode.mapInHg,rpm:mode.rpm};}else{state.powerSetting={...state.powerSetting,type};}state.selectedAltitudeFt=null;localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));render();}));
 $("#manualMap").addEventListener("input",(event)=>{state.powerSetting.mapInHg=Math.min(AIRCRAFT.maxManifoldInHg,Math.max(PERFORMANCE.powerModel.minimumMapInHg,Number(event.target.value)||PERFORMANCE.modes[state.mode].mapInHg));state.selectedAltitudeFt=null;localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));render();});
@@ -1182,9 +1181,7 @@ const toolCardsHeading=$(".tool-cards-heading");
 const manualUpdateStrip=$("#tool-card-update");
 const toolCardButtons=$$('[data-tool-view]');
 const toolCardPanels=$$('[data-tool-panel]');
-const toolTriggerButtons=$$('[data-tool-trigger]:not(#tool-card-update)');
-const toolHintKeys={contingency:"toolHintContingency",compare:"toolHintCompare",load:"toolHintLoad",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",ride:"toolHintRide",ice:"toolHintIce",cost:"toolHintCost",steps:"toolHintSteps",update:"toolHintUpdate"};
-const toolTitles={contingency:"CONTINGÊNCIA",compare:"A / B",steps:"STEP CLIMB",load:"LOAD",update:t("manualUpdate")};
+const toolHintKeys={etp:"toolHintEtp",alternate:"toolHintAlternate",compare:"toolHintCompare",load:"toolHintLoad",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",confidence:"toolHintConfidence",ride:"toolHintRide",ice:"toolHintIce",cost:"toolHintCost",steps:"toolHintSteps",update:"toolHintUpdate"};
 let openToolKey=null;
 toolCardButtons.forEach((button)=>{
   const key=button.dataset.toolView,label=button.textContent;
@@ -1200,19 +1197,17 @@ toolCardPanels.forEach((panel)=>{
   const key=panel.dataset.toolPanel;
   panel.id=`tool-panel-${key}`;
   panel.setAttribute("role","region");
-  const controller=toolCardButtons.find((button)=>button.dataset.toolView===key)||toolTriggerButtons.find((button)=>button.dataset.toolTrigger===key)||(key==="update"?manualUpdateStrip:null);
-  if(controller?.id) panel.setAttribute("aria-labelledby",controller.id); else panel.setAttribute("aria-label",toolTitles[key]||key);
+  panel.setAttribute("aria-labelledby",`tool-card-${key}`);
   panel.classList.remove("active");
   const heading=document.createElement("div");
   heading.className="tool-view-heading";
-  heading.innerHTML=`<h3>${escapeHtml(key==="update"?t("manualUpdate"):toolCardButtons.find((button)=>button.dataset.toolView===key)?.querySelector(".tool-card-label")?.textContent||toolTitles[key]||key)}</h3><button type="button" class="tool-close" data-i18n="closeTool">${escapeHtml(t("closeTool"))}</button>`;
+  heading.innerHTML=`<h3>${escapeHtml(key==="update"?t("manualUpdate"):toolCardButtons.find((button)=>button.dataset.toolView===key)?.querySelector(".tool-card-label")?.textContent||key)}</h3><button type="button" class="tool-close" data-i18n="closeTool">${escapeHtml(t("closeTool"))}</button>`;
   if(key==="update") heading.querySelector("h3").dataset.i18n="manualUpdate";
   heading.querySelector("button").addEventListener("click",()=>setOpenTool(null));
   panel.prepend(heading);
   toolCardGrid.append(panel);
 });
 manualUpdateStrip.addEventListener("click",()=>setOpenTool(openToolKey==="update"?null:"update"));
-toolTriggerButtons.forEach((button)=>button.addEventListener("click",()=>{const key=button.dataset.toolTrigger;setOpenTool(openToolKey===key?null:key);}));
 function setOpenTool(key){
   openToolKey=key;
   document.body.classList.toggle("tool-focus-active",Boolean(key));
@@ -1223,40 +1218,20 @@ function setOpenTool(key){
   toolCardPanels.forEach((panel)=>{panel.classList.toggle("active",panel.dataset.toolPanel===key);if(panel.dataset.toolPanel!==key)toolCardGrid.append(panel);});
   if(!key)return;
   const panel=toolCardPanels.find((item)=>item.dataset.toolPanel===key),index=toolCardButtons.findIndex((button)=>button.dataset.toolView===key);
-  if(!panel)return;
   if(key==="update"){
     flightToolsPanel.insertBefore(panel,toolCardsHeading);
     return;
   }
-  if(index<0){toolCardGrid.append(panel);return;}
   const columns=getComputedStyle(toolCardGrid).gridTemplateColumns.split(" ").length;
   const rowEnd=Math.min(toolCardButtons.length-1,Math.floor(index/columns)*columns+columns-1);
   toolCardGrid.insertBefore(panel,toolCardButtons[rowEnd+1]||null);
   if(key==="glide")centerGlideRoutePoint();
 }
 document.addEventListener("click",(event)=>{
-  if(!openToolKey||event.target.closest?.(".tool-card, [data-tool-trigger], .manual-update-strip, .tool-view.active"))return;
+  if(!openToolKey||event.target.closest?.(".tool-card, .manual-update-strip, .tool-view.active"))return;
   setOpenTool(null);
 });
 window.addEventListener("resize",()=>{if(openToolKey)setOpenTool(openToolKey);});
-const routeMatrixToggle=$("#routeMatrixToggle");
-const routeMatrixExpanded=$("#routeMatrixExpanded");
-routeMatrixToggle.addEventListener("click",()=>{
-  const expanded=routeMatrixExpanded.hidden;
-  routeMatrixExpanded.hidden=!expanded;
-  $("#routeMatrix").classList.toggle("expanded",expanded);
-  routeMatrixToggle.setAttribute("aria-expanded",String(expanded));
-  routeMatrixToggle.textContent=state.language==="pt-BR"?(expanded?"Recolher":"Ver matriz"):(expanded?"Collapse":"View matrix");
-  $("#terrainTitle").textContent=state.language==="pt-BR"?(expanded?"Matriz de níveis":"Cobertura da rota"):(expanded?"Level matrix":"Route coverage");
-});
-const scoreDetailsToggle=$("[data-score-details]");
-const scoreDetails=$("#missionScoreDetails");
-scoreDetailsToggle.addEventListener("click",()=>{
-  const expanded=scoreDetails.hidden;
-  scoreDetails.hidden=!expanded;
-  scoreDetailsToggle.setAttribute("aria-expanded",String(expanded));
-  scoreDetailsToggle.textContent=state.language==="pt-BR"?(expanded?"Recolher":"Ver composição"):(expanded?"Collapse":"View breakdown");
-});
 $$('[data-manual-mode]').forEach((button)=>button.addEventListener("click",()=>{
   $$('[data-manual-mode]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
   $$('[data-manual-panel]').forEach((panel)=>panel.hidden=panel.dataset.manualPanel!==button.dataset.manualMode);
@@ -1391,7 +1366,7 @@ $("#manualUpdateForm").addEventListener("submit",(event)=>{
 $("#calibrationForm").addEventListener("submit",(event)=>{
   event.preventDefault();
   if(!manualCalibrationReady()){showToast(t("calibrationNeedsUpdate"),true);updateCalibrationGate();return;}
-  state.calibration[state.mode]=deriveCalibration({plan:state.plan,mode:state.mode,payloadLb:state.payloadLb,fuelRemainingGal:state.manual.fuelRemainingGal,oxygenWeightLb:currentOxygenWeightLb(),altitudeFt:state.manual.altitudeFt,observedTasKt:Number($("#observedTas").value),observedFuelFlowGph:fuelFromDisplay(Number($("#observedFuelFlow").value)),observedOatC:Number($("#observedOat").value),positionFix:state.plan.waypoints[state.manual.waypointIndex],powerSetting:state.powerSetting});
+  state.calibration[state.mode]=deriveCalibration({plan:state.plan,mode:state.mode,payloadLb:state.payloadLb,fuelRemainingGal:state.manual.fuelRemainingGal,oxygenWeightLb:currentOxygenWeightLb(),altitudeFt:state.manual.altitudeFt,observedTasKt:Number($("#observedTas").value),observedFuelFlowGph:fuelFromDisplay(Number($("#observedFuelFlow").value)),positionFix:state.plan.waypoints[state.manual.waypointIndex],powerSetting:state.powerSetting});
   localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
   render();
 });
@@ -1399,19 +1374,35 @@ $("#calibrationForm").addEventListener("submit",(event)=>{
 $("#resetCalibration").addEventListener("click",()=>{
   delete state.calibration[state.mode];
   localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
-  $("#observedTas").value=""; $("#observedFuelFlow").value=""; $("#observedOat").value="";
+  $("#observedTas").value=""; $("#observedFuelFlow").value="";
   render();
 });
+
+$$('[data-debrief-phase]').forEach((button)=>button.addEventListener("click",()=>{
+  const phase=button.dataset.debriefPhase;
+  $$('[data-debrief-phase]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
+  $$('[data-debrief-panel]').forEach((panel)=>{const active=panel.dataset.debriefPanel===phase;panel.classList.toggle("active",active);panel.hidden=!active;});
+}));
 
 $("#debriefForm").addEventListener("submit",(event)=>{
   event.preventDefault();
   const analysis=calculatePlan(state),result=analysis.results.find((item)=>item.altitudeFt===state.selectedAltitudeFt)||analysis.winners.overall;
   if(!result){showToast(t("debriefNoLevel"),true);return;}
   const actualTimeMinutes=Number($("#debriefTime").value),actualFuelGal=fuelFromDisplay(Number($("#debriefFuel").value));
+  const actualPhases={};
+  for(const key of ["climb","cruise","descent"]){
+    const timeInput=$(`[data-debrief-time="${key}"]`),fuelInput=$(`[data-debrief-fuel="${key}"]`);
+    if(!timeInput.value&&!fuelInput.value)continue;
+    const timeMinutes=Number(timeInput.value),fuelGal=fuelFromDisplay(Number(fuelInput.value));
+    if(!timeInput.value||!fuelInput.value||timeMinutes<=0||fuelGal<=0){showToast(t("debriefPhasePair"),true);$$('[data-debrief-phase]').find((button)=>button.dataset.debriefPhase===key)?.click();(timeInput.value?fuelInput:timeInput).focus();return;}
+    actualPhases[key]={timeMinutes,fuelGal};
+  }
+  const phaseTotals=Object.values(actualPhases).reduce((sum,phase)=>({timeMinutes:sum.timeMinutes+phase.timeMinutes,fuelGal:sum.fuelGal+phase.fuelGal}),{timeMinutes:0,fuelGal:0});
+  if(phaseTotals.timeMinutes>actualTimeMinutes+1||phaseTotals.fuelGal>actualFuelGal+0.2){showToast(t("debriefPhaseTotals"),true);return;}
   const calibrationBefore={...(state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1})};
-  const debrief=calculateDebrief({result,actualTimeMinutes,actualFuelGal,currentCalibration:calibrationBefore});
+  const debrief=calculateDebrief({result,actualTimeMinutes,actualFuelGal,actualPhases,currentCalibration:calibrationBefore});
   state.calibration[state.mode]=debrief.calibration;
-  state.debriefs.push({route:`${state.plan.origin.icao}-${state.plan.destination.icao}`,mode:state.mode,fl:result.fl,accuracyScore:debrief.accuracyScore,timeErrorPct:debrief.timeErrorPct,fuelErrorPct:debrief.fuelErrorPct,phaseErrors:{},actualTimeMinutes,actualFuelGal,actualPhases:{},predicted:{timeHr:result.tripTimeHr,fuelGal:result.tripFuelGal},context:{distanceNm:state.plan.distanceNm,payloadLb:state.payloadLb,fuelOnboardGal:state.fuelOnboardGal,powerSetting:{...state.powerSetting}},calibrationBefore,calibrationAfter:{...debrief.calibration},date:new Date().toISOString()});
+  state.debriefs.push({route:`${state.plan.origin.icao}-${state.plan.destination.icao}`,mode:state.mode,fl:result.fl,accuracyScore:debrief.accuracyScore,timeErrorPct:debrief.timeErrorPct,fuelErrorPct:debrief.fuelErrorPct,phaseErrors:debrief.phaseErrors,actualTimeMinutes,actualFuelGal,actualPhases,predicted:{timeHr:result.tripTimeHr,fuelGal:result.tripFuelGal,climb:result.climb,cruise:{timeHr:result.cruiseTimeHr,fuelGal:result.cruiseFuelGal},descent:result.descent},context:{distanceNm:state.plan.distanceNm,payloadLb:state.payloadLb,fuelOnboardGal:state.fuelOnboardGal,powerSetting:{...state.powerSetting}},calibrationBefore,calibrationAfter:{...debrief.calibration},date:new Date().toISOString()});
   state.debriefs=state.debriefs.slice(-PERFORMANCE.debrief.maximumHistory);
   localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
   localStorage.setItem("velocityxl.debriefs",JSON.stringify(state.debriefs));

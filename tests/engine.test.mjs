@@ -255,13 +255,6 @@ test("simple calibration derives bounded TAS and fuel-flow factors", () => {
   assert.ok(Math.abs(calibrated.fuelFlowGph - 17.5) < 0.01);
 });
 
-test("observed OAT normalizes TAS calibration for the actual atmosphere", () => {
-  const cold = deriveCalibration({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelRemainingGal: 60, altitudeFt: 18000, observedTasKt: 245, observedFuelFlowGph: 17.5, observedOatC: -25 });
-  const warm = deriveCalibration({ plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelRemainingGal: 60, altitudeFt: 18000, observedTasKt: 245, observedFuelFlowGph: 17.5, observedOatC: 0 });
-  assert.ok(warm.tasFactor > cold.tasFactor);
-  assert.equal(cold.fuelFlowFactor, warm.fuelFlowFactor);
-});
-
 test("alternate and diversion advisor computes both legs and landing fuel", () => {
   const advice = calculateAlternateDiversion({ plan: DEMO_PLAN, altitudeFt: 18000, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45, waypointIndex: 2 });
   assert.equal(advice.alternate.icao, "SBRJ");
