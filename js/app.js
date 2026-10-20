@@ -16,10 +16,8 @@ const UI_ICON_RULES = [
   [".language-switch","languages","group"],
   ["#planTimestamp","route","inline"],
   ["#importLatest","cloud-download","button"],
-  [".kpi-grid .kpi:nth-child(1)","navigation","card"],
-  [".kpi-grid .kpi:nth-child(2)","fuel","card"],
-  [".kpi-grid .kpi:nth-child(3)","clock-3","card"],
-  [".kpi-grid .kpi:nth-child(4)","trending-up","card"],
+  [".decision-overview .kpi:nth-of-type(2)","fuel","card"],
+  [".decision-overview .kpi:nth-of-type(3)","clock-3","card"],
   [".mission-strip > div:nth-child(1)","activity","card"],
   [".mission-strip > div:nth-child(2)","snowflake","card"],
   [".mission-strip > div:nth-child(3)","waves","card"],
@@ -43,18 +41,15 @@ const UI_ICON_RULES = [
   [".mission-score-heading > div > span","activity","inline"],
   [".mission-score-action > span","wrench","inline"],
   [".compact-heading > span","fuel","inline"],
-  ['[data-tool-view="etp"]',"route","button"],
-  ['[data-tool-view="alternate"]',"map-pinned","button"],
-  ['[data-tool-view="compare"]',"git-compare-arrows","button"],
-  ['[data-tool-view="load"]',"package-check","button"],
+  ['[data-tool-view="contingency"]',"route","button"],
   ['[data-tool-view="wb"]',"scale","button"],
   ['[data-tool-view="glide"]',"wind","button"],
   ['[data-tool-view="oxygen"]',"heart-pulse","button"],
-  ['[data-tool-view="confidence"]',"shield-check","button"],
   ['[data-tool-view="ride"]',"waves","button"],
   ['[data-tool-view="ice"]',"snowflake","button"],
   ['[data-tool-view="cost"]',"dollar-sign","button"],
-  ['[data-tool-view="steps"]',"trending-up","button"],
+  ['[data-tool-trigger="compare"]',"git-compare-arrows","button"],
+  ['[data-tool-trigger="steps"]',"trending-up","button"],
   [".manual-update-strip-icon","refresh-cw","inline"],
   [".etp-point > span","route","inline"],
   [".pnr-point > span","rotate-ccw","inline"],
@@ -203,6 +198,8 @@ Object.assign(COPY["en-US"], {
 });
 Object.assign(COPY["pt-BR"], { terrainUnknown:"TERRENO NÃO AVALIADO", bestLevel:"Nível selecionado", cabinAltitude:"Nível de voo", deleteDebrief:"Excluir registro" });
 Object.assign(COPY["en-US"], { terrainUnknown:"TERRAIN UNASSESSED", bestLevel:"Selected level", cabinAltitude:"Flight level", deleteDebrief:"Delete record" });
+Object.assign(COPY["pt-BR"], { manualOpen:"Abrir", configuration:"CONFIGURAÇÃO", compareTwoLevels:"Comparar dois níveis", fuelAndRange:"Combustível e alcance", technicalLevelDetails:"Detalhes técnicos por nível" });
+Object.assign(COPY["en-US"], { manualOpen:"Open", configuration:"SETUP", compareTwoLevels:"Compare two levels", fuelAndRange:"Fuel and range", technicalLevelDetails:"Technical details by level" });
 Object.assign(COPY["pt-BR"], { cruiseIcing:"Índice de gelo" });
 Object.assign(COPY["en-US"], { cruiseIcing:"Icing index" });
 Object.assign(COPY["pt-BR"], { manualInFlight:"Em voo", manualFinished:"Voo concluído", saveDebrief:"Registrar voo", noDebriefs:"SEM VOOS REGISTRADOS", debriefResultTitle:"Resultado do voo", debriefHistory:"Histórico de calibração", debriefPhases:"Fases", phaseTime:"Tempo", phaseFuel:"Combustível", debriefSaved:"Voo registrado", debriefPhasePair:"Preencha tempo e combustível da fase.", debriefPhaseTotals:"Os valores das fases excedem o total do voo.", debriefNoLevel:"Selecione um nível antes de registrar o voo.", glideCaveat:"Alcance teórico · terreno e obstáculos não avaliados" });
@@ -211,8 +208,8 @@ Object.assign(COPY["pt-BR"], { calibrationNeedsUpdate:"Atualize posição, FL e 
 Object.assign(COPY["en-US"], { calibrationNeedsUpdate:"Update position, FL and fuel before calibrating.", calibrationReady:"Position, FL and fuel confirmed." });
 Object.assign(COPY["pt-BR"], { remainingFuelTitle:"Combustível · trecho restante", remainingFuelViable:"SUFICIENTE", remainingFuelMarginal:"MARGEM BAIXA", remainingFuelUnavailable:"INSUFICIENTE", remainingUnknown:"NÃO AVALIADO", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Necessário ${fuel}`, remainingMargin:(fuel)=>`Margem ${fuel}` });
 Object.assign(COPY["en-US"], { remainingFuelTitle:"Fuel · remaining route", remainingFuelViable:"SUFFICIENT", remainingFuelMarginal:"LOW MARGIN", remainingFuelUnavailable:"INSUFFICIENT", remainingUnknown:"UNASSESSED", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Required ${fuel}`, remainingMargin:(fuel)=>`Margin ${fuel}` });
-Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Escolha um módulo", closeTool:"Fechar", toolHintEtp:"Pontos de decisão", toolHintAlternate:"Alternados", toolHintCompare:"Comparar cenários", toolHintLoad:"Carga e combustível", toolHintWb:"Peso e centro de gravidade", toolHintGlide:"Alcance planado", toolHintOxygen:"Oxigênio", toolHintConfidence:"Confiança do modelo", toolHintRide:"Conforto de voo", toolHintIce:"Gelo por trecho", toolHintSteps:"Subida em etapas", toolHintUpdate:"Em voo · Voo concluído", thermalWindow:"Janela térmica", routeBand:"Faixa da rota", iceExposure:"Exposição", flightPhases:"Fases do voo", ofpEvidence:"Evidências do OFP", indexReading:"Leitura do índice" });
-Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintIce:"Icing by leg", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete", thermalWindow:"Thermal window", routeBand:"Route band", iceExposure:"Exposure", flightPhases:"Flight phases", ofpEvidence:"OFP evidence", indexReading:"Index reading" });
+Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Escolha um módulo", closeTool:"Fechar", toolHintContingency:"ETP · PNR · Alternado", toolHintEtp:"Pontos de decisão", toolHintAlternate:"Alternados", toolHintCompare:"Comparar cenários", toolHintLoad:"Carga e combustível", toolHintWb:"Peso e centro de gravidade", toolHintGlide:"Alcance planado", toolHintOxygen:"Oxigênio", toolHintConfidence:"Confiança do modelo", toolHintRide:"Conforto de voo", toolHintIce:"Gelo por trecho", toolHintSteps:"Subida em etapas", toolHintUpdate:"Em voo · Voo concluído", thermalWindow:"Janela térmica", routeBand:"Faixa da rota", iceExposure:"Exposição", flightPhases:"Fases do voo", ofpEvidence:"Evidências do OFP", indexReading:"Leitura do índice" });
+Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintContingency:"ETP · PNR · Alternate", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintIce:"Icing by leg", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete", thermalWindow:"Thermal window", routeBand:"Route band", iceExposure:"Exposure", flightPhases:"Flight phases", ofpEvidence:"OFP evidence", indexReading:"Index reading" });
 Object.assign(COPY["pt-BR"], { manualFlightStatusTitle:"ATUALIZAÇÃO EM VOO", manualNoUpdate:"Sem atualização registrada", manualUpdateRecorded:"Atualização registrada" });
 Object.assign(COPY["en-US"], { manualFlightStatusTitle:"IN-FLIGHT UPDATE", manualNoUpdate:"No update recorded", manualUpdateRecorded:"Update recorded" });
 Object.assign(COPY["pt-BR"], { toolHintCost:"Custo e eficiência", fuelPrice:"Preço do combustível", currency:"Moeda", pricePerLiter:"Valor por litro", costUnassessed:"Informe o valor por litro para avaliar o custo.", estimatedFlightCost:"Custo estimado do voo", financialEfficiency:"Eficiência financeira", costPerNm:"Por NM", costPerHour:"Por hora", costPerPerson:"Por pessoa", requiredFuelValue:"Abastecimento requerido", costBreakdown:"Custo por fase", modeComparison:"Comparação de modos", possibleSavings:"Economia possível", costInFlight:"Projeção após atualização manual" });
@@ -371,6 +368,11 @@ function applyTranslations() {
   $("#powerManualFields").hidden=state.powerSetting.type!=="MANUAL";
   const metricLabels={fuel:state.language==="pt-BR"?"Combustível":"Fuel",time:state.language==="pt-BR"?"Tempo":"Time",efficiency:state.language==="pt-BR"?"Eficiência":"Efficiency"};
   $$('[data-metric]').forEach((button)=>{ button.textContent=metricLabels[button.dataset.metric]; });
+  const matrixExpanded=!$("#routeMatrixExpanded")?.hidden;
+  if($("#routeMatrixToggle")) $("#routeMatrixToggle").textContent=state.language==="pt-BR"?(matrixExpanded?"Recolher":"Ver matriz"):(matrixExpanded?"Collapse":"View matrix");
+  if($("#terrainTitle")) $("#terrainTitle").textContent=state.language==="pt-BR"?(matrixExpanded?"Matriz de níveis":"Cobertura da rota"):(matrixExpanded?"Level matrix":"Route coverage");
+  const scoreExpanded=!$("#missionScoreDetails")?.hidden;
+  if($('[data-score-details]')) $('[data-score-details]').textContent=state.language==="pt-BR"?(scoreExpanded?"Recolher":"Ver composição"):(scoreExpanded?"Collapse":"View breakdown");
 }
 
 function metricConfig() {
@@ -598,7 +600,7 @@ function renderRouteMatrix(plan,results,result) {
   const badge=$("#terrainStatus");badge.textContent=t(statusKey);badge.className=`terrain-badge ${terrain.status}`;
   $("#terrainMargin").textContent=Number.isFinite(terrain.marginFt)?signedNumber(terrain.marginFt,0," ft"):"—";
   $("#terrainEyebrow").textContent=pt?"ROTA · OFP":"ROUTE · OFP";
-  $("#terrainTitle").textContent=pt?"Matriz de níveis":"Level matrix";
+  $("#terrainTitle").textContent=pt?"Cobertura da rota":"Route coverage";
   $("#terrainIntro").textContent=`${plan.origin.icao} → ${plan.destination.icao} · ${matrix.length} ${pt?"trechos":"legs"} · ${number(plan.distanceNm)} NM`;
   $("#terrainNote").textContent=pt?"MORA · cruzeiro  |  — = sem dados":"MORA · cruise  |  — = no data";
   if(!matrix.length){$("#routeMatrixOverview").innerHTML="";$("#routeMatrixGrid").innerHTML="";$("#routeMatrixDetail").innerHTML="";$("#routeMatrixLegTitle").textContent="—";$("#routeMatrixPosition").textContent="—";$("#terrainManual").hidden=true;return;}
@@ -1140,7 +1142,7 @@ function render() {
   $("#powerPercent").classList.toggle("limited",power.turboLimited);
   if(document.activeElement!==$("#manualMap")) $("#manualMap").value=Number(state.powerSetting.mapInHg).toFixed(1);
   if(document.activeElement!==$("#manualRpm")) $("#manualRpm").value=String(Math.round(state.powerSetting.rpm));
-  $("#kpiAltitude").textContent=`FL${selected.fl}`; $("#kpiLevelMeta").textContent=t("selectedLevel"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-selected.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
+  $("#kpiAltitude").textContent=`FL${selected.fl}`; $("#kpiLevelMeta").textContent=t("selectedLevel"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-selected.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS · ${Math.round(selected.tasKt)} kt TAS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
   renderRouteMatrix(plan,analysis.results,selected); renderPerformanceRanking(analysis.results,recommended,selected); renderIcingSummary(analysis,selected); renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderLevelCards(analysis.results,recommended,selected); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderScenarioComparison(scenarioComparison,selected); renderLoadOptimizer(loadOptimizer); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore); renderOxygenPlanner(analysis); renderWeightBalance(selected.weightBalance); renderConfidenceEnvelope(selected.confidence); renderRideOptimizer(analysis,selected); renderDebrief(selected);
   $("#phaseLevel").textContent=`${t("selectedLevel")} · FL${selected.fl}`;
   $("#climbStats").textContent=`${Math.round(selected.climb.timeHr*60)} min · ${formatFuel(selected.climb.fuelGal,1)} · ${number(selected.climb.power.availableMapInHg,1)}\" / ${number(selected.climb.power.rpm)}`; $("#cruiseStats").textContent=`${Math.round(selected.cruiseTimeHr*60)} min · ${formatFuel(selected.cruiseFuelGal,1)} · ${number(selected.power.availableMapInHg,1)}\" / ${number(selected.power.rpm)}`; $("#descentStats").textContent=`${Math.round(selected.descent.timeHr*60)} min · ${formatFuel(selected.descent.fuelGal,1)} · ${number(PERFORMANCE.powerModel.phases.descent.mapInHg,1)}\" / ${number(PERFORMANCE.powerModel.phases.descent.rpm)}`;
@@ -1180,7 +1182,9 @@ const toolCardsHeading=$(".tool-cards-heading");
 const manualUpdateStrip=$("#tool-card-update");
 const toolCardButtons=$$('[data-tool-view]');
 const toolCardPanels=$$('[data-tool-panel]');
-const toolHintKeys={etp:"toolHintEtp",alternate:"toolHintAlternate",compare:"toolHintCompare",load:"toolHintLoad",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",confidence:"toolHintConfidence",ride:"toolHintRide",ice:"toolHintIce",cost:"toolHintCost",steps:"toolHintSteps",update:"toolHintUpdate"};
+const toolTriggerButtons=$$('[data-tool-trigger]:not(#tool-card-update)');
+const toolHintKeys={contingency:"toolHintContingency",compare:"toolHintCompare",load:"toolHintLoad",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",ride:"toolHintRide",ice:"toolHintIce",cost:"toolHintCost",steps:"toolHintSteps",update:"toolHintUpdate"};
+const toolTitles={contingency:"CONTINGÊNCIA",compare:"A / B",steps:"STEP CLIMB",load:"LOAD",update:t("manualUpdate")};
 let openToolKey=null;
 toolCardButtons.forEach((button)=>{
   const key=button.dataset.toolView,label=button.textContent;
@@ -1196,17 +1200,19 @@ toolCardPanels.forEach((panel)=>{
   const key=panel.dataset.toolPanel;
   panel.id=`tool-panel-${key}`;
   panel.setAttribute("role","region");
-  panel.setAttribute("aria-labelledby",`tool-card-${key}`);
+  const controller=toolCardButtons.find((button)=>button.dataset.toolView===key)||toolTriggerButtons.find((button)=>button.dataset.toolTrigger===key)||(key==="update"?manualUpdateStrip:null);
+  if(controller?.id) panel.setAttribute("aria-labelledby",controller.id); else panel.setAttribute("aria-label",toolTitles[key]||key);
   panel.classList.remove("active");
   const heading=document.createElement("div");
   heading.className="tool-view-heading";
-  heading.innerHTML=`<h3>${escapeHtml(key==="update"?t("manualUpdate"):toolCardButtons.find((button)=>button.dataset.toolView===key)?.querySelector(".tool-card-label")?.textContent||key)}</h3><button type="button" class="tool-close" data-i18n="closeTool">${escapeHtml(t("closeTool"))}</button>`;
+  heading.innerHTML=`<h3>${escapeHtml(key==="update"?t("manualUpdate"):toolCardButtons.find((button)=>button.dataset.toolView===key)?.querySelector(".tool-card-label")?.textContent||toolTitles[key]||key)}</h3><button type="button" class="tool-close" data-i18n="closeTool">${escapeHtml(t("closeTool"))}</button>`;
   if(key==="update") heading.querySelector("h3").dataset.i18n="manualUpdate";
   heading.querySelector("button").addEventListener("click",()=>setOpenTool(null));
   panel.prepend(heading);
   toolCardGrid.append(panel);
 });
 manualUpdateStrip.addEventListener("click",()=>setOpenTool(openToolKey==="update"?null:"update"));
+toolTriggerButtons.forEach((button)=>button.addEventListener("click",()=>{const key=button.dataset.toolTrigger;setOpenTool(openToolKey===key?null:key);}));
 function setOpenTool(key){
   openToolKey=key;
   document.body.classList.toggle("tool-focus-active",Boolean(key));
@@ -1217,20 +1223,40 @@ function setOpenTool(key){
   toolCardPanels.forEach((panel)=>{panel.classList.toggle("active",panel.dataset.toolPanel===key);if(panel.dataset.toolPanel!==key)toolCardGrid.append(panel);});
   if(!key)return;
   const panel=toolCardPanels.find((item)=>item.dataset.toolPanel===key),index=toolCardButtons.findIndex((button)=>button.dataset.toolView===key);
+  if(!panel)return;
   if(key==="update"){
     flightToolsPanel.insertBefore(panel,toolCardsHeading);
     return;
   }
+  if(index<0){toolCardGrid.append(panel);return;}
   const columns=getComputedStyle(toolCardGrid).gridTemplateColumns.split(" ").length;
   const rowEnd=Math.min(toolCardButtons.length-1,Math.floor(index/columns)*columns+columns-1);
   toolCardGrid.insertBefore(panel,toolCardButtons[rowEnd+1]||null);
   if(key==="glide")centerGlideRoutePoint();
 }
 document.addEventListener("click",(event)=>{
-  if(!openToolKey||event.target.closest?.(".tool-card, .manual-update-strip, .tool-view.active"))return;
+  if(!openToolKey||event.target.closest?.(".tool-card, [data-tool-trigger], .manual-update-strip, .tool-view.active"))return;
   setOpenTool(null);
 });
 window.addEventListener("resize",()=>{if(openToolKey)setOpenTool(openToolKey);});
+const routeMatrixToggle=$("#routeMatrixToggle");
+const routeMatrixExpanded=$("#routeMatrixExpanded");
+routeMatrixToggle.addEventListener("click",()=>{
+  const expanded=routeMatrixExpanded.hidden;
+  routeMatrixExpanded.hidden=!expanded;
+  $("#routeMatrix").classList.toggle("expanded",expanded);
+  routeMatrixToggle.setAttribute("aria-expanded",String(expanded));
+  routeMatrixToggle.textContent=state.language==="pt-BR"?(expanded?"Recolher":"Ver matriz"):(expanded?"Collapse":"View matrix");
+  $("#terrainTitle").textContent=state.language==="pt-BR"?(expanded?"Matriz de níveis":"Cobertura da rota"):(expanded?"Level matrix":"Route coverage");
+});
+const scoreDetailsToggle=$("[data-score-details]");
+const scoreDetails=$("#missionScoreDetails");
+scoreDetailsToggle.addEventListener("click",()=>{
+  const expanded=scoreDetails.hidden;
+  scoreDetails.hidden=!expanded;
+  scoreDetailsToggle.setAttribute("aria-expanded",String(expanded));
+  scoreDetailsToggle.textContent=state.language==="pt-BR"?(expanded?"Recolher":"Ver composição"):(expanded?"Collapse":"View breakdown");
+});
 $$('[data-manual-mode]').forEach((button)=>button.addEventListener("click",()=>{
   $$('[data-manual-mode]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
   $$('[data-manual-panel]').forEach((panel)=>panel.hidden=panel.dataset.manualPanel!==button.dataset.manualMode);

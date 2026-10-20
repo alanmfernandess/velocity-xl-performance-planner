@@ -97,12 +97,12 @@ test("STEP CLIMB compares complete remaining profiles and explains no-step cases
 
 test("discrete icon rules cover every primary calculator surface",()=>{
   [
-    ".brand-mark", ".kpi-grid .kpi:nth-child(1)", ".mission-strip > div:nth-child(1)",
+    ".brand-mark", ".decision-overview .kpi:nth-of-type(2)", ".mission-strip > div:nth-child(1)",
     '[data-view-panel="performance"] .view-heading h2', '.phase-grid > div:nth-child(1) > span',
-    '[data-tool-view="alternate"]', '[data-tool-view="compare"]', '[data-tool-view="load"]',
+    '[data-tool-view="contingency"]', '[data-tool-trigger="compare"]',
     '[data-tool-view="wb"]', '[data-tool-view="glide"]', '[data-tool-view="oxygen"]',
-    '[data-tool-view="confidence"]', '[data-tool-view="ride"]', '[data-tool-view="cost"]',
-    '[data-tool-view="steps"]', '.manual-update-strip-icon', ".section-heading h2",
+    '[data-tool-view="ride"]', '[data-tool-view="cost"]',
+    '[data-tool-trigger="steps"]', '.manual-update-strip-icon', ".section-heading h2",
   ].forEach((selector)=>assert.ok(app.includes(selector),`missing icon rule for ${selector}`));
 });
 
@@ -140,13 +140,16 @@ test("Manual Update keeps cruise calibration to TAS, fuel flow and OAT",()=>{
   assert.match(app,/observedOatC:Number\(\$\("#observedOat"\)\.value\)/);
 });
 
-test("flight tools open as individual cards in the page flow",()=>{
+test("minimal home consolidates flight tools and opens their full panels on demand",()=>{
   assert.match(index,/class="tool-card-grid"/);
   assert.doesNotMatch(index,/class="tool-tabs"/);
+  assert.match(index,/data-tool-view="contingency"/);
+  assert.doesNotMatch(index,/data-tool-view="load"|data-tool-view="compare"|data-tool-view="confidence"|data-tool-view="steps"/);
+  assert.match(index,/data-tool-trigger="compare"[\s\S]*data-tool-trigger="steps"/);
   assert.match(app,/function setOpenTool\(key\)/);
   assert.match(app,/toolCardGrid\.insertBefore\(panel,toolCardButtons\[rowEnd\+1\]\|\|null\)/);
-  assert.match(css,/\.flight-tools-panel \{ position:static; display:block; max-height:none; overflow:visible/);
-  assert.match(css,/\.tool-card-grid \{ display:grid; grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.flight-tools-panel \{ display:contents; \}/);
+  assert.match(css,/\.tool-view\.active \{ position:fixed/);
 });
 
 test("Manual Update uses the approved situation strip outside the tool-card grid",()=>{
