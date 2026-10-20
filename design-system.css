@@ -20,6 +20,10 @@
   --ui-body: calc(14px * var(--ui-scale));
   --ui-title: calc(16px * var(--ui-scale));
   --ui-display: calc(24px * var(--ui-scale));
+  --type-caption: var(--ui-caption);
+  --type-body: var(--ui-body);
+  --type-heading: var(--ui-title);
+  --type-display: var(--ui-display);
   --space-1: 4px; --space-2: 8px; --space-3: 12px;
   --space-4: 16px; --space-5: 20px; --space-6: 24px;
   --control-height: 44px;

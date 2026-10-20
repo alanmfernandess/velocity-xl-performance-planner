@@ -370,6 +370,7 @@ function applyTranslations() {
   $("#powerManualFields").hidden=state.powerSetting.type!=="MANUAL";
   const metricLabels={fuel:state.language==="pt-BR"?"Combustível":"Fuel",time:state.language==="pt-BR"?"Tempo":"Time",efficiency:state.language==="pt-BR"?"Eficiência":"Efficiency"};
   $$('[data-metric]').forEach((button)=>{ button.textContent=metricLabels[button.dataset.metric]; });
+  window.VelocityLayout?.translate();
 }
 
 function metricConfig() {

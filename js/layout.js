@@ -105,7 +105,10 @@
   const recommendation = item(); recommendation.className = 'panel recommendation-card';
   recommendation.innerHTML = `<div class="shared-card-head"><span data-layout-text="missionAdjustment">${text('missionAdjustment')}</span>${icon('wind')}</div><div class="recommendation-actions"><button type="button" class="primary-button" data-open-module="planning:config" data-layout-text="openPlanning">${text('openPlanning')}</button><button type="button" class="text-button" data-open-module="route:overview" data-layout-text="openRoute">${text('openRoute')}</button></div>`;
   const scoreAction = $('#missionScoreAction')?.closest('.mission-score-action');
-  if (scoreAction) recommendation.insertBefore(scoreAction, recommendation.querySelector('.recommendation-actions'));
+  if (scoreAction) {
+    scoreAction.querySelector('span')?.remove();
+    recommendation.insertBefore(scoreAction, recommendation.querySelector('.recommendation-actions'));
+  }
   overviewGrid.append(recommendation);
   const fuel = $('.fuel-panel'); if (fuel) missionOverview.append(fuel);
   move('.mission-strip', 'mission:score');
@@ -223,6 +226,9 @@
   function translateLayout() {
     document.querySelectorAll('[data-layout-text]').forEach(element => { element.textContent = text(element.dataset.layoutText); });
     noPlan.textContent = text('noPlan');
+    document.querySelectorAll('.module-nav').forEach(element => { element.setAttribute('aria-label', text(element.closest('[data-area-panel]').dataset.areaPanel)); });
+    nav.setAttribute('aria-label', document.documentElement.lang === 'en-US' ? 'Main areas' : 'Áreas principais');
+    mobileNav.setAttribute('aria-label', nav.getAttribute('aria-label'));
   }
   document.querySelectorAll('[data-language]').forEach(button => button.addEventListener('click', () => setTimeout(translateLayout, 0)));
   window.VelocityLayout = { activate, translate: translateLayout, state };
