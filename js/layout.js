@@ -211,7 +211,13 @@
     }
     const context = $('[data-area-context="mission"]');
     const badge = $('#feasibilityBadge');
-    if (context && badge) { context.textContent = badge.hidden ? '' : badge.textContent; context.className = `area-context ${badge.className.includes('viable') ? 'viable' : badge.className.includes('marginal') ? 'marginal' : 'not-viable'}`; }
+    if (context && badge) {
+      const value = badge.hidden ? '' : badge.textContent;
+      const tone = badge.classList.contains('viable') ? 'viable' : badge.classList.contains('marginal') ? 'marginal' : 'not-viable';
+      const className = `area-context ${tone}`;
+      if (context.textContent !== value) context.textContent = value;
+      if (context.className !== className) context.className = className;
+    }
   });
   observer.observe(content, { subtree: true, childList: true, characterData: true });
   function translateLayout() {
