@@ -1111,6 +1111,7 @@ function render() {
   $("#missionRecovery").hidden=true;
   const hasPlan=Boolean(state.plan);
   $("#plannerContent").hidden=!hasPlan;
+  document.querySelector('.no-plan-state').hidden=hasPlan;
   $("#feasibilityBadge").hidden=!hasPlan;
   $("#feasibilityMeta").hidden=!hasPlan;
   if(!hasPlan){$("#routeSource").textContent=t("simbrief");$("#routeTitle").innerHTML=`— <span>→</span> —`;$("#planTimestamp").textContent="—";refreshUiIcons();return;}
@@ -1175,14 +1176,12 @@ $("#performanceChart").addEventListener("click",(event)=>{
   state.manuallySelectedLevel=true;
   render();
 });
-const toolCardGrid=$(".tool-card-grid");
-const flightToolsPanel=$(".flight-tools-panel");
-const toolCardsHeading=$(".tool-cards-heading");
 const manualUpdateStrip=$("#tool-card-update");
 const toolCardButtons=$$('[data-tool-view]');
 const toolCardPanels=$$('[data-tool-panel]');
 const toolHintKeys={etp:"toolHintEtp",alternate:"toolHintAlternate",compare:"toolHintCompare",load:"toolHintLoad",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",confidence:"toolHintConfidence",ride:"toolHintRide",ice:"toolHintIce",cost:"toolHintCost",steps:"toolHintSteps",update:"toolHintUpdate"};
-let openToolKey=null;
+const initialTools={"planning:optimize":"load","planning:systems":"wb","planning:analyses":"compare","route:ice":"ice","route:ride":"ride","route:decisions":"etp"};
+const selectedTools={...initialTools};
 toolCardButtons.forEach((button)=>{
   const key=button.dataset.toolView,label=button.textContent;
   button.classList.add("tool-card");
@@ -1191,47 +1190,34 @@ toolCardButtons.forEach((button)=>{
   button.setAttribute("aria-controls",`tool-panel-${key}`);
   button.setAttribute("aria-expanded","false");
   button.innerHTML=`<span class="tool-card-label" ${key==="update"?'data-i18n="manualUpdate"':''}>${escapeHtml(label)}</span><small data-i18n="${toolHintKeys[key]}">${escapeHtml(t(toolHintKeys[key]))}</small>`;
-  button.addEventListener("click",()=>setOpenTool(openToolKey===key?null:key));
+  button.addEventListener("click",()=>setOpenTool(key));
 });
 toolCardPanels.forEach((panel)=>{
   const key=panel.dataset.toolPanel;
   panel.id=`tool-panel-${key}`;
   panel.setAttribute("role","region");
-  panel.setAttribute("aria-labelledby",`tool-card-${key}`);
-  panel.classList.remove("active");
-  const heading=document.createElement("div");
-  heading.className="tool-view-heading";
-  heading.innerHTML=`<h3>${escapeHtml(key==="update"?t("manualUpdate"):toolCardButtons.find((button)=>button.dataset.toolView===key)?.querySelector(".tool-card-label")?.textContent||key)}</h3><button type="button" class="tool-close" data-i18n="closeTool">${escapeHtml(t("closeTool"))}</button>`;
-  if(key==="update") heading.querySelector("h3").dataset.i18n="manualUpdate";
-  heading.querySelector("button").addEventListener("click",()=>setOpenTool(null));
-  panel.prepend(heading);
-  toolCardGrid.append(panel);
+  panel.setAttribute("aria-labelledby",key==="update"?"tool-card-update":`tool-card-${key}`);
 });
-manualUpdateStrip.addEventListener("click",()=>setOpenTool(openToolKey==="update"?null:"update"));
+manualUpdateStrip.addEventListener("click",()=>window.VelocityLayout?.activate("flight","update"));
 function setOpenTool(key){
-  openToolKey=key;
-  document.body.classList.toggle("tool-focus-active",Boolean(key));
-  toolCardButtons.forEach((button)=>{const active=button.dataset.toolView===key;button.classList.toggle("active",active);button.setAttribute("aria-expanded",String(active));});
-  const manualActive=key==="update";
-  manualUpdateStrip.classList.toggle("active",manualActive);
-  manualUpdateStrip.setAttribute("aria-expanded",String(manualActive));
-  toolCardPanels.forEach((panel)=>{panel.classList.toggle("active",panel.dataset.toolPanel===key);if(panel.dataset.toolPanel!==key)toolCardGrid.append(panel);});
   if(!key)return;
-  const panel=toolCardPanels.find((item)=>item.dataset.toolPanel===key),index=toolCardButtons.findIndex((button)=>button.dataset.toolView===key);
-  if(key==="update"){
-    flightToolsPanel.insertBefore(panel,toolCardsHeading);
-    return;
-  }
-  const columns=getComputedStyle(toolCardGrid).gridTemplateColumns.split(" ").length;
-  const rowEnd=Math.min(toolCardButtons.length-1,Math.floor(index/columns)*columns+columns-1);
-  toolCardGrid.insertBefore(panel,toolCardButtons[rowEnd+1]||null);
+  const panel=toolCardPanels.find((item)=>item.dataset.toolPanel===key);
+  const module=panel?.closest('[data-module-panel]');
+  if(!module)return;
+  selectedTools[module.dataset.modulePanel]=key;
+  module.querySelectorAll('[data-tool-view]').forEach((button)=>{
+    const active=button.dataset.toolView===key;
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-expanded',String(active));
+  });
+  module.querySelectorAll('[data-tool-panel]').forEach((item)=>{
+    const active=item.dataset.toolPanel===key;
+    item.classList.toggle('active',active);
+    item.hidden=!active;
+  });
   if(key==="glide")centerGlideRoutePoint();
 }
-document.addEventListener("click",(event)=>{
-  if(!openToolKey||event.target.closest?.(".tool-card, .manual-update-strip, .tool-view.active"))return;
-  setOpenTool(null);
-});
-window.addEventListener("resize",()=>{if(openToolKey)setOpenTool(openToolKey);});
+Object.values(initialTools).forEach(setOpenTool);
 $$('[data-manual-mode]').forEach((button)=>button.addEventListener("click",()=>{
   $$('[data-manual-mode]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
   $$('[data-manual-panel]').forEach((panel)=>panel.hidden=panel.dataset.manualPanel!==button.dataset.manualMode);

@@ -134,22 +134,26 @@ test("completed-flight calibration lives under Manual Update without a separate 
   assert.match(app,/localStorage\.setItem\("velocityxl\.debriefs"/);
 });
 
-test("flight tools open as individual cards in the page flow",()=>{
-  assert.match(index,/class="tool-card-grid"/);
-  assert.doesNotMatch(index,/class="tool-tabs"/);
+test("approved four-area layout keeps each original tool in a dedicated module",()=>{
+  const layout=readFileSync(new URL("../js/layout.js",import.meta.url),"utf8");
+  assert.match(index,/id="areaNav"/);
+  assert.match(index,/design-system\.css/);
+  for(const area of ["mission","planning","route","flight"])assert.match(layout,new RegExp(`\\['${area}'`));
+  for(const key of ["etp","alternate","compare","load","wb","glide","oxygen","confidence","ride","ice","cost","steps","update"])
+    assert.match(layout,new RegExp(`['"]${key}['"]`));
   assert.match(app,/function setOpenTool\(key\)/);
-  assert.match(app,/toolCardGrid\.insertBefore\(panel,toolCardButtons\[rowEnd\+1\]\|\|null\)/);
-  assert.match(css,/\.flight-tools-panel \{ position:static; display:block; max-height:none; overflow:visible/);
-  assert.match(css,/\.tool-card-grid \{ display:grid; grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(app,/selectedTools\[module\.dataset\.modulePanel\]=key/);
 });
 
-test("Manual Update uses the approved situation strip outside the tool-card grid",()=>{
+test("Manual Update remains the single entry to in-flight and completed-flight data",()=>{
   assert.match(index,/class="manual-update-strip"[^>]*data-tool-trigger="update"/);
   assert.doesNotMatch(index,/data-tool-view="update"/);
   assert.match(index,/id="manualUpdateStripValue"[\s\S]*id="manualUpdateStripState"/);
   assert.match(app,/manualUpdateStrip\.addEventListener/);
-  assert.match(app,/if\(key==="update"\)[\s\S]*flightToolsPanel\.insertBefore\(panel,toolCardsHeading\)/);
-  assert.match(css,/\.manual-update-strip \{[^}]*grid-template-columns:36px minmax\(190px,1fr\) auto auto/);
+  const layout=readFileSync(new URL("../js/layout.js",import.meta.url),"utf8");
+  assert.match(layout,/moduleNodes\.get\('flight:calibration'\)\.append\(calibration\)/);
+  assert.match(layout,/moduleNodes\.get\('flight:completed'\)\.append\(finishedPanel\)/);
+  assert.match(layout,/moduleNodes\.get\('flight:history'\)\.append\(history\)/);
 });
 
 test("dynamic operational cards use semantic line icons",()=>{

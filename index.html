@@ -23,6 +23,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css?v=20261018-18" />
+    <link rel="stylesheet" href="./design-system.css?v=20261020-01" />
   </head>
   <body>
     <header class="topbar">
@@ -51,6 +52,7 @@
       </div>
     </header>
 
+    <nav class="area-nav" id="areaNav" aria-label="Áreas principais"></nav>
     <main id="top" class="shell">
       <section class="plan-bar" aria-label="Flight plan">
         <div class="plan-identity">
@@ -511,6 +513,7 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script type="module" src="./js/app.js?v=20261018-17"></script>
+    <script src="./js/layout.js?v=20261020-01"></script>
+    <script type="module" src="./js/app.js?v=20261020-01"></script>
   </body>
 </html>
