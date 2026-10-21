@@ -6,6 +6,7 @@ import { assertDeclaration, cssRule } from "./css-utils.mjs";
 const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const layout = readFileSync(new URL("../js/layout.js", import.meta.url), "utf8");
+const app = readFileSync(new URL("../js/app.js", import.meta.url), "utf8");
 
 test("one stylesheet owns visual tokens and component dimensions", () => {
   assert.equal((html.match(/rel="stylesheet"/g) || []).length, 1);
@@ -25,7 +26,7 @@ test("one stylesheet owns visual tokens and component dimensions", () => {
 test("cards size to content and hidden modules stay hidden", () => {
   assertDeclaration(css, ".summary-grid > .panel", "min-height", "0");
   assertDeclaration(css, ".planning-live-summary", "min-height", "0");
-  assertDeclaration(css, ".flight-summary", "min-height", "0");
+  assert.doesNotMatch(cssRule(css, '.app-module[data-module-panel="flight:calibration"] > #manualFlightPanel'), /min-height:/);
   assert.match(cssRule(css, "[hidden]"), /display:\s*none\s*!important/);
   assert.match(layout, /flight: 'calibration'/);
 });
@@ -37,4 +38,10 @@ test("responsive rules are grouped and iOS zoom remains available", () => {
   assert.doesNotMatch(html, /maximum-scale|user-scalable|gesturestart|gesturechange/);
   assert.doesNotMatch(css, /min-height:\s*266px/);
   assert.doesNotMatch(css, /body \*\s*\{[^}]*!important/);
+});
+
+test("removed visual variables have no JavaScript writer", () => {
+  assert.doesNotMatch(app, /--(?:ice-status|topbar-height)/);
+  assert.match(app, /setProperty\("--score"/);
+  assert.match(app, /setProperty\("--score-color"/);
 });

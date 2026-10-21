@@ -17,7 +17,6 @@
   --green-soft: #edf8f0;
   --orange: #b9781e;
   --red: #c84a55;
-  --radius: 15px;
   --font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --ui-scale: 1;
   --ui-caption: calc(12px * var(--ui-scale));
@@ -32,8 +31,6 @@
   --space-6: 24px;
   --control-height: 44px;
   --card-radius: 15px;
-  --shadow: none;
-  --focus-ring: 0 0 0 3px var(--blue-soft);
 }
 
 /* 2. BASE */
@@ -61,17 +58,14 @@ body {
 button {
   font: inherit;
   cursor: pointer;
-  font-family: var(--font-family);
   color: var(--text);
 }
 input {
   font: inherit;
-  font-family: var(--font-family);
   color: var(--text);
 }
 select {
   font: inherit;
-  font-family: var(--font-family);
   color: var(--text);
 }
 footer {
@@ -89,9 +83,6 @@ html[data-font-size="small"] {
 }
 html[data-font-size="large"] {
   --ui-scale: 1.13;
-}
-textarea {
-  font-family: var(--font-family);
 }
 button:focus-visible {
   outline: 2px solid var(--blue);
@@ -115,17 +106,15 @@ select:focus-visible {
   height: 74px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
-  backdrop-filter: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 max(24px, calc((100vw - 1380px)/2));
   position: relative;
   top: 0;
   z-index: 20;
   min-height: 60px;
   transition: filter .22s ease,opacity .22s ease;
-  padding-inline: max(24px, calc((100vw - 1180px) / 2));
+  padding: 0 max(24px, calc((100vw - 1180px) / 2));
 }
 .brand {
   display: flex;
@@ -138,9 +127,7 @@ select:focus-visible {
 }
 .brand strong {
   display: block;
-  font: 650 var(--ui-body)/1.15 var(--font-family);
-  font-size: var(--ui-body);
-  font-weight: 600;
+  font: 600 var(--ui-body)/1.15 var(--font-family);
 }
 .brand small {
   display: block;
@@ -157,33 +144,8 @@ select:focus-visible {
   display: grid;
   place-items: center;
   position: relative;
-  border-color: var(--line);
   background: var(--blue-soft);
   color: var(--blue);
-}
-.brand-mark::before {
-  content: "";
-  position: absolute;
-  width: 18px;
-  height: 1px;
-  background: var(--blue);
-  transform: rotate(-28deg);
-  display: none;
-}
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  width: 18px;
-  height: 1px;
-  background: var(--blue);
-  transform: rotate(28deg);
-  display: none;
-}
-.brand-mark span {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--green);
 }
 .app-toolbar {
   display: flex;
@@ -198,7 +160,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .toolbar-group button {
   min-width: 36px;
@@ -230,7 +191,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--card-radius);
   background: var(--panel);
-  box-shadow: var(--shadow);
 }
 .plan-identity h1 {
   font: 600 var(--ui-display)/1.2 var(--font-family);
@@ -434,21 +394,9 @@ select:focus-visible {
 }
 .app-module > :is(.panel, .levels-section, .mission-strip) {
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--card-radius);
-  background: var(--panel);
-  box-shadow: none;
 }
 .summary-grid > .panel {
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--card-radius);
-  background: var(--panel);
-  box-shadow: none;
   min-height: 0;
-  margin: 0;
-  padding: var(--space-4);
-  height: auto;
 }
 .app-module :is(h2, h3) {
   font-family: var(--font-family);
@@ -462,24 +410,8 @@ select:focus-visible {
   gap: var(--space-4);
   align-items: start;
 }
-.app-module input:not([type="range"]):not([type="checkbox"]) {
-  min-height: var(--control-height);
-  min-width: 0;
-  padding-inline: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  font-size: var(--ui-body);
-}
-.app-module select {
-  min-height: var(--control-height);
-  min-width: 0;
-  padding-inline: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  font-size: var(--ui-body);
-}
+.app-module input:not([type="range"]):not([type="checkbox"]),
+.app-module select,
 .plan-form input {
   min-height: var(--control-height);
   min-width: 0;
@@ -499,17 +431,7 @@ select:focus-visible {
   gap: var(--space-4);
   align-items: start;
 }
-.flight-update-grid {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(260px, .65fr);
-  gap: var(--space-4);
-  align-items: start;
-}
 .planning-config-grid > * {
-  min-width: 0;
-}
-.flight-update-grid > * {
   min-width: 0;
 }
 .tool-choice {
@@ -560,9 +482,6 @@ select:focus-visible {
 }
 .tool-host .tool-view.active {
   display: block;
-}
-.tool-host .tool-view[data-tool-panel="update"] {
-  display: none;
 }
 .app-module[data-module-panel="flight:calibration"] > #manualFlightPanel {
   display: grid;
@@ -778,28 +697,11 @@ select:focus-visible {
   font-weight: 600;
   font-size: var(--ui-body);
   text-transform: uppercase;
-  border-color: var(--line);
 }
 .field input:focus {
   border-color: #8bbce9;
   background: #fff;
   box-shadow: 0 0 0 3px var(--blue-soft);
-}
-.field > div {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel-soft);
-}
-.field > div input {
-  border: 0;
-  background: transparent;
-}
-.field > div small {
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  padding-right: 9px;
 }
 .primary-button {
   border: 0;
@@ -825,7 +727,6 @@ select:focus-visible {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: 1fr;
   gap: var(--space-3);
-  margin-bottom: 14px;
   margin: 0;
 }
 .kpi {
@@ -835,10 +736,7 @@ select:focus-visible {
   background: var(--panel);
   padding: var(--space-4);
   display: grid;
-  flex-direction: column;
   justify-content: space-between;
-  box-shadow: var(--shadow);
-  height: auto;
   min-width: 0;
   grid-template-rows: auto auto auto;
   align-items: start;
@@ -855,9 +753,8 @@ select:focus-visible {
   line-height: 1.2;
 }
 .kpi > strong {
-  font: 650 var(--ui-display)/1.1 var(--font-family);
+  font: 600 var(--ui-display)/1.1 var(--font-family);
   letter-spacing: -.04em;
-  font-weight: 600;
   align-self: center;
   margin: 0;
   min-width: 0;
@@ -876,20 +773,7 @@ select:focus-visible {
   margin: 0;
   line-height: 1.2;
 }
-.kpi.featured {
-  border-color: var(--line);
-  background: var(--panel);
-}
 .kpi.featured > strong {
-  color: var(--text);
-  font-size: var(--ui-display);
-  align-self: center;
-  margin: 0;
-  min-width: 0;
-  font: 650 var(--ui-display)/1.1 var(--font-family);
-  white-space: nowrap;
-}
-.kpi.featured b {
   color: var(--text);
 }
 .kpi.featured[data-status="viable"] {
@@ -923,8 +807,7 @@ select:focus-visible {
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 15px;
-  box-shadow: none;
+  border-radius: var(--card-radius);
   min-width: 0;
   padding: var(--space-4);
 }
@@ -939,13 +822,11 @@ select:focus-visible {
   margin: 0;
   font: 600 var(--ui-title) var(--font-family);
   letter-spacing: -.02em;
-  font-size: var(--ui-title);
 }
 .section-heading h2 {
   margin: 0;
   font: 600 var(--ui-title) var(--font-family);
   letter-spacing: -.02em;
-  font-size: var(--ui-title);
 }
 .controls-panel {
   padding: 18px;
@@ -1035,21 +916,14 @@ select:focus-visible {
   display: block;
   line-height: 1;
 }
-.mission-score-dial small {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  display: none;
-}
 .mission-score-copy {
   min-width: 0;
 }
 .mission-score-copy strong {
   display: block;
   color: var(--green);
-  font: 700 var(--ui-body) var(--font-family);
+  font: 700 var(--ui-title) var(--font-family);
   letter-spacing: .035em;
-  font-size: var(--ui-title);
 }
 .mission-score-copy strong[data-status="attention"] {
   color: var(--orange);
@@ -1082,9 +956,6 @@ select:focus-visible {
 .mission-score-scale i:nth-child(3) {
   background: var(--green);
 }
-.mission-score-scale i:nth-child(4) {
-  background: var(--green);
-}
 .mission-score-thresholds {
   display: flex;
   justify-content: space-between;
@@ -1106,18 +977,6 @@ select:focus-visible {
   gap: 7px;
   min-height: 34px;
   border-bottom: 1px solid var(--line);
-}
-.mission-score-reasons i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--orange);
-}
-.mission-score-reasons .critical i {
-  background: var(--red);
-}
-.mission-score-reasons .ok i {
-  background: var(--green);
 }
 .mission-score-reasons span {
   min-width: 0;
@@ -1145,13 +1004,6 @@ select:focus-visible {
   border-radius: 10px;
   background: var(--blue-soft);
 }
-.mission-score-action span {
-  color: var(--blue);
-  font-size: var(--ui-caption);
-  font-weight: 700;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
 .mission-score-action strong {
   color: var(--text);
   font-size: var(--ui-caption);
@@ -1176,7 +1028,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--card-radius);
   background: var(--panel);
-  box-shadow: none;
 }
 .input-with-unit {
   display: flex;
@@ -1206,7 +1057,6 @@ select:focus-visible {
   color: var(--blue);
   font-size: var(--ui-body);
   font-weight: 650;
-  border-color: var(--line);
   min-height: var(--control-height);
   display: inline-flex;
   align-items: center;
@@ -1259,11 +1109,9 @@ select:focus-visible {
 .mission-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 10px;
   border: 1px solid var(--line);
-  border-radius: 15px;
+  border-radius: var(--card-radius);
   background: var(--panel);
-  box-shadow: none;
   overflow: hidden;
   margin: 0;
 }
@@ -1328,15 +1176,11 @@ select:focus-visible {
 }
 .debrief-form {
   display: block;
-  grid-template-columns: 1fr 1fr 120px;
-  gap: 8px;
-  align-items: end;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
   max-width: 760px;
-  border-color: var(--line);
 }
 .debrief-form label {
   min-width: 0;
@@ -1556,10 +1400,6 @@ select:focus-visible {
 .primary-button:not(:disabled):hover {
   background: #1369c0;
 }
-.kpi.featured:is([data-status="viable"],[data-status="marginal"],[data-status="attention"],[data-status="not-viable"],[data-status="unknown"]) {
-  background: var(--panel);
-  border-color: var(--line);
-}
 .tool-card {
   display: grid;
   grid-template-columns: 18px minmax(0,1fr);
@@ -1585,10 +1425,6 @@ select:focus-visible {
   background: var(--blue-soft);
 }
 .tool-card:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
-}
-.tool-close:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
@@ -1623,32 +1459,6 @@ select:focus-visible {
 .tool-view.active {
   display: block;
 }
-.tool-view-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding-bottom: 11px;
-  border-bottom: 1px solid var(--line);
-}
-.tool-view-heading h3 {
-  margin: 0;
-  font-size: var(--ui-title);
-  font-weight: 600;
-}
-.tool-close {
-  min-height: var(--control-height);
-  padding: 6px 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--blue);
-  font-size: var(--ui-caption);
-}
-.tool-close:hover {
-  background: var(--blue-soft);
-}
 .tool-view .scenario-matrix-module {
   min-width: 0;
 }
@@ -1657,14 +1467,6 @@ select:focus-visible {
 }
 .tool-view .oxygen-layout {
   min-width: 0;
-}
-.score-detail-card {
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--card-radius);
-  background: var(--panel);
-  box-shadow: none;
-  padding: var(--space-4);
 }
 .shared-card-head {
   min-height: 32px;
@@ -1695,9 +1497,6 @@ select:focus-visible {
   display: grid;
   gap: var(--space-2);
 }
-.recommendation-card > .mission-score-action > span {
-  display: none;
-}
 .recommendation-card > .mission-score-action > strong {
   max-width: 48ch;
   font-size: var(--ui-display);
@@ -1715,12 +1514,6 @@ select:focus-visible {
 }
 .mission-score-heading small {
   font-size: var(--ui-caption);
-}
-.mission-score-panel .mission-score-reasons {
-  display: none;
-}
-.mission-score-panel .mission-score-action {
-  display: none;
 }
 .score-detail-card h2 {
   margin: 0 0 var(--space-4);
@@ -1744,13 +1537,6 @@ select:focus-visible {
   gap: var(--space-4);
   align-content: start;
 }
-.flight-summary {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto auto;
-  gap: var(--space-4);
-  align-content: start;
-}
 .planning-live-summary .weight-meter {
   align-self: center;
   margin: 0;
@@ -1769,19 +1555,6 @@ select:focus-visible {
 .planning-live-summary .weight-meter small {
   color: var(--muted);
   font-size: var(--ui-caption);
-}
-.flight-summary-empty {
-  align-self: center;
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--ui-body);
-  text-align: center;
-}
-.flight-summary:has(#remainingAssessment:not([hidden])) .flight-summary-empty {
-  display: none;
-}
-.flight-summary #remainingAssessment {
-  align-self: center;
 }
 .debrief-history-wrap summary {
   min-height: 44px;
@@ -1806,27 +1579,6 @@ select:focus-visible {
   padding: 18px 20px;
   overflow: hidden;
 }
-.view-tabs {
-  display: flex;
-  gap: 22px;
-  height: 44px;
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-}
-.view-tabs button {
-  height: 44px;
-  padding: 2px 0 0;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: var(--muted);
-  background: transparent;
-  font-size: var(--ui-caption);
-  font-weight: 600;
-}
-.view-tabs button.active {
-  color: var(--text);
-  border-color: var(--blue);
-}
 .view {
   display: none;
   padding-top: 15px;
@@ -1834,10 +1586,6 @@ select:focus-visible {
 }
 .view.active {
   display: block;
-}
-.muted-value {
-  color: var(--muted);
-  font-size: var(--ui-caption);
 }
 .chart-tabs {
   display: flex;
@@ -1862,70 +1610,8 @@ select:focus-visible {
   background: #fff;
   box-shadow: 0 1px 5px #17202a0d;
 }
-.chart-wrap {
-  min-height: 345px;
-  margin-top: 12px;
-}
-.chart-wrap svg {
-  width: 100%;
-  height: auto;
-  display: block;
-  overflow: visible;
-}
-.route-map svg {
-  width: 100%;
-  height: auto;
-  display: block;
-  overflow: visible;
-}
-#verticalProfile svg {
-  width: 100%;
-  height: auto;
-  display: block;
-  overflow: visible;
-}
-.chart-wrap svg text {
-  font-size: var(--ui-caption);
-}
-.route-map svg text {
-  font-size: var(--ui-caption);
-}
-#verticalProfile svg text {
-  font-size: var(--ui-caption);
-}
-.chart-foot {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: var(--ui-caption);
-}
-.chart-foot > span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.chart-foot > span:last-child {
-  margin-left: auto;
-}
-.chart-foot i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-.blue-dot {
-  background: var(--blue);
-}
-.green-dot {
-  background: var(--green);
-}
 .icing-summary {
   display: block;
-  grid-template-columns: auto minmax(0,1fr) auto;
-  align-items: center;
-  gap: 10px;
   margin: 0 0 10px;
   padding: 0;
   border: 1px solid var(--line);
@@ -1970,57 +1656,10 @@ select:focus-visible {
   font-size: var(--ui-caption);
   white-space: nowrap;
 }
-.route-map {
-  min-height: 340px;
-  display: flex;
-  align-items: center;
-}
-.route-map svg .route-waypoint-label {
-  font-size: var(--ui-caption);
-  paint-order: stroke;
-  stroke: #fff;
-  stroke-width: 3px;
-  stroke-linejoin: round;
-}
-.route-map svg .route-waypoint {
-  transition: opacity .15s ease;
-}
-.route-map svg .route-waypoint:hover {
-  opacity: .72;
-}
-.mini-stats {
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  border-top: 1px solid var(--line);
-}
-.mini-stats div {
-  padding: 14px 6px 2px;
-  border-right: 1px solid var(--line);
-}
-.mini-stats div:last-child {
-  border: 0;
-}
-.mini-stats span {
-  color: var(--muted);
-  display: block;
-  font-size: var(--ui-caption);
-  letter-spacing: .08em;
-  margin-bottom: 5px;
-}
-.mini-stats strong {
-  font-size: var(--ui-caption);
-}
-#verticalProfile {
-  padding: 50px 0 20px;
-}
 .phase-grid {
   display: grid;
   grid-template-columns: repeat(3,minmax(0,1fr));
-  border-top: 1px solid var(--line);
-  padding-top: 15px;
   gap: 0;
-  border: 0;
-  padding: 0;
 }
 .phase-grid div {
   display: grid;
@@ -2268,13 +1907,6 @@ select:focus-visible {
   margin-top: 14px;
   letter-spacing: .035em;
 }
-.range-control > small {
-  display: block;
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  line-height: 1.35;
-}
 .mission-recovery {
   display: grid;
   gap: 9px;
@@ -2283,12 +1915,6 @@ select:focus-visible {
   border: 1px solid #eacbd0;
   border-radius: 10px;
   background: #fff8f8;
-}
-.mission-recovery[hidden] {
-  display: none !important;
-}
-.mission-recovery [hidden] {
-  display: none !important;
 }
 .mission-recovery p {
   margin: 0;
@@ -2330,11 +1956,6 @@ select:focus-visible {
   grid-template-columns: 13px 1fr;
   align-items: center;
   column-gap: 3px;
-}
-.fuel-legend i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
 }
 .fuel-legend span {
   color: var(--muted);
@@ -2487,7 +2108,6 @@ select:focus-visible {
   outline: none;
   font-size: var(--ui-caption);
   font-weight: 600;
-  border-color: var(--line);
 }
 .compact-form input {
   width: 100%;
@@ -2500,7 +2120,6 @@ select:focus-visible {
   outline: none;
   font-size: var(--ui-caption);
   font-weight: 600;
-  border-color: var(--line);
 }
 .compact-form select:focus {
   border-color: #8bbce9;
@@ -2559,12 +2178,8 @@ select:focus-visible {
   margin: 10px 0 20px;
   padding: var(--space-4);
   border: 1px solid var(--line);
-  border-radius: 15px;
+  border-radius: var(--card-radius);
   background: var(--panel);
-  box-shadow: none;
-}
-.chart-point.unavailable {
-  cursor: not-allowed;
 }
 .calibration-form #calibrateObserved:disabled {
   opacity: .42;
@@ -2643,13 +2258,6 @@ select:focus-visible {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.scenario-grid {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  align-items: stretch;
-}
 .load-grid {
   min-width: 0;
   display: grid;
@@ -2669,7 +2277,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .advisor-card > span {
   display: block;
@@ -2740,50 +2347,6 @@ select:focus-visible {
   margin-top: 5px;
   font-size: var(--ui-caption);
 }
-.scenario-card {
-  min-width: 0;
-  padding: 15px;
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  background: var(--panel-soft);
-}
-.scenario-card:not(.scenario-editable) {
-  display: flex;
-  flex-direction: column;
-}
-.scenario-current-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 0;
-  padding-block: 16px;
-}
-.scenario-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.scenario-head strong {
-  display: grid;
-  place-items: center;
-  width: 23px;
-  height: 23px;
-  border-radius: 7px;
-  background: var(--blue);
-  color: #fff;
-  font-size: var(--ui-caption);
-}
-.scenario-head span {
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  font-weight: 700;
-  letter-spacing: .08em;
-}
-.scenario-name {
-  margin: 0 0 18px;
-  font: 600 var(--ui-body) var(--font-family);
-}
 .scenario-inputs {
   display: grid;
   grid-template-columns: .75fr .6fr 1fr 1fr;
@@ -2793,7 +2356,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 11px;
   background: var(--panel);
-  border-color: var(--line);
 }
 .scenario-inputs label {
   min-width: 0;
@@ -2816,7 +2378,6 @@ select:focus-visible {
   padding: 0 8px;
   font-size: var(--ui-caption);
   font-weight: 600;
-  border-color: var(--line);
 }
 .scenario-inputs input {
   width: 100%;
@@ -2828,7 +2389,6 @@ select:focus-visible {
   padding: 0 8px;
   font-size: var(--ui-caption);
   font-weight: 600;
-  border-color: var(--line);
 }
 .scenario-inputs .input-with-unit {
   border-radius: 8px;
@@ -2836,66 +2396,6 @@ select:focus-visible {
 }
 .scenario-inputs .input-with-unit input {
   border: 0;
-}
-.scenario-stats {
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  gap: 5px;
-}
-.scenario-stats span {
-  min-width: 0;
-  border-left: 1px solid var(--line);
-  padding-left: 8px;
-}
-.scenario-stats span:first-child {
-  border: 0;
-  padding-left: 0;
-}
-.scenario-stats b {
-  display: flex;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  font-weight: 500;
-  align-items: center;
-  gap: 5px;
-}
-.scenario-stats strong {
-  display: block;
-  margin-top: 5px;
-  font-size: var(--ui-caption);
-  white-space: nowrap;
-}
-.scenario-editable .scenario-stats {
-  gap: 8px;
-  margin-top: 13px;
-  padding-top: 13px;
-  border-top: 1px solid var(--line);
-}
-.scenario-editable .scenario-stats span {
-  min-height: 48px;
-  padding: 9px 10px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--panel);
-  border-color: var(--line);
-}
-.scenario-delta {
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  gap: 8px;
-  align-items: center;
-  grid-column: 1/-1;
-  padding: 9px 12px;
-  border-radius: 10px;
-  background: var(--blue-soft);
-}
-.scenario-delta span {
-  color: var(--muted);
-  font-size: var(--ui-caption);
-}
-.scenario-delta strong {
-  color: var(--text);
-  margin-left: 4px;
 }
 .compact-action {
   width: auto;
@@ -2911,7 +2411,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .load-grid article span {
   display: block;
@@ -2950,7 +2449,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .glide-kpis b {
   display: block;
@@ -2962,22 +2460,6 @@ select:focus-visible {
   display: block;
   margin-top: 6px;
   font-size: var(--ui-caption);
-}
-.glide-chart {
-  min-height: 150px;
-  margin-top: 12px;
-}
-.glide-chart svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-.glide-wind {
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  text-align: center;
-  letter-spacing: .035em;
 }
 .wb-layout {
   display: grid;
@@ -2993,7 +2475,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .wb-inputs label {
   min-width: 0;
@@ -3031,7 +2512,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .wb-chart-head {
   display: flex;
@@ -3059,41 +2539,6 @@ select:focus-visible {
   min-width: 0;
   min-height: 245px;
   margin-top: 3px;
-}
-.cg-chart svg {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-.cg-legend {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 7px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-}
-.cg-legend span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.cg-legend i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #7a8793;
-}
-.cg-legend i.to {
-  background: var(--blue);
-}
-.cg-legend i.landing {
-  background: var(--green);
-}
-.cg-legend small {
-  margin-left: auto;
-  font-size: var(--ui-caption);
 }
 .wb-kpis {
   display: grid;
@@ -3125,7 +2570,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .wb-table-head {
   display: grid;
@@ -3165,13 +2609,6 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 5px;
-}
-.wb-stations>small {
-  display: block;
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  letter-spacing: .06em;
 }
 .wb-randomize {
   grid-column: 1/-1;
@@ -3219,7 +2656,6 @@ select:focus-visible {
   color: var(--text);
   font-size: var(--ui-caption);
   font-weight: 600;
-  border-color: var(--line);
   min-height: var(--control-height);
 }
 .seat-map {
@@ -3230,7 +2666,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .seat {
   grid-column: span 2;
@@ -3259,7 +2694,6 @@ select:focus-visible {
   font-weight: 700;
   text-align: center;
   cursor: pointer;
-  border-color: var(--line);
 }
 .seat input:checked+span {
   border-color: #9fc8ee;
@@ -3280,7 +2714,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-soft);
-  border-color: var(--line);
 }
 .oxygen-stats b {
   display: block;
@@ -3352,7 +2785,6 @@ select:focus-visible {
   border-radius: 12px;
   background: var(--panel-soft);
   text-align: center;
-  border-color: var(--line);
 }
 .confidence-score strong {
   color: var(--blue);
@@ -3410,109 +2842,8 @@ select:focus-visible {
   white-space: nowrap;
   color: var(--blue);
 }
-.ride-layout {
-  display: grid;
-  gap: 12px;
-}
-.ride-summary {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.ride-summary strong {
-  color: var(--blue);
-  font: 700 var(--ui-display) var(--font-family);
-}
-.ride-summary span {
-  color: var(--muted);
-  font-size: var(--ui-caption);
-}
-.ride-levels {
-  display: grid;
-  grid-template-columns: repeat(9,1fr);
-  gap: 6px;
-}
-.ride-level {
-  min-width: 0;
-  padding: 9px 7px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  color: var(--text);
-  text-align: left;
-}
-.ride-level.selected {
-  border-color: var(--blue);
-  background: var(--blue-soft);
-}
-.ride-level:disabled {
-  opacity: .48;
-  cursor: not-allowed;
-}
-.ride-level b {
-  display: flex;
-  font-size: var(--ui-caption);
-  align-items: center;
-  gap: 5px;
-}
-.ride-level span {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ride-level strong {
-  display: block;
-  font-size: var(--ui-caption);
-}
-.ride-level i {
-  display: block;
-  height: 4px;
-  margin: 7px 0 4px;
-  border-radius: 4px;
-  background: #e6ebef;
-  overflow: hidden;
-}
-.ride-level em {
-  display: block;
-  height: 100%;
-  background: var(--green);
-}
-.ride-level.light em {
-  background: #c2a13c;
-}
-.ride-level.moderate em {
-  background: var(--orange);
-}
-.ride-level.severe em {
-  background: var(--red);
-}
 .debrief-layout {
   display: block;
-  grid-template-columns: minmax(310px,.9fr) minmax(200px,.65fr) minmax(260px,1fr);
-  gap: 12px;
-  align-items: stretch;
-}
-.debrief-result {
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: linear-gradient(145deg,#fff,var(--green-soft));
-  text-align: center;
-}
-.debrief-result strong {
-  font: 700 var(--ui-title) var(--font-family);
-}
-.debrief-result span {
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
 }
 .ice-probability {
   display: grid;
@@ -3538,10 +2869,6 @@ select:focus-visible {
 }
 .ice-probability.ice-high {
   color: var(--red);
-}
-.view-tabs button.active > .ui-icon {
-  color: currentColor;
-  opacity: 1;
 }
 .chart-tabs button.active > .ui-icon {
   color: currentColor;
@@ -3583,10 +2910,6 @@ select:focus-visible {
   opacity: .82;
   background: none;
 }
-.scenario-stats b > .ui-icon {
-  width: 11px;
-  height: 11px;
-}
 .wb-stations #wbStationRows b > .ui-icon {
   width: 11px;
   height: 11px;
@@ -3594,14 +2917,6 @@ select:focus-visible {
 .envelope-row b > .ui-icon {
   width: 11px;
   height: 11px;
-}
-.ride-level b > .ui-icon {
-  width: 11px;
-  height: 11px;
-}
-.ride-level.selected b > .ui-icon {
-  color: var(--blue);
-  opacity: 1;
 }
 .wb-chart-card .cg-chart {
   min-height: 0;
@@ -4484,12 +3799,6 @@ select:focus-visible {
 .ranking-toggle {
   display: none;
 }
-.ranking-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  line-height: 1.4;
-}
 .icing-head {
   display: grid;
   grid-template-columns: auto minmax(0,1fr) auto;
@@ -4577,170 +3886,10 @@ select:focus-visible {
   color: var(--red);
   background: #fdecef;
 }
-.terrain-chart {
-  overflow: hidden;
-  margin-top: 10px;
-  min-height: 210px;
-  border-radius: 12px;
-  background: linear-gradient(180deg,#f7fafc,#edf3f6);
-}
-.terrain-chart svg {
-  display: block;
-  width: 100%;
-  height: 220px;
-}
-.terrain-chart .terrain-grid {
-  stroke: #dbe5eb;
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-.terrain-chart .terrain-ground {
-  fill: #a7becb;
-}
-.terrain-chart .terrain-ground-back {
-  fill: #d5e2e9;
-}
-.terrain-chart .terrain-mora-band {
-  fill: none;
-  stroke: var(--orange);
-  stroke-width: 23;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: .16;
-  vector-effect: non-scaling-stroke;
-}
-.terrain-chart .terrain-mora {
-  fill: none;
-  stroke: var(--orange);
-  stroke-width: 3;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-.terrain-chart .terrain-mora-missing {
-  fill: none;
-  stroke: #b6c3cc;
-  stroke-width: 2.5;
-  stroke-dasharray: 4 5;
-}
-.terrain-chart .terrain-flight {
-  fill: none;
-  stroke: var(--blue);
-  stroke-width: 3.5;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-.terrain-chart .terrain-critical-zone {
-  fill: #f1a368;
-  opacity: .1;
-}
-.terrain-chart .terrain-critical-marker {
-  fill: none;
-  stroke: var(--orange);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 4;
-  vector-effect: non-scaling-stroke;
-}
-.terrain-chart .terrain-critical-point {
-  fill: var(--orange);
-  stroke: #fff;
-  stroke-width: 2.5;
-  vector-effect: non-scaling-stroke;
-}
-.terrain-chart .terrain-toc {
-  stroke: var(--blue);
-  stroke-width: 1;
-  stroke-dasharray: 3 5;
-  opacity: .45;
-  vector-effect: non-scaling-stroke;
-}
-.terrain-chart .terrain-tod {
-  stroke: var(--blue);
-  stroke-width: 1;
-  stroke-dasharray: 3 5;
-  opacity: .45;
-  vector-effect: non-scaling-stroke;
-}
-.terrain-chart .terrain-no-data {
-  fill: var(--muted);
-  font-size: var(--ui-body);
-  font-family: var(--font-family);
-}
-.terrain-axis {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-}
-.terrain-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 17px;
-  margin-top: 15px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-}
-.terrain-legend>span {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-.terrain-key {
-  display: inline-block;
-  width: 18px;
-  height: 3px;
-  border-radius: 3px;
-  background: var(--blue);
-}
-.terrain-key.mora {
-  background: var(--orange);
-}
-.terrain-key.elevation {
-  background: #a8bfca;
-}
-.terrain-key.critical {
-  background: #f1a368;
-}
-.terrain-facts {
-  display: grid;
-  grid-template-columns: repeat(3,minmax(0,1fr));
-  gap: 10px;
-  margin-top: 16px;
-}
-.terrain-facts>div {
-  padding: 10px 12px;
-  background: var(--panel-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  min-width: 0;
-}
-.terrain-facts span {
-  display: block;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-}
-.terrain-facts strong {
-  display: block;
-  margin-top: 3px;
-  font-size: var(--ui-body);
-  overflow-wrap: anywhere;
-}
 .terrain-note {
   margin: 12px 0 0;
   color: var(--muted);
   font-size: var(--ui-caption);
-}
-.terrain-tools {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-.terrain-tools button {
-  white-space: nowrap;
 }
 .terrain-manual {
   border-top: 1px solid var(--line);
@@ -4823,43 +3972,9 @@ select:focus-visible {
   width: 15px;
   height: 15px;
 }
-.manual-mode-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-bottom: 15px;
-}
-.manual-mode-tabs {
-  display: inline-flex;
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  background: var(--panel-soft);
-}
-.manual-mode-tabs button {
-  min-height: var(--control-height);
-  padding: 5px 14px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-size: var(--ui-body);
-  cursor: pointer;
-}
-.manual-mode-tabs button.active {
-  background: var(--panel);
-  color: var(--blue);
-  box-shadow: 0 1px 5px #17202a14;
-}
 #manualConfidence {
   color: var(--muted);
   font-size: var(--ui-caption);
-}
-.manual-mode-panel[hidden] {
-  display: none !important;
 }
 .debrief-head {
   display: flex;
@@ -4932,10 +4047,6 @@ select:focus-visible {
   justify-content: space-between;
   gap: 12px;
   margin-top: 16px;
-}
-.debrief-actions>span {
-  color: var(--muted);
-  font-size: var(--ui-caption);
 }
 .debrief-actions .primary-button {
   padding: 0 16px;
@@ -5174,86 +4285,9 @@ select:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
-.manual-update-strip {
-  width: 100%;
-  min-height: 64px;
-  margin: 0 0 15px;
-  padding: 10px 12px;
+/* The old trigger remains in the DOM for existing handlers; Calibration owns its UI. */
+#tool-card-update {
   display: none;
-  grid-template-columns: 36px minmax(190px,1fr) auto auto;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid #b8d7f0;
-  border-radius: 13px;
-  background: var(--blue-soft);
-  color: var(--text);
-  text-align: left;
-  transition: filter .22s ease,opacity .22s ease;
-}
-.manual-update-strip:hover {
-  border-color: var(--blue);
-}
-.manual-update-strip.active {
-  border-color: var(--blue);
-}
-.manual-update-strip:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
-}
-.manual-update-strip-icon {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  justify-content: center;
-  padding: 0;
-  border-radius: 10px;
-  background: var(--panel);
-  color: var(--blue);
-}
-.manual-update-strip-icon > .ui-icon {
-  width: 17px;
-  height: 17px;
-}
-.manual-update-strip-copy {
-  min-width: 0;
-}
-.manual-update-strip-copy small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  font-weight: 600;
-  letter-spacing: .075em;
-}
-.manual-update-strip-copy strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 3px;
-  font-size: var(--ui-body);
-  font-weight: 600;
-}
-.manual-update-strip-state {
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  white-space: nowrap;
-}
-.manual-update-strip-action {
-  min-width: 130px;
-  min-height: 38px;
-  padding: 8px 14px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--blue);
-  color: #fff;
-  font-size: var(--ui-caption);
-  font-weight: 700;
-  text-align: center;
 }
 .ride-module {
   display: grid;
@@ -5451,7 +4485,7 @@ select:focus-visible {
 }
 .ride-recommendation button {
   width: auto;
-  min-height: 40px;
+  min-height: var(--control-height);
 }
 .ride-decision-grid {
   display: grid;
@@ -5683,7 +4717,6 @@ select:focus-visible {
   display: grid;
   gap: 14px;
   min-width: 0;
-  --ice-blue: #2581d9;
 }
 .ice-module-summary {
   display: flex;
@@ -6500,24 +5533,12 @@ select:focus-visible {
     justify-content: stretch;
   }
   /* Components */
-  .debrief-history {
-    grid-column: 1/-1;
-  }
   /* Modules */
   .navigation-grid {
     grid-template-columns: 1fr 1.5fr 1fr;
   }
   .navigation-speeds {
     grid-column: 1/-1;
-  }
-  .levels-grid {
-    grid-template-columns: repeat(5,1fr);
-  }
-  .ride-levels {
-    grid-template-columns: repeat(5,1fr);
-  }
-  .debrief-layout {
-    grid-template-columns: 1fr 1fr;
   }
   .wb-layout {
     grid-template-columns: minmax(210px,.55fr) minmax(0,1.45fr);
@@ -6660,9 +5681,6 @@ select:focus-visible {
   .planning-config-grid {
     grid-template-columns: 1fr;
   }
-  .flight-update-grid {
-    grid-template-columns: 1fr;
-  }
   .tool-choice .tool-card {
     flex: 1 1 140px;
   }
@@ -6707,15 +5725,6 @@ select:focus-visible {
   .mission-strip div:nth-child(-n+2) {
     border-bottom: 1px solid var(--line);
   }
-  .debrief-form {
-    grid-template-columns: 1fr 1fr;
-  }
-  .debrief-form button {
-    grid-column: 1/-1;
-  }
-  .debrief-history {
-    grid-column: auto;
-  }
   .section-heading {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -6730,12 +5739,6 @@ select:focus-visible {
     padding: 13px;
     border-radius: 12px;
   }
-  .tool-view-heading {
-    margin-bottom: 11px;
-  }
-  .flight-summary:not(:has(#remainingAssessment:not([hidden]))) {
-    display: none;
-  }
   .mission-strip > div {
     border-bottom: 1px solid var(--line);
   }
@@ -6746,38 +5749,6 @@ select:focus-visible {
   .visual-panel {
     padding: 15px;
     min-height: 460px;
-  }
-  .view-tabs {
-    height: 48px;
-  }
-  .view-tabs button {
-    height: 48px;
-  }
-  .chart-wrap {
-    min-height: 300px;
-    margin-left: -10px;
-    margin-right: -5px;
-  }
-  .chart-foot > span:last-child {
-    display: none;
-  }
-  .icing-summary {
-    grid-template-columns: auto minmax(0,1fr);
-  }
-  .icing-summary small {
-    grid-column: 1/-1;
-  }
-  .route-map {
-    min-height: 300px;
-  }
-  .mini-stats {
-    grid-template-columns: 1fr 1fr;
-  }
-  .mini-stats div:nth-child(2) {
-    border-right: 0;
-  }
-  .mini-stats div:nth-child(-n+2) {
-    border-bottom: 1px solid var(--line);
   }
   .navigation-grid {
     grid-template-columns: 1fr 1fr;
@@ -6801,14 +5772,8 @@ select:focus-visible {
   .calibration-head {
     align-self: end;
   }
-  .levels-grid {
-    grid-template-columns: repeat(3,1fr);
-  }
   .phase-grid strong {
     font-size: var(--ui-caption);
-  }
-  .scenario-grid {
-    grid-template-columns: 1fr;
   }
   .scenario-inputs {
     grid-template-columns: 1fr 1fr;
@@ -6833,12 +5798,6 @@ select:focus-visible {
   }
   .confidence-score {
     min-height: 100px;
-  }
-  .ride-levels {
-    grid-template-columns: repeat(3,1fr);
-  }
-  .debrief-layout {
-    grid-template-columns: 1fr;
   }
   .wb-layout {
     grid-template-columns: 1fr;
@@ -6925,9 +5884,6 @@ select:focus-visible {
   .terrain-panel {
     padding: 15px;
   }
-  .terrain-facts {
-    grid-template-columns: repeat(2,minmax(0,1fr));
-  }
   .terrain-manual form {
     grid-template-columns: minmax(0,1fr) minmax(0,1fr);
   }
@@ -6955,19 +5911,6 @@ select:focus-visible {
   }
   .levels-section {
     padding: 15px;
-  }
-  .manual-update-strip {
-    grid-template-columns: 36px minmax(0,1fr);
-    gap: 8px 10px;
-    padding: 10px;
-  }
-  .manual-update-strip-state {
-    grid-column: 2;
-    white-space: normal;
-  }
-  .manual-update-strip-action {
-    grid-column: 1/-1;
-    width: 100%;
   }
 }
 
@@ -7189,20 +6132,11 @@ select:focus-visible {
     min-width: 29px;
     min-height: var(--control-height);
   }
-  .topbar {
-    flex-wrap: wrap;
-  }
   .plan-form .primary-button {
     width: 100%;
   }
-  .area-heading h1 {
-    font-size: calc(22px * var(--ui-scale));
-  }
   .area-context {
     max-width: 38%;
-  }
-  .summary-grid > .panel {
-    min-height: 0;
   }
   .tool-choice .tool-card {
     min-width: 0;
@@ -7243,12 +6177,6 @@ select:focus-visible {
   .view-heading h2 {
     font-size: var(--ui-body);
   }
-  .debrief-form {
-    grid-template-columns: 1fr;
-  }
-  .debrief-form button {
-    grid-column: auto;
-  }
   .tool-card {
     min-height: 63px;
   }
@@ -7276,20 +6204,13 @@ select:focus-visible {
   .calibration-form {
     grid-template-columns: 1fr;
   }
-  .levels-grid {
-    grid-template-columns: 1fr 1fr;
-  }
   .chart-tabs button {
     padding: 6px;
-  }
-  .icing-summary {
-    grid-template-columns: 1fr;
   }
   .icing-summary span {
     white-space: normal;
   }
   .icing-summary small {
-    grid-column: auto;
     white-space: normal;
   }
   .advisor-grid {
@@ -7303,12 +6224,6 @@ select:focus-visible {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
-  .scenario-stats {
-    grid-template-columns: 1fr 1fr;
-  }
-  .scenario-delta {
-    grid-template-columns: 1fr 1fr;
-  }
   .load-grid {
     grid-template-columns: 1fr;
   }
@@ -7320,9 +6235,6 @@ select:focus-visible {
   }
   .oxygen-controls {
     grid-template-columns: 1fr;
-  }
-  .ride-levels {
-    grid-template-columns: 1fr 1fr;
   }
   .envelope-head {
     grid-template-columns: minmax(54px,.8fr) repeat(3,minmax(58px,1fr));
@@ -7339,13 +6251,6 @@ select:focus-visible {
   }
   .cg-chart {
     min-height: 190px;
-  }
-  .cg-legend {
-    flex-wrap: wrap;
-  }
-  .cg-legend small {
-    width: 100%;
-    margin: 0;
   }
   .wb-table-head {
     grid-template-columns: repeat(3,minmax(0,1fr));
@@ -7409,23 +6314,8 @@ select:focus-visible {
   .glide-route {
     grid-auto-columns: minmax(80px,1fr);
   }
-  .terrain-chart {
-    min-height: 190px;
-  }
-  .terrain-chart svg {
-    height: 190px;
-  }
-  .terrain-axis span:nth-child(2) {
-    display: none;
-  }
   .terrain-decision {
     align-items: flex-start;
-  }
-  .terrain-facts {
-    grid-template-columns: 1fr 1fr;
-  }
-  .terrain-facts>div:last-child {
-    grid-column: 1/-1;
   }
   .terrain-manual form {
     grid-template-columns: 1fr;
@@ -7498,12 +6388,6 @@ select:focus-visible {
     font-size: var(--ui-caption);
   }
   /* Components */
-  .kpi > strong {
-    font-size: calc(22px * var(--ui-scale));
-  }
-  .kpi.featured > strong {
-    font-size: calc(22px * var(--ui-scale));
-  }
   /* Modules */
   .glide-route-heading {
     display: grid;
@@ -7572,9 +6456,6 @@ select:focus-visible {
     transition: none;
   }
   /* Modules */
-  .manual-update-strip {
-    transition: none;
-  }
   .matrix-row {
     transition: none;
   }

@@ -1,0 +1,59 @@
+{
+  "generatedAt": "2026-10-21T20:13:44.478Z",
+  "browser": "141.0.7390.37",
+  "fixture": "Synthetic 18-waypoint OFP; all values illustrative; no SimBrief network call",
+  "widths": [
+    320,
+    375,
+    390,
+    430,
+    768,
+    1024,
+    1440,
+    1920
+  ],
+  "modules": {
+    "mission": [
+      "overview",
+      "score"
+    ],
+    "planning": [
+      "config",
+      "levels",
+      "optimize",
+      "systems",
+      "analyses"
+    ],
+    "route": [
+      "overview",
+      "matrix",
+      "ice",
+      "ride",
+      "decisions"
+    ],
+    "flight": [
+      "calibration",
+      "history"
+    ]
+  },
+  "states": [],
+  "screenshots": [
+    "baseline/mobile-mission-overview.png",
+    "baseline/mobile-planning-config.png",
+    "baseline/mobile-planning-config-full.png",
+    "baseline/mobile-route-matrix.png",
+    "baseline/mobile-route-matrix-full.png",
+    "baseline/mobile-flight-calibration.png",
+    "baseline/mobile-flight-calibration-full.png",
+    "baseline/tablet-mission-overview.png",
+    "baseline/tablet-planning-config.png",
+    "baseline/tablet-route-matrix.png",
+    "baseline/tablet-flight-calibration.png",
+    "baseline/desktop-mission-overview.png",
+    "baseline/desktop-planning-config.png",
+    "baseline/desktop-route-matrix.png",
+    "baseline/desktop-flight-calibration.png"
+  ],
+  "errors": [],
+  "selectorCoverage": {}
+}

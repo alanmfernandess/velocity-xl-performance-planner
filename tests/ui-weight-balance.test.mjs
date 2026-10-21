@@ -53,5 +53,5 @@ test("mission recovery explains the blocker and requires explicit restoration of
   assert.match(app,/pendingMissionRecovery=calculateMissionRecovery\(\{\.\.\.state,requireTerrainKnown:true\},lastViableMission\)/);
   assert.match(app,/savedViableMission\?\.planKey===missionPlanKey\(plan\)/);
   assert.match(app,/\$\("#missionRecoveryAction"\)\.addEventListener\("click"/);
-  assert.match(css,/\.mission-recovery\[hidden\]/);
+  assert.match(css,/\[hidden\]\s*\{\s*display:\s*none\s*!important/);
 });

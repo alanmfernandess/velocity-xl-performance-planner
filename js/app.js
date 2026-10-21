@@ -506,7 +506,6 @@ function renderIceModule(plan,analysis,selected) {
   $("#iceModuleIndex").textContent=number(score);
   $("#iceModuleStatus").textContent=icingLabel(icing);
   $("#iceModuleConfidence").textContent=source;
-  $("#iceModuleStatus").style.setProperty("--ice-status",iceBlue(score,.16,.92));
   $("#iceIndexTrack").setAttribute("aria-valuenow",String(score));
   $("#iceIndexFill").style.width=`${score}%`;
   $("#iceIndexMarker").style.left=`${score}%`;
@@ -1439,10 +1438,5 @@ $("#simbriefImportForm").addEventListener("submit",async(event)=>{
 });
 
 const savedIdentifier=localStorage.getItem("velocityxl.simbriefIdentifier"); if(savedIdentifier)$("#quickPilotId").value=savedIdentifier;
-const topbar=$(".topbar");
-const updateStickyOffset=()=>document.documentElement.style.setProperty("--topbar-height",`${Math.ceil(topbar.getBoundingClientRect().height)}px`);
-updateStickyOffset();
-if("ResizeObserver" in window)new ResizeObserver(updateStickyOffset).observe(topbar);
-window.addEventListener("resize",updateStickyOffset);
 window.addEventListener("load",refreshUiIcons,{once:true});
 render();
