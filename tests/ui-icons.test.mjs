@@ -153,6 +153,7 @@ test("in-flight and completed-flight inputs remain accessible through two module
   const layout=readFileSync(new URL("../js/layout.js",import.meta.url),"utf8");
   assert.match(layout,/\['flight',[^\n]*\[\['calibration', 'calibration'\], \['history', 'history'\]\]/);
   assert.match(layout,/moduleNodes\.get\('flight:calibration'\)\.append\(flightPanel\)/);
+  assert.match(layout,/moduleNodes\.get\('flight:calibration'\)\.append\(updateStrip\)/);
   assert.match(layout,/moduleNodes\.get\('flight:history'\)\.append\(finishedPanel\)/);
   assert.match(layout,/moduleNodes\.get\('flight:history'\)\.append\(history\)/);
 });

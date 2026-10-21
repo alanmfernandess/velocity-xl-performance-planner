@@ -174,10 +174,12 @@
   }
 
   const updatePanel = $('[data-tool-panel="update"]');
+  const updateStrip = $('#tool-card-update');
   const flightPanel = $('#manualFlightPanel');
   const finishedPanel = $('#manualFinishedPanel');
   const history = $('.debrief-history-wrap');
   const confidence = $('#manualConfidence');
+  if (updateStrip) moduleNodes.get('flight:calibration').append(updateStrip);
   if (confidence) moduleNodes.get('flight:calibration').append(confidence);
   if (flightPanel && updatePanel) moduleNodes.get('flight:calibration').append(flightPanel);
   if (finishedPanel) { finishedPanel.hidden = false; moduleNodes.get('flight:history').append(finishedPanel); }
