@@ -1,5 +1,4 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261018-05";
-import { assessTerrain } from "./terrain.js?v=20261016-01";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS, WEIGHT_BALANCE } from "./config.js?v=20261021-unified";
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 export const toRad = (deg) => (deg * Math.PI) / 180;
@@ -783,29 +782,6 @@ export function calculateTurbulenceRisk({ plan, result }) {
   };
 }
 
-export function calculateRideRecommendation({ results = [], preference = "standard" } = {}) {
-  const operational = results.filter((result) => result.feasibility?.status !== "unavailable"
-    && result.terrain?.status !== "unavailable"
-    && result.icing?.status !== "avoid"
-    && !result.turbulence?.blocking
-    && result.oxygen?.status !== "insufficient"
-    && result.weightBalance?.status !== "unavailable"
-    && Number.isFinite(result.turbulence?.riskScore));
-  const missionViable = operational.filter((result) => result.missionScore?.status === "viable");
-  const available = missionViable.length ? missionViable
-    : operational.filter((result) => result.missionScore?.status !== "not-viable");
-  if (!available.length) return null;
-  const weights = PERFORMANCE.turbulence.recommendationWeights[preference]
-    || PERFORMANCE.turbulence.recommendationWeights.standard;
-  return [...available].sort((a, b) => {
-    const scoreA = Number(a.missionScore?.score ?? a.score) || 0;
-    const scoreB = Number(b.missionScore?.score ?? b.score) || 0;
-    const utilityA = scoreA * weights.mission - a.turbulence.riskScore * weights.ride;
-    const utilityB = scoreB * weights.mission - b.turbulence.riskScore * weights.ride;
-    return utilityB - utilityA || a.turbulence.riskScore - b.turbulence.riskScore || scoreB - scoreA;
-  })[0];
-}
-
 function interpolateFlowRate(table, altitudeFt) {
   if (altitudeFt <= table[0][0]) return table[0][1];
   const upperIndex = table.findIndex(([altitude]) => altitude >= altitudeFt);
@@ -1038,32 +1014,6 @@ export function calculateOxygenPlan({ result, oxygen = {} }) {
   };
 }
 
-export function calculatePerformanceConfidence({ plan, result, calibration = {}, debriefs = [], mode }) {
-  const modeDebriefs = debriefs.filter((entry) => entry.mode === mode);
-  const factors = calibrationForMode(calibration, mode);
-  const tasCalibrated = Math.abs(factors.tasFactor - 1) > 0.001;
-  const fuelCalibrated = Math.abs(factors.fuelFlowFactor - 1) > 0.001 || Math.abs(factors.tripFuelFactor - 1) > 0.001 || debriefPhaseKeys.some((key) => Math.abs(factors[`${key}FuelFactor`] - 1) > 0.001);
-  const temperatureSamples = (plan.waypoints || []).filter((fix) => Number.isFinite(fix.oatC) || (fix.windLevels || []).some((level) => Number.isFinite(level.oatC))).length;
-  const weatherCoverage = (plan.waypoints || []).length ? temperatureSamples / plan.waypoints.length : 0;
-  const learnedReduction = Math.min(0.05, modeDebriefs.length * PERFORMANCE.confidence.debriefReductionPerFlight);
-  const tasUncertainty = Math.max(PERFORMANCE.confidence.minimumTasUncertainty, PERFORMANCE.confidence.baseTasUncertainty - (tasCalibrated ? 0.01 : 0));
-  const fuelUncertainty = Math.max(PERFORMANCE.confidence.minimumFuelUncertainty, PERFORMANCE.confidence.baseFuelUncertainty - learnedReduction - (fuelCalibrated ? 0.015 : 0));
-  const timeUncertainty = Math.max(PERFORMANCE.confidence.minimumTasUncertainty, tasUncertainty + (1 - weatherCoverage) * PERFORMANCE.confidence.weatherTimeUncertainty - learnedReduction);
-  const score = clamp(Math.round(100 - tasUncertainty * 180 - timeUncertainty * 80 - fuelUncertainty * 220 - (1 - weatherCoverage) * 22), 0, 100);
-  return {
-    score,
-    sampleCount: modeDebriefs.length,
-    weatherCoverage,
-    tasUncertainty,
-    fuelUncertainty,
-    timeUncertainty,
-    fuel: { low: result.fuelRequiredGal * (1 - fuelUncertainty), nominal: result.fuelRequiredGal, high: result.fuelRequiredGal * (1 + fuelUncertainty) },
-    time: { low: result.tripTimeHr * (1 - timeUncertainty), nominal: result.tripTimeHr, high: result.tripTimeHr * (1 + timeUncertainty) },
-    tas: { low: result.tasKt * (1 - tasUncertainty), nominal: result.tasKt, high: result.tasKt * (1 + tasUncertainty) },
-    range: { low: result.maxRangeNm * (1 - fuelUncertainty - tasUncertainty / 2), nominal: result.maxRangeNm, high: result.maxRangeNm * (1 + fuelUncertainty + tasUncertainty / 2) },
-  };
-}
-
 export function calculateFinancialImpact({ currentCost, minimumViableCost }) {
   const current = Number(currentCost);
   const minimum = Number(minimumViableCost);
@@ -1083,7 +1033,7 @@ export function calculateFinancialImpact({ currentCost, minimumViableCost }) {
   };
 }
 
-export function calculateMissionScore({ result, confidence, alternateAdvice = null, financial = null }) {
+export function calculateMissionScore({ result, alternateAdvice = null, financial = null, efficiencyPenalty = 0 }) {
   const reasons = [];
   const addReason = (code, impact, blocking = false, detail = null) => {
     if (impact <= 0) return;
@@ -1102,7 +1052,8 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
   if (feasibilityReasons.includes("FUEL") || fuelMarginGal < 0) {
     addReason("fuel", 48 + Math.min(12, Math.abs(fuelMarginGal) * 1.5), true, fuelMarginGal);
   } else {
-    addReason("fuel", clamp((10 - fuelMarginGal) / 10, 0, 1) * PERFORMANCE.missionRisk.fuelMarginWeight, false, fuelMarginGal);
+    const target = PERFORMANCE.optimization.targetFuelMarginGal;
+    addReason("fuel", clamp((target - fuelMarginGal) / target, 0, 1) * PERFORMANCE.missionRisk.fuelMarginWeight, false, fuelMarginGal);
   }
   if (feasibilityReasons.includes("ALTITUDE") || feasibilityReasons.includes("PROFILE")) {
     addReason("flight-profile", 48, true, result.feasibility.profileMarginNm);
@@ -1129,15 +1080,6 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
     addReason("oxygen", PERFORMANCE.missionRisk.oxygenMarginal, false, result.oxygen.requiredLiters);
   }
 
-  if (result.terrain?.status === "unavailable") {
-    addReason("terrain", 52, true, result.terrain.marginFt);
-  } else if (result.terrain?.status === "marginal") {
-    addReason("terrain", 12, false, result.terrain.marginFt);
-  } else if (result.terrain?.status === "unknown") {
-    addReason("terrain", 8, false, null);
-  }
-
-  addReason("confidence", (100 - confidence.score) * PERFORMANCE.missionRisk.confidenceWeight, false, confidence.score);
   const alternateStatus = alternateAdvice?.destination?.status;
   if (alternateStatus === "unavailable" || alternateStatus === "unknown") {
     addReason("alternate", PERFORMANCE.missionRisk.alternateUnavailable, false, alternateAdvice?.destination?.marginGal ?? alternateStatus);
@@ -1147,124 +1089,24 @@ export function calculateMissionScore({ result, confidence, alternateAdvice = nu
   if (financial?.assessed && financial.penalty > 0) {
     addReason("financial", financial.penalty, false, financial);
   }
+  addReason("efficiency", clamp(efficiencyPenalty, 0, 8), false, result.specificRangeNmGal);
 
   reasons.sort((a, b) => Number(b.blocking) - Number(a.blocking) || b.impact - a.impact);
   const penalty = reasons.reduce((sum, reason) => sum + reason.impact, 0);
   const blocked = reasons.some((reason) => reason.blocking);
   let score = clamp(Math.round(100 - penalty), 0, 100);
   if (blocked) score = Math.min(score, 39);
-  const operationallyMarginal = result.terrain?.status === "marginal"
-    || result.feasibility.status === "marginal"
+  const operationallyMarginal = result.feasibility.status === "marginal"
     || result.weightBalance?.status === "marginal"
     || result.oxygen.status === "marginal"
     || result.icing.status === "caution"
     || ["moderate", "severe"].includes(result.turbulence.status)
     || alternateStatus === "marginal";
-  const assessedStatus = score < 40 ? "not-viable" : score < PERFORMANCE.missionRisk.viableScoreMin || operationallyMarginal ? "marginal" : "viable";
-  const status = result.terrain?.status === "unknown" && assessedStatus !== "not-viable" ? "unknown" : assessedStatus;
+  const weatherUnknown = result.icing?.confidence === "limited"
+    || ["limited", "unknown"].includes(result.turbulence?.confidence);
+  const status = blocked ? "not-viable" : weatherUnknown ? "unknown"
+    : score < PERFORMANCE.missionRisk.viableScoreMin || operationallyMarginal ? "marginal" : "viable";
   return { score, status, blocked, penalty: 100 - score, reasons };
-}
-
-// Retained for compatibility with saved integrations; the returned value is now
-// the mission viability score (higher is better), not an inverted risk index.
-export function calculateMissionRisk(options) {
-  return calculateMissionScore(options);
-}
-
-const debriefPhaseKeys = ["climb", "cruise", "descent"];
-const debriefPhaseResult = (result, key) => key === "cruise"
-  ? { timeHr: result.cruiseTimeHr, fuelGal: result.cruiseFuelGal }
-  : result[key];
-
-export function calculateDebrief({ result, actualTimeMinutes, actualFuelGal, actualPhases = {}, currentCalibration = {} }) {
-  const actualTimeHr = Math.max(1, Number(actualTimeMinutes)) / 60;
-  const actualFuel = Math.max(0.1, Number(actualFuelGal));
-  const timeErrorPct = (actualTimeHr - result.tripTimeHr) / result.tripTimeHr * 100;
-  const fuelErrorPct = (actualFuel - result.tripFuelGal) / result.tripFuelGal * 100;
-  const accuracyScore = clamp(Math.round(100 - Math.abs(timeErrorPct) * 0.45 - Math.abs(fuelErrorPct) * 0.55), 0, 100);
-  const phaseErrors = {};
-  for (const key of debriefPhaseKeys) {
-    const observed = actualPhases[key];
-    const predicted = debriefPhaseResult(result, key);
-    if (!Number.isFinite(observed?.timeMinutes) || observed.timeMinutes <= 0
-      || !Number.isFinite(observed?.fuelGal) || observed.fuelGal <= 0
-      || predicted.timeHr <= 0 || predicted.fuelGal <= 0) continue;
-    phaseErrors[key] = {
-      timeErrorPct: (observed.timeMinutes / 60 / predicted.timeHr - 1) * 100,
-      fuelErrorPct: (observed.fuelGal / predicted.fuelGal - 1) * 100,
-    };
-  }
-  return { accuracyScore, timeErrorPct, fuelErrorPct, actualTimeHr, actualFuelGal: actualFuel, phaseErrors,
-    calibration: applyDebriefCalibration(currentCalibration, { timeErrorPct, fuelErrorPct, phaseErrors }) };
-}
-
-export function summarizeDebriefs(debriefs = []) {
-  const valid = debriefs.filter((entry) => Number.isFinite(entry?.accuracyScore)
-    && Number.isFinite(entry?.timeErrorPct) && Number.isFinite(entry?.fuelErrorPct));
-  if (!valid.length) return null;
-  const average = (key) => valid.reduce((sum, entry) => sum + entry[key], 0) / valid.length;
-  return {
-    count: valid.length,
-    accuracyScore: Math.round(average("accuracyScore")),
-    timeErrorPct: average("timeErrorPct"),
-    fuelErrorPct: average("fuelErrorPct"),
-  };
-}
-
-function applyDebriefCalibration(currentCalibration = {}, entry = {}) {
-  const learningRate = PERFORMANCE.debrief.learningRate;
-  const currentTas = Number(currentCalibration?.tasFactor) || 1;
-  const currentFuel = Number(currentCalibration?.fuelFlowFactor) || 1;
-  const hasPhases = debriefPhaseKeys.some((key) => entry.phaseErrors?.[key]);
-  const next = { ...currentCalibration,
-    tasFactor: currentTas,
-    fuelFlowFactor: currentFuel,
-  };
-  if (!hasPhases) {
-    next.tripTimeFactor = clamp((Number(next.tripTimeFactor) || 1) * (1 + learningRate * Number(entry.timeErrorPct) / 100), ...PERFORMANCE.calibrationLimits.tripTimeFactor);
-    next.tripFuelFactor = clamp((Number(next.tripFuelFactor) || 1) * (1 + learningRate * Number(entry.fuelErrorPct) / 100), ...PERFORMANCE.calibrationLimits.tripFuelFactor);
-  }
-  for (const key of debriefPhaseKeys) {
-    const errors = entry.phaseErrors?.[key];
-    if (!errors) continue;
-    const timeKey = `${key}TimeFactor`, fuelKey = `${key}FuelFactor`;
-    next[timeKey] = clamp((Number(next[timeKey]) || 1) * (1 + learningRate * errors.timeErrorPct / 100), ...PERFORMANCE.calibrationLimits.phaseTimeFactor);
-    next[fuelKey] = clamp((Number(next[fuelKey]) || 1) * (1 + learningRate * errors.fuelErrorPct / 100), ...PERFORMANCE.calibrationLimits.phaseFuelFactor);
-  }
-  return next;
-}
-
-const calibrationKeys = ["tasFactor", "fuelFlowFactor", "tripTimeFactor", "tripFuelFactor", ...debriefPhaseKeys.flatMap((key) => [`${key}TimeFactor`, `${key}FuelFactor`])];
-const sameCalibration = (a, b) => a && b
-  && calibrationKeys.every((key) => Math.abs((Number(a[key]) || 1) - (Number(b[key]) || 1)) < 1e-8);
-
-export function deleteDebrief({ debriefs = [], calibration = {} }, index) {
-  if (!Number.isInteger(index) || index < 0 || index >= debriefs.length) return null;
-  const entry = debriefs[index];
-  const remaining = debriefs.filter((_, candidateIndex) => candidateIndex !== index);
-  const nextCalibration = { ...calibration };
-  const laterSameMode = debriefs.map((later, originalIndex) => ({ later, originalIndex }))
-    .filter(({ later, originalIndex }) => originalIndex > index && later.mode === entry.mode);
-  let chainEnd = entry.calibrationAfter;
-  const continuous = Boolean(entry.calibrationBefore && chainEnd)
-    && laterSameMode.every(({ later }) => {
-      const matched = sameCalibration(later.calibrationBefore, chainEnd);
-      chainEnd = later.calibrationAfter;
-      return matched && Boolean(chainEnd);
-    });
-  if (continuous && sameCalibration(calibration[entry.mode], chainEnd)) {
-    let replay = { ...entry.calibrationBefore };
-    for (const { later, originalIndex } of laterSameMode) {
-      const before = { ...replay };
-      replay = applyDebriefCalibration(replay, later);
-      remaining[originalIndex - 1] = { ...later, calibrationBefore: before, calibrationAfter: { ...replay } };
-    }
-    nextCalibration[entry.mode] = replay;
-  }
-  return {
-    debriefs: remaining,
-    calibration: nextCalibration,
-  };
 }
 
 export function powerAtAltitude({ altitudeFt, oatC, mapInHg, rpm, source = "AUTO" }) {
@@ -1323,24 +1165,28 @@ function climbProfile(altitudeFt, weightLb, weather, phaseName = "climb") {
   return { rateFpm, timeHr, distanceNm, fuelGal: timeHr * fuelFlowGph, fuelFlowGph, power };
 }
 
-function calibrationForMode(calibration, mode) {
+export function calibrationForMode(calibration, mode, altitudeFt, powerSetting = {}) {
+  // A G3X cruise observation applies only near its measured power regime.
   const values = calibration?.[mode] || calibration || {};
-  const factors = {
-    tasFactor: clamp(Number(values.tasFactor) || 1, ...PERFORMANCE.calibrationLimits.tasFactor),
-    fuelFlowFactor: clamp(Number(values.fuelFlowFactor) || 1, ...PERFORMANCE.calibrationLimits.fuelFlowFactor),
-    tripTimeFactor: clamp(Number(values.tripTimeFactor) || 1, ...PERFORMANCE.calibrationLimits.tripTimeFactor),
-    tripFuelFactor: clamp(Number(values.tripFuelFactor) || 1, ...PERFORMANCE.calibrationLimits.tripFuelFactor),
+  const reference = values.reference;
+  const selected = modePowerSetting(mode, powerSetting);
+  const applicable = !reference || (
+    reference.mode === mode
+    && (reference.legacy || Math.abs(reference.altitudeFt - altitudeFt) <= PERFORMANCE.calibrationLimits.altitudeToleranceFt)
+    && Math.abs(reference.mapInHg - selected.mapInHg) <= PERFORMANCE.calibrationLimits.mapToleranceInHg
+    && Math.abs(reference.rpm - selected.rpm) <= PERFORMANCE.calibrationLimits.rpmTolerance
+  );
+  return {
+    tasFactor: applicable ? clamp(Number(values.tasFactor) || 1, ...PERFORMANCE.calibrationLimits.tasFactor) : 1,
+    fuelFlowFactor: applicable ? clamp(Number(values.fuelFlowFactor) || 1, ...PERFORMANCE.calibrationLimits.fuelFlowFactor) : 1,
+    applicable,
+    reference: reference || null,
   };
-  for (const key of debriefPhaseKeys) {
-    factors[`${key}TimeFactor`] = clamp(Number(values[`${key}TimeFactor`]) || 1, ...PERFORMANCE.calibrationLimits.phaseTimeFactor);
-    factors[`${key}FuelFactor`] = clamp(Number(values[`${key}FuelFactor`]) || 1, ...PERFORMANCE.calibrationLimits.phaseFuelFactor);
-  }
-  return factors;
 }
 
 export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, calibration = {}, powerSetting = {} }) {
   const modeData = PERFORMANCE.modes[mode];
-  const factors = calibrationForMode(calibration, mode);
+  const factors = calibrationForMode(calibration, mode, altitudeFt, powerSetting);
   const weightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const weather = averageRouteWeather(plan, altitudeFt);
   const selectedPower = modePowerSetting(mode, powerSetting);
@@ -1366,28 +1212,46 @@ export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardG
   };
 }
 
-function descentProfile(altitudeFt) {
+function descentProfile(altitudeFt, weather) {
   const timeHr = altitudeFt / PERFORMANCE.descentRateFpm / 60;
-  return { timeHr, distanceNm: timeHr * PERFORMANCE.descentSpeedKt, fuelGal: timeHr * PERFORMANCE.descentFuelFlowGph };
+  const setting = PERFORMANCE.powerModel.phases.descent;
+  const power = powerAtAltitude({ altitudeFt: altitudeFt / 2, oatC: weather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
+  const referencePower = PERFORMANCE.powerModel.ratedHp
+    * (setting.mapInHg / AIRCRAFT.normalManifoldInHg) * (setting.rpm / AIRCRAFT.maxRpm);
+  const fuelFlowGph = setting.fuelFlowGph
+    * clamp(power.estimatedHp / referencePower, .5, 1.2) ** PERFORMANCE.powerModel.fuelPowerExponent;
+  return { timeHr, distanceNm: timeHr * PERFORMANCE.descentSpeedKt, fuelGal: timeHr * fuelFlowGph, fuelFlowGph, rateFpm: PERFORMANCE.descentRateFpm, power };
+}
+
+function cruiseRouteTime(plan, altitudeFt, tasKt, startNm, endNm, fallbackGsKt) {
+  const fixes = (plan.waypoints || []).filter((fix) =>
+    Number.isFinite(fix.distanceNm) && Number.isFinite(fix.lat) && Number.isFinite(fix.lon));
+  let timeHr = 0, coveredNm = 0;
+  for (let index = 0; index < fixes.length - 1; index += 1) {
+    const from = fixes[index], to = fixes[index + 1];
+    const segmentNm = Math.max(0, Math.min(endNm, to.distanceNm) - Math.max(startNm, from.distanceNm));
+    if (!segmentNm) continue;
+    const weather = weatherAtAltitude(from, altitudeFt);
+    const componentKt = windComponentKt(bearingDeg(from, to), weather.windDir, weather.windSpd);
+    timeHr += segmentNm / Math.max(90, tasKt + componentKt);
+    coveredNm += segmentNm;
+  }
+  const totalNm = Math.max(0, endNm - startNm);
+  return timeHr + Math.max(0, totalNm - coveredNm) / Math.max(90, fallbackGsKt);
 }
 
 export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {} }) {
   const takeoffWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const cruise = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, calibration, powerSetting });
-  const { weather, tasKt, gsKt, fuelFlowGph } = cruise;
-  const factors = cruise.factors;
-  const scaledPhase = (profile, key) => {
-    const timeScale = factors[`${key}TimeFactor`] * factors.tripTimeFactor;
-    const timeHr = profile.timeHr * timeScale;
-    const fuelGal = profile.fuelGal * factors[`${key}FuelFactor`] * factors.tripFuelFactor;
-    return { ...profile, timeHr, distanceNm: profile.distanceNm * timeScale, fuelGal, fuelFlowGph: fuelGal / timeHr };
-  };
-  const climb = scaledPhase(climbProfile(altitudeFt, takeoffWeightLb, weather), "climb");
-  const descent = scaledPhase(descentProfile(altitudeFt), "descent");
+  const { weather, tasKt, gsKt: meanGsKt, fuelFlowGph } = cruise;
+  const climb = climbProfile(altitudeFt, takeoffWeightLb, weather);
+  const descent = descentProfile(altitudeFt, weather);
   const cruiseDistanceNm = Math.max(0, plan.distanceNm - climb.distanceNm - descent.distanceNm);
-  const cruiseTimeHr = cruiseDistanceNm / gsKt * factors.cruiseTimeFactor * factors.tripTimeFactor;
-  const cruiseFuelGal = cruiseDistanceNm / gsKt * fuelFlowGph * factors.cruiseFuelFactor * factors.tripFuelFactor;
-  const calibratedCruiseFlowGph = cruiseTimeHr > 0 ? cruiseFuelGal / cruiseTimeHr : fuelFlowGph;
+  const cruiseTimeHr = cruiseRouteTime(plan, altitudeFt, tasKt, climb.distanceNm,
+    Math.max(climb.distanceNm, plan.distanceNm - descent.distanceNm), meanGsKt);
+  const gsKt = cruiseTimeHr > 0 ? cruiseDistanceNm / cruiseTimeHr : meanGsKt;
+  const cruiseFuelGal = cruiseTimeHr * fuelFlowGph;
+  const calibratedCruiseFlowGph = fuelFlowGph;
   const tripFuelGal = climb.fuelGal + cruiseFuelGal + descent.fuelGal;
   const tripTimeHr = climb.timeHr + cruiseTimeHr + descent.timeHr;
   const reserveFuelGal = (reserveMinutes / 60) * PERFORMANCE.modes.ECON.fuelFlowGph;
@@ -1407,6 +1271,8 @@ export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnb
     power: cruise.power,
     weather,
     climb,
+    cruise: { timeHr: cruiseTimeHr, distanceNm: cruiseDistanceNm, fuelGal: cruiseFuelGal, fuelFlowGph, power: cruise.power, tasKt, gsKt,
+      calibrationApplicable: cruise.factors.applicable },
     descent,
     cruiseDistanceNm,
     cruiseTimeHr,
@@ -1424,14 +1290,6 @@ export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnb
     oxygenWeightLb,
     overweight: takeoffWeightLb > AIRCRAFT.maxGrossWeightLb,
   };
-}
-
-function normalize(values, value, lowerIsBetter = false) {
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (max === min) return 1;
-  const score = (value - min) / (max - min);
-  return lowerIsBetter ? 1 - score : score;
 }
 
 export function assessFeasibility(result, { plan, fuelOnboardGal }) {
@@ -1461,119 +1319,6 @@ export function assessFeasibility(result, { plan, fuelOnboardGal }) {
     weightMarginLb,
     profileMarginNm,
     altitudeMarginFt,
-  };
-}
-
-export function calculatePlan({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, powerSetting = {}, oxygen = {}, debriefs = [], weightBalance = null, manualTerrainMora = {} }) {
-  const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
-  const results = ALTITUDES_FT.map((altitudeFt) => calculateAtAltitude({
-    plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting,
-  }));
-  results.forEach((item) => {
-    item.feasibility = assessFeasibility(item, { plan, fuelOnboardGal });
-    item.icing = calculateIcingRisk({ plan, result: item });
-    item.turbulence = calculateTurbulenceRisk({ plan, result: item });
-    item.oxygen = calculateOxygenPlan({ result: item, oxygen });
-    item.terrain = assessTerrain(plan, item, manualTerrainMora);
-    item.weightBalance = weightBalance ? calculateWeightBalance({
-      weightBalance,
-      fuelOnboardGal,
-      landingFuelGal: Math.max(0, fuelOnboardGal - PERFORMANCE.taxiFuelGal - item.tripFuelGal),
-      oxygenWeightLb,
-    }) : null;
-    item.confidence = calculatePerformanceConfidence({ plan, result: item, calibration, debriefs, mode });
-    item.missionScore = calculateMissionScore({ result: item, confidence: item.confidence });
-  });
-  const fuels = results.map((item) => item.fuelRequiredGal);
-  const times = results.map((item) => item.tripTimeHr);
-  const ranges = results.map((item) => item.maxRangeNm);
-  results.forEach((item) => {
-    const baseScore = 100 * (
-      normalize(fuels, item.fuelRequiredGal, true) * 0.42 +
-      normalize(times, item.tripTimeHr, true) * 0.33 +
-      normalize(ranges, item.maxRangeNm) * 0.25
-    );
-    const feasibilityPenalty = item.feasibility.status === "unavailable" || item.terrain.status === "unavailable" ? 50 : item.feasibility.status === "marginal" || item.terrain.status === "marginal" ? 8 : 0;
-    item.performanceScore = Math.max(0, Math.round(baseScore - feasibilityPenalty));
-    item.score = Math.max(0, Math.round(item.performanceScore - item.icing.penalty - item.turbulence.penalty - item.oxygen.penalty - (item.weightBalance?.penalty || 0)));
-  });
-
-  const icingOrder = { low: 0, watch: 1, caution: 2, avoid: 3 };
-  results.forEach((item) => {
-    const currentRank = icingOrder[item.icing.status] ?? 3;
-    const alternatives = results.filter((candidate) => candidate.altitudeFt !== item.altitudeFt
-      && candidate.feasibility.status !== "unavailable"
-      && candidate.terrain.status !== "unavailable"
-      && (icingOrder[candidate.icing.status] ?? 3) < currentRank
-      && candidate.icing.riskScore <= item.icing.riskScore - 8);
-    const escape = alternatives.sort((a, b) => Math.abs(a.altitudeFt - item.altitudeFt) - Math.abs(b.altitudeFt - item.altitudeFt)
-      || a.icing.riskScore - b.icing.riskScore)[0];
-    item.icing.escapeAltitudeFt = escape?.altitudeFt ?? null;
-    item.icing.escapeRiskScore = escape?.icing.riskScore ?? null;
-  });
-
-  const available = results.filter((item) => item.feasibility.status !== "unavailable" && item.weightBalance?.status !== "unavailable" && item.terrain.status !== "unavailable");
-  const icingAvailable = available.filter((item) => item.icing.status !== "avoid");
-  const turbulenceAvailable = available.filter((item) => !item.turbulence.blocking);
-  const weatherAvailable = available.filter((item) => item.icing.status !== "avoid" && !item.turbulence.blocking && item.oxygen.status !== "insufficient");
-  const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
-  const turbulenceRank = { smooth: 0, light: 1, moderate: 2, unknown: 2, severe: 3 };
-  const riskRank = (item) => Math.max(icingRank[item.icing.status], turbulenceRank[item.turbulence.status]);
-  const hasWeatherEvidence = weatherAvailable.some((item) => (
-    item.icing.confidence === "weather"
-    || item.turbulence.confidence === "weather"
-    || item.turbulence.confidence === "simbrief"
-  ));
-  const safestRank = weatherAvailable.length ? Math.min(...weatherAvailable.map(riskRank)) : 3;
-  const weatherWinnerPool = hasWeatherEvidence
-    ? weatherAvailable.filter((item) => riskRank(item) === safestRank)
-    : weatherAvailable;
-  const knownTerrain = weatherWinnerPool.filter((item) => item.terrain.status !== "unknown");
-  const winnerPool = knownTerrain.length ? knownTerrain : weatherWinnerPool.length ? weatherWinnerPool : available.length ? available : results;
-  const performancePool = available.length ? available : results;
-  const performanceWinner = [...performancePool].sort((a, b) => b.performanceScore - a.performanceScore)[0];
-  const overallWinner = [...winnerPool].sort((a, b) => b.score - a.score)[0];
-  const winners = {
-    overall: overallWinner,
-    performance: performanceWinner,
-    fuel: [...winnerPool].sort((a, b) => a.fuelRequiredGal - b.fuelRequiredGal)[0],
-    fastest: [...winnerPool].sort((a, b) => a.tripTimeHr - b.tripTimeHr)[0],
-    range: [...winnerPool].sort((a, b) => b.maxRangeNm - a.maxRangeNm)[0],
-  };
-  return {
-    results,
-    winners,
-    icing: {
-      acceptableCount: icingAvailable.length,
-      hasAcceptableProfile: icingAvailable.length > 0,
-      confidence: hasWeatherEvidence ? "weather" : "limited",
-      cost: {
-        changedAltitude: overallWinner.altitudeFt !== performanceWinner.altitudeFt,
-        fuelGal: overallWinner.fuelRequiredGal - performanceWinner.fuelRequiredGal,
-        timeHr: overallWinner.tripTimeHr - performanceWinner.tripTimeHr,
-        gsKt: overallWinner.gsKt - performanceWinner.gsKt,
-        rangeNm: overallWinner.maxRangeNm - performanceWinner.maxRangeNm,
-      },
-    },
-    turbulence: {
-      acceptableCount: turbulenceAvailable.length,
-      confidence: results.some((item) => ["weather", "simbrief"].includes(item.turbulence.confidence))
-        ? "weather" : results.some((item) => item.turbulence.confidence === "estimated") ? "estimated" : "limited",
-    },
-    oxygen: {
-      installedWeightLb: oxygenWeightLb,
-      acceptableCount: results.filter((item) => item.oxygen.status !== "insufficient").length,
-    },
-    weightBalance: {
-      acceptableCount: results.filter((item) => item.weightBalance?.status !== "unavailable").length,
-      status: overallWinner.weightBalance?.status || "unknown",
-    },
-    feasibility: {
-      availableCount: available.length,
-      viableCount: results.filter((item) => item.feasibility.status === "viable").length,
-      marginalCount: results.filter((item) => item.feasibility.status === "marginal").length,
-      unavailableCount: results.filter((item) => item.feasibility.status === "unavailable").length,
-    },
   };
 }
 
@@ -1643,9 +1388,9 @@ export function calculateRemainingFlightAssessment({
 
 export function calculateAlternateDiversion({
   plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {},
-  waypointIndex = 0, manual = null,
+  waypointIndex = 0, manual = null, result: suppliedResult = null,
 }) {
-  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting });
+  const result = suppliedResult || calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting });
   const alternate = plan.alternates?.[0] || (plan.alternate ? { icao: plan.alternate } : null);
   if (!alternate) return { available: false, ident: "—" };
 
@@ -1698,337 +1443,6 @@ export function calculateAlternateDiversion({
       status: statusFor(diversionMarginGal),
     } : null,
   };
-}
-
-export function compareScenarios({ plan, scenarioA, scenarioB, calibration = {} }) {
-  const calculate = (scenario) => {
-    const result = calculateAtAltitude({ plan, calibration, ...scenario });
-    result.feasibility = assessFeasibility(result, { plan, fuelOnboardGal: scenario.fuelOnboardGal });
-    return result;
-  };
-  const a = calculate(scenarioA);
-  const b = calculate(scenarioB);
-  return {
-    a,
-    b,
-    delta: {
-      fuelGal: b.fuelRequiredGal - a.fuelRequiredGal,
-      timeHr: b.tripTimeHr - a.tripTimeHr,
-      gsKt: b.gsKt - a.gsKt,
-      marginGal: b.feasibility.fuelMarginGal - a.feasibility.fuelMarginGal,
-    },
-  };
-}
-
-export function calculateLoadOptimization({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false, requireTerrainKnown = false, manualTerrainMora = {} }) {
-  const requestedPayloadLb = Math.max(0, payloadLb);
-  const payloadFloorLb = Number.isFinite(minimumPayloadLb)
-    ? Math.min(requestedPayloadLb, Math.max(0, minimumPayloadLb))
-    : weightBalance ? Math.ceil(normalizeWeightBalance(weightBalance).pilot / 10) * 10 : 0;
-  const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
-  const currentWeightLb = AIRCRAFT.emptyWeightLb + requestedPayloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
-  const payloadStepLb = 10;
-  let bestAttempt = null;
-  const payloadCandidates = [requestedPayloadLb];
-  for (let candidatePayloadLb = Math.floor((requestedPayloadLb - 0.001) / payloadStepLb) * payloadStepLb; candidatePayloadLb > payloadFloorLb; candidatePayloadLb -= payloadStepLb) {
-    payloadCandidates.push(candidatePayloadLb);
-  }
-  if (payloadFloorLb < requestedPayloadLb) payloadCandidates.push(payloadFloorLb);
-
-  for (const candidatePayloadLb of [...new Set(payloadCandidates)]) {
-    let candidateFuelGal = clamp(fuelOnboardGal, 0, AIRCRAFT.usableFuelGal);
-    let rawRecommendedFuelGal = candidateFuelGal;
-
-    for (let index = 0; index < 8; index += 1) {
-      const iteration = calculateAtAltitude({
-        plan,
-        altitudeFt,
-        mode,
-        payloadLb: candidatePayloadLb,
-        fuelOnboardGal: candidateFuelGal,
-        oxygenWeightLb,
-        reserveMinutes,
-        calibration,
-        powerSetting: { type: "AUTO" },
-      });
-      const primaryMissionFuelGal = iteration.fuelRequiredGal + PERFORMANCE.loadOptimizer.targetFuelMarginGal;
-      const alternateAdvice = requireAlternateViable ? calculateAlternateDiversion({
-        plan,
-        altitudeFt,
-        mode,
-        payloadLb: candidatePayloadLb,
-        fuelOnboardGal: candidateFuelGal,
-        oxygenWeightLb,
-        reserveMinutes,
-        calibration,
-        powerSetting: { type: "AUTO" },
-      }) : null;
-      const alternateMissionFuelGal = alternateAdvice?.destination
-        ? candidateFuelGal + PERFORMANCE.diversion.marginalFuelMarginGal - alternateAdvice.destination.marginGal
-        : 0;
-      rawRecommendedFuelGal = Math.ceil(
-        Math.max(primaryMissionFuelGal, alternateMissionFuelGal) / PERFORMANCE.loadOptimizer.fuelIncrementGal,
-      ) * PERFORMANCE.loadOptimizer.fuelIncrementGal;
-      const nextFuelGal = Math.min(AIRCRAFT.usableFuelGal, rawRecommendedFuelGal);
-      if (Math.abs(nextFuelGal - candidateFuelGal) < 0.01) break;
-      candidateFuelGal = nextFuelGal;
-    }
-
-    const recommendedFuelGal = Math.min(AIRCRAFT.usableFuelGal, rawRecommendedFuelGal);
-    const result = calculateAtAltitude({
-      plan,
-      altitudeFt,
-      mode,
-      payloadLb: candidatePayloadLb,
-      fuelOnboardGal: recommendedFuelGal,
-      oxygenWeightLb,
-      reserveMinutes,
-      calibration,
-      powerSetting: { type: "AUTO" },
-    });
-    result.feasibility = assessFeasibility(result, { plan, fuelOnboardGal: recommendedFuelGal });
-    result.icing = calculateIcingRisk({ plan, result });
-    result.turbulence = calculateTurbulenceRisk({ plan, result });
-    result.oxygen = calculateOxygenPlan({ result, oxygen });
-    result.terrain = assessTerrain(plan, result, manualTerrainMora);
-    const alternateAdvice = calculateAlternateDiversion({
-      plan,
-      altitudeFt,
-      mode,
-      payloadLb: candidatePayloadLb,
-      fuelOnboardGal: recommendedFuelGal,
-      oxygenWeightLb,
-      reserveMinutes,
-      calibration,
-      powerSetting: { type: "AUTO" },
-    });
-    const alternateRequired = Boolean(requireAlternateViable && alternateAdvice.destination);
-    const alternateMarginGal = alternateAdvice.destination?.marginGal ?? NaN;
-    const alternateShortfallGal = alternateRequired
-      ? Math.max(0, PERFORMANCE.diversion.marginalFuelMarginGal - alternateMarginGal)
-      : 0;
-    const candidateWeightBalance = weightBalance ? scaleWeightBalanceToPayload(weightBalance, candidatePayloadLb) : null;
-    result.weightBalance = candidateWeightBalance ? calculateWeightBalance({
-      weightBalance: candidateWeightBalance,
-      fuelOnboardGal: recommendedFuelGal,
-      landingFuelGal: Math.max(0, recommendedFuelGal - PERFORMANCE.taxiFuelGal - result.tripFuelGal),
-      oxygenWeightLb,
-    }) : null;
-    const optimizedWeightLb = AIRCRAFT.emptyWeightLb + candidatePayloadLb + recommendedFuelGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
-    const weightMarginLb = AIRCRAFT.maxGrossWeightLb - optimizedWeightLb;
-    const maxFuelByWeightGal = clamp(
-      (AIRCRAFT.maxGrossWeightLb - PERFORMANCE.loadOptimizer.targetWeightMarginLb - AIRCRAFT.emptyWeightLb - oxygenWeightLb - candidatePayloadLb) / AIRCRAFT.fuelDensityLbGal,
-      0,
-      AIRCRAFT.usableFuelGal,
-    );
-    const candidate = {
-      feasible: rawRecommendedFuelGal <= AIRCRAFT.usableFuelGal
-        && weightMarginLb >= PERFORMANCE.loadOptimizer.targetWeightMarginLb
-        && result.feasibility.status === "viable"
-        && result.icing.status !== "avoid"
-        && !result.turbulence.blocking
-        && result.oxygen.status !== "insufficient"
-        && (!requireTerrainKnown || ["viable", "marginal"].includes(result.terrain.status))
-        && (!alternateRequired || alternateAdvice.destination.status === "viable")
-        && (requireWeightBalanceViable ? result.weightBalance?.status === "viable" : result.weightBalance?.status !== "unavailable"),
-      altitudeFt,
-      mode,
-      result,
-      recommendedFuelGal,
-      rawRecommendedFuelGal,
-      maxFuelByWeightGal,
-      maxPayloadLb: Math.max(0, AIRCRAFT.maxGrossWeightLb - AIRCRAFT.emptyWeightLb - oxygenWeightLb - recommendedFuelGal * AIRCRAFT.fuelDensityLbGal),
-      recommendedPayloadLb: candidatePayloadLb,
-      payloadReductionLb: Math.max(0, requestedPayloadLb - candidatePayloadLb),
-      currentWeightLb,
-      optimizedWeightLb,
-      weightMarginLb,
-      weightBalance: candidateWeightBalance,
-      alternateAdvice,
-      alternateRequired,
-      alternateMarginGal,
-      alternateShortfallGal,
-    };
-    bestAttempt = candidate;
-    if (candidate.feasible) return candidate;
-  }
-
-  return bestAttempt;
-}
-
-export function calculateModeLoadOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, minimumPayloadLb = null, requireWeightBalanceViable = false, requireAlternateViable = false, requireTerrainKnown = false, manualTerrainMora = {} }) {
-  const candidates = ALTITUDES_FT.map((altitudeFt) => calculateLoadOptimization({
-    plan,
-    altitudeFt,
-    mode,
-    payloadLb,
-    fuelOnboardGal,
-    reserveMinutes,
-    calibration,
-    oxygen,
-    weightBalance,
-    minimumPayloadLb,
-    requireWeightBalanceViable,
-    requireAlternateViable,
-    requireTerrainKnown,
-    manualTerrainMora,
-  }));
-  const viable = candidates.filter((candidate) => candidate?.feasible);
-  if (!viable.length) {
-    const bestAttempt = [...candidates].filter(Boolean).sort((a, b) =>
-      a.alternateShortfallGal - b.alternateShortfallGal
-      || a.rawRecommendedFuelGal - b.rawRecommendedFuelGal)[0];
-    return { ...bestAttempt, feasible: false, recommendedAltitudeFt: bestAttempt?.altitudeFt ?? null, candidates };
-  }
-
-  const icingRank = { low: 0, watch: 1, caution: 2, avoid: 3 };
-  const turbulenceRank = { smooth: 0, light: 1, moderate: 2, unknown: 2, severe: 3 };
-  const riskRank = (candidate) => Math.max(icingRank[candidate.result.icing.status], turbulenceRank[candidate.result.turbulence.status]);
-  const hasWeatherEvidence = viable.some((candidate) => (
-    candidate.result.icing.confidence === "weather"
-    || candidate.result.turbulence.confidence === "weather"
-    || candidate.result.turbulence.confidence === "simbrief"
-  ));
-  const safestRank = Math.min(...viable.map(riskRank));
-  const weatherPool = hasWeatherEvidence ? viable.filter((candidate) => riskRank(candidate) === safestRank) : viable;
-  const maximumRetainedPayloadLb = Math.max(...weatherPool.map((candidate) => candidate.recommendedPayloadLb));
-  const payloadPool = weatherPool.filter((candidate) => candidate.recommendedPayloadLb === maximumRetainedPayloadLb);
-  const fuels = payloadPool.map((candidate) => candidate.result.fuelRequiredGal);
-  const times = payloadPool.map((candidate) => candidate.result.tripTimeHr);
-  const ranges = payloadPool.map((candidate) => candidate.result.maxRangeNm);
-  payloadPool.forEach((candidate) => {
-    candidate.optimizationScore = 100 * (
-      normalize(fuels, candidate.result.fuelRequiredGal, true) * 0.42
-      + normalize(times, candidate.result.tripTimeHr, true) * 0.33
-      + normalize(ranges, candidate.result.maxRangeNm) * 0.25
-    ) - candidate.result.icing.penalty - candidate.result.turbulence.penalty - candidate.result.oxygen.penalty;
-  });
-  const winner = [...payloadPool].sort((a, b) => b.optimizationScore - a.optimizationScore)[0];
-  return { ...winner, recommendedAltitudeFt: winner.altitudeFt, candidates };
-}
-
-export function calculateMissionOptimization({ plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration = {}, oxygen = {}, weightBalance = null, requireTerrainKnown = false, manualTerrainMora = {} }) {
-  const loads = normalizeWeightBalance(weightBalance || {});
-  const minimumPayloadLb = loads.pilot;
-  const variants = [];
-  for (const candidateMode of Object.keys(PERFORMANCE.modes)) {
-    for (let bottles = 0; bottles <= 4; bottles += 1) {
-      const oxygenVariant = { ...oxygen, bottles };
-      const candidate = calculateModeLoadOptimization({
-        plan,
-        mode: candidateMode,
-        payloadLb,
-        fuelOnboardGal,
-        reserveMinutes,
-        calibration,
-        oxygen: oxygenVariant,
-        weightBalance,
-        minimumPayloadLb,
-        requireWeightBalanceViable: true,
-        requireAlternateViable: true,
-        requireTerrainKnown,
-        manualTerrainMora,
-      });
-      if (candidate) variants.push({ ...candidate, oxygen: oxygenVariant, bottles, requestedMode: mode });
-    }
-  }
-  const viable = variants.filter((candidate) => candidate.feasible);
-  const operationalPenalty = (candidate) => {
-    const result = candidate.result;
-    return (result.icing.status === "low" || (result.icing.status === "watch" && result.icing.confidence !== "weather") ? 0 : result.icing.status === "watch" ? 1 : result.icing.status === "caution" ? 3 : 20)
-      + (result.turbulence.status === "smooth" || result.turbulence.status === "light" ? 0 : result.turbulence.status === "moderate" ? 3 : 20)
-      + (result.oxygen.status === "not-required" || result.oxygen.status === "compliant" ? 0 : result.oxygen.status === "marginal" ? 3 : 20)
-      + (result.weightBalance?.status === "viable" ? 0 : 20)
-      + (!candidate.alternateRequired || candidate.alternateAdvice?.destination?.status === "viable" ? 0 : candidate.alternateAdvice?.destination?.status === "marginal" ? 5 : 20);
-  };
-  const achievedStatus = (candidate) => operationalPenalty(candidate) === 0 ? "viable" : "marginal";
-  const strictPool = viable.some((candidate) => achievedStatus(candidate) === "viable")
-    ? viable.filter((candidate) => achievedStatus(candidate) === "viable")
-    : viable;
-  const maximumRetainedPayloadLb = strictPool.length
-    ? Math.max(...strictPool.map((candidate) => candidate.recommendedPayloadLb))
-    : 0;
-  const payloadPool = strictPool.filter((candidate) => candidate.recommendedPayloadLb === maximumRetainedPayloadLb);
-  const preferenceWeights = {
-    ECON: { fuel: 0.4, time: 0.1, efficiency: 0.3, range: 0.2 },
-    NORMAL: { fuel: 0.25, time: 0.35, efficiency: 0.2, range: 0.2 },
-    FAST: { fuel: 0.1, time: 0.65, efficiency: 0.1, range: 0.15 },
-  }[mode] || { fuel: 0.25, time: 0.35, efficiency: 0.2, range: 0.2 };
-  const fuels = payloadPool.map((candidate) => candidate.result.fuelRequiredGal);
-  const times = payloadPool.map((candidate) => candidate.result.tripTimeHr);
-  const efficiencies = payloadPool.map((candidate) => candidate.result.specificRangeNmGal);
-  const ranges = payloadPool.map((candidate) => candidate.result.maxRangeNm);
-  payloadPool.forEach((candidate) => {
-    const profileAffinity = candidate.mode === mode ? 10 : 0;
-    candidate.missionOptimizationScore = 100 * (
-      normalize(fuels, candidate.result.fuelRequiredGal, true) * preferenceWeights.fuel
-      + normalize(times, candidate.result.tripTimeHr, true) * preferenceWeights.time
-      + normalize(efficiencies, candidate.result.specificRangeNmGal) * preferenceWeights.efficiency
-      + normalize(ranges, candidate.result.maxRangeNm) * preferenceWeights.range
-    ) + profileAffinity - operationalPenalty(candidate) * 5;
-  });
-  const ranked = [...payloadPool].sort((a, b) =>
-    (b.missionOptimizationScore || 0) - (a.missionOptimizationScore || 0)
-    || operationalPenalty(a) - operationalPenalty(b)
-    || a.bottles - b.bottles
-    || a.recommendedFuelGal - b.recommendedFuelGal);
-  const winner = ranked[0];
-  if (!winner) {
-    const bestAttempt = [...variants].filter((candidate) => candidate.result).sort((a, b) =>
-      a.alternateShortfallGal - b.alternateShortfallGal
-      || (a.rawRecommendedFuelGal || Infinity) - (b.rawRecommendedFuelGal || Infinity)
-      || b.recommendedPayloadLb - a.recommendedPayloadLb)[0];
-    return {
-      ...(bestAttempt || {}),
-      feasible: false,
-      achievedStatus: "unavailable",
-      minimumPayloadLb,
-      variants,
-    };
-  }
-  return {
-    ...winner,
-    feasible: true,
-    achievedStatus: achievedStatus(winner),
-    minimumPayloadLb,
-    recommendedBottleCount: winner.bottles,
-    changes: {
-      modeChanged: winner.mode !== mode,
-      fuelDeltaGal: winner.recommendedFuelGal - fuelOnboardGal,
-      payloadDeltaLb: winner.recommendedPayloadLb - payloadLb,
-      bottleDelta: winner.bottles - (Number(oxygen?.bottles) || 0),
-    },
-    variants,
-  };
-}
-
-export function missionOptimizationFailureReason(optimization) {
-  const attempts = (optimization?.variants || []).flatMap((variant) => variant.candidates || [variant]).filter((candidate) => candidate?.result);
-  if (!attempts.length) return "COMBINED";
-  const all = (predicate) => attempts.every(predicate);
-  if (all((candidate) => candidate.result.weightBalance?.primaryReason === "CG_AFT")) return "CG_AFT";
-  if (all((candidate) => candidate.result.weightBalance?.primaryReason === "CG_FORWARD")) return "CG_FORWARD";
-  if (all((candidate) => candidate.result.weightBalance?.primaryReason === "WEIGHT")) return "WEIGHT";
-  if (all((candidate) => candidate.rawRecommendedFuelGal > AIRCRAFT.usableFuelGal)) return "FUEL_CAPACITY";
-  if (all((candidate) => candidate.alternateRequired && candidate.alternateAdvice?.destination?.status !== "viable")) return "ALTERNATE";
-  if (all((candidate) => candidate.result.terrain?.status === "unknown" || candidate.result.terrain?.status === "unavailable")) return "TERRAIN";
-  if (all((candidate) => candidate.result.icing.status === "avoid" || candidate.result.turbulence.blocking)) return "WEATHER";
-  if (all((candidate) => candidate.result.oxygen.status === "insufficient")) return "OXYGEN";
-  return "COMBINED";
-}
-
-export function calculateMissionRecovery(current, previousViableMission) {
-  if (!previousViableMission || previousViableMission.plan !== current.plan || !previousViableMission.weightBalance) return null;
-  const weightBalance = normalizeWeightBalance(previousViableMission.weightBalance);
-  const recovery = calculateMissionOptimization({
-    ...current,
-    mode: previousViableMission.mode,
-    payloadLb: weightBalancePayloadLb(weightBalance),
-    fuelOnboardGal: previousViableMission.fuelOnboardGal,
-    oxygen: previousViableMission.oxygen,
-    weightBalance,
-  });
-  return recovery.feasible && recovery.achievedStatus === "viable" ? recovery : null;
 }
 
 export function calculateGlideCorridor({ plan, result }) {
@@ -2084,37 +1498,76 @@ function nearestWaypoint(plan, distanceNm) {
   }, points[0]);
 }
 
-export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {} }) {
-  const result = calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting });
-  const outboundGsKt = result.gsKt;
-  const returnGsKt = clamp(result.tasKt - result.weather.componentKt, 110, 360);
-  const etpDistanceNm = plan.distanceNm * returnGsKt / (outboundGsKt + returnGsKt);
-  const etpCruiseDistanceNm = Math.max(0, etpDistanceNm - result.climb.distanceNm);
-  const etpFuelUsedGal = PERFORMANCE.taxiFuelGal + result.climb.fuelGal + etpCruiseDistanceNm / outboundGsKt * result.fuelFlowGph;
-  const usableCruiseFuelGal = Math.max(0, fuelOnboardGal - PERFORMANCE.taxiFuelGal - result.reserveFuelGal - result.climb.fuelGal - result.descent.fuelGal);
-  const pnrDistanceRawNm = usableCruiseFuelGal / result.fuelFlowGph * outboundGsKt * returnGsKt / (outboundGsKt + returnGsKt);
-  const pnrDistanceNm = clamp(pnrDistanceRawNm + result.climb.distanceNm, 0, plan.distanceNm);
-  const pnrBeyondDestination = pnrDistanceRawNm + result.climb.distanceNm >= plan.distanceNm;
-  const fuelUsedToPnrGal = PERFORMANCE.taxiFuelGal + result.climb.fuelGal + Math.max(0, pnrDistanceNm - result.climb.distanceNm) / outboundGsKt * result.fuelFlowGph;
+export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {}, result: suppliedResult = null }) {
+  const result = suppliedResult || calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting });
+  const points = (plan.waypoints || []).filter((fix) => Number.isFinite(fix.distanceNm) && Number.isFinite(fix.lat) && Number.isFinite(fix.lon));
+  const legs = [];
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const from = points[index], to = points[index + 1];
+    const start = clamp(from.distanceNm, 0, plan.distanceNm);
+    const end = clamp(to.distanceNm, start, plan.distanceNm);
+    if (end <= start) continue;
+    const weather = weatherAtAltitude(from, altitudeFt);
+    legs.push({ start, end, componentKt: windComponentKt(bearingDeg(from, to), weather.windDir, weather.windSpd) });
+  }
+  if (!legs.length) legs.push({ start: 0, end: plan.distanceNm, componentKt: result.weather.componentKt });
+  const travelTime = (fromNm, toNm, returning = false) => {
+    const lo = Math.min(fromNm, toNm), hi = Math.max(fromNm, toNm);
+    let hours = 0, covered = 0;
+    for (const leg of legs) {
+      const distance = Math.max(0, Math.min(hi, leg.end) - Math.max(lo, leg.start));
+      if (!distance) continue;
+      hours += distance / Math.max(90, result.tasKt + (returning ? -leg.componentKt : leg.componentKt));
+      covered += distance;
+    }
+    // Navlogs can omit terminal legs. Use the route mean only for that gap.
+    if (covered < hi - lo) hours += (hi - lo - covered) / Math.max(90, result.tasKt + (returning ? -result.weather.componentKt : result.weather.componentKt));
+    return hours;
+  };
+  const continuationTime = (distance) => travelTime(distance, plan.distanceNm);
+  const returnTime = (distance) => travelTime(0, distance, true);
+  let lo = 0, hi = plan.distanceNm;
+  for (let iteration = 0; iteration < 35; iteration += 1) {
+    const mid = (lo + hi) / 2;
+    if (returnTime(mid) < continuationTime(mid)) lo = mid; else hi = mid;
+  }
+  const etpDistanceNm = (lo + hi) / 2;
+  const fuelTo = (distance) => PERFORMANCE.taxiFuelGal + result.climb.fuelGal
+    + Math.max(0, travelTime(result.climb.distanceNm, distance)) * result.fuelFlowGph;
+  const remainingAfterReturn = (distance) => fuelOnboardGal - fuelTo(distance)
+    - returnTime(distance) * result.fuelFlowGph - result.reserveFuelGal - result.descent.fuelGal;
+  lo = 0; hi = plan.distanceNm;
+  for (let iteration = 0; iteration < 35; iteration += 1) {
+    const mid = (lo + hi) / 2;
+    if (remainingAfterReturn(mid) >= 0) lo = mid; else hi = mid;
+  }
+  const pnrDistanceNm = (lo + hi) / 2;
+  const pnrBeyondDestination = remainingAfterReturn(plan.distanceNm) >= 0;
+  const outboundGsKt = plan.distanceNm / Math.max(.01, travelTime(0, plan.distanceNm));
+  const returnGsKt = plan.distanceNm / Math.max(.01, travelTime(0, plan.distanceNm, true));
   return {
     etp: {
       distanceNm: etpDistanceNm,
       fraction: clamp(etpDistanceNm / plan.distanceNm, 0, 1),
-      elapsedHr: result.climb.timeHr + etpCruiseDistanceNm / outboundGsKt,
-      fuelRemainingGal: Math.max(0, fuelOnboardGal - etpFuelUsedGal),
+      elapsedHr: result.climb.timeHr + travelTime(result.climb.distanceNm, etpDistanceNm),
+      returnTimeHr: returnTime(etpDistanceNm),
+      continueTimeHr: continuationTime(etpDistanceNm),
+      fuelRemainingGal: Math.max(0, fuelOnboardGal - fuelTo(etpDistanceNm)),
       waypoint: nearestWaypoint(plan, etpDistanceNm),
     },
     pnr: {
       distanceNm: pnrDistanceNm,
-      rawDistanceNm: pnrDistanceRawNm + result.climb.distanceNm,
+      rawDistanceNm: pnrDistanceNm,
       fraction: clamp(pnrDistanceNm / plan.distanceNm, 0, 1),
-      elapsedHr: result.climb.timeHr + Math.max(0, pnrDistanceNm - result.climb.distanceNm) / outboundGsKt,
-      fuelRemainingGal: Math.max(0, fuelOnboardGal - fuelUsedToPnrGal),
+      elapsedHr: result.climb.timeHr + travelTime(result.climb.distanceNm, pnrDistanceNm),
+      fuelRemainingGal: Math.max(0, fuelOnboardGal - fuelTo(pnrDistanceNm)),
       beyondDestination: pnrBeyondDestination,
       waypoint: nearestWaypoint(plan, pnrDistanceNm),
     },
     outboundGsKt,
     returnGsKt,
+    legCount: legs.length,
+    limitation: legs.length < 2 ? "LIMITED_LEG_WEATHER" : null,
   };
 }
 
@@ -2229,12 +1682,46 @@ export function calculateStepClimbs({
 }
 
 export function deriveCalibration({ plan, mode, payloadLb, fuelRemainingGal, oxygenWeightLb = 0, altitudeFt, observedTasKt, observedFuelFlowGph, positionFix = null, powerSetting = {} }) {
+  if (!PERFORMANCE.modes[mode] || !Number.isFinite(altitudeFt) || !Number.isFinite(fuelRemainingGal)
+    || fuelRemainingGal <= 0 || fuelRemainingGal > AIRCRAFT.usableFuelGal
+    || !Number.isFinite(observedTasKt) || observedTasKt <= 0
+    || !Number.isFinite(observedFuelFlowGph) || observedFuelFlowGph <= 0) {
+    throw new RangeError("INVALID_CALIBRATION_INPUT");
+  }
+  if (!positionFix || !(Number.isFinite(positionFix.oatC)
+    || positionFix.windLevels?.some((level) => Number.isFinite(level.oatC)))) {
+    throw new RangeError("CALIBRATION_ATMOSPHERE_UNAVAILABLE");
+  }
   const baseline = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: fuelRemainingGal, oxygenWeightLb, calibration: {}, powerSetting });
-  const localWeather = positionFix ? weatherAtAltitude(positionFix, altitudeFt) : baseline.weather;
+  const localWeather = weatherAtAltitude(positionFix, altitudeFt);
   const localIsaDeviationC = localWeather.oatC - isaTemperatureC(altitudeFt);
   const localTasKt = baseline.tasKt + (localIsaDeviationC - baseline.weather.isaDeviationC) * PERFORMANCE.isaTasGainKtPerC;
+  const tasFactor = observedTasKt / localTasKt;
+  const fuelFlowFactor = observedFuelFlowGph / baseline.fuelFlowGph;
+  if (tasFactor < PERFORMANCE.calibrationLimits.tasFactor[0] || tasFactor > PERFORMANCE.calibrationLimits.tasFactor[1]
+    || fuelFlowFactor < PERFORMANCE.calibrationLimits.fuelFlowFactor[0] || fuelFlowFactor > PERFORMANCE.calibrationLimits.fuelFlowFactor[1]) {
+    throw new RangeError("CALIBRATION_OUT_OF_RANGE");
+  }
+  const setting = modePowerSetting(mode, powerSetting);
   return {
-    tasFactor: clamp(observedTasKt / localTasKt, ...PERFORMANCE.calibrationLimits.tasFactor),
-    fuelFlowFactor: clamp(observedFuelFlowGph / baseline.fuelFlowGph, ...PERFORMANCE.calibrationLimits.fuelFlowFactor),
+    tasFactor,
+    fuelFlowFactor,
+    reference: { mode, altitudeFt, mapInHg: setting.mapInHg, rpm: setting.rpm,
+      oatC: localWeather.oatC, weightLb: baseline.weightLb,
+      observedAt: new Date().toISOString() },
+  };
+}
+
+export function migrateCalibration(saved) {
+  if (!saved || typeof saved !== "object") return { tasFactor: 1, fuelFlowFactor: 1, reference: null };
+  const source = Number.isFinite(saved.tasFactor) && Number.isFinite(saved.fuelFlowFactor)
+    ? saved : ["NORMAL", "ECON", "FAST"].map((mode) => saved[mode]).find((item) => item && Number.isFinite(item.tasFactor) && Number.isFinite(item.fuelFlowFactor));
+  if (!source) return { tasFactor: 1, fuelFlowFactor: 1, reference: null };
+  const mode = source.reference?.mode || ["NORMAL", "ECON", "FAST"].find((key) => saved[key] === source) || "NORMAL";
+  return {
+    tasFactor: clamp(source.tasFactor, ...PERFORMANCE.calibrationLimits.tasFactor),
+    fuelFlowFactor: clamp(source.fuelFlowFactor, ...PERFORMANCE.calibrationLimits.fuelFlowFactor),
+    reference: source.reference || { mode, altitudeFt: null, mapInHg: PERFORMANCE.modes[mode].mapInHg,
+      rpm: PERFORMANCE.modes[mode].rpm, legacy: true },
   };
 }

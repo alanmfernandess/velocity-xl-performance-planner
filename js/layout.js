@@ -8,13 +8,13 @@
   const translations = {
     'pt-BR': {
       mission: 'Missão', planning: 'Planejamento', route: 'Rota & riscos', flight: 'Em voo',
-      overview: 'Visão geral', score: 'Avaliação', config: 'Configuração', levels: 'Performance & níveis',
-      optimize: 'Otimização', systems: 'Peso & sistemas', analyses: 'Análises', matrix: 'Matriz & MORA',
+      overview: 'Visão geral', score: 'Avaliação', config: 'Configuração',
+      optimize: 'Otimização', systems: 'Peso & sistemas', analyses: 'Custo',
       ice: 'ICE', ride: 'RIDE', decisions: 'Decisões', update: 'Atualização', calibration: 'Calibração',
       completed: 'Voo concluído', history: 'Histórico', noPlan: 'Importe um OFP para começar.',
       missionTitle: 'Decisão operacional', planningTitle: 'Preparar e otimizar',
       routeTitle: 'Leitura operacional da rota', flightTitle: 'Acompanhar e calibrar',
-      routeOverview: 'Resumo da rota', routeTerrain: 'Terreno', routeIce: 'Gelo', routeRide: 'Conforto',
+      routeOverview: 'Resumo da rota', routeIce: 'Gelo', routeRide: 'Conforto',
       routeDecisions: 'ETP, alternado e desvio', missionAdjustment: 'Ajuste principal', openPlanning: 'Ajustar missão',
       openRoute: 'Analisar rota', loadOptimizer: 'LOAD Optimizer', flightTools: 'Ferramentas',
       reviewScore: 'Mission Score', riskAssessment: 'Riscos e restrições',
@@ -24,13 +24,13 @@
     },
     'en-US': {
       mission: 'Mission', planning: 'Planning', route: 'Route & risks', flight: 'In flight',
-      overview: 'Overview', score: 'Assessment', config: 'Configuration', levels: 'Performance & levels',
-      optimize: 'Optimization', systems: 'Weight & systems', analyses: 'Analysis', matrix: 'Matrix & MORA',
+      overview: 'Overview', score: 'Assessment', config: 'Configuration',
+      optimize: 'Optimization', systems: 'Weight & systems', analyses: 'Cost',
       ice: 'ICE', ride: 'RIDE', decisions: 'Decisions', update: 'Update', calibration: 'Calibration',
       completed: 'Completed flight', history: 'History', noPlan: 'Import an OFP to begin.',
       missionTitle: 'Operational decision', planningTitle: 'Prepare and optimize',
       routeTitle: 'Operational route review', flightTitle: 'Monitor and calibrate',
-      routeOverview: 'Route overview', routeTerrain: 'Terrain', routeIce: 'Icing', routeRide: 'Ride',
+      routeOverview: 'Route overview', routeIce: 'Icing', routeRide: 'Ride',
       routeDecisions: 'ETP, alternate and diversion', missionAdjustment: 'Main adjustment', openPlanning: 'Adjust mission',
       openRoute: 'Review route', loadOptimizer: 'LOAD Optimizer', flightTools: 'Tools',
       reviewScore: 'Mission Score', riskAssessment: 'Risks and constraints',
@@ -41,9 +41,9 @@
   };
   const areas = [
     ['mission', 'gauge', 'missionTitle', [['overview', 'overview'], ['score', 'score']]],
-    ['planning', 'sliders-horizontal', 'planningTitle', [['config', 'config'], ['levels', 'levels'], ['optimize', 'optimize'], ['systems', 'systems'], ['analyses', 'analyses']]],
-    ['route', 'route', 'routeTitle', [['overview', 'overview'], ['matrix', 'matrix'], ['ice', 'ice'], ['ride', 'ride'], ['decisions', 'decisions']]],
-    ['flight', 'radio-tower', 'flightTitle', [['calibration', 'calibration'], ['history', 'history']]],
+    ['planning', 'sliders-horizontal', 'planningTitle', [['config', 'config'], ['optimize', 'optimize'], ['systems', 'systems'], ['analyses', 'analyses']]],
+    ['route', 'route', 'routeTitle', [['overview', 'overview'], ['ice', 'ice'], ['ride', 'ride'], ['decisions', 'decisions']]],
+    ['flight', 'radio-tower', 'flightTitle', [['calibration', 'calibration']]],
   ];
   const areaNodes = new Map();
   const moduleNodes = new Map();
@@ -135,26 +135,19 @@
     if (weight) aside.insertBefore(weight, aside.querySelector('.planning-live-metrics'));
     grid.append(aside);
   }
-  move('.visual-panel', 'planning:levels');
-  move('.levels-section', 'planning:levels');
-  const optimizeButton = document.createElement('button');
-  optimizeButton.type = 'button'; optimizeButton.className = 'primary-button';
-  optimizeButton.dataset.forwardClick = 'optimizeMission'; optimizeButton.dataset.layoutText = 'optimize'; optimizeButton.textContent = text('optimize');
-  moduleNodes.get('planning:optimize').append(optimizeButton);
+  move('#optimizeMission', 'planning:optimize');
+  move('#missionProposal', 'planning:optimize');
 
-  move('.terrain-panel', 'route:matrix');
   const routeOverview = moduleNodes.get('route:overview');
   routeOverview.innerHTML = `<div class="route-rail-card"><div class="shared-card-head"><span data-layout-text="routeLegs">${text('routeLegs')}</span><strong id="layoutRouteMeta">—</strong></div><div class="route-rail" id="layoutRouteRail" aria-label="Trechos da rota"></div></div><div class="route-overview-grid">
-    <button class="route-overview-card" type="button" data-open-module="route:matrix">${icon('mountain')}<span><strong data-layout-text="routeTerrain">${text('routeTerrain')}</strong><small id="layoutTerrainStatus">—</small></span>${icon('chevron-right')}</button>
     <button class="route-overview-card" type="button" data-open-module="route:ice">${icon('snowflake')}<span><strong data-layout-text="routeIce">${text('routeIce')}</strong><small id="layoutIceStatus">—</small></span>${icon('chevron-right')}</button>
     <button class="route-overview-card" type="button" data-open-module="route:ride">${icon('waves')}<span><strong data-layout-text="routeRide">${text('routeRide')}</strong><small id="layoutRideStatus">—</small></span>${icon('chevron-right')}</button>
     <button class="route-overview-card" type="button" data-open-module="route:decisions">${icon('route')}<span><strong data-layout-text="routeDecisions">${text('routeDecisions')}</strong><small id="layoutDecisionStatus">ETP · PNR · ALT · GLIDE · STEP</small></span>${icon('chevron-right')}</button>
   </div>`;
 
   const toolGroups = {
-    'planning:optimize': ['load'],
     'planning:systems': ['wb', 'oxygen'],
-    'planning:analyses': ['compare', 'cost', 'confidence'],
+    'planning:analyses': ['cost'],
     'route:ice': ['ice'],
     'route:ride': ['ride'],
     'route:decisions': ['etp', 'alternate', 'glide', 'steps'],
@@ -176,14 +169,10 @@
   const updatePanel = $('[data-tool-panel="update"]');
   const updateStrip = $('#tool-card-update');
   const flightPanel = $('#manualFlightPanel');
-  const finishedPanel = $('#manualFinishedPanel');
-  const history = $('.debrief-history-wrap');
-  const confidence = $('#manualConfidence');
+  const confidence = $('#calibrationReference');
   if (updateStrip) moduleNodes.get('flight:calibration').append(updateStrip);
   if (confidence) moduleNodes.get('flight:calibration').append(confidence);
   if (flightPanel && updatePanel) moduleNodes.get('flight:calibration').append(flightPanel);
-  if (finishedPanel) { finishedPanel.hidden = false; moduleNodes.get('flight:history').append(finishedPanel); }
-  if (history) { history.open = true; moduleNodes.get('flight:history').append(history); }
   const oldModeTop = $('.manual-mode-top'); if (oldModeTop) oldModeTop.remove();
 
   const oldTools = $('.flight-tools-panel'); if (oldTools) oldTools.remove();
@@ -221,33 +210,19 @@
   });
   const observer = new MutationObserver(() => {
     const pairs = [
-      ['#terrainStatus', '#layoutTerrainStatus'], ['#cruiseIcingValue', '#layoutIceStatus'],
+      ['#cruiseIcingValue', '#layoutIceStatus'],
       ['#rideValue', '#layoutRideStatus'], ['#oxygenValue', '#layoutOxygenSummary'],
-      ['#kpiFuelDelta', '#layoutFuelMargin'], ['#terrainIntro', '#layoutRouteMeta'],
+      ['#kpiFuelDelta', '#layoutFuelMargin'],
     ];
     for (const [source, target] of pairs) {
       const origin = $(source), display = $(target);
       if (origin && display && display.textContent !== origin.textContent) display.textContent = origin.textContent;
     }
-    const legs = [...document.querySelectorAll('#routeMatrixOverview button')];
-    const rail = $('#layoutRouteRail');
-    if (rail && legs.length) {
-      const signature = legs.map(button => button.className.replace(/\bactive\b/g, '').trim()).join('|');
-      if (rail.dataset.signature !== signature) {
-        rail.dataset.signature = signature;
-        rail.replaceChildren(...legs.map(button => {
-          const segment = document.createElement('span');
-          segment.className = button.classList.contains('unavailable') ? 'unavailable' : button.classList.contains('marginal') ? 'marginal' : button.classList.contains('viable') ? 'viable' : 'outside-cruise';
-          segment.title = button.getAttribute('aria-label') || '';
-          return segment;
-        }));
-      }
-    }
     const context = $('[data-area-context="mission"]');
     const badge = $('#feasibilityBadge');
     if (context && badge) {
       const value = badge.hidden ? '' : badge.textContent;
-      const tone = badge.classList.contains('viable') ? 'viable' : badge.classList.contains('marginal') ? 'marginal' : 'not-viable';
+      const tone = badge.classList.contains('viable') ? 'viable' : badge.classList.contains('marginal') ? 'marginal' : badge.classList.contains('unknown') ? 'unknown' : 'not-viable';
       const className = `area-context ${tone}`;
       if (context.textContent !== value) context.textContent = value;
       if (context.className !== className) context.className = className;
@@ -259,8 +234,8 @@
     noPlan.textContent = text('noPlan');
     const compact = matchMedia('(max-width: 760px)').matches;
     const labels = document.documentElement.lang === 'en-US'
-      ? [['Selected level', 'Level'], ['Required fuel', 'Fuel'], ['Estimated time', 'Time'], ['Maximum range', 'Range']]
-      : [['Nível selecionado', 'Nível'], ['Combustível requerido', 'Combustível'], ['Tempo estimado', 'Tempo'], ['Alcance máximo', 'Alcance']];
+      ? [['Recommended level', 'Level'], ['Required fuel', 'Fuel'], ['Estimated time', 'Time'], ['Maximum range', 'Range']]
+      : [['Nível recomendado', 'Nível'], ['Combustível requerido', 'Combustível'], ['Tempo estimado', 'Tempo'], ['Alcance máximo', 'Alcance']];
     document.querySelectorAll('.kpi-grid .kpi > span:first-of-type').forEach((element, index) => {
       const pair = labels[index];
       if (!pair) return;

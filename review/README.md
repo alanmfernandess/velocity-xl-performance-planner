@@ -1,49 +1,63 @@
-# Auditoria visual final — branch `visual-css-consolidation`
+# Etapa 1 — Unified Mission Optimization Engine
 
-A prévia navegável fica em `http://127.0.0.1:4173/` após executar `npm run serve` nesta branch. A versão pública na `main` permanece intacta até a aprovação visual. As capturas usam o **mesmo OFP sintético de 18 waypoints** nas duas versões; os números exibidos são apenas dados ilustrativos de teste, sem chamada ao SimBrief.
+Branch: `feature/unified-mission-optimization`, criada a partir de `visual-css-consolidation` (`5cabda7`). Esta prévia **não foi incorporada à `main` nem publicada no GitHub Pages**. Execute `npm run serve` nesta branch e abra `http://127.0.0.1:4173/` para navegar.
 
-## Antes e depois da limpeza
+## 1. Arquitetura
+
+`js/unified-optimization.js` recebe o OFP, preset, configuração da aeronave, W&B, oxigênio, reserva, calibração, preferência RIDE e preço. Avalia os nove FLs usando um único conjunto de candidatos e devolve `optimizedMission` com candidato selecionado, perfil de potência, reservas, ICE, RIDE, W&B, O₂, ETP/PNR, GLIDE, alternado, custo, Mission Score, razões e limitações. A interface consome o mesmo candidato para o resumo e os módulos. **Otimizar missão** revela a proposta; **Aplicar configuração** é a única ação que grava o FL e o combustível recomendados.
+
+## 2. Matemática e potência por fase
+
+- A solução de combustível recalcula performance e peso até estabilizar a margem alvo de 6 gal, respeitando o limite utilizável; não altera ocupantes nem bagagem.
+- O cruzeiro integra GS por trecho do navlog quando há distância, posição e vento. O ETP iguala tempos integrados de ida/retorno; o PNR inclui combustível para alcançar a posição, voltar, descer e manter reserva.
+- Subida, cruzeiro e descida têm MAP, RPM, potência estimada, tempo, distância, GPH e consumo ligados aos cálculos. Os coeficientes de fase estão em `js/config.js`. A [lista de verificação do manual Black Square](https://downloads.justflight.com/products/JFF003720/BKSQ_VelocityManual.pdf) orienta limites e procedimentos gerais, mas não oferece tabela completa por preset para as três fases. Subida e descida continuam hipóteses comuns explícitas; os presets diferenciam o cruzeiro. Os valores de GPH, TAS, razão de subida e descida permanecem estimativas para simulador.
+
+## 3. Seleção automática do FL
+
+Primeiro são classificados combustível/capacidade, perfil, W&B, O₂, ICE impeditivo, RIDE impeditivo e alternado. Dentro de cada classe de viabilidade, o motor combina Mission Score e preferência do preset por combustível, tempo, alcance e conforto. A preferência RIDE ajusta o peso do conforto no mesmo ranking. O resultado inclui o FL global, o de menor ICE e o de melhor RIDE. Meteorologia insuficiente produz `NÃO AVALIADO`; não vira evidência de ausência de risco.
+
+## 4. Mission Score
+
+Parte de 100 e desconta margem de combustível, incompatibilidade de perfil, W&B, gelo, turbulência, oxigênio, alternado, eficiência da missão e impacto financeiro quando há preço. Cada perda tem motivo e impacto. Um bloqueio físico limita a pontuação a 39; o **status operacional** permanece independente e pode ser `VIÁVEL`, `MARGINAL`, `INVIÁVEL` ou `NÃO AVALIADO`. MORA e Confidence Envelope não são consultados. Terreno e obstáculos são declarados não avaliados.
+
+## 5. K1 e K2
+
+`K1 = TAS observada / TAS prevista`; `K2 = GPH observado / GPH previsto`. A medição requer cruzeiro estabilizado, posição/FL/combustível restante e temperatura no OFP para o fix escolhido. São registrados preset, MAP, RPM, FL, OAT, peso estimado e data como regime de referência. Fora da tolerância de regime, os fatores não são aplicados. K1 afeta TAS, GS, tempo, consumo dependente do tempo, alcance e ETP/PNR; K2 afeta GPH, combustível de cruzeiro, custo e PNR. A reserva usa a hipótese ECON própria do modelo e não recebe K2 fora do regime de referência. Nenhum fator modifica MAP/RPM nem calibra subida ou descida. Dados antigos válidos com dois fatores são migrados; o JSON legado é preservado localmente como cópia. Leituras inválidas são rejeitadas e os fatores podem ser redefinidos.
+
+## 6. Módulos
+
+**Retirados do fluxo e do código:** MORA/terreno, matriz de níveis, comparação A/B, Confidence Envelope, Debrief, comparação manual de FL, otimizadores antigos de carga/modo/missão, gráficos e utilitários sem uso.
+
+**Preservados/refinados:** SimBrief, W&B, oxigênio, custos e alternado, ETP/PNR por trecho, GLIDE conservador, ICE, RIDE, step climb e atualização em voo. O preço de combustível continua manual; ausência de preço é indisponibilidade de custo.
+
+## 7. Verificação
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm test` | 86 testes aprovados, nenhum erro |
+| `npm run lint:css` | 841 regras; 2.807 declarações; zero problemas |
+| `npm run audit:browser` | 257 estados; zero falhas; 21 capturas |
+| Larguras | 320, 375, 390, 430, 768, 1024, 1440 e 1920 px |
+| Variações | PT-BR/EN-US, LB/KG, GAL/L, A−/A/A+, foco, OFP ausente/carregado, mensagens longas |
+
+Comparado à base CSS da branch visual (`1.223` regras, `3.952` declarações), foram removidas **382 regras** e **1.145 declarações** obsoletas. `styles.css` continua como única folha da aplicação; não foi criada uma nova camada de sobrescritas. O relatório detalhado de navegador está em [browser-audit.json](browser-audit.json).
+
+## 8. Demonstração com OFP sintético
+
+A auditoria intercepta a importação e injeta um OFP **sintético de 18 waypoints**, sem chamada ao SimBrief. Exemplo ilustrativo da tela: **SBSP → SBGL, 246 NM, NORMAL, FL120, 39,5 gal recomendados, ETE 01:02**. O status aparece **NÃO AVALIADO** quando a evidência meteorológica da amostra não sustenta confirmação. Os números e o nível não são uma recomendação para um voo real.
 
 | Área | Desktop 1440 px | Tablet 768 px | Celular 390 px |
 | --- | --- | --- | --- |
-| Missão | [Antes](baseline/desktop-mission-overview.png) · [Depois](final/desktop-mission-overview.png) | [Antes](baseline/tablet-mission-overview.png) · [Depois](final/tablet-mission-overview.png) | [Antes](baseline/mobile-mission-overview.png) · [Depois](final/mobile-mission-overview.png) |
-| Planejamento | [Antes](baseline/desktop-planning-config.png) · [Depois](final/desktop-planning-config.png) | [Antes](baseline/tablet-planning-config.png) · [Depois](final/tablet-planning-config.png) | [Antes](baseline/mobile-planning-config.png) · [Depois](final/mobile-planning-config.png) · [Tela inteira](final/mobile-planning-config-full.png) |
-| Rota & riscos | [Antes](baseline/desktop-route-matrix.png) · [Depois](final/desktop-route-matrix.png) | [Antes](baseline/tablet-route-matrix.png) · [Depois](final/tablet-route-matrix.png) | [Antes](baseline/mobile-route-matrix.png) · [Depois](final/mobile-route-matrix.png) · [Tela inteira](final/mobile-route-matrix-full.png) |
-| Em voo | [Antes](baseline/desktop-flight-calibration.png) · [Depois](final/desktop-flight-calibration.png) | [Antes](baseline/tablet-flight-calibration.png) · [Depois](final/tablet-flight-calibration.png) | [Antes](baseline/mobile-flight-calibration.png) · [Depois](final/mobile-flight-calibration.png) · [Tela inteira](final/mobile-flight-calibration-full.png) |
+| Missão | [Captura](final/desktop-mission-overview.png) | [Captura](final/tablet-mission-overview.png) | [Captura](final/mobile-mission-overview.png) |
+| Otimização | [Captura](final/desktop-planning-optimize.png) | [Captura](final/tablet-planning-optimize.png) | [Captura](final/mobile-planning-optimize.png) · [tela inteira](final/mobile-planning-optimize-full.png) |
+| Rota / ICE | [Captura](final/desktop-route-ice.png) | [Captura](final/tablet-route-ice.png) | [Captura](final/mobile-route-ice.png) |
+| Em voo | [Captura](final/desktop-flight-calibration.png) | [Captura](final/tablet-flight-calibration.png) | [Captura](final/mobile-flight-calibration.png) · [tela inteira](final/mobile-flight-calibration-full.png) |
 
-Outros estados: [sem OFP](final/desktop-no-ofp.png), [Histórico no desktop](final/desktop-flight-history.png), [Histórico no celular](final/mobile-flight-history-full.png) e [aviso longo](final/mobile-long-alert.png).
+## 9. Limitações restantes
 
-## Arquitetura e medidas
-
-`styles.css` continua sendo a única folha carregada, organizada em **Tokens → Base → Layout → Componentes → Módulos → Responsividade**. As regras compartilhadas de card, campo e botão estão centralizadas; os estilos especializados ficam nos módulos. Os sete breakpoints de largura são agrupados em um bloco cada; há um oitavo bloco para movimento reduzido.
-
-| Medida por PostCSS | Antes desta auditoria | Depois |
-| --- | ---: | ---: |
-| Regras | 1.434 | 1.223 |
-| Declarações | 4.652 | 3.952 |
-| Erros detectados pelo lint | 153 no primeiro passe | 0 |
-
-Comparando o CSS anterior com o final por seletor e contexto de mídia, **213 blocos de regra antigos foram eliminados ou consolidados** (redução líquida de 211). Eles continham 630 declarações. Outras **86 declarações redundantes ou ineficazes** saíram de regras que permaneceram; oito declarações foram adicionadas ou reescritas ao consolidar componentes. Foram retirados quatro tokens sem função na arquitetura final: `--radius`, `--shadow`, `--focus-ring` e `--ice-blue`. Dois escritores de variáveis visuais sem consumidor (`--ice-status` e `--topbar-height`) foram removidos de `js/app.js`, sem tocar nos cálculos.
-
-Conflitos corrigidos: margem anulada em `.kpi-grid`, propriedade Flex em `.kpi` Grid, padding antigo da topbar, borda inexistente em `.brand-mark`, atalhos de fonte parcialmente sobrescritos, cores de estado do KPI anuladas por uma regra posterior, propriedades Grid em contêineres `display: block`, dimensões antigas de RIDE e estilos dos gráficos anteriores de terreno, rota e cenários. O botão antigo de atualização permanece oculto apenas para preservar sua marcação e os handlers existentes; a navegação visível é **Calibração** e **Histórico**.
-
-Sobreposições intencionais mantidas:
-
-- `[hidden]` prevalece sobre `display` dos módulos para que a navegação mostre apenas o painel ativo.
-- Variantes de cor de `.kpi.featured` e de estados de missão representam avaliações diferentes.
-- Breakpoints alteram grades e medidas dos mesmos componentes conforme a largura disponível.
-- `border: 0` seguido de `border-top` ou `border-bottom` em controles específicos estabelece somente a borda desejada.
-- `--score` e `--score-color` continuam escritos por JavaScript porque alimentam o indicador circular.
-
-## Verificação reproduzível
-
-1. `npm ci`
-2. `npm test` — executa primeiro `scripts/audit-css.mjs` com PostCSS e depois a suíte existente.
-3. `npx playwright install chromium`
-4. `npm run audit:browser` — inicia um servidor local, intercepta somente o OFP sintético no navegador, percorre as oito larguras e grava [medidas e evidências por estado](browser-audit.json) e as capturas em `review/final/`.
-
-Para reproduzir as capturas da versão anterior, extraia o commit `e4527fc` em uma pasta separada e execute `node scripts/audit-browser.mjs --baseline /caminho/da/pasta`. O comando grava `review/baseline/` e [seu registro](baseline-browser-audit.json).
-
-Resultado final: **129 testes passaram**; **331 estados de navegador** em 320, 375, 390, 430, 768, 1024, 1440 e 1920 px, sem falhas de layout nos critérios medidos. Foram exercitados PT-BR/EN-US, LB/KG, GAL/L, A−/A/A+, foco, ausência e presença de OFP, custo preenchido, histórico com voo registrado, aviso longo e todos os módulos. O teste registra geometria de controles, alinhamento, navegação, tipografia principal e overflow horizontal. O lint verifica referências de seletores no HTML e em todos os scripts, inclusive classes e variáveis geradas dinamicamente.
-
-Limites desta auditoria: as capturas e medidas foram feitas no Chromium 141 automatizado, não em aparelhos físicos ou Safari iOS. Estados raros de risco dependentes de um OFP real não foram todos reproduzidos; suas regras com referências no código foram preservadas. A `main` e o GitHub Pages público não foram alterados.
+- Não há telemetria; a calibração depende das leituras fornecidas pelo usuário e da atmosfera do OFP. Ela não valida regimes fora da referência.
+- Não há tabela detalhada e verificada de MAP/RPM/GPH para cada fase e preset do addon. Os coeficientes atuais são hipóteses configuráveis, não dados certificados.
+- ICE/RIDE dependem da cobertura e validade dos dados meteorológicos do OFP. Índices são heurísticos, não probabilidades.
+- GLIDE não conhece altura sobre terreno nem obstáculos; nenhum ponto de pouso é declarado seguro.
+- O teste visual automatizado roda no Chromium; Safari iOS e aparelhos físicos não foram medidos nesta etapa.
+- Dados locais antigos permanecem no navegador, incluindo histórico de Debrief, mas o módulo e os fatores antigos não são executados.

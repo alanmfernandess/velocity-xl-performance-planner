@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { parseSimBrief } from "../js/simbrief.js";
-import { calculateIcingRisk, calculatePlan, calculateTurbulenceRisk, icingWeatherEvidence } from "../js/engine.js";
+import { calculateIcingRisk, calculateTurbulenceRisk, icingWeatherEvidence } from "../js/engine.js";
 
 const SCEL_SUMU_SIGMET = "SAEF SIGMET 2 VALID 170938/171338 SABE- SAEF EZEIZA FIR SEV ICE FCST AT 0938Z WI S3817 W07005 - S3809 W06819 - S3940 W06811 - S4005 W06900 - S4121 W07037 - S4138 W07042 - S4043 W07146 - S3817 W07005 FL070/120 STNR WKN=";
 
@@ -169,11 +169,12 @@ test("ignores unstructured advisory objects instead of concatenating unrelated f
   });
   assert.equal(result.meteorology.enrouteText, "");
   assert.equal(result.waypoints[0].altitudeFt, 19000);
-  const analysis = calculatePlan({ plan: result, mode: "ECON", payloadLb: 300, fuelOnboardGal: 87, reserveMinutes: 45 });
-  const blockedLevels = analysis.results.filter((item) => item.turbulence.blocking).map((item) => item.fl);
+  const levels = [10000, 12000, 14000, 16000, 18000, 20000, 22000, 24000, 25000].map((altitudeFt) =>
+    ({ altitudeFt, risk: calculateTurbulenceRisk({ plan: result, result: { altitudeFt } }) }));
+  const blockedLevels = levels.filter((item) => item.risk.blocking);
   assert.ok(blockedLevels.length > 0);
-  assert.ok(blockedLevels.length < analysis.results.length);
-  assert.ok(analysis.results.find((item) => item.fl === 100).turbulence.status !== "severe");
+  assert.ok(blockedLevels.length < levels.length);
+  assert.notEqual(levels[0].risk.status, "severe");
 });
 
 test("SimBrief bulletins retain separate severity and altitude in RIDE", () => {

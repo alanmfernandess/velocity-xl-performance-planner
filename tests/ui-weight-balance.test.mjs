@@ -36,22 +36,9 @@ test("A-minus/A/A-plus control persists a slightly smaller default font",()=>{
   assert.doesNotMatch(css,/body \*\s*\{[^}]*font-size:[^}]*!important/);
 });
 
-test("all cruise levels use expandable progressive rows with separate selection",()=>{
-  assert.match(html,/class="levels-list" id="levelCards"/);
-  assert.match(app,/aria-expanded="\$\{expanded\}" aria-controls="\$\{detailId\}"/);
-  assert.match(app,/class="level-detail" id="\$\{detailId\}"/);
-  assert.match(app,/!current\?`<button class="level-select"/);
-  assertDeclaration(css,".level-expand","grid-template-columns","90px minmax(0,1fr) auto 16px");
-  assertDeclaration(css,".level-summary","grid-column","1/-1",760);
-  assertDeclaration(css,".level-summary","grid-row","2",760);
-});
-
-test("mission recovery explains the blocker and requires explicit restoration of the same OFP",()=>{
-  assert.match(html,/id="missionRecovery"[^>]*hidden/);
-  assert.match(html,/id="missionRecoveryAction"/);
-  assert.doesNotMatch(html,/data-i18n="payloadAssignment"/);
-  assert.match(app,/pendingMissionRecovery=calculateMissionRecovery\(\{\.\.\.state,requireTerrainKnown:true\},lastViableMission\)/);
-  assert.match(app,/savedViableMission\?\.planKey===missionPlanKey\(plan\)/);
-  assert.match(app,/\$\("#missionRecoveryAction"\)\.addEventListener\("click"/);
-  assert.match(css,/\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+test("unified proposal does not silently change occupant stations",()=>{
+  assert.match(app,/optimizeMission\(\{\.\.\.state/);
+  assert.match(app,/state\.weightBalance=randomized/);
+  assert.match(html,/id="applyMissionProposal"/);
+  assert.doesNotMatch(html,/id="levelCards"|id="missionRecovery"/);
 });

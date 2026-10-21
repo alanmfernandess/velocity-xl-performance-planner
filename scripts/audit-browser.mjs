@@ -12,14 +12,13 @@ const output = path.join(projectRoot, 'review');
 const widths = [320, 375, 390, 430, 768, 1024, 1440, 1920];
 const modules = {
   mission: ['overview', 'score'],
-  planning: ['config', 'levels', 'optimize', 'systems', 'analyses'],
-  route: ['overview', 'matrix', 'ice', 'ride', 'decisions'],
-  flight: ['calibration', 'history'],
+  planning: ['config', 'optimize', 'systems', 'analyses'],
+  route: ['overview', 'ice', 'ride', 'decisions'],
+  flight: ['calibration'],
 };
 const tools = {
-  'planning:optimize': ['load'],
   'planning:systems': ['wb', 'oxygen'],
-  'planning:analyses': ['compare', 'cost', 'confidence'],
+  'planning:analyses': ['cost'],
   'route:ice': ['ice'],
   'route:ride': ['ride'],
   'route:decisions': ['etp', 'alternate', 'glide', 'steps'],
@@ -84,11 +83,9 @@ const audit = async (page, label) => {
       heading: dimensions('.area-heading h1'),
       primaryButtons: dimensions('.primary-button'),
       textButtons: dimensions('.text-button'),
-      inputs: dimensions('.field input, .input-with-unit input, .debrief-phase-panel input'),
+      inputs: dimensions('.field input, .input-with-unit input'),
       kpis: dimensions('.kpi-grid .kpi'),
       summaryPanels: dimensions('.summary-grid > .panel'),
-      debriefTabs: dimensions('.debrief-phase-tabs button'),
-      debriefForm: dimensions('#debriefForm'),
       activeArea: document.querySelector('.app-area:not([hidden])')?.dataset.areaPanel,
       activeModule: document.querySelector('.app-module:not([hidden])')?.dataset.modulePanel,
       fontFamily: getComputedStyle(document.body).fontFamily,
@@ -108,14 +105,7 @@ const audit = async (page, label) => {
     if (Math.max(...heights) - Math.min(...heights) > 2) issues.push(`KPI heights differ: ${heights.join(',')}`);
   }
   if (data.summaryPanels.length === 2 && data.viewport >= 768 && Math.abs(data.summaryPanels[0].y - data.summaryPanels[1].y) > 2) issues.push('summary cards do not align at the top');
-  if (data.debriefTabs.length === 3) {
-    const widths = data.debriefTabs.map(item => item.width);
-    const heights = data.debriefTabs.map(item => item.height);
-    if (Math.max(...widths) - Math.min(...widths) > 2 || Math.max(...heights) - Math.min(...heights) > 2) issues.push('flight phase tabs have inconsistent sizes');
-    if (Math.min(...heights) < 43) issues.push('flight phase tabs are below touch target size');
-  }
-  if (data.debriefForm.length && Number.parseFloat(data.debriefForm[0].padding) < 15) issues.push('flight result form has insufficient inset');
-  const expectedModule = label.match(/(?:mission|planning|route|flight):(?:overview|score|config|levels|optimize|systems|analyses|matrix|ice|ride|decisions|calibration|history)/)?.[0];
+  const expectedModule = label.match(/(?:mission|planning|route|flight):(?:overview|score|config|optimize|systems|analyses|ice|ride|decisions|calibration)/)?.[0];
   if (expectedModule && data.activeModule !== expectedModule) issues.push(`navigation opened ${data.activeModule || 'nothing'}`);
   if (data.heading.length && data.rootScale === '1' && data.heading[0].fontSize !== '24px') issues.push(`screen title ${data.heading[0].fontSize}`);
   report.states.push({ label, ...data, issues });
@@ -163,7 +153,7 @@ try {
     await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
     if (baseline) {
       if (captureWidths.has(width)) {
-        for (const [area, module] of [['mission', 'overview'], ['planning', 'config'], ['route', 'matrix'], ['flight', 'calibration']]) {
+        for (const [area, module] of [['mission', 'overview'], ['planning', 'config'], ['route', 'ice'], ['flight', 'calibration']]) {
           await activate(page, area, module);
           await screenshot(page, width, area, module);
         }
@@ -175,7 +165,22 @@ try {
       for (const module of keys) {
         await activate(page, area, module);
         await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}`);
-        if (captureWidths.has(width) && ['mission:overview', 'planning:config', 'route:matrix', 'flight:calibration'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
+        if (captureWidths.has(width) && ['mission:overview', 'planning:config', 'route:ice', 'flight:calibration'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
+        if (area === 'planning' && module === 'optimize') {
+          await page.locator('#optimizeMission').click();
+          await page.locator('#missionProposal:visible').waitFor();
+          await audit(page, `${width}px optimized mission`);
+          const sync = await page.evaluate(() => ({
+            proposalFl: document.querySelector('#proposalFl').textContent,
+            kpiFl: document.querySelector('#kpiAltitude').textContent,
+            proposalStatus: document.querySelector('#proposalStatus').textContent,
+            badgeStatus: document.querySelector('#feasibilityBadge').textContent,
+            applied: localStorage.getItem('velocityxl.appliedMission'),
+          }));
+          if (sync.proposalFl !== sync.kpiFl || sync.proposalStatus !== sync.badgeStatus || sync.applied)
+            report.errors.push({ label: `${width}px recommendation sync`, issues: [JSON.stringify(sync)] });
+          if (captureWidths.has(width)) await screenshot(page, width, area, module);
+        }
         for (const tool of tools[`${area}:${module}`] || []) {
           const trigger = page.locator(`[data-tool-view="${tool}"]:visible`);
           if (await trigger.count()) {
@@ -188,6 +193,20 @@ try {
           }
         }
       }
+    }
+    if (width === 1440) {
+      await activate(page, 'planning', 'optimize');
+      const proposedFl = await page.locator('#proposalFl').textContent();
+      await page.locator('#applyMissionProposal').click();
+      const applied = await page.evaluate(() => JSON.parse(localStorage.getItem('velocityxl.appliedMission') || 'null'));
+      if (!applied || `FL${applied.fl}` !== proposedFl || Number(await page.locator('#fuelInput').inputValue()) !== applied.fuelOnboardGal)
+        report.errors.push({ label: '1440px explicit apply', issues: ['Applied fuel/FL and stored proposal disagree'] });
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
+      await page.locator('#importLatest').click();
+      await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
+      if (Number(await page.locator('#fuelInput').inputValue()) !== applied.fuelOnboardGal)
+        report.errors.push({ label: '1440px applied proposal restore', issues: ['Applied fuel was not restored for the same OFP'] });
     }
     await page.locator('[data-language="en-US"]').click();
     await page.locator('[data-weight-unit="kg"]').click();
@@ -204,17 +223,6 @@ try {
     await audit(page, `${width}px EN-US KG/L A- mission:overview`);
     await page.locator('[data-font-size="normal"]').click();
     await audit(page, `${width}px EN-US KG/L A mission:overview`);
-    if (width === 390 || width === 1440) {
-      await page.locator('[data-language="pt-BR"]').click();
-      await page.locator('[data-weight-unit="lb"]').click();
-      await page.locator('[data-fuel-unit="gal"]').click();
-      await activate(page, 'flight', 'history');
-      await page.locator('#debriefTime').fill('73');
-      await page.locator('#debriefFuel').fill('24');
-      await page.locator('#debriefForm button[type="submit"]').click();
-      await audit(page, `${width}px recorded flight history`);
-      await screenshot(page, width, 'flight', 'history');
-    }
     if (width === 390) {
       await page.locator('#toast').evaluate(element => { element.textContent = 'A very long alert about weather, available oxygen and fuel margin across the route, used solely to check line wrapping in the visual audit.'; element.classList.add('show'); });
       await audit(page, `${width}px long alert`);

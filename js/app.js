@@ -1,8 +1,7 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261018-05";
-import { calculateAlternateDiversion, calculateDebrief, calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor, calculateMissionOptimization, calculateMissionRecovery, calculateMissionScore, calculateModeLoadOptimization, calculateOxygenPlan, calculatePlan, calculateRemainingFlightAssessment, calculateRideRecommendation, calculateStepClimbs, clamp, compareScenarios, deleteDebrief, deriveCalibration, icingDisplayTone, missionOptimizationFailureReason, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261018-09";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261021-unified";
+import { optimizeMission } from "./unified-optimization.js";
+import { calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261021-unified";
 import { fetchLatestOFP } from "./simbrief.js?v=20261018-08";
-import { rankMetricLevels } from "./performance-ranking.js?v=20261014-07";
-import { buildRouteMatrix } from "./route-matrix.js?v=20261018-02";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -24,14 +23,6 @@ const UI_ICON_RULES = [
   [".mission-strip > div:nth-child(2)","snowflake","card"],
   [".mission-strip > div:nth-child(3)","waves","card"],
   [".mission-strip > div:nth-child(4)","wind","card"],
-  ['[data-view-panel="performance"] .view-heading h2',"bar-chart-3","heading"],
-  ['[data-metric="fuel"]',"fuel","button"],
-  ['[data-metric="time"]',"clock-3","button"],
-  ['[data-metric="efficiency"]',"gauge","button"],
-  ["#icingStatus","snowflake","inline"],
-  [".phase-grid > div:nth-child(1) > span","plane-takeoff","inline"],
-  [".phase-grid > div:nth-child(2) > span","move-right","inline"],
-  [".phase-grid > div:nth-child(3) > span","plane-landing","inline"],
   [".power-heading > span","gauge","inline"],
   [".range-control:nth-of-type(1) b","luggage","inline"],
   [".range-control:nth-of-type(2) b","fuel","inline"],
@@ -39,18 +30,14 @@ const UI_ICON_RULES = [
   [".weight-meter > div:first-child > span","scale","inline"],
   ["#optimizeMission","wand-sparkles","button"],
   ["#randomizeWeightBalance","shuffle","button"],
-  ["#missionRecoveryAction","rotate-ccw","button"],
   [".mission-score-heading > div > span","activity","inline"],
   [".mission-score-action > span","wrench","inline"],
   [".compact-heading > span","fuel","inline"],
   ['[data-tool-view="etp"]',"route","button"],
   ['[data-tool-view="alternate"]',"map-pinned","button"],
-  ['[data-tool-view="compare"]',"git-compare-arrows","button"],
-  ['[data-tool-view="load"]',"package-check","button"],
   ['[data-tool-view="wb"]',"scale","button"],
   ['[data-tool-view="glide"]',"wind","button"],
   ['[data-tool-view="oxygen"]',"heart-pulse","button"],
-  ['[data-tool-view="confidence"]',"shield-check","button"],
   ['[data-tool-view="ride"]',"waves","button"],
   ['[data-tool-view="ice"]',"snowflake","button"],
   ['[data-tool-view="cost"]',"dollar-sign","button"],
@@ -65,12 +52,6 @@ const UI_ICON_RULES = [
   [".advisor-strip > span:nth-child(1) b","fuel","inline"],
   [".advisor-strip > span:nth-child(2) b","navigation","inline"],
   [".advisor-strip > span:nth-child(3) b","plane-landing","inline"],
-  [".scenario-matrix-head > span:first-child","git-compare-arrows","inline"],
-  ["#applyScenarioB","check","button"],
-  [".load-grid > article:nth-child(1) > span","fuel","inline"],
-  [".load-grid > article:nth-child(2) > span","navigation","inline"],
-  [".load-grid > article:nth-child(3) > span","luggage","inline"],
-  [".load-grid > article:nth-child(4) > span","scale","inline"],
   [".wb-inputs > label:nth-child(-n+5) > span:first-child","user-round","inline"],
   [".wb-inputs > label:nth-child(6) > span:first-child","luggage","inline"],
   [".wb-chart-head strong","scale","inline"],
@@ -90,11 +71,7 @@ const UI_ICON_RULES = [
   [".oxygen-stats > span:nth-child(2) b","cylinder","inline"],
   [".oxygen-stats > span:nth-child(3) b","clock-3","inline"],
   [".oxygen-stats > span:nth-child(4) b","scale","inline"],
-  [".confidence-score > span","shield-check","inline"],
   [".ride-summary","waves","heading"],
-  [".debrief-inputs > label:nth-child(1) > span:first-child","clock-3","inline"],
-  [".debrief-inputs > label:nth-child(2) > span:first-child","fuel","inline"],
-  ["#debriefForm .primary-button","save","button"],
   [".step-comparison-heading h2","trending-up","heading"],
   ["#manualUpdateForm > label:nth-child(1) > span:first-child","map-pin","inline"],
   ["#manualUpdateForm > label:nth-child(2) > span:first-child","navigation","inline"],
@@ -105,7 +82,6 @@ const UI_ICON_RULES = [
   ["#calibrationForm > label:nth-of-type(2) > span:first-child","fuel","inline"],
   ["#calibrationForm .primary-button","check","button"],
   ["#resetCalibration","rotate-ccw","button"],
-  [".section-heading h2","layers-3","heading"],
 ];
 
 function ensureUiIcon(element,name,mode="inline") {
@@ -200,8 +176,8 @@ Object.assign(COPY["en-US"], {
   randomizeWeightBalanceApplied: "Random load has viable weight and CG. Other indicators have been recalculated.",
   randomizeWeightBalanceFailed: "No safe load was found with the current pilot, fuel, and oxygen. Review those values.",
 });
-Object.assign(COPY["pt-BR"], { terrainUnknown:"TERRENO NÃO AVALIADO", bestLevel:"Nível selecionado", cabinAltitude:"Nível de voo", deleteDebrief:"Excluir registro" });
-Object.assign(COPY["en-US"], { terrainUnknown:"TERRAIN UNASSESSED", bestLevel:"Selected level", cabinAltitude:"Flight level", deleteDebrief:"Delete record" });
+Object.assign(COPY["pt-BR"], { bestLevel:"FL recomendado", cabinAltitude:"Nível de voo" });
+Object.assign(COPY["en-US"], { bestLevel:"Recommended FL", cabinAltitude:"Flight level" });
 Object.assign(COPY["pt-BR"], { cruiseIcing:"Índice de gelo" });
 Object.assign(COPY["en-US"], { cruiseIcing:"Icing index" });
 Object.assign(COPY["pt-BR"], { manualInFlight:"Em voo", manualFinished:"Voo concluído", saveDebrief:"Registrar voo", noDebriefs:"SEM VOOS REGISTRADOS", debriefResultTitle:"Resultado do voo", debriefHistory:"Histórico de calibração", debriefPhases:"Fases", phaseTime:"Tempo", phaseFuel:"Combustível", debriefSaved:"Voo registrado", debriefPhasePair:"Preencha tempo e combustível da fase.", debriefPhaseTotals:"Os valores das fases excedem o total do voo.", debriefNoLevel:"Selecione um nível antes de registrar o voo.", glideCaveat:"Alcance teórico · terreno e obstáculos não avaliados" });
@@ -225,28 +201,24 @@ function storedJson(key, fallback) {
 
 const state = {
   plan:null, mode:"NORMAL", payloadLb:520, fuelOnboardGal:77, reserveMinutes:45,
-  metric:"fuel", selectedAltitudeFt:null, manuallySelectedLevel:false, expandedAltitudeFt:null, lastSelectedAltitudeFt:null, rankingExpanded:false, language:localStorage.getItem("velocityxl.language") || "pt-BR",
+  selectedAltitudeFt:null, language:localStorage.getItem("velocityxl.language") || "pt-BR",
   fontSize:["small","normal","large"].includes(localStorage.getItem("velocityxl.fontSize"))?localStorage.getItem("velocityxl.fontSize"):"normal",
   weightUnit:localStorage.getItem("velocityxl.weightUnit") || "lb", fuelUnit:localStorage.getItem("velocityxl.fuelUnit") || "gal",
-  calibration:storedJson("velocityxl.calibration", {}),
+  calibration:migrateCalibration(storedJson("velocityxl.calibration", {})),
   powerSetting:storedJson("velocityxl.powerSetting", { type:"AUTO", mapInHg:24, rpm:2450 }),
-  oxygen:storedJson("velocityxl.oxygen", { bottleModel:"SK-12-24", bottles:0, seats:[true,true,true,true,true], altitudeFt:null }),
+  oxygen:storedJson("velocityxl.oxygen", { bottleModel:"SK-12-24", bottles:0, seats:[true,true,true,true,true] }),
   weightBalance:storedJson("velocityxl.weightBalance", { pilot:190, copilot:170, rearLeft:55, rearCenter:50, rearRight:55, baggage:0 }),
-  debriefs:storedJson("velocityxl.debriefs", []),
   financial:storedJson("velocityxl.financial", { currency:"BRL", prices:{} }),
   ridePreference:["standard","comfort","maximum"].includes(localStorage.getItem("velocityxl.ridePreference"))?localStorage.getItem("velocityxl.ridePreference"):"standard",
   preflightSnapshot:null,
   manual:{ active:false, waypointIndex:0, distanceNm:0, fuelRemainingGal:77, altitudeFt:null },
   diversionWaypointIndex:0,
-  scenarioB:{ mode:"ECON", altitudeFt:16000, payloadLb:520, fuelOnboardGal:77 },
   glideSampleIndex:null,
-  manualTerrainMora:{}, matrixLegIndex:0,
 };
-let lastViableMission=null;
-let pendingMissionRecovery=null;
 let lastRenderedMissionScore=null;
 let lastRenderedFinancial=null;
-const viableMissionStorageKey="velocityxl.lastViableMission";
+let latestOptimizedMission=null;
+let proposalOpen=false;
 const t = (key, ...args) => typeof COPY[state.language][key] === "function" ? COPY[state.language][key](...args) : COPY[state.language][key] || key;
 const number = (value, digits = 0) => Number(value).toLocaleString(state.language, { minimumFractionDigits:digits, maximumFractionDigits:digits });
 const signed = (value, suffix="") => `${value >= 0 ? "+" : "−"}${number(Math.abs(Math.round(value)))}${suffix}`;
@@ -265,7 +237,7 @@ const fuelPricePerLiter=()=>Number(state.financial.prices?.[financialPriceKey()]
 const currencySymbol=()=>state.financial.currency==="USD"?"US$":"R$";
 const formatMoney=(value,digits=2)=>Number(value).toLocaleString(state.language,{style:"currency",currency:state.financial.currency,minimumFractionDigits:digits,maximumFractionDigits:digits});
 const currentOxygenWeightLb=()=>oxygenSystemWeightLb(state.oxygen);
-const operationallyAvailable=(result)=>result.feasibility.status!=="unavailable"&&result.terrain.status!=="unavailable"&&result.icing.status!=="avoid"&&!result.turbulence.blocking&&result.oxygen.status!=="insufficient"&&result.weightBalance?.status!=="unavailable";
+const operationallyAvailable=(result)=>result.feasibility.status!=="unavailable"&&result.icing.status!=="avoid"&&!result.turbulence.blocking&&result.oxygen.status!=="insufficient"&&result.weightBalance?.status!=="unavailable";
 
 state.weightBalance=normalizeWeightBalance(state.weightBalance);
 state.payloadLb=weightBalancePayloadLb(state.weightBalance);
@@ -273,21 +245,17 @@ state.oxygen.seats=[state.weightBalance.pilot,state.weightBalance.copilot,state.
 state.oxygen.bottleModel=OXYGEN_CYLINDERS[state.oxygen.bottleModel]?state.oxygen.bottleModel:"SK-12-24";
 state.oxygen.bottles=clamp(Math.round(Number(state.oxygen.bottles)||0),0,4);
 state.financial={currency:["BRL","USD"].includes(state.financial?.currency)?state.financial.currency:"BRL",prices:state.financial?.prices&&typeof state.financial.prices==="object"?state.financial.prices:{}};
+const legacyCalibration=storedJson("velocityxl.calibration",null);
+if(legacyCalibration && ["ECON","NORMAL","FAST"].some((mode)=>legacyCalibration[mode]) && !localStorage.getItem("velocityxl.calibration.legacy")){
+  localStorage.setItem("velocityxl.calibration.legacy",JSON.stringify(legacyCalibration));
+}
 
-function buildFinancialAnalysis(plan,selected,alternateAdvice=null) {
+function buildFinancialAnalysis(plan,selected,alternateAdvice,mission) {
   const pricePerLiter=fuelPricePerLiter();
-  const modes=["ECON","NORMAL","FAST"].map((mode)=>{
-    const modeAnalysis=calculatePlan({...state,mode,powerSetting:{type:"AUTO",mapInHg:PERFORMANCE.modes[mode].mapInHg,rpm:PERFORMANCE.modes[mode].rpm}});
-    const candidates=modeAnalysis.results.filter(operationallyAvailable);
-    const result=candidates.slice().sort((a,b)=>a.tripFuelGal-b.tripFuelGal)[0]||null;
-    const consumedGal=result?PERFORMANCE.taxiFuelGal+result.tripFuelGal:null;
-    return {mode,result,consumedGal,cost:result&&pricePerLiter>0?consumedGal*PERFORMANCE.financial.litersPerGal*pricePerLiter:null};
-  });
   const consumedGal=PERFORMANCE.taxiFuelGal+selected.tripFuelGal;
-  const cost=pricePerLiter>0?consumedGal*PERFORMANCE.financial.litersPerGal*pricePerLiter:null;
-  const validCosts=modes.map((item)=>item.cost).filter((value)=>Number.isFinite(value)&&value>0);
-  const minimumViableCost=validCosts.length?Math.min(...validCosts):null;
-  const impact=calculateFinancialImpact({currentCost:cost,minimumViableCost});
+  const impact=mission.financial;
+  const cost=impact.cost;
+  const minimumViableCost=impact.minimumViableCost;
   const occupants=Math.max(1,["pilot","copilot","rearLeft","rearCenter","rearRight"].filter((key)=>Number(state.weightBalance[key])>0).length);
   const phaseFuel={taxi:PERFORMANCE.taxiFuelGal,climb:selected.climb.fuelGal,cruise:selected.cruiseFuelGal,descent:selected.descent.fuelGal};
   const phaseCosts=Object.fromEntries(Object.entries(phaseFuel).map(([key,value])=>[key,pricePerLiter>0?value*PERFORMANCE.financial.litersPerGal*pricePerLiter:null]));
@@ -312,7 +280,7 @@ function buildFinancialAnalysis(plan,selected,alternateAdvice=null) {
     costPerHour:Number.isFinite(cost)?cost/Math.max(.01,selected.tripTimeHr):null,
     costPerPerson:Number.isFinite(cost)?cost/occupants:null,
     requiredFuelValue:pricePerLiter>0?selected.fuelRequiredGal*PERFORMANCE.financial.litersPerGal*pricePerLiter:null,
-    phaseCosts,modes,alternate,fl:selected.fl,mode:state.mode,
+    phaseCosts,alternate,fl:selected.fl,mode:state.mode,
   };
 }
 
@@ -333,24 +301,6 @@ function missionPlanKey(plan) {
   return [plan.source,plan.generatedAt,plan.origin?.icao,plan.destination?.icao,plan.route,plan.distanceNm].join("|");
 }
 
-function rememberViableMission() {
-  lastViableMission={
-    plan:state.plan,
-    planKey:missionPlanKey(state.plan),
-    mode:state.mode,
-    fuelOnboardGal:state.fuelOnboardGal,
-    oxygen:{...state.oxygen,seats:[...state.oxygen.seats]},
-    weightBalance:{...state.weightBalance},
-  };
-  const {plan,...storedMission}=lastViableMission;
-  localStorage.setItem(viableMissionStorageKey,JSON.stringify(storedMission));
-}
-
-function optimizationFailureText(optimization) {
-  const key={CG_AFT:"optimizationCgAft",CG_FORWARD:"optimizationCgForward",WEIGHT:"optimizationWeight",FUEL_CAPACITY:"optimizationFuelCapacity",ALTERNATE:"optimizationAlternate",WEATHER:"optimizationWeather",OXYGEN:"optimizationOxygen",TERRAIN:"optimizationTerrain",COMBINED:"optimizationCombined"}[missionOptimizationFailureReason(optimization)];
-  return t(key||"optimizationCombined");
-}
-
 function showToast(message, error=false) {
   const toast=$("#toast"); toast.textContent=message; toast.classList.toggle("error",error); toast.classList.add("show");
   clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>toast.classList.remove("show"),3000);
@@ -368,129 +318,11 @@ function applyTranslations() {
   $$('.font-switch button[data-font-size]').forEach((button)=>{const active=button.dataset.fontSize===state.fontSize;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));button.setAttribute("aria-label",t(button.dataset.fontSize==="small"?"fontSmall":button.dataset.fontSize==="large"?"fontLarge":"fontNormal"));});
   $$('[data-power-type]').forEach((button)=>button.classList.toggle("active",button.dataset.powerType===state.powerSetting.type));
   $("#powerManualFields").hidden=state.powerSetting.type!=="MANUAL";
-  const metricLabels={fuel:state.language==="pt-BR"?"Combustível":"Fuel",time:state.language==="pt-BR"?"Tempo":"Time",efficiency:state.language==="pt-BR"?"Eficiência":"Efficiency"};
-  $$('[data-metric]').forEach((button)=>{ button.textContent=metricLabels[button.dataset.metric]; });
   window.VelocityLayout?.translate();
-}
-
-function metricConfig() {
-  if(state.metric==="time") return { get:(result)=>result.tripTimeHr, unit:"h", hint:t("timeHint"), value:formatTime };
-  if(state.metric==="efficiency") return { get:(result)=>state.fuelUnit==="l"?result.specificRangeNmGal/3.785411784:result.specificRangeNmGal, unit:state.fuelUnit==="l"?"NM/L":"NM/GAL", hint:t("efficiencyHint"), value:(v)=>number(v,1) };
-  return { get:(result)=>fuelValue(result.fuelRequiredGal), unit:state.fuelUnit==="l"?"L":"GAL", hint:t("fuelHint"), value:(v)=>number(v,1) };
-}
-
-function levelStatus(result) {
-  if(!operationallyAvailable(result)) return "unavailable";
-  const status=(result.displayMissionScore||result.missionScore)?.status;
-  return status==="not-viable"?"unavailable":status||"unknown";
-}
-
-function renderPerformanceRanking(results,recommended,selectedResult) {
-  const config=metricConfig();
-  const ranking=rankMetricLevels(results.map((result)=>({result,altitudeFt:result.altitudeFt,value:config.get(result),available:operationallyAvailable(result)})),state.metric);
-  const available=ranking.filter((entry)=>entry.available),top=available.slice(0,3),rest=ranking.slice(top.length),best=available[0]?.value;
-  const rankLabel=(rank)=>state.language==="pt-BR"?`${rank}º`:`#${rank}`;
-  const metricValue=(value)=>`${config.value(value)}${state.metric==="time"?"":` ${config.unit}`}`;
-  const difference=(value)=>{
-    if(value===best) return "—";
-    if(state.metric==="time") return `+${number(Math.max(0,Math.round(value*60)-Math.round(best*60)))} min`;
-    if(state.metric==="efficiency") return `−${number(Math.max(0,best-value),1)} ${config.unit}`;
-    return `+${number(Math.max(0,value-best),1)} ${config.unit}`;
-  };
-  const badges=(result)=>`${result.altitudeFt===selectedResult.altitudeFt?`<span class="ranking-badge selected">${escapeHtml(t("selectedLevel"))}</span>`:""}${result.altitudeFt===recommended.altitudeFt&&operationallyAvailable(recommended)&&recommended.terrain.status!=="unknown"?`<span class="ranking-badge recommended">${escapeHtml(t("recommendedLevel"))}</span>`:""}`;
-  const statusLabel=(result)=>escapeHtml(t(levelStatus(result)==="unavailable"?"notViable":levelStatus(result)==="unknown"?"terrainUnknown":levelStatus(result)==="marginal"?"marginalStatus":"viable"));
-  const topMarkup=top.map(({result,value,rank})=>`<button class="ranking-card ${levelStatus(result)} ${result.altitudeFt===selectedResult.altitudeFt?"selected":""}" type="button" data-rank-altitude="${result.altitudeFt}">
-    <span class="ranking-card-top"><b>${rankLabel(rank)} · FL${result.fl}</b><small>${statusLabel(result)}</small></span>
-    <strong>${metricValue(value)}</strong>
-    <span class="ranking-card-bottom"><small>${difference(value)}</small><span class="ranking-badges">${badges(result)}</span></span>
-  </button>`).join("");
-  const restMarkup=rest.map(({result,value,rank,available:canSelect})=>`<button class="ranking-row ${levelStatus(result)} ${result.altitudeFt===selectedResult.altitudeFt?"selected":""}" type="button" data-rank-altitude="${result.altitudeFt}">
-    <span class="ranking-row-id"><b>${rank?`${rankLabel(rank)} · `:""}FL${result.fl}</b><span>${statusLabel(result)} ${badges(result)}</span></span>
-    <span class="ranking-row-value"><strong>${metricValue(value)}</strong><small>${canSelect?difference(value):escapeHtml(levelFeasibilityLabel(result))}</small></span>
-  </button>`).join("");
-  $("#performanceChart").innerHTML=`<div class="ranking-context"><span>${escapeHtml(t("selectedLevel"))} · FL${selectedResult.fl}</span><span>${recommended.terrain.status==="unknown"?`${escapeHtml(t("terrainUnknown"))} · FL${recommended.fl}`:operationallyAvailable(recommended)?`${escapeHtml(t("recommendedLevel"))} · FL${recommended.fl}`:escapeHtml(t("rankingNoAvailable"))}</span></div>
-    <div class="ranking-top">${topMarkup||`<p class="ranking-empty">${escapeHtml(t("rankingNoAvailable"))}</p>`}</div>
-    ${rest.length?`<button class="ranking-toggle" type="button" data-ranking-toggle aria-controls="rankingRest" aria-expanded="${state.rankingExpanded}">${escapeHtml(t("rankingOthers",rest.length))} · ${escapeHtml(t(state.rankingExpanded?"rankingHide":"rankingShow"))}</button><div class="ranking-rest" id="rankingRest" data-collapsed="${!state.rankingExpanded}">${restMarkup}</div>`:""}`;
 }
 
 function icingLabel(icing) {
   return t(icing.status==="avoid"?"icingAvoid":icing.status==="caution"?"icingCaution":icing.status==="watch"?"icingWatch":"icingLow");
-}
-
-function icingProbabilityMarkup(icing) {
-  const score=clamp(Math.round(icing.riskScore),0,100);
-  const tone=icingDisplayTone(score,icing.status);
-  const evidence=t(icing.confidence==="weather"?"icingWeather":icing.confidence==="estimated"?"weatherEstimated":"icingLimited");
-  return `<span class="ice-probability ice-${tone}" aria-label="${escapeHtml(t("iceProbabilityAria"))}: ${score} / 100 · ${escapeHtml(evidence)}">${iconMarkup("snowflake")}<span>ICE</span><strong>${score}/100</strong><small>${escapeHtml(evidence)}</small></span>`;
-}
-
-function levelFeasibilityLabel(result) {
-  if(result.terrain.status==="unavailable") return `MORA · ${signedNumber(result.terrain.marginFt,0," ft")}`;
-  if(result.terrain.status==="unknown") return t("terrainUnknown");
-  if(result.terrain.status==="marginal") return `MORA · ${signedNumber(result.terrain.marginFt,0," ft")}`;
-  if(result.weightBalance?.status==="unavailable") return result.weightBalance.primaryReason==="WEIGHT"?t("grossWeight"):"CG";
-  if(result.oxygen.status==="insufficient") return `${t("oxygenInsufficient")} O₂`;
-  if(result.turbulence.blocking) return `${t("severe")} TURB`;
-  if(result.icing.status==="avoid") return t("icingAvoid");
-  const feasibility=result.feasibility;
-  if(result.oxygen.status==="marginal") return "O₂";
-  if(result.turbulence.status==="severe") return `${t("severe")} TURB`;
-  if(result.turbulence.status==="moderate") return `${t("moderate")} TURB`;
-  if(result.icing.status==="caution") return t("icingCaution");
-  if(feasibility.status==="viable") return "";
-  if(feasibility.status==="marginal") return feasibility.primaryReason==="FUEL"?`${t("fuel")} · ${signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`)}`:t("marginalStatus");
-  if(feasibility.primaryReason==="FUEL") return signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`);
-  if(feasibility.primaryReason==="WEIGHT") return `+${formatWeight(Math.abs(feasibility.weightMarginLb))}`;
-  if(feasibility.primaryReason==="ALTITUDE") return t("ceilingLimit");
-  return t("profileLimit");
-}
-
-function renderLevelCards(results,recommended,selected) {
-  if(selected.altitudeFt!==state.lastSelectedAltitudeFt){state.expandedAltitudeFt=selected.altitudeFt;state.lastSelectedAltitudeFt=selected.altitudeFt;}
-  if(!results.some((result)=>result.altitudeFt===state.expandedAltitudeFt)) state.expandedAltitudeFt=selected.altitudeFt;
-  $("#levelCards").innerHTML=results.map((result)=>{
-    const status=levelStatus(result);
-    const blocked=status==="unavailable";
-    const statusLabel=t(status==="unavailable"?"notViable":status==="unknown"?"terrainUnknown":status==="marginal"?"marginalStatus":"viable");
-    const current=result.altitudeFt===selected.altitudeFt;
-    const isRecommended=result.altitudeFt===recommended.altitudeFt&&!blocked&&recommended.terrain.status!=="unknown";
-    const expanded=result.altitudeFt===state.expandedAltitudeFt;
-    const reason=levelFeasibilityLabel(result);
-    const oxygenStatus=oxygenLabel(result.oxygen.status);
-    const detailId=`level-detail-${result.altitudeFt}`;
-    const stateIcon=blocked?"triangle-alert":isRecommended?"star":["marginal","unknown"].includes(status)?"triangle-alert":"circle-check";
-    return `<article class="level-item ${status} ${current?"selected":""} ${isRecommended?"recommended":""} ${expanded?"expanded":""}" data-level="${result.altitudeFt}">
-      <button class="level-expand" type="button" aria-expanded="${expanded}" aria-controls="${detailId}" aria-label="FL${result.fl} · ${escapeHtml(statusLabel)} · ${formatFuel(result.fuelRequiredGal,1)} · ETE ${formatTime(result.tripTimeHr)} · ${Math.round(result.tasKt)} kt TAS">
-        <strong class="level-fl">FL${result.fl}</strong>
-        <span class="level-summary">${formatFuel(result.fuelRequiredGal,1)} <span aria-hidden="true">·</span> ${formatTime(result.tripTimeHr)} <span aria-hidden="true">·</span> ${Math.round(result.tasKt)} kt TAS</span>
-        <span class="level-status">${iconMarkup(stateIcon,"level-state-icon")}${escapeHtml(statusLabel)}</span>
-        ${iconMarkup("chevron-down","level-chevron")}
-      </button>
-      <div class="level-detail" id="${detailId}" ${expanded?"":"hidden"}>
-        <div><span>${escapeHtml(t("iceProbability"))}</span>${icingProbabilityMarkup(result.icing)}</div>
-        <div><span>${escapeHtml(t("oxygen"))}</span><strong class="${result.oxygen.status==="insufficient"?"level-warning":""}">${escapeHtml(oxygenStatus)}</strong></div>
-        ${reason&&reason!==statusLabel?`<div class="level-reason"><span>${escapeHtml(t("levelReason"))}</span><strong>${escapeHtml(reason)}</strong></div>`:""}
-        ${current?`<div class="level-selection"><span>${escapeHtml(t("levelSelection"))}</span><strong>${escapeHtml(t("selectedLevel"))}</strong></div>`:isRecommended?`<div class="level-selection"><span>${escapeHtml(t("levelSelection"))}</span><strong>${escapeHtml(t("recommendedLevel"))}</strong></div>`:""}
-        ${!current?`<button class="level-select" type="button" data-select-level="${result.altitudeFt}">${escapeHtml(t("selectLevel"))}</button>`:""}
-      </div>
-    </article>`;
-  }).join("");
-  $$(".level-expand").forEach((button)=>button.addEventListener("click",()=>{
-    const level=Number(button.closest(".level-item").dataset.level);
-    state.expandedAltitudeFt=level;
-    $$(".level-item").forEach((item)=>{const expanded=Number(item.dataset.level)===level;item.classList.toggle("expanded",expanded);item.querySelector(".level-expand").setAttribute("aria-expanded",String(expanded));item.querySelector(".level-detail").hidden=!expanded;});
-  }));
-  $$("[data-select-level]").forEach((button)=>button.addEventListener("click",()=>{state.selectedAltitudeFt=Number(button.dataset.selectLevel);state.manuallySelectedLevel=true;render();$( `.level-item[data-level="${state.selectedAltitudeFt}"] .level-expand`)?.focus();}));
-}
-
-function renderIcingSummary(analysis,selected) {
-  const recommended=analysis.winners.overall,performance=analysis.winners.performance,cost=analysis.icing.cost,icing=selected.icing;
-  const source=icing.confidence==="weather"?t("icingWeather"):icing.confidence==="estimated"?t("weatherEstimated"):t("icingLimited");
-  const status=$("#icingStatus");
-  status.textContent=icingLabel(icing);
-  status.className=`icing-${icing.status}`;
-  $("#icingDelta").textContent=selected.altitudeFt===recommended.altitudeFt?(cost.changedAltitude?`FL${performance.fl} → FL${recommended.fl} · ${signedNumber(fuelValue(cost.fuelGal),1,` ${fuelLabel()}`)} · ${signedNumber(cost.timeHr*60,0," min")}`:`FL${recommended.fl} · ${t("icingNoCost")}`):`FL${selected.fl} · ${number(icing.riskScore)}/100`;
-  $("#icingSource").textContent=`SIMBRIEF OFP · ${source} · ${t("tempWindow")} ${number(icing.temperatureExposureMinutes,0)} min`;
 }
 
 function iceBlue(score, minimum=.08, maximum=.82) {
@@ -511,13 +343,6 @@ function renderIceModule(plan,analysis,selected) {
   $("#iceIndexMarker").style.left=`${score}%`;
   $("#iceIndexFill").style.background=iceBlue(score,.38,.95);
   $("#iceIndexMarker").style.background=iceBlue(score,.55,1);
-
-  const nearby=[...analysis.results].sort((a,b)=>Math.abs(a.altitudeFt-selected.altitudeFt)-Math.abs(b.altitudeFt-selected.altitudeFt)||a.altitudeFt-b.altitudeFt).slice(0,3).sort((a,b)=>a.altitudeFt-b.altitudeFt);
-  $("#iceLevelCompare").innerHTML=nearby.map((level)=>{
-    const active=level.altitudeFt===selected.altitudeFt,value=clamp(Math.round(level.icing.riskScore||0),0,100);
-    return `<button type="button" class="${active?"active":""}" data-ice-level="${level.altitudeFt}" style="--ice-level-color:${iceBlue(value,.15,.82)}"><span>FL${level.fl}</span><strong>${number(value)}</strong><small>/100</small></button>`;
-  }).join("");
-  $$("[data-ice-level]").forEach((button)=>button.addEventListener("click",()=>{state.selectedAltitudeFt=Number(button.dataset.iceLevel);state.manuallySelectedLevel=true;render();}));
 
   const segments=icing.segments||[],temperatureSegments=segments.filter((segment)=>segment.temperatureRelevant);
   const peakIndex=segments.reduce((best,segment,index)=>(segment.riskScore||0)>(segments[best]?.riskScore||0)?index:best,0);
@@ -542,8 +367,8 @@ function renderIceModule(plan,analysis,selected) {
   $("#iceEscapeLabel").textContent=pt?"SAÍDA VERTICAL":"VERTICAL EXIT";
   escapeButton.querySelector("strong").textContent=Number.isFinite(escapeAltitude)?`FL${Math.round(escapeAltitude/100)}`:"—";
   escapeButton.querySelector("small").textContent=Number.isFinite(escapeAltitude)?`ICE ${number(icing.escapeRiskScore)}/100`:(pt?"sem ganho ≥ 8":"no gain ≥ 8");
-  escapeButton.disabled=!Number.isFinite(escapeAltitude);
-  escapeButton.onclick=Number.isFinite(escapeAltitude)?()=>{state.selectedAltitudeFt=escapeAltitude;state.manuallySelectedLevel=true;render();}:null;
+  escapeButton.disabled=true;
+  escapeButton.onclick=null;
   const temperatureNm=temperatureSegments.reduce((sum,segment)=>sum+Math.max(0,(Number(segment.endNm)||0)-(Number(segment.startNm)||0)),0);
   $("#iceRouteExposure").textContent=segments.length?`${temperatureSegments.length}/${segments.length} · ${number(temperatureNm,0)} NM`:"—";
   $("#iceRouteLabels").innerHTML=segments.length?`<span>${escapeHtml(segments[0].from||plan.origin.icao)}</span>${segments.map((segment)=>`<span>${escapeHtml(segment.to||"—")}</span>`).join("")}`:"";
@@ -589,45 +414,6 @@ function renderIceModule(plan,analysis,selected) {
   $("#iceCompositionValue").textContent=`${number(score)}/100`;
   $("#iceCompositionFill").style.width=`${score}%`;
   $("#iceCompositionFill").style.background=iceBlue(score,.36,1);
-}
-
-function renderRouteMatrix(plan,results,result) {
-  const pt=state.language==="pt-BR",matrix=buildRouteMatrix(plan,results,state.manualTerrainMora);
-  const terrain=result.terrain,statusKey=terrain.status==="unknown"?"terrainUnknown":terrain.status==="unavailable"?"notViable":terrain.status==="marginal"?"marginalStatus":"viable";
-  const badge=$("#terrainStatus");badge.textContent=t(statusKey);badge.className=`terrain-badge ${terrain.status}`;
-  $("#terrainMargin").textContent=Number.isFinite(terrain.marginFt)?signedNumber(terrain.marginFt,0," ft"):"—";
-  $("#terrainEyebrow").textContent=pt?"ROTA · OFP":"ROUTE · OFP";
-  $("#terrainTitle").textContent=pt?"Matriz de níveis":"Level matrix";
-  $("#terrainIntro").textContent=`${plan.origin.icao} → ${plan.destination.icao} · ${matrix.length} ${pt?"trechos":"legs"} · ${number(plan.distanceNm)} NM`;
-  $("#terrainNote").textContent=pt?"MORA · cruzeiro  |  — = sem dados":"MORA · cruise  |  — = no data";
-  if(!matrix.length){$("#routeMatrixOverview").innerHTML="";$("#routeMatrixGrid").innerHTML="";$("#routeMatrixDetail").innerHTML="";$("#routeMatrixLegTitle").textContent="—";$("#routeMatrixPosition").textContent="—";$("#terrainManual").hidden=true;return;}
-  state.matrixLegIndex=clamp(state.matrixLegIndex,0,matrix.length-1);
-  const index=state.matrixLegIndex,chosen=matrix[index],chosenCell=chosen.levels.find((cell)=>cell.altitudeFt===result.altitudeFt)||chosen.levels[0];
-  const phaseNames={climb:pt?"SUBIDA":"CLIMB",cruise:pt?"CRUZEIRO":"CRUISE",descent:pt?"DESCIDA":"DESCENT","climb-cruise":pt?"SUB / CRZ":"CLB / CRZ","cruise-descent":pt?"CRZ / DESC":"CRZ / DES","climb-cruise-descent":pt?"SUB / CRZ / DESC":"CLB / CRZ / DES",transition:pt?"TRANSIÇÃO":"TRANSITION"};
-  const windView=(value)=>{if(!Number.isFinite(value))return {label:"—",tone:"missing"};const rounded=Math.round(value);return rounded===0?{label:"0 kt",tone:"zero"}:{label:signed(rounded," kt"),tone:rounded>0?"positive":"negative"};};
-  const marginView=(cell)=>cell.terrainStatus==="outside-cruise"?"—":Number.isFinite(cell.marginFt)?signedNumber(cell.marginFt,0," ft"):"—";
-  const iceView=(cell)=>Number.isFinite(cell.icingScore)?`${number(cell.icingScore)}/100`:"—";
-  const overview=$("#routeMatrixOverview");overview.innerHTML=matrix.map((leg,legIndex)=>{
-    const cell=leg.levels.find((entry)=>entry.altitudeFt===result.altitudeFt)||leg.levels[0];
-    return `<button type="button" class="${cell.terrainStatus} ${legIndex===index?"active":""}" data-matrix-leg="${legIndex}" aria-label="${pt?"Trecho":"Leg"} ${legIndex+1}: ${escapeHtml(leg.from.ident||plan.origin.icao)} → ${escapeHtml(leg.to.ident||plan.destination.icao)}; MORA ${Number.isFinite(leg.moraFt)?number(leg.moraFt):"—"} ft" aria-current="${legIndex===index?"true":"false"}">${legIndex+1}</button>`;
-  }).join("");
-  const activeLeg=overview.querySelector(".active");
-  if(activeLeg)overview.scrollLeft=activeLeg.offsetLeft-overview.offsetLeft-(overview.clientWidth-activeLeg.clientWidth)/2;
-  $("#routeMatrixLegTitle").textContent=`${chosen.from.ident||plan.origin.icao} → ${chosen.to.ident||plan.destination.icao}`;
-  $("#routeMatrixPosition").textContent=`${pt?"Trecho":"Leg"} ${index+1}/${matrix.length} · MORA ${Number.isFinite(chosen.moraFt)?`${number(chosen.moraFt)} ft`:"—"} · ${number(chosen.startNm)}–${number(chosen.endNm)} NM`;
-  $("[data-matrix-prev]").disabled=index===0;$("[data-matrix-next]").disabled=index===matrix.length-1;
-  const start=clamp(index-2,0,Math.max(0,matrix.length-5)),visible=matrix.slice(start,start+5);
-  const head=`<div class="matrix-row"><span class="matrix-fl"></span>${visible.map((leg,offset)=>`<div class="matrix-head ${start+offset===index?"active":""}"><strong>${escapeHtml(leg.from.ident||"—")} → ${escapeHtml(leg.to.ident||"—")}</strong><span>${start+offset+1}/${matrix.length} · MORA ${Number.isFinite(leg.moraFt)?number(leg.moraFt):"—"}</span></div>`).join("")}</div>`;
-  const rows=results.map((level)=>`<div class="matrix-row ${level.altitudeFt===result.altitudeFt?"selected-level":"unselected-level"}"><span class="matrix-fl ${level.altitudeFt===result.altitudeFt?"selected":""}">FL${level.fl}</span>${visible.map((leg,offset)=>{
-    const cell=leg.levels.find((item)=>item.altitudeFt===level.altitudeFt),active=start+offset===index,wind=windView(cell.windComponentKt);
-    return `<button type="button" class="matrix-cell ${cell.terrainStatus} ${active?"active":""} ${active&&level.altitudeFt===result.altitudeFt?"selected":""}" data-matrix-leg="${start+offset}" data-matrix-fl="${level.altitudeFt}" aria-label="FL${level.fl}, ${escapeHtml(leg.from.ident||"—")} a ${escapeHtml(leg.to.ident||"—")}, ${pt?"margem":"margin"} ${marginView(cell)}, ${phaseNames[cell.phase]}, ${pt?"vento":"wind"} ${wind.label}, ${pt?"gelo":"icing"} ${iceView(cell)}"><strong>${marginView(cell)}</strong><span>${phaseNames[cell.phase]}</span><span><span class="matrix-wind ${wind.tone}">${wind.label}</span> · ICE ${iceView(cell)}</span></button>`;
-  }).join("")}</div>`).join("");
-  $("#routeMatrixGrid").innerHTML=head+rows;
-  const wind=windView(chosenCell.windComponentKt);
-  $("#routeMatrixDetail").innerHTML=`<div><span>MORA</span><strong>${Number.isFinite(chosen.moraFt)?`${number(chosen.moraFt)} ft · ${escapeHtml(chosen.moraSource)}`:"—"}</strong></div><div><span>${pt?"FASE":"PHASE"}</span><strong>${phaseNames[chosenCell.phase]}</strong></div><div><span>${pt?"VENTO":"WIND"} · FL${result.fl}</span><strong class="matrix-wind ${wind.tone}">${wind.label}</strong></div><div><span>ICE · FL${result.fl}</span><strong>${iceView(chosenCell)}</strong></div>`;
-  const missing=terrain.legs.filter((leg)=>!Number.isFinite(leg.feet));
-  $("#terrainManual").hidden=!missing.length;
-  $("#terrainManual").innerHTML=missing.length?`<h3>${pt?"MORA ausente no OFP":"MORA missing from OFP"}</h3><p>${pt?"Informe a altitude mínima verificada e a fonte para cada trecho; a matriz não estima MORA a partir do relevo.":"Enter a verified minimum altitude and source for each leg; the matrix does not infer MORA from elevation."}</p><div class="terrain-manual-list">${missing.map((leg)=>{const saved=state.manualTerrainMora[leg.index]||{};return `<form data-terrain-leg="${leg.index}"><span>${escapeHtml(leg.from.ident||"—")} → ${escapeHtml(leg.to.ident||"—")}<br><small>${number(leg.startNm)}–${number(leg.endNm)} NM</small></span><label>${pt?"Mínimo (ft)":"Minimum (ft)"}<input name="feet" type="number" min="1" max="60000" step="100" inputmode="numeric" value="${Number.isFinite(Number(saved.feet))?Number(saved.feet):""}" required></label><label>${pt?"Fonte verificada":"Verified source"}<input name="source" maxlength="80" value="${escapeHtml(saved.source||"")}" placeholder="${pt?"Carta / AIP":"Chart / AIP"}" required></label><button type="submit">${pt?"Aplicar":"Apply"}</button></form>`;}).join("")}</div>`:"";
 }
 
 function renderFuel(result) {
@@ -683,9 +469,10 @@ function renderFlightTools(plan,navigation,stepPlan,selected) {
   stripState.dataset.i18n=state.manual.active?"manualUpdateRecorded":"manualNoUpdate";
   stripState.textContent=t(stripState.dataset.i18n);
   $("#observedFuelFlowUnit").textContent=state.fuelUnit==="l"?"L/h":"gal/h";
-  $("#calibrationMode").textContent=state.mode;
-  const factors=state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1};
-  $("#calibrationFactors").textContent=`TAS ×${number(factors.tasFactor||1,2)} · FF ×${number(factors.fuelFlowFactor||1,2)}`;
+  $("#calibrationMode").textContent=state.calibration.reference?.mode||state.mode;
+  const factors=state.calibration;
+  $("#calibrationFactors").textContent=`K1 ${number(factors.tasFactor||1,3)} · K2 ${number(factors.fuelFlowFactor||1,3)}`;
+  $("#calibrationReference").textContent=state.calibration.reference?.altitudeFt?`FL${Math.round(state.calibration.reference.altitudeFt/100)} · ${number(state.calibration.reference.mapInHg,1)}″ · ${number(state.calibration.reference.rpm)} RPM`:(state.language==="pt-BR"?"Sem calibração de cruzeiro":"No cruise calibration");
   updateCalibrationGate();
   renderRemainingAssessment();
 }
@@ -743,38 +530,7 @@ function renderAlternateAdvisor(plan,advice) {
   }
 }
 
-function renderScenarioComparison(comparison,selected) {
-  $("#scenarioAName").textContent=`A · ${state.mode} · FL${selected.fl}`;
-  $("#scenarioBName").textContent=`B · ${state.scenarioB.mode} · FL${state.scenarioB.altitudeFt/100}`;
-  $("#scenarioBMode").value=state.scenarioB.mode;
-  if(!$("#scenarioBAltitude").options.length) $("#scenarioBAltitude").innerHTML=ALTITUDES_FT.map((altitude)=>`<option value="${altitude}">FL${altitude/100}</option>`).join("");
-  $("#scenarioBAltitude").value=String(state.scenarioB.altitudeFt);
-  if(document.activeElement!==$("#scenarioBPayload")) $("#scenarioBPayload").value=number(weightValue(state.scenarioB.payloadLb),0).replace(/\D/g,"");
-  if(document.activeElement!==$("#scenarioBFuel")) $("#scenarioBFuel").value=number(fuelValue(state.scenarioB.fuelOnboardGal),1).replace(/[^0-9,.-]/g,"").replace(",",".");
-  $("#scenarioBWeightUnit").textContent=weightLabel();
-  $("#scenarioBFuelUnit").textContent=fuelLabel();
-  const statusKey=(status)=>status==="viable"?"viable":status==="marginal"?"marginalStatus":"notViable";
-  const statusCell=(result)=>`<strong class="scenario-margin-value" data-status="${escapeHtml(result.feasibility.status)}">${signedNumber(fuelValue(result.feasibility.fuelMarginGal),1,` ${fuelLabel()}`)}<small>${escapeHtml(t(statusKey(result.feasibility.status)))}</small></strong>`;
-  const row=(label,a,b,delta)=>`<div class="scenario-matrix-row" role="row"><span class="scenario-metric" role="rowheader">${label}</span><span class="scenario-value" role="cell">${a}</span><span class="scenario-value" role="cell">${b}</span><span class="scenario-change" role="cell"><span class="scenario-mobile-delta">Δ </span>${delta}</span></div>`;
-  $("#scenarioMatrixRows").innerHTML=[
-    row(`${iconMarkup("fuel")}${escapeHtml(t("fuel"))}`,formatFuel(comparison.a.fuelRequiredGal,1),formatFuel(comparison.b.fuelRequiredGal,1),signedNumber(fuelValue(comparison.delta.fuelGal),1,` ${fuelLabel()}`)),
-    row(`${iconMarkup("clock-3")}ETE`,formatTime(comparison.a.tripTimeHr),formatTime(comparison.b.tripTimeHr),signedNumber(comparison.delta.timeHr*60,0," min")),
-    row(`${iconMarkup("navigation")}GS`,`${number(comparison.a.gsKt)} kt`,`${number(comparison.b.gsKt)} kt`,signedNumber(comparison.delta.gsKt,0," kt")),
-    row(`${iconMarkup("circle-check")}${escapeHtml(t("scenarioMargin"))}`,statusCell(comparison.a),statusCell(comparison.b),signedNumber(fuelValue(comparison.delta.marginGal),1,` ${fuelLabel()}`)),
-  ].join("");
-}
-
-function renderLoadOptimizer(optimizer) {
-  $("#loadRecommendedFuel").textContent=Number.isFinite(optimizer?.recommendedFuelGal)?formatFuel(optimizer.recommendedFuelGal,1):"—";
-  $("#loadMaxFuel").textContent=optimizer.recommendedAltitudeFt?`${optimizer.mode} · FL${optimizer.recommendedAltitudeFt/100}`:"—";
-  $("#loadMaxPayload").textContent=Number.isFinite(optimizer?.recommendedPayloadLb)?formatWeight(optimizer.recommendedPayloadLb):"—";
-  $("#loadOptimizedWeight").textContent=Number.isFinite(optimizer?.optimizedWeightLb)?formatWeight(optimizer.optimizedWeightLb):"—";
-  setStatusPill("#loadStatus",optimizer.feasible?"viable":"unavailable");
-  $("#loadAdjustment").textContent=optimizer.payloadReductionLb>0?`${t("reducePayload")} ${formatWeight(optimizer.payloadReductionLb)}`:t("noAdjustment");
-}
-
 let currentGlideCorridor=null;
-
 function centerGlideRoutePoint() {
   const route=$("#glideRoute"),active=route.querySelector('[aria-pressed="true"]');
   if(!route.clientWidth||!active) return;
@@ -817,7 +573,7 @@ function renderGlideCorridor(plan,glide) {
   centerGlideRoutePoint();
 }
 
-function missionStatusLabel(status){return t(status==="unknown"?"terrainUnknown":status==="not-viable"?"notViable":status==="viable"?"viable":"marginalStatus");}
+function missionStatusLabel(status){return status==="unknown"?(state.language==="pt-BR"?"NÃO AVALIADO":"UNASSESSED"):t(status==="not-viable"?"notViable":status==="viable"?"viable":"marginalStatus");}
 function rideLabel(status){return status==="unknown"?t("weatherLimited"):t(status);}
 function rideScoreLabel(turbulence){return turbulence.riskScore===null?"—":number(turbulence.riskScore);}
 function oxygenLabel(status){return t(status==="not-required"?"oxygenNotRequired":status==="compliant"?"oxygenCompliant":status==="marginal"?"oxygenMarginal":"oxygenInsufficient");}
@@ -825,7 +581,6 @@ function weightBalanceLabel(status){return t(status==="viable"?"viable":status==
 
 function missionReasonLabel(reason,result) {
   const pt=state.language==="pt-BR";
-  if(reason.code==="terrain") return result.terrain.status==="unknown"?t("terrainUnknown"):`${pt?"Margem sobre MORA":"Margin above MORA"} · ${signedNumber(result.terrain.marginFt,0," ft")}`;
   if(reason.code==="weight-balance") return reason.blocking?(pt?"Peso ou CG fora do envelope":"Weight or CG outside envelope"):(pt?"Margem de peso/CG reduzida":"Reduced weight/CG margin");
   if(reason.code==="fuel") return reason.blocking?`${pt?"Combustível insuficiente":"Insufficient fuel"} · ${signedNumber(fuelValue(result.feasibility.fuelMarginGal),1,` ${fuelLabel()}`)}`:`${pt?"Margem de combustível reduzida":"Reduced fuel margin"} · ${formatFuel(result.feasibility.fuelMarginGal,1)}`;
   if(reason.code==="flight-profile") return reason.blocking?(pt?"Perfil vertical incompatível":"Vertical profile unavailable"):(pt?"Cruzeiro muito curto":"Cruise segment too short");
@@ -834,7 +589,8 @@ function missionReasonLabel(reason,result) {
   if(reason.code==="oxygen") return reason.blocking?(pt?"Oxigênio insuficiente":"Insufficient oxygen"):(pt?"Oxigênio com pouca margem":"Low oxygen margin");
   if(reason.code==="alternate") return Number.isFinite(reason.detail)?`${pt?"Alternado com pouca margem":"Low alternate margin"} · ${formatFuel(reason.detail,1)} / ${formatFuel(PERFORMANCE.diversion.marginalFuelMarginGal,0)}`:(pt?"Alternado sem margem calculável":"Alternate margin unavailable");
   if(reason.code==="financial") return `${pt?"Eficiência financeira":"Financial efficiency"} · ${number(reason.detail.efficiencyScore)}/100`;
-  return `${pt?"Confiança do modelo":"Model confidence"} · ${number(result.confidence.score)}%`;
+  if(reason.code==="efficiency") return pt?"Eficiência da missão":"Mission efficiency";
+  return pt?"Evidência meteorológica limitada":"Limited weather evidence";
 }
 
 function missionPositiveReasons(result,excluded) {
@@ -843,7 +599,6 @@ function missionPositiveReasons(result,excluded) {
   if(!excluded.has("weight-balance")&&result.weightBalance?.status==="viable") items.push({code:"weight-balance",label:pt?"Peso e CG dentro do envelope":"Weight and CG within envelope",status:"ok"});
   if(!excluded.has("icing")&&result.icing.status==="low"&&result.icing.confidence!=="limited") items.push({code:"icing",label:pt?"Sem indicação relevante de gelo":"No relevant icing indication",status:"ok"});
   if(!excluded.has("oxygen")&&["compliant","not-required"].includes(result.oxygen.status)) items.push({code:"oxygen",label:pt?"Oxigênio adequado":"Oxygen adequate",status:"ok"});
-  if(!excluded.has("terrain")&&result.terrain.status==="viable") items.push({code:"terrain",label:pt?"MORA da rota com margem":"Route MORA with margin",status:"ok"});
   if(!excluded.has("financial")&&result.financial?.assessed) items.push({code:"financial",label:`${pt?"Eficiência financeira":"Financial efficiency"} · ${number(result.financial.efficiencyScore)}/100`,status:"ok"});
   return items;
 }
@@ -851,21 +606,21 @@ function missionPositiveReasons(result,excluded) {
 function missionReasonIcon(code,status) {
   if(status==="critical") return "circle-x";
   if(status==="ok") return "circle-check";
-  return ({fuel:"fuel","weight-balance":"scale","flight-profile":"area-chart",icing:"snowflake",turbulence:"waves",oxygen:"heart-pulse",terrain:"mountain",alternate:"map-pinned",confidence:"shield-check",financial:"dollar-sign"})[code]||"triangle-alert";
+  return ({fuel:"fuel","weight-balance":"scale","flight-profile":"area-chart",icing:"snowflake",turbulence:"waves",oxygen:"heart-pulse",alternate:"map-pinned",financial:"dollar-sign",efficiency:"gauge"})[code]||"triangle-alert";
 }
 
 function missionAction(score) {
   const pt=state.language==="pt-BR",code=score.reasons[0]?.code;
+  if(score.status==="unknown") return pt?"Dados insuficientes para confirmar as condições meteorológicas.":"Insufficient data to confirm weather conditions.";
   if(code==="weight-balance") return pt?"Reduza ou redistribua a carga.":"Reduce or redistribute the load.";
   if(code==="fuel") return pt?"Aumente o combustível ou reduza a reserva/carga.":"Add fuel or reduce reserve/load.";
   if(code==="flight-profile") return pt?"Selecione um nível mais baixo.":"Select a lower flight level.";
   if(code==="oxygen") return pt?"Adicione a capacidade de O₂ recomendada.":"Add the recommended O₂ capacity.";
-  if(code==="terrain") return score.reasons[0]?.detail===null?(pt?"Informe as altitudes mínimas dos trechos sem MORA.":"Enter minimum altitudes for legs without MORA."):(pt?"Selecione um nível acima da MORA crítica.":"Select a level above the critical MORA.");
   if(code==="icing") return pt?"Escolha um nível fora da faixa de gelo.":"Choose a level outside the icing band.";
   if(code==="turbulence") return pt?"Escolha o nível de menor turbulência.":"Choose the lowest-turbulence level.";
   if(code==="alternate") return pt?"Aumente a margem para o alternado.":"Increase the alternate margin.";
   if(code==="financial") return pt?"Considere a configuração de menor custo.":"Consider the lowest-cost configuration.";
-  if(code==="confidence") return pt?"Calibre o modelo após o voo.":"Calibrate the model after the flight.";
+  if(code==="efficiency") return pt?"Avalie o consumo e o tempo da proposta.":"Review the proposal's fuel and time.";
   return pt?"Nenhum ajuste obrigatório.":"No mandatory adjustment.";
 }
 
@@ -910,14 +665,14 @@ function renderMissionStrip(result,missionScore) {
 function renderOxygenPlanner(analysis) {
   const altitudeSelect=$("#oxygenAltitude");
   if(!altitudeSelect.options.length) altitudeSelect.innerHTML=ALTITUDES_FT.map((altitude)=>`<option value="${altitude}">FL${altitude/100}</option>`).join("");
-  if(!ALTITUDES_FT.includes(Number(state.oxygen.altitudeFt))) state.oxygen.altitudeFt=analysis.winners.overall.altitudeFt;
-  altitudeSelect.value=String(state.oxygen.altitudeFt);
+  altitudeSelect.value=String(analysis.winners.overall.altitudeFt);
+  altitudeSelect.disabled=true;
   const bottleSelect=$("#oxygenBottle");
   if(!bottleSelect.options.length) bottleSelect.innerHTML=Object.values(OXYGEN_CYLINDERS).map((item)=>`<option value="${item.label}">${item.label} · ${item.capacityLiters} L · ${formatWeight(item.fullWeightLb)}</option>`).join("");
   bottleSelect.value=state.oxygen.bottleModel;
   $("#oxygenBottleCount").value=String(state.oxygen.bottles);
   $$('[data-oxygen-seat]').forEach((input)=>{input.checked=state.oxygen.seats[Number(input.dataset.oxygenSeat)];});
-  const target=analysis.results.find((item)=>item.altitudeFt===Number(state.oxygen.altitudeFt))||analysis.winners.overall;
+  const target=analysis.winners.overall;
   const oxygen=calculateOxygenPlan({result:target,oxygen:state.oxygen});
   $("#oxygenRequired").textContent=`${number(oxygen.requiredLiters)} L`;
   $("#oxygenInstalled").textContent=`${number(oxygen.installedLiters)} L`;
@@ -941,7 +696,7 @@ function renderWeightBalance(weightBalance) {
   $("#wbLandingCg").textContent=`${number(weightBalance.landing.cgIn,2)} in`;
   $("#wbGrossWeight").textContent=formatWeight(weightBalance.takeoff.weightLb);
   $("#wbCgTravel").textContent=signedNumber(weightBalance.cgTravelIn,2," in");
-  $("#wbMargins").textContent=`FWD ${number(weightBalance.takeoff.forwardMarginIn,2)} · AFT ${number(weightBalance.takeoff.aftMarginIn,2)} in`;
+  $("#wbMargins").textContent=`${state.language==="pt-BR"?"ATUAL":"CURRENT"} · FWD ${number(weightBalance.takeoff.forwardMarginIn,2)} · AFT ${number(weightBalance.takeoff.aftMarginIn,2)} in`;
   $("#wbEnvelopeLegend").textContent=`${number(weightBalance.envelope.forwardCgIn)}–${number(weightBalance.envelope.aftCgIn)} in · ${formatWeight(weightBalance.envelope.maximumWeightLb)}`;
 
   const env=weightBalance.envelope;
@@ -966,19 +721,7 @@ function renderWeightBalance(weightBalance) {
   $("#wbStationRows").innerHTML=weightBalance.takeoff.stations.filter((item)=>item.weightLb>0).map((item)=>`<div><b>${iconMarkup(stationIcon(item.key))}${escapeHtml(stationLabels[item.key]||item.key)}</b><span>${formatWeight(item.weightLb)}</span><span>${number(item.armIn,1)} in</span><strong>${number(item.momentInLb,0)}</strong></div>`).join("");
 }
 
-function renderConfidenceEnvelope(confidence) {
-  $("#confidenceScore").textContent=`${confidence.score}%`;
-  $("#confidenceSamples").textContent=confidence.sampleCount?`${confidence.sampleCount} ${t("flights")}`:t("noDebriefs");
-  const rows=[
-    ["fuel",t("fuel"),formatFuel(confidence.fuel.low,1),formatFuel(confidence.fuel.nominal,1),formatFuel(confidence.fuel.high,1)],
-    ["clock-3","ETE",formatTime(confidence.time.low),formatTime(confidence.time.nominal),formatTime(confidence.time.high)],
-    ["gauge","TAS",`${number(confidence.tas.low)} kt`,`${number(confidence.tas.nominal)} kt`,`${number(confidence.tas.high)} kt`],
-    ["move-up-right",state.language==="pt-BR"?"Alcance":"Range",`${number(confidence.range.low)} NM`,`${number(confidence.range.nominal)} NM`,`${number(confidence.range.high)} NM`],
-  ];
-  $("#confidenceEnvelope").innerHTML=`<div class="envelope-head"><span></span><span>LOW</span><span>${t("expected")}</span><span>HIGH</span></div>${rows.map((row)=>`<div class="envelope-row"><b>${iconMarkup(row[0])}${escapeHtml(row[1])}</b><span>${row[2]}</span><strong>${row[3]}</strong><span>${row[4]}</span></div>`).join("")}`;
-}
-
-function renderRideOptimizer(analysis,selected) {
+function renderRideOptimizer(mission,selected) {
   const pt=state.language==="pt-BR",ride=selected.turbulence,score=Number.isFinite(ride.riskScore)?clamp(Math.round(ride.riskScore),0,100):null;
   const source=ride.confidence==="weather"?t("icingWeather"):ride.confidence==="simbrief"?t("simbriefShear"):ride.confidence==="estimated"?t("weatherEstimated"):t("weatherLimited");
   const exposureLabel=(minutes)=>minutes>0&&minutes<1?"<1 min":`${number(minutes||0,0)} min`;
@@ -991,23 +734,16 @@ function renderRideOptimizer(analysis,selected) {
   $("#rideIndexFill").style.width=`${score||0}%`;
   $("#rideIndexMarker").style.left=`${score||0}%`;
 
-  const nearby=[...analysis.results].sort((a,b)=>Math.abs(a.altitudeFt-selected.altitudeFt)-Math.abs(b.altitudeFt-selected.altitudeFt)||a.altitudeFt-b.altitudeFt).slice(0,3).sort((a,b)=>a.altitudeFt-b.altitudeFt);
-  $("#rideLevels").innerHTML=nearby.map((item)=>`<button type="button" data-ride-level="${item.altitudeFt}" ${!operationallyAvailable(item)?"disabled":""} class="${item.turbulence.status} ${item.altitudeFt===selected.altitudeFt?"active":""}"><span>FL${item.fl}</span><strong>${rideScoreLabel(item.turbulence)}</strong><small>${item.turbulence.riskScore===null?"":"/100"}</small></button>`).join("");
-  $$('[data-ride-level]:not(:disabled)').forEach((button)=>button.addEventListener("click",()=>{state.selectedAltitudeFt=Number(button.dataset.rideLevel);state.manuallySelectedLevel=true;render();}));
-
   const preferenceCopy={standard:{pt:"Padrão",en:"Standard",notePt:"Equilibra conforto, combustível e tempo",noteEn:"Balances comfort, fuel, and time"},comfort:{pt:"Conforto",en:"Comfort",notePt:"Aumenta o peso do RIDE na recomendação",noteEn:"Gives RIDE more weight in the recommendation"},maximum:{pt:"Máx. conforto",en:"Max comfort",notePt:"Prioriza o menor RIDE entre os níveis viáveis",noteEn:"Prioritizes the lowest RIDE among viable levels"}};
   $$('[data-ride-preference]').forEach((button)=>{const copy=preferenceCopy[button.dataset.ridePreference];button.textContent=pt?copy.pt:copy.en;button.classList.toggle("active",button.dataset.ridePreference===state.ridePreference);button.setAttribute("aria-pressed",String(button.dataset.ridePreference===state.ridePreference));});
   $("#ridePreferenceLabel").textContent=pt?"PREFERÊNCIA DE CONFORTO":"COMFORT PREFERENCE";
   $("#ridePreferenceNote").textContent=pt?preferenceCopy[state.ridePreference].notePt:preferenceCopy[state.ridePreference].noteEn;
-  const recommendation=calculateRideRecommendation({results:analysis.results,preference:state.ridePreference});
-  $("#rideRecommendationLabel").textContent=`${pt?"RECOMENDAÇÃO":"RECOMMENDATION"} · ${pt?preferenceCopy[state.ridePreference].pt:preferenceCopy[state.ridePreference].en}`.toUpperCase();
+  const recommendation=mission.candidates.find((candidate)=>candidate.altitudeFt===mission.comfortAltitudeFt)?.result;
+  $("#rideRecommendationLabel").textContent=pt?"MELHOR CONFORTO":"BEST COMFORT";
   $("#rideRecommendationLevel").textContent=recommendation?`FL${recommendation.fl}`:"—";
   const fuelDelta=recommendation?recommendation.fuelRequiredGal-selected.fuelRequiredGal:0,timeDelta=recommendation?(recommendation.tripTimeHr-selected.tripTimeHr)*60:0;
   $("#rideRecommendationMeta").textContent=recommendation?`RIDE ${rideScoreLabel(recommendation.turbulence)}/100 · ${signedNumber(fuelValue(fuelDelta),1,` ${fuelLabel()}`)} · ${signedNumber(timeDelta,0," min")}`:t("rankingNoAvailable");
-  const apply=$("#applyRideRecommendation");
-  apply.textContent=recommendation?.altitudeFt===selected.altitudeFt?(pt?"Já aplicado":"Already applied"):(pt?"Aplicar recomendação":"Apply recommendation");
-  apply.disabled=!recommendation||recommendation.altitudeFt===selected.altitudeFt;
-  apply.onclick=recommendation&&recommendation.altitudeFt!==selected.altitudeFt?()=>{state.selectedAltitudeFt=recommendation.altitudeFt;state.manuallySelectedLevel=true;render();}:null;
+
 
   const segments=ride.segments||[],threshold=PERFORMANCE.turbulence.lightScore;
   const peakIndex=segments.reduce((best,segment,index)=>(segment.riskScore??-1)>(segments[best]?.riskScore??-1)?index:best,0);
@@ -1048,14 +784,6 @@ function renderRideOptimizer(analysis,selected) {
   $$('[data-ride-preference]').forEach((button)=>button.addEventListener("click",()=>{state.ridePreference=button.dataset.ridePreference;localStorage.setItem("velocityxl.ridePreference",state.ridePreference);render();}));
 }
 
-function renderDebrief(result) {
-  $("#debriefFuelUnit").textContent=fuelLabel();
-  $$('[data-debrief-fuel-unit]').forEach((item)=>item.textContent=fuelLabel());
-  $("#debriefFlightContext").textContent=`${state.plan.origin.icao} → ${state.plan.destination.icao} · FL${result.fl} · ${state.mode}`;
-  $("#manualConfidence").textContent=`${t("modelConfidence")} ${number(result.confidence.score)}%`;
-  $("#debriefHistory").innerHTML=state.debriefs.map((entry,index)=>({entry,index})).reverse().map(({entry,index})=>`<div><span>${iconMarkup("history")}${escapeHtml(entry.route)} · ${escapeHtml(entry.mode)} · FL${escapeHtml(entry.fl)}</span><button class="debrief-delete" type="button" data-delete-debrief="${index}" aria-label="${escapeHtml(t("deleteDebrief"))}: ${escapeHtml(entry.route)} · ${escapeHtml(entry.mode)} · FL${escapeHtml(entry.fl)}" title="${escapeHtml(t("deleteDebrief"))}">${iconMarkup("trash-2")}</button><strong>${number(entry.accuracyScore)}%</strong></div>`).join("");
-}
-
 function renderFinancialCard(financial) {
   const pt=state.language==="pt-BR";
   $("#costOrigin").textContent=state.plan.origin.icao;
@@ -1093,8 +821,6 @@ function renderFinancialCard(financial) {
     const share=financial.cost>0?value/financial.cost*100:0;
     return `<div><span>${escapeHtml(phaseLabels[key])}</span><div><i style="width:${clamp(share,0,100)}%"></i></div><strong>${escapeHtml(formatMoney(value))}</strong></div>`;
   }).join("");
-  $("#possibleSavings").textContent=financial.savings>0?`${t("possibleSavings")} ${formatMoney(financial.savings)}`:(pt?"Configuração econômica":"Lowest-cost setup");
-  $("#costModeList").innerHTML=financial.modes.map((item)=>item.result?`<button type="button" data-cost-mode="${item.mode}" data-cost-altitude="${item.result.altitudeFt}" class="${item.mode===state.mode&&item.result.fl===financial.fl?"active":""}"><span>${item.mode} · FL${item.result.fl}</span><strong>${escapeHtml(formatMoney(item.cost))}</strong><small>${escapeHtml(formatFuel(item.consumedGal,1))}</small></button>`:`<div><span>${item.mode}</span><strong>—</strong></div>`).join("");
   const planned=state.manual.active?state.preflightSnapshot?.financial:null;
   const live=$("#costLive");
   live.hidden=!planned?.assessed;
@@ -1107,80 +833,86 @@ function renderFinancialCard(financial) {
 
 function render() {
   applyTranslations();
-  pendingMissionRecovery=null;
-  $("#missionRecovery").hidden=true;
   const hasPlan=Boolean(state.plan);
   $("#plannerContent").hidden=!hasPlan;
   document.querySelector('.no-plan-state').hidden=hasPlan;
   $("#feasibilityBadge").hidden=!hasPlan;
   $("#feasibilityMeta").hidden=!hasPlan;
   if(!hasPlan){$("#routeSource").textContent=t("simbrief");$("#routeTitle").innerHTML=`— <span>→</span> —`;$("#planTimestamp").textContent="—";refreshUiIcons();return;}
-  const analysis=calculatePlan(state),recommended=analysis.winners.overall,selectedCandidate=analysis.results.find((r)=>r.altitudeFt===state.selectedAltitudeFt),selected=selectedCandidate||recommended,plan=state.plan,oxygenWeightLb=currentOxygenWeightLb();
-  if(!selectedCandidate) state.manuallySelectedLevel=false;
-  state.oxygen.altitudeFt=selected.altitudeFt;
-  const navigation=calculateEtpPnr({...state,oxygenWeightLb,altitudeFt:selected.altitudeFt});
+  const plan=state.plan,oxygenWeightLb=currentOxygenWeightLb();
+  const optimizedMission=optimizeMission({...state,pricePerLiter:fuelPricePerLiter(),currency:state.financial.currency});
+  latestOptimizedMission=optimizedMission;
+  const selected=optimizedMission.selected.result,recommended=selected;
+  const analysis={results:optimizedMission.candidates.map((candidate)=>candidate.result),winners:{overall:selected,performance:selected}};
+  const navigation=optimizedMission.etpPnr;
   const stepPlan=calculateStepClimbs({...state,oxygenWeightLb,initialAltitudeFt:selected.altitudeFt,manual:state.manual.active?state.manual:null,availableAltitudesFt:analysis.results.filter(operationallyAvailable).map((result)=>result.altitudeFt)});
-  const alternateAdvice=calculateAlternateDiversion({...state,oxygenWeightLb,altitudeFt:selected.altitudeFt,waypointIndex:state.diversionWaypointIndex,manual:state.manual.active?state.manual:null});
-  const financial=buildFinancialAnalysis(plan,selected,alternateAdvice);
+  const alternateAdvice=optimizedMission.alternate;
+  const financial=buildFinancialAnalysis(plan,selected,alternateAdvice,optimizedMission);
   selected.financial=financial;
-  const calculatedMissionScore=calculateMissionScore({result:selected,confidence:selected.confidence,alternateAdvice,financial});
+  const calculatedMissionScore=optimizedMission.missionScore;
   const missionScore=state.manual.active&&state.preflightSnapshot?.missionScore?state.preflightSnapshot.missionScore:calculatedMissionScore;
   selected.displayMissionScore=missionScore;
   if(!state.manual.active){lastRenderedMissionScore=structuredClone(calculatedMissionScore);lastRenderedFinancial=structuredClone(financial);}
-  if(missionScore.status==="viable"&&selected.terrain.status==="viable"&&selected.feasibility.status==="viable"&&selected.weightBalance?.status==="viable"&&(selected.icing.status==="low"||(selected.icing.status==="watch"&&selected.icing.confidence!=="weather"))&&["smooth","light"].includes(selected.turbulence.status)&&["not-required","compliant"].includes(selected.oxygen.status)&&(!alternateAdvice.destination||alternateAdvice.destination.status==="viable")) rememberViableMission();
-  const scenarioComparison=compareScenarios({plan,calibration:state.calibration,scenarioA:{altitudeFt:selected.altitudeFt,mode:state.mode,payloadLb:state.payloadLb,fuelOnboardGal:state.fuelOnboardGal,oxygenWeightLb,reserveMinutes:state.reserveMinutes,powerSetting:state.powerSetting},scenarioB:{...state.scenarioB,oxygenWeightLb,reserveMinutes:state.reserveMinutes,powerSetting:{type:"AUTO"}}});
-  const loadOptimizer=calculateModeLoadOptimization({...state,minimumPayloadLb:state.weightBalance.pilot,requireWeightBalanceViable:true,requireTerrainKnown:true});
-  const glide=calculateGlideCorridor({plan,result:selected});
-  $("#routeTitle").innerHTML=`${escapeHtml(plan.origin.icao)} <span>→</span> ${escapeHtml(plan.destination.icao)}`; $("#routeSource").textContent=state.manuallySelectedLevel?t("updated"):t("simbrief"); $("#planTimestamp").textContent=`${number(plan.distanceNm)} NM · FL${state.manuallySelectedLevel?selected.fl:Math.round(plan.plannedAltitudeFt/100)}`;
+  const glide=optimizedMission.glide;
+  const proposal=$("#missionProposal");proposal.hidden=!proposalOpen;
+  if(proposalOpen){
+    const pt=state.language==="pt-BR";
+    $("#proposalTitle").textContent=pt?"Recomendação integrada":"Integrated recommendation";
+    $("#proposalSummary").textContent=`${state.mode} · ${plan.origin.icao} → ${plan.destination.icao}`;
+    const status=$("#proposalStatus");status.textContent=missionStatusLabel(optimizedMission.status);status.className=`status-pill ${optimizedMission.status==="not-viable"?"unavailable":optimizedMission.status}`;
+    $("#proposalFl").textContent=`FL${selected.fl}`;
+    $("#proposalFuel").textContent=formatFuel(optimizedMission.recommendedFuelGal,1);
+    $("#proposalTime").textContent=formatTime(selected.tripTimeHr);
+    $("#missionPowerGrid").innerHTML=["climb","cruise","descent"].map((phase)=>{
+      const profile=optimizedMission.powerProfile[phase],title={climb:pt?"SUBIDA":"CLIMB",cruise:pt?"CRUZEIRO":"CRUISE",descent:pt?"DESCIDA":"DESCENT"}[phase];
+      return `<div><span>${title}</span><strong>${number(profile.power.availableMapInHg,1)}″ · ${number(profile.power.rpm)} RPM</strong><small>${number(profile.fuelFlowGph,1)} GPH · ${Math.round(profile.timeHr*60)} min</small></div>`;
+    }).join("");
+    $("#proposalIceFl").textContent=`FL${optimizedMission.iceAltitudeFt/100}`;
+    $("#proposalRideFl").textContent=`FL${optimizedMission.comfortAltitudeFt/100}`;
+    $("#proposalGlobalLabel").firstChild.textContent=pt?"GLOBAL ":"GLOBAL ";
+    $("#proposalGlobalFl").textContent=`FL${selected.fl}`;
+    $("#proposalWb").textContent=weightBalanceLabel(selected.weightBalance.status);
+    $("#proposalOxygen").textContent=oxygenLabel(selected.oxygen.status);
+    const reasonText=missionScore.reasons.slice(0,2).map((reason)=>missionReasonLabel(reason,selected));
+    if(optimizedMission.status==="unknown") reasonText.push(pt?"Dados meteorológicos insuficientes":"Insufficient weather evidence");
+    $("#proposalReason").textContent=reasonText.join(" · ")||(`${pt?"Melhor equilíbrio no preset":"Best balance for preset"} ${state.mode}`);
+    $("#proposalTerrain").textContent=pt?"Terreno e obstáculos não avaliados. Estimativa para simulador.":"Terrain and obstacles not assessed. Simulator estimate.";
+    $("#applyMissionProposal").disabled=optimizedMission.status==="not-viable";
+  }
+  $("#routeTitle").innerHTML=`${escapeHtml(plan.origin.icao)} <span>→</span> ${escapeHtml(plan.destination.icao)}`; $("#routeSource").textContent=t("simbrief"); $("#planTimestamp").textContent=`${number(plan.distanceNm)} NM · FL${Math.round(plan.plannedAltitudeFt/100)}`;
+  $("#layoutRouteMeta").textContent=`${plan.waypoints.length} ${state.language==="pt-BR"?"pontos":"fixes"} · ${number(plan.distanceNm)} NM`;
+  $("#layoutRouteRail").innerHTML=plan.waypoints.map((fix,index)=>`<span title="${escapeHtml(fix.ident||`WPT${index+1}`)}" class="${index===0||index===plan.waypoints.length-1?"viable":"outside-cruise"}"></span>`).join("");
   const feasibility=selected.feasibility,feasibilityBadge=$("#feasibilityBadge"),badgeClass=missionScore.status==="not-viable"?"unavailable":missionScore.status==="unknown"?"unknown":missionScore.status==="viable"?"viable":"marginal";
   feasibilityBadge.textContent=missionStatusLabel(missionScore.status); feasibilityBadge.className=`feasibility-badge ${badgeClass}`;
   $("#kpiSelectedLevel").dataset.status=missionScore.status;
-  $("#feasibilityMeta").textContent=`${analysis.results.filter(operationallyAvailable).length}/${analysis.results.length} FL · ${signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`)} · ${signedNumber(weightValue(feasibility.weightMarginLb),0,` ${weightLabel()}`)}`;
+  $("#feasibilityMeta").textContent=`FL${selected.fl} · ${signedNumber(fuelValue(feasibility.fuelMarginGal),1,` ${fuelLabel()}`)} · ${signedNumber(weightValue(feasibility.weightMarginLb),0,` ${weightLabel()}`)}`;
   const power=selected.power,mapLabel=power.turboLimited?`${number(power.targetMapInHg,1)}→${number(power.availableMapInHg,1)}\"`:`${number(power.availableMapInHg,1)}\"`;
   $("#powerSettingValue").textContent=`${mapLabel} · ${number(power.rpm)} RPM`;
   $("#powerPercent").textContent=`${number(power.percentPower)}%`;
   $("#powerPercent").classList.toggle("limited",power.turboLimited);
   if(document.activeElement!==$("#manualMap")) $("#manualMap").value=Number(state.powerSetting.mapInHg).toFixed(1);
   if(document.activeElement!==$("#manualRpm")) $("#manualRpm").value=String(Math.round(state.powerSetting.rpm));
-  $("#kpiAltitude").textContent=`FL${selected.fl}`; $("#kpiLevelMeta").textContent=t("selectedLevel"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(state.fuelOnboardGal-selected.fuelRequiredGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
-  renderRouteMatrix(plan,analysis.results,selected); renderPerformanceRanking(analysis.results,recommended,selected); renderIcingSummary(analysis,selected); renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderLevelCards(analysis.results,recommended,selected); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderScenarioComparison(scenarioComparison,selected); renderLoadOptimizer(loadOptimizer); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore); renderOxygenPlanner(analysis); renderWeightBalance(selected.weightBalance); renderConfidenceEnvelope(selected.confidence); renderRideOptimizer(analysis,selected); renderDebrief(selected);
-  $("#phaseLevel").textContent=`${t("selectedLevel")} · FL${selected.fl}`;
-  $("#climbStats").textContent=`${Math.round(selected.climb.timeHr*60)} min · ${formatFuel(selected.climb.fuelGal,1)} · ${number(selected.climb.power.availableMapInHg,1)}\" / ${number(selected.climb.power.rpm)}`; $("#cruiseStats").textContent=`${Math.round(selected.cruiseTimeHr*60)} min · ${formatFuel(selected.cruiseFuelGal,1)} · ${number(selected.power.availableMapInHg,1)}\" / ${number(selected.power.rpm)}`; $("#descentStats").textContent=`${Math.round(selected.descent.timeHr*60)} min · ${formatFuel(selected.descent.fuelGal,1)} · ${number(PERFORMANCE.powerModel.phases.descent.mapInHg,1)}\" / ${number(PERFORMANCE.powerModel.phases.descent.rpm)}`;
-  $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1); $("#selectionNote").textContent=`FL${selected.fl} · ${formatFuel(selected.fuelRequiredGal,1)} · ${formatTime(selected.tripTimeHr)} · ${missionStatusLabel(missionScore.status)}`;
+  $("#kpiAltitude").textContent=`FL${selected.fl}`; $("#kpiLevelMeta").textContent=t("recommendedLevel"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(selected.feasibility.fuelMarginGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
+  renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore); renderOxygenPlanner(analysis); renderWeightBalance(optimizedMission.currentWeightBalance); renderRideOptimizer(optimizedMission,selected);
+  $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1);
   $("#payloadOutput").textContent=formatWeight(state.payloadLb); $("#fuelOutput").textContent=formatFuel(state.fuelOnboardGal,0);
-  const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(selected.weightBalance.takeoff.cgIn,2)}→${number(selected.weightBalance.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||selected.weightBalance.status==="unavailable"?"var(--red)":"";
+  const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight,currentWb=optimizedMission.currentWeightBalance; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(currentWb.takeoff.cgIn,2)}→${number(currentWb.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||currentWb.status==="unavailable"?"var(--red)":"";
   refreshUiIcons();
 }
 
 $$('[data-language]').forEach((button)=>button.addEventListener("click",()=>{state.language=button.dataset.language;localStorage.setItem("velocityxl.language",state.language);render();}));
 $$('.font-switch button[data-font-size]').forEach((button)=>button.addEventListener("click",()=>{state.fontSize=button.dataset.fontSize;localStorage.setItem("velocityxl.fontSize",state.fontSize);applyTranslations();}));
 $$('[data-weight-unit]').forEach((button)=>button.addEventListener("click",()=>{state.weightUnit=button.dataset.weightUnit;localStorage.setItem("velocityxl.weightUnit",state.weightUnit);render();}));
-$$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit,observed=$("#observedFuelFlow"),value=Number(observed.value);state.fuelUnit=next;if(Number.isFinite(value)&&value>0&&previous!==next)observed.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);[$("#debriefFuel"),...$$('[data-debrief-fuel]')].forEach((input)=>{const amount=Number(input.value);if(input.value&&Number.isFinite(amount)&&amount>0&&previous!==next)input.value=(next==="l"?amount*3.785411784:amount/3.785411784).toFixed(1);});localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
-$$('[data-mode]').forEach((button)=>button.addEventListener("click",()=>{state.mode=button.dataset.mode;state.selectedAltitudeFt=null;state.manuallySelectedLevel=false;$$('[data-mode]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
+$$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit,observed=$("#observedFuelFlow"),value=Number(observed.value);state.fuelUnit=next;if(Number.isFinite(value)&&value>0&&previous!==next)observed.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
+$$('[data-mode]').forEach((button)=>button.addEventListener("click",()=>{state.mode=button.dataset.mode;state.selectedAltitudeFt=null;$$('[data-mode]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
 $$('[data-power-type]').forEach((button)=>button.addEventListener("click",()=>{const type=button.dataset.powerType;if(type==="MANUAL"&&state.powerSetting.type!=="MANUAL"){const mode=PERFORMANCE.modes[state.mode];state.powerSetting={type,mapInHg:mode.mapInHg,rpm:mode.rpm};}else{state.powerSetting={...state.powerSetting,type};}state.selectedAltitudeFt=null;localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));render();}));
 $("#manualMap").addEventListener("input",(event)=>{state.powerSetting.mapInHg=Math.min(AIRCRAFT.maxManifoldInHg,Math.max(PERFORMANCE.powerModel.minimumMapInHg,Number(event.target.value)||PERFORMANCE.modes[state.mode].mapInHg));state.selectedAltitudeFt=null;localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));render();});
 $("#manualRpm").addEventListener("input",(event)=>{state.powerSetting.rpm=Math.min(AIRCRAFT.maxRpm,Math.max(PERFORMANCE.powerModel.minimumRpm,Number(event.target.value)||PERFORMANCE.modes[state.mode].rpm));state.selectedAltitudeFt=null;localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));render();});
-$$('[data-metric]').forEach((button)=>button.addEventListener("click",()=>{state.metric=button.dataset.metric;$$('[data-metric]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
-$("#performanceChart").addEventListener("click",(event)=>{
-  const toggle=event.target.closest("[data-ranking-toggle]");
-  if(toggle){
-    state.rankingExpanded=!state.rankingExpanded;
-    toggle.setAttribute("aria-expanded",String(state.rankingExpanded));
-    toggle.textContent=`${t("rankingOthers",$("#rankingRest").children.length)} · ${t(state.rankingExpanded?"rankingHide":"rankingShow")}`;
-    $("#rankingRest").dataset.collapsed=String(!state.rankingExpanded);
-    return;
-  }
-  const level=event.target.closest("[data-rank-altitude]");
-  if(!level||level.disabled) return;
-  state.selectedAltitudeFt=Number(level.dataset.rankAltitude);
-  state.manuallySelectedLevel=true;
-  render();
-});
 const manualUpdateStrip=$("#tool-card-update");
 const toolCardButtons=$$('[data-tool-view]');
 const toolCardPanels=$$('[data-tool-panel]');
-const toolHintKeys={etp:"toolHintEtp",alternate:"toolHintAlternate",compare:"toolHintCompare",load:"toolHintLoad",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",confidence:"toolHintConfidence",ride:"toolHintRide",ice:"toolHintIce",cost:"toolHintCost",steps:"toolHintSteps",update:"toolHintUpdate"};
-const initialTools={"planning:optimize":"load","planning:systems":"wb","planning:analyses":"compare","route:ice":"ice","route:ride":"ride","route:decisions":"etp"};
+const toolHintKeys={etp:"toolHintEtp",alternate:"toolHintAlternate",wb:"toolHintWb",glide:"toolHintGlide",oxygen:"toolHintOxygen",ride:"toolHintRide",ice:"toolHintIce",cost:"toolHintCost",steps:"toolHintSteps",update:"toolHintUpdate"};
+const initialTools={"planning:systems":"wb","planning:analyses":"cost","route:ice":"ice","route:ride":"ride","route:decisions":"etp"};
 const selectedTools={...initialTools};
 toolCardButtons.forEach((button)=>{
   const key=button.dataset.toolView,label=button.textContent;
@@ -1220,59 +952,27 @@ function setOpenTool(key){
 Object.values(initialTools).forEach(setOpenTool);
 $("#payloadInput").addEventListener("input",(event)=>{setPayloadAndScaleStations(Number(event.target.value));render();}); $("#fuelInput").addEventListener("input",(event)=>{state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{state.reserveMinutes=Number(event.target.value);render();});
 $("#diversionWaypoint").addEventListener("change",(event)=>{state.diversionWaypointIndex=Number(event.target.value);render();});
-$("#scenarioBMode").addEventListener("change",(event)=>{state.scenarioB.mode=event.target.value;render();});
-$("#scenarioBAltitude").addEventListener("change",(event)=>{state.scenarioB.altitudeFt=Number(event.target.value);render();});
-$("#scenarioBPayload").addEventListener("input",(event)=>{state.scenarioB.payloadLb=Math.max(0,weightFromDisplay(Number(event.target.value)||0));render();});
-$("#scenarioBFuel").addEventListener("input",(event)=>{state.scenarioB.fuelOnboardGal=clamp(fuelFromDisplay(Number(event.target.value)||0),0,AIRCRAFT.usableFuelGal);render();});
 $("#fuelPriceCurrency").addEventListener("change",(event)=>{state.financial.currency=event.target.value;localStorage.setItem("velocityxl.financial",JSON.stringify(state.financial));render();});
 $("#fuelPricePerLiter").addEventListener("input",(event)=>{const value=Math.max(0,Number(event.target.value)||0);if(value>0)state.financial.prices[financialPriceKey()]=value;else delete state.financial.prices[financialPriceKey()];localStorage.setItem("velocityxl.financial",JSON.stringify(state.financial));render();});
-$("#costModeList").addEventListener("click",(event)=>{const button=event.target.closest("[data-cost-mode]");if(!button)return;state.mode=button.dataset.costMode;state.selectedAltitudeFt=Number(button.dataset.costAltitude);state.manuallySelectedLevel=true;state.powerSetting={type:"AUTO",mapInHg:PERFORMANCE.modes[state.mode].mapInHg,rpm:PERFORMANCE.modes[state.mode].rpm};localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));$$('[data-mode]').forEach((item)=>item.classList.toggle("active",item.dataset.mode===state.mode));render();});
-$("#applyScenarioB").addEventListener("click",()=>{state.mode=state.scenarioB.mode;setPayloadAndScaleStations(state.scenarioB.payloadLb);state.fuelOnboardGal=state.scenarioB.fuelOnboardGal;state.selectedAltitudeFt=state.scenarioB.altitudeFt;state.manuallySelectedLevel=true;state.powerSetting={type:"AUTO",mapInHg:PERFORMANCE.modes[state.mode].mapInHg,rpm:PERFORMANCE.modes[state.mode].rpm};$("#payloadInput").value=String(Math.round(state.payloadLb/10)*10);$("#fuelInput").value=String(Math.round(state.fuelOnboardGal));$$('[data-mode]').forEach((button)=>button.classList.toggle("active",button.dataset.mode===state.mode));localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));render();});
 $("#glideRoute").addEventListener("click",(event)=>{const button=event.target.closest("[data-glide-index]");if(!button||!currentGlideCorridor)return;state.glideSampleIndex=Number(button.dataset.glideIndex);renderGlideFocus(currentGlideCorridor);centerGlideRoutePoint();});
-function applyMissionOptimization(optimizer) {
-  state.mode=optimizer.mode;
-  state.oxygen={...state.oxygen,...optimizer.oxygen,altitudeFt:optimizer.recommendedAltitudeFt};
-  state.fuelOnboardGal=clamp(optimizer.recommendedFuelGal,0,AIRCRAFT.usableFuelGal);
-  state.weightBalance=optimizer.weightBalance||scaleWeightBalanceToPayload(state.weightBalance,optimizer.recommendedPayloadLb);
-  persistWeightBalance();
-  state.selectedAltitudeFt=optimizer.recommendedAltitudeFt;
-  state.manuallySelectedLevel=false;
-  state.powerSetting={type:"AUTO",mapInHg:PERFORMANCE.modes[state.mode].mapInHg,rpm:PERFORMANCE.modes[state.mode].rpm};
-  state.manual.fuelRemainingGal=state.fuelOnboardGal;
-  $("#payloadInput").value=String(state.payloadLb);
-  $("#fuelInput").value=String(state.fuelOnboardGal);
-  $$('[data-mode]').forEach((button)=>button.classList.toggle("active",button.dataset.mode===state.mode));
-  localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));
-  if(optimizer.achievedStatus==="viable") rememberViableMission();
-  render();
-}
-
 $("#optimizeMission").addEventListener("click",()=>{
-  const optimizer=calculateMissionOptimization({...state,requireTerrainKnown:true});
-  if(!optimizer.feasible){
-    pendingMissionRecovery=calculateMissionRecovery({...state,requireTerrainKnown:true},lastViableMission);
-    $("#missionRecoveryReason").textContent=optimizationFailureText(optimizer);
-    $("#missionRecoveryAction").hidden=!pendingMissionRecovery;
-    $("#missionRecoveryWarning").hidden=!pendingMissionRecovery;
-    $("#missionRecovery").hidden=false;
-    return;
-  }
-  applyMissionOptimization(optimizer);
-  showToast(`${t(optimizer.achievedStatus==="viable"?"viable":"marginalStatus")} · ${optimizer.mode} · FL${optimizer.recommendedAltitudeFt/100} · ${formatFuel(optimizer.recommendedFuelGal,1)}`);
+  if(!state.plan)return;
+  proposalOpen=true;
+  render();
+  $("#missionProposal").scrollIntoView({behavior:"smooth",block:"nearest"});
 });
-$("#missionRecoveryAction").addEventListener("click",()=>{
-  const recovered=calculateMissionRecovery({...state,requireTerrainKnown:true},lastViableMission);
-  if(!recovered){
-    $("#missionRecovery").hidden=true;
-    pendingMissionRecovery=null;
-    showToast(t("optimizationCombined"),true);
-    return;
-  }
-  applyMissionOptimization(recovered);
-  showToast(t("restoredViableMission"));
+$("#applyMissionProposal").addEventListener("click",()=>{
+  const mission=latestOptimizedMission;
+  if(!mission||mission.status==="not-viable")return;
+  state.fuelOnboardGal=mission.recommendedFuelGal;
+  state.selectedAltitudeFt=mission.recommendedAltitudeFt;
+  state.manual.fuelRemainingGal=state.fuelOnboardGal;
+  $("#fuelInput").value=String(state.fuelOnboardGal);
+  localStorage.setItem("velocityxl.appliedMission",JSON.stringify({planKey:missionPlanKey(state.plan),mode:state.mode,fl:mission.selected.result.fl,fuelOnboardGal:state.fuelOnboardGal}));
+  proposalOpen=false;
+  render();
+  showToast(state.language==="pt-BR"?"Configuração aplicada.":"Configuration applied.");
 });
-
-$("#oxygenAltitude").addEventListener("change",(event)=>{state.selectedAltitudeFt=Number(event.target.value);state.manuallySelectedLevel=true;render();});
 $("#oxygenBottle").addEventListener("change",(event)=>{state.oxygen.bottleModel=event.target.value;localStorage.setItem("velocityxl.oxygen",JSON.stringify(state.oxygen));render();});
 $("#oxygenBottleCount").addEventListener("change",(event)=>{state.oxygen.bottles=clamp(Number(event.target.value),0,4);localStorage.setItem("velocityxl.oxygen",JSON.stringify(state.oxygen));render();});
 $$('[data-oxygen-seat]').forEach((input)=>input.addEventListener("change",()=>{const keys=["pilot","copilot","rearLeft","rearCenter","rearRight"],index=Number(input.dataset.oxygenSeat),key=keys[index];state.weightBalance[key]=input.checked?Math.max(state.weightBalance[key],index===0?190:170):0;persistWeightBalance();render();}));
@@ -1287,7 +987,8 @@ $("#randomizeWeightBalance").addEventListener("click",()=>{
   showToast(t("randomizeWeightBalanceApplied"));
 });
 $("#applyOxygenRecommendation").addEventListener("click",()=>{
-  const analysis=calculatePlan(state),target=analysis.results.find((item)=>item.altitudeFt===Number(state.oxygen.altitudeFt))||analysis.winners.overall;
+  const target=latestOptimizedMission?.selected.result;
+  if(!target)return;
   const oxygen=calculateOxygenPlan({result:target,oxygen:state.oxygen});
   if(oxygen.recommendedBottles===null)return;
   state.oxygen.bottleModel=oxygen.recommendedBottleModel;
@@ -1295,24 +996,6 @@ $("#applyOxygenRecommendation").addEventListener("click",()=>{
   localStorage.setItem("velocityxl.oxygen",JSON.stringify(state.oxygen));
   render();
 });
-$("#routeMatrix").addEventListener("click",(event)=>{
-  const button=event.target.closest("button");if(!button)return;
-  if(button.hasAttribute("data-matrix-leg"))state.matrixLegIndex=Number(button.dataset.matrixLeg);
-  else if(button.hasAttribute("data-matrix-prev"))state.matrixLegIndex=Math.max(0,state.matrixLegIndex-1);
-  else if(button.hasAttribute("data-matrix-next"))state.matrixLegIndex+=1;
-  else return;
-  if(button.hasAttribute("data-matrix-fl")){state.selectedAltitudeFt=Number(button.dataset.matrixFl);state.manuallySelectedLevel=true;}
-  render();
-});
-$("#terrainManual").addEventListener("submit",(event)=>{
-  const form=event.target.closest("form[data-terrain-leg]");if(!form)return;
-  event.preventDefault();
-  const feet=Number(form.elements.feet.value),source=String(form.elements.source.value||"").trim();
-  if(!Number.isFinite(feet)||feet<=0||feet>60000||!source){showToast(state.language==="pt-BR"?"Informe altitude e fonte verificadas.":"Enter a verified altitude and source.",true);return;}
-  state.manualTerrainMora[Number(form.dataset.terrainLeg)]={feet,source};
-  render();
-});
-
 function manualCalibrationReady(){
   const waypointIndex=Number($("#manualWaypoint").value),altitudeFt=Number($("#manualAltitude").value);
   const fuelInput=$("#manualFuel"),fuelRemainingGal=fuelFromDisplay(Number(fuelInput.value));
@@ -1348,77 +1031,38 @@ $("#manualUpdateForm").addEventListener("submit",(event)=>{
 $("#calibrationForm").addEventListener("submit",(event)=>{
   event.preventDefault();
   if(!manualCalibrationReady()){showToast(t("calibrationNeedsUpdate"),true);updateCalibrationGate();return;}
-  state.calibration[state.mode]=deriveCalibration({plan:state.plan,mode:state.mode,payloadLb:state.payloadLb,fuelRemainingGal:state.manual.fuelRemainingGal,oxygenWeightLb:currentOxygenWeightLb(),altitudeFt:state.manual.altitudeFt,observedTasKt:Number($("#observedTas").value),observedFuelFlowGph:fuelFromDisplay(Number($("#observedFuelFlow").value)),positionFix:state.plan.waypoints[state.manual.waypointIndex],powerSetting:state.powerSetting});
-  localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
-  render();
+  try {
+    state.calibration=deriveCalibration({plan:state.plan,mode:state.mode,payloadLb:state.payloadLb,fuelRemainingGal:state.manual.fuelRemainingGal,oxygenWeightLb:currentOxygenWeightLb(),altitudeFt:state.manual.altitudeFt,observedTasKt:Number($("#observedTas").value),observedFuelFlowGph:fuelFromDisplay(Number($("#observedFuelFlow").value)),positionFix:state.plan.waypoints[state.manual.waypointIndex],powerSetting:state.powerSetting});
+    localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
+    render();
+  } catch (error) {
+    showToast(error.message==="CALIBRATION_ATMOSPHERE_UNAVAILABLE"?(state.language==="pt-BR"?"OFP sem temperatura neste ponto.":"No OFP temperature at this fix."):(state.language==="pt-BR"?"Leitura fora do intervalo de calibração.":"Calibration reading outside valid range."),true);
+  }
 });
 
 $("#resetCalibration").addEventListener("click",()=>{
-  delete state.calibration[state.mode];
+  state.calibration={tasFactor:1,fuelFlowFactor:1,reference:null};
   localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
   $("#observedTas").value=""; $("#observedFuelFlow").value="";
   render();
 });
 
-$$('[data-debrief-phase]').forEach((button)=>button.addEventListener("click",()=>{
-  const phase=button.dataset.debriefPhase;
-  $$('[data-debrief-phase]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
-  $$('[data-debrief-panel]').forEach((panel)=>{const active=panel.dataset.debriefPanel===phase;panel.classList.toggle("active",active);panel.hidden=!active;});
-}));
-
-$("#debriefForm").addEventListener("submit",(event)=>{
-  event.preventDefault();
-  const analysis=calculatePlan(state),result=analysis.results.find((item)=>item.altitudeFt===state.selectedAltitudeFt)||analysis.winners.overall;
-  if(!result){showToast(t("debriefNoLevel"),true);return;}
-  const actualTimeMinutes=Number($("#debriefTime").value),actualFuelGal=fuelFromDisplay(Number($("#debriefFuel").value));
-  const actualPhases={};
-  for(const key of ["climb","cruise","descent"]){
-    const timeInput=$(`[data-debrief-time="${key}"]`),fuelInput=$(`[data-debrief-fuel="${key}"]`);
-    if(!timeInput.value&&!fuelInput.value)continue;
-    const timeMinutes=Number(timeInput.value),fuelGal=fuelFromDisplay(Number(fuelInput.value));
-    if(!timeInput.value||!fuelInput.value||timeMinutes<=0||fuelGal<=0){showToast(t("debriefPhasePair"),true);$$('[data-debrief-phase]').find((button)=>button.dataset.debriefPhase===key)?.click();(timeInput.value?fuelInput:timeInput).focus();return;}
-    actualPhases[key]={timeMinutes,fuelGal};
-  }
-  const phaseTotals=Object.values(actualPhases).reduce((sum,phase)=>({timeMinutes:sum.timeMinutes+phase.timeMinutes,fuelGal:sum.fuelGal+phase.fuelGal}),{timeMinutes:0,fuelGal:0});
-  if(phaseTotals.timeMinutes>actualTimeMinutes+1||phaseTotals.fuelGal>actualFuelGal+0.2){showToast(t("debriefPhaseTotals"),true);return;}
-  const calibrationBefore={...(state.calibration[state.mode]||{tasFactor:1,fuelFlowFactor:1})};
-  const debrief=calculateDebrief({result,actualTimeMinutes,actualFuelGal,actualPhases,currentCalibration:calibrationBefore});
-  state.calibration[state.mode]=debrief.calibration;
-  state.debriefs.push({route:`${state.plan.origin.icao}-${state.plan.destination.icao}`,mode:state.mode,fl:result.fl,accuracyScore:debrief.accuracyScore,timeErrorPct:debrief.timeErrorPct,fuelErrorPct:debrief.fuelErrorPct,phaseErrors:debrief.phaseErrors,actualTimeMinutes,actualFuelGal,actualPhases,predicted:{timeHr:result.tripTimeHr,fuelGal:result.tripFuelGal,climb:result.climb,cruise:{timeHr:result.cruiseTimeHr,fuelGal:result.cruiseFuelGal},descent:result.descent},context:{distanceNm:state.plan.distanceNm,payloadLb:state.payloadLb,fuelOnboardGal:state.fuelOnboardGal,powerSetting:{...state.powerSetting}},calibrationBefore,calibrationAfter:{...debrief.calibration},date:new Date().toISOString()});
-  state.debriefs=state.debriefs.slice(-PERFORMANCE.debrief.maximumHistory);
-  localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
-  localStorage.setItem("velocityxl.debriefs",JSON.stringify(state.debriefs));
-  $("#debriefForm").reset();
-  render();
-  showToast(t("debriefSaved"));
-});
-
-$("#debriefHistory").addEventListener("click",(event)=>{
-  const button=event.target.closest("[data-delete-debrief]");
-  if(!button)return;
-  const index=Number(button.dataset.deleteDebrief);
-  const updated=deleteDebrief(state,index);
-  if(!updated)return;
-  state.debriefs=updated.debriefs;
-  state.calibration=updated.calibration;
-  localStorage.setItem("velocityxl.calibration",JSON.stringify(state.calibration));
-  localStorage.setItem("velocityxl.debriefs",JSON.stringify(state.debriefs));
-  render();
-});
-
 function activatePlan(plan) {
   state.plan=plan;
-  $("#debriefForm").reset();
-  const savedViableMission=storedJson(viableMissionStorageKey,null);
-  lastViableMission=savedViableMission?.planKey===missionPlanKey(plan)?{...savedViableMission,plan}:null;
-  pendingMissionRecovery=null;
+  proposalOpen=false;
   state.selectedAltitudeFt=null;state.glideSampleIndex=null;
+  try {
+    const applied=JSON.parse(localStorage.getItem("velocityxl.appliedMission")||"null");
+    if(applied?.planKey===missionPlanKey(plan)&&applied.mode===state.mode
+      && ALTITUDES_FT.includes(applied.fl*100)
+      && Number.isFinite(applied.fuelOnboardGal)&&applied.fuelOnboardGal>=0&&applied.fuelOnboardGal<=AIRCRAFT.usableFuelGal){
+      state.selectedAltitudeFt=applied.fl*100;
+      state.fuelOnboardGal=applied.fuelOnboardGal;
+      $("#fuelInput").value=String(state.fuelOnboardGal);
+    }
+  } catch { /* Ignore malformed saved proposals while preserving other preferences. */ }
   state.preflightSnapshot=null;lastRenderedMissionScore=null;lastRenderedFinancial=null;
-  state.manuallySelectedLevel=false;
-  state.manualTerrainMora={};state.matrixLegIndex=0;
-  state.oxygen.altitudeFt=ALTITUDES_FT.reduce((best,altitude)=>Math.abs(altitude-plan.plannedAltitudeFt)<Math.abs(best-plan.plannedAltitudeFt)?altitude:best,ALTITUDES_FT[0]);
   state.manual={active:false,waypointIndex:0,distanceNm:0,fuelRemainingGal:state.fuelOnboardGal,altitudeFt:null};
-  localStorage.setItem("velocityxl.oxygen",JSON.stringify(state.oxygen));
   render();
 }
 

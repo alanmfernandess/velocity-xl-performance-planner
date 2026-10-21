@@ -90,21 +90,15 @@ export const PERFORMANCE = {
   calibrationLimits: {
     tasFactor: [0.85, 1.15],
     fuelFlowFactor: [0.75, 1.3],
-    phaseTimeFactor: [0.7, 1.3],
-    phaseFuelFactor: [0.7, 1.3],
-    tripTimeFactor: [0.8, 1.2],
-    tripFuelFactor: [0.8, 1.2],
+    mapToleranceInHg: 1.5,
+    rpmTolerance: 150,
+    altitudeToleranceFt: 3000,
   },
   viability: {
     minimumFuelMarginGal: 5,
     minimumWeightMarginLb: 75,
     minimumCruiseSegmentNm: 10,
     marginalCruiseSegmentNm: 30,
-  },
-  terrain: {
-    // Planning buffer above the SimBrief route MORA; not an aviation minimum.
-    marginalBufferFt: 2000,
-    profileSamples: 80,
   },
   stepClimb: {
     weightLossLbPerStep: 90,
@@ -117,11 +111,7 @@ export const PERFORMANCE = {
     approachFuelGal: 1,
     marginalFuelMarginGal: 3,
   },
-  loadOptimizer: {
-    targetFuelMarginGal: 6,
-    targetWeightMarginLb: 80,
-    fuelIncrementGal: 0.5,
-  },
+  optimization: { targetFuelMarginGal: 6 },
   icing: {
     warmBoundaryC: 5,
     coldBoundaryC: -40,
@@ -173,19 +163,6 @@ export const PERFORMANCE = {
     terminalWindShearScore: 70,
     terminalConvectiveScore: 82,
     alternateEtaOffsetMin: 35,
-    recommendationWeights: {
-      standard: { mission: 1, ride: 0.15 },
-      comfort: { mission: 1, ride: 0.45 },
-      maximum: { mission: 0.25, ride: 1 },
-    },
-  },
-  confidence: {
-    baseTasUncertainty: 0.08,
-    minimumTasUncertainty: 0.025,
-    baseFuelUncertainty: 0.12,
-    minimumFuelUncertainty: 0.04,
-    weatherTimeUncertainty: 0.06,
-    debriefReductionPerFlight: 0.012,
   },
   missionRisk: {
     viableScoreMin: 70,
@@ -196,7 +173,6 @@ export const PERFORMANCE = {
     turbulenceWeight: 0.2,
     oxygenMarginal: 10,
     oxygenInsufficient: 30,
-    confidenceWeight: 0.12,
     alternateMarginal: 6,
     alternateUnavailable: 14,
     weightBalanceMarginal: 10,
@@ -207,10 +183,6 @@ export const PERFORMANCE = {
     tolerancePercent: 3,
     fullPenaltyPercent: 25,
     maximumMissionPenalty: 10,
-  },
-  debrief: {
-    learningRate: 0.2,
-    maximumHistory: 20,
   },
   glide: {
     ratio: 12.15,

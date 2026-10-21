@@ -11,7 +11,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261021-visual" />
+    <link rel="stylesheet" href="./styles.css?v=20261021-unified" />
   </head>
   <body>
     <header class="topbar">
@@ -73,12 +73,9 @@
         <div class="tool-card-grid">
           <button data-tool-view="etp" type="button">ETP / PNR</button>
           <button data-tool-view="alternate" type="button">ALT / DIV</button>
-          <button data-tool-view="compare" type="button">A / B</button>
-          <button data-tool-view="load" type="button">LOAD</button>
           <button data-tool-view="wb" type="button">W&amp;B</button>
           <button data-tool-view="glide" type="button">GLIDE</button>
           <button data-tool-view="oxygen" type="button">O₂</button>
-          <button data-tool-view="confidence" type="button">CONF</button>
           <button data-tool-view="ride" type="button">RIDE</button>
           <button data-tool-view="ice" type="button">ICE</button>
           <button data-tool-view="cost" type="button">CUSTO</button>
@@ -119,30 +116,6 @@
               <span><b data-i18n="alternateFuel">Combustível até alternado</b><strong id="alternateFuel">—</strong></span>
               <span><b data-i18n="alternateLanding">Pouso no alternado</b><strong id="alternateLandingFuel">—</strong></span>
             </div>
-          </div>
-        </div>
-        <div class="tool-view" data-tool-panel="compare">
-          <div class="scenario-matrix-module">
-            <div class="scenario-inputs scenario-matrix-inputs" aria-label="B">
-              <label><span data-i18n="scenarioModeB">MODE B</span><select id="scenarioBMode"><option>ECON</option><option>NORMAL</option><option>FAST</option></select></label>
-              <label><span>FL B</span><select id="scenarioBAltitude"></select></label>
-              <label><span data-i18n="scenarioPayloadB">Carga útil B</span><span class="input-with-unit"><input id="scenarioBPayload" type="number" min="0" step="10" /><small id="scenarioBWeightUnit">lb</small></span></label>
-              <label><span data-i18n="scenarioFuelB">Combustível B</span><span class="input-with-unit"><input id="scenarioBFuel" type="number" min="0" step="1" /><small id="scenarioBFuelUnit">gal</small></span></label>
-            </div>
-            <div class="scenario-matrix" role="table" aria-label="A / B">
-              <div class="scenario-matrix-head" role="row"><span role="columnheader" data-i18n="scenarioMetric">MÉTRICA</span><strong role="columnheader" id="scenarioAName">A · NORMAL · FL140</strong><strong role="columnheader" id="scenarioBName">B · ECON · FL160</strong><span role="columnheader">Δ B − A</span></div>
-              <div class="scenario-matrix-body" id="scenarioMatrixRows" role="rowgroup"></div>
-            </div>
-            <button class="text-button compact-action" id="applyScenarioB" type="button" data-i18n="applyScenario">Aplicar B</button>
-          </div>
-        </div>
-        <div class="tool-view" data-tool-panel="load">
-          <div class="load-grid">
-            <article><span data-i18n="recommendedFuel">Combustível recomendado</span><strong id="loadRecommendedFuel">—</strong></article>
-            <article><span data-i18n="presetLevel">Preset / nível</span><strong id="loadMaxFuel">—</strong></article>
-            <article><span data-i18n="recommendedPayload">Payload recomendado</span><strong id="loadMaxPayload">—</strong></article>
-            <article><span data-i18n="optimizedWeight">Peso otimizado</span><strong id="loadOptimizedWeight">—</strong></article>
-            <div class="load-status"><b class="status-pill" id="loadStatus">—</b><span id="loadAdjustment">—</span></div>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="wb">
@@ -218,12 +191,6 @@
             <div class="oxygen-status"><b class="status-pill" id="oxygenStatus">—</b><span id="oxygenRecommendation">—</span><small><a href="https://www.faa.gov/Air_traffic/publications/atpubs/aim_html/chap8_section_1.html" target="_blank" rel="noreferrer">FAA 91.211</a> · <a href="https://www.aerox.com/content/2022%20Use%20and%20care%20-%20Sky-ox.pdf" target="_blank" rel="noreferrer">Aerox Sky-Ox</a></small></div>
           </div>
         </div>
-        <div class="tool-view" data-tool-panel="confidence">
-          <div class="confidence-layout">
-            <div class="confidence-score"><strong id="confidenceScore">—</strong><span data-i18n="modelConfidence">Confiança do modelo</span><small id="confidenceSamples">—</small></div>
-            <div class="envelope-grid" id="confidenceEnvelope"></div>
-          </div>
-        </div>
         <div class="tool-view" data-tool-panel="ride">
           <div class="ride-module">
             <div class="ride-module-summary">
@@ -231,7 +198,7 @@
               <div><b id="rideModuleStatus">—</b><small id="rideModuleConfidence">—</small></div>
             </div>
             <div class="ride-index-track" id="rideIndexTrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="rideIndexFill"></span><i id="rideIndexMarker"></i></div>
-            <div class="ride-level-compare" id="rideLevels" aria-label="Comparação de níveis"></div>
+
             <div class="ride-preference">
               <div><span id="ridePreferenceLabel">PREFERÊNCIA DE CONFORTO</span><small id="ridePreferenceNote">Equilibra conforto, combustível e tempo</small></div>
               <div role="group" aria-label="Preferência de conforto">
@@ -242,7 +209,6 @@
             </div>
             <div class="ride-recommendation">
               <div><span id="rideRecommendationLabel">RECOMENDAÇÃO</span><strong id="rideRecommendationLevel">—</strong><small id="rideRecommendationMeta">—</small></div>
-              <button class="primary-button compact-action" id="applyRideRecommendation" type="button">Aplicar recomendação</button>
             </div>
             <div class="ride-decision-grid">
               <div><span id="rideCriticalLabel">TRECHO CRÍTICO</span><strong id="rideCriticalLeg">—</strong><small id="rideCriticalMeta">—</small></div>
@@ -274,7 +240,7 @@
               <div><b id="iceModuleStatus">—</b><small id="iceModuleConfidence">—</small></div>
             </div>
             <div class="ice-index-track" id="iceIndexTrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="iceIndexFill"></span><i id="iceIndexMarker"></i></div>
-            <div class="ice-level-compare" id="iceLevelCompare" aria-label="Comparação de níveis"></div>
+
             <div class="ice-decision-grid">
               <div><span id="iceRiskWindowLabel">TRECHO CRÍTICO</span><strong id="iceRiskWindow">—</strong><small id="iceRiskWindowMeta">—</small></div>
               <div><span id="iceDestinationLabel">DESTINO</span><strong id="iceDestinationRisk">—</strong><small id="iceDestinationMeta">—</small></div>
@@ -340,7 +306,6 @@
               </div>
               <div class="cost-detail-grid">
                 <section><div class="cost-section-heading"><span data-i18n="costBreakdown">Custo por fase</span><strong id="costBreakdownTotal">—</strong></div><div class="cost-phase-list" id="costPhaseList"></div></section>
-                <section><div class="cost-section-heading"><span data-i18n="modeComparison">Comparação de modos</span><strong id="possibleSavings">—</strong></div><div class="cost-mode-list" id="costModeList"></div></section>
               </div>
               <div class="cost-live" id="costLive" hidden><span data-i18n="costInFlight">Projeção após atualização manual</span><strong id="costLiveValue">—</strong><small id="costLiveDelta">—</small></div>
             </div>
@@ -351,7 +316,7 @@
         </div>
         <div class="tool-view" data-tool-panel="update">
           <div class="manual-mode-top">
-          <span id="manualConfidence">—</span>
+          <span id="calibrationReference">—</span>
           </div>
           <div id="manualFlightPanel" class="manual-mode-panel">
           <div class="update-grid">
@@ -374,29 +339,6 @@
             </form>
           </div>
           </div>
-          <div id="manualFinishedPanel" class="manual-mode-panel" hidden>
-            <div class="debrief-layout">
-            <form id="debriefForm" class="debrief-form">
-              <div class="debrief-head"><strong data-i18n="debriefResultTitle">Resultado do voo</strong><span id="debriefFlightContext">—</span></div>
-              <div class="debrief-inputs">
-                <label><span data-i18n="actualTime">Tempo real</span><span class="input-with-unit"><input id="debriefTime" type="number" min="1" step="1" required /><small>min</small></span></label>
-                <label><span data-i18n="actualFuel">Combustível usado</span><span class="input-with-unit"><input id="debriefFuel" type="number" min="0.1" step="0.1" required /><small id="debriefFuelUnit">gal</small></span></label>
-              </div>
-              <div class="debrief-phase-tabs" role="tablist" data-i18n-aria-label="debriefPhases">
-                <button class="active" type="button" role="tab" data-debrief-phase="climb" aria-selected="true" data-i18n="climb">Subida</button>
-                <button type="button" role="tab" data-debrief-phase="cruise" aria-selected="false" data-i18n="cruise">Cruzeiro</button>
-                <button type="button" role="tab" data-debrief-phase="descent" aria-selected="false" data-i18n="descent">Descida</button>
-              </div>
-              <div class="debrief-phase-panels">
-                <div class="debrief-phase-panel active" data-debrief-panel="climb"><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="climb" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="climb" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
-                <div class="debrief-phase-panel" data-debrief-panel="cruise" hidden><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="cruise" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="cruise" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
-                <div class="debrief-phase-panel" data-debrief-panel="descent" hidden><label><span data-i18n="phaseTime">Tempo</span><span class="input-with-unit"><input data-debrief-time="descent" type="number" min="1" step="1" /><small>min</small></span></label><label><span data-i18n="phaseFuel">Combustível</span><span class="input-with-unit"><input data-debrief-fuel="descent" type="number" min="0.1" step="0.1" /><small data-debrief-fuel-unit>gal</small></span></label></div>
-              </div>
-              <div class="debrief-actions"><button class="primary-button" type="submit" data-i18n="saveDebrief">Registrar voo</button></div>
-            </form>
-            <details class="debrief-history-wrap"><summary data-i18n="debriefHistory">Histórico de calibração</summary><div class="debrief-history" id="debriefHistory"></div></details>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -408,41 +350,7 @@
         <div><span data-i18n="oxygen">Oxigênio</span><strong id="oxygenValue">—</strong><small id="oxygenMeta">—</small></div>
       </section>
 
-      <section class="panel terrain-panel" id="routeMatrix" aria-label="Matriz de níveis por trecho">
-        <div class="terrain-heading">
-          <div><span class="terrain-eyebrow" id="terrainEyebrow">ROTA · OFP</span><h2 id="terrainTitle">Matriz de níveis</h2><p id="terrainIntro">MORA, fase, vento e gelo por trecho.</p></div>
-          <div class="terrain-decision"><strong class="terrain-badge unknown" id="terrainStatus">TERRENO NÃO AVALIADO</strong><span id="terrainMargin">—</span></div>
-        </div>
-        <div class="matrix-route" id="routeMatrixOverview" aria-label="Trechos da rota"></div>
-        <div class="matrix-toolbar"><div><strong id="routeMatrixLegTitle">—</strong><small id="routeMatrixPosition">—</small></div><div class="matrix-nav"><button type="button" data-matrix-prev aria-label="Trecho anterior">‹</button><button type="button" data-matrix-next aria-label="Próximo trecho">›</button></div></div>
-        <div class="matrix-grid" id="routeMatrixGrid" aria-label="Níveis por trecho"></div>
-        <div class="matrix-detail" id="routeMatrixDetail" aria-live="polite"></div>
-        <p class="terrain-note" id="terrainNote">— = dado insuficiente</p>
-        <div class="terrain-manual" id="terrainManual" hidden></div>
-      </section>
-
       <section class="dashboard-grid">
-        <article class="panel visual-panel">
-          <div class="view active" data-view-panel="performance">
-            <div class="view-heading">
-              <h2 data-i18n="altitudeComparison">Comparação por altitude</h2>
-              <div class="chart-tabs" role="tablist"><button class="active" data-metric="fuel" type="button">Fuel</button><button data-metric="time" type="button">Time</button><button data-metric="efficiency" type="button">Efficiency</button></div>
-            </div>
-            <div class="performance-ranking" id="performanceChart"></div>
-            <div class="icing-summary" id="icingSummary">
-              <div class="icing-head"><b id="icingStatus">—</b><span id="icingDelta">—</span><small id="icingSource">—</small></div>
-              <div class="phase-footer">
-                <small id="phaseLevel"></small>
-                <div class="phase-grid">
-                  <div><i class="phase-dot climb"></i><span data-i18n="climb">SUBIDA</span><strong id="climbStats"></strong></div>
-                  <div><i class="phase-dot cruise"></i><span data-i18n="cruise">CRUZEIRO</span><strong id="cruiseStats"></strong></div>
-                  <div><i class="phase-dot descent"></i><span data-i18n="descent">DESCIDA</span><strong id="descentStats"></strong></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </article>
-
         <aside class="control-stack">
           <article class="panel controls-panel">
             <div class="mode-control"><button data-mode="ECON" type="button">ECON</button><button class="active" data-mode="NORMAL" type="button">NORMAL</button><button data-mode="FAST" type="button">FAST</button></div>
@@ -462,10 +370,18 @@
             <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
             <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
-            <div class="mission-recovery" id="missionRecovery" role="status" aria-live="polite" hidden>
-              <p id="missionRecoveryReason"></p>
-              <button id="missionRecoveryAction" type="button" data-i18n="restoreViableMission">Usar última carga viável</button>
-              <small id="missionRecoveryWarning" data-i18n="restoreViableWarning">A carga anterior será reotimizada e substituirá ajustes de carga, combustível, preset e oxigênio. Confira os ocupantes e o W&amp;B.</small>
+            <div class="mission-proposal" id="missionProposal" hidden aria-live="polite">
+              <div class="mission-proposal-head"><div><span id="proposalTitle">Recomendação</span><strong id="proposalSummary">—</strong></div><b class="status-pill" id="proposalStatus">—</b></div>
+              <div class="mission-proposal-metrics">
+                <div><span>FL</span><strong id="proposalFl">—</strong></div>
+                <div><span data-i18n="recommendedFuel">Combustível recomendado</span><strong id="proposalFuel">—</strong></div>
+                <div><span>ETE</span><strong id="proposalTime">—</strong></div>
+              </div>
+              <div class="mission-power-grid" id="missionPowerGrid"></div>
+              <div class="mission-advisories"><span>ICE <strong id="proposalIceFl">—</strong></span><span>RIDE <strong id="proposalRideFl">—</strong></span><span id="proposalGlobalLabel">GLOBAL <strong id="proposalGlobalFl">—</strong></span><span>W&amp;B <strong id="proposalWb">—</strong></span><span>O₂ <strong id="proposalOxygen">—</strong></span></div>
+              <p id="proposalReason">—</p>
+              <small id="proposalTerrain">Terreno e obstáculos não avaliados.</small>
+              <button class="text-button" id="applyMissionProposal" type="button">Aplicar configuração</button>
             </div>
           </article>
           <article class="panel insight-panel mission-score-panel">
@@ -488,16 +404,12 @@
 
 
 
-      <section class="levels-section">
-        <div class="section-heading"><h2 data-i18n="allLevels">Todos os níveis</h2><span id="selectionNote"></span></div>
-        <div class="levels-list" id="levelCards"></div>
-      </section>
       </div>
-      <footer><span>Velocity XL Performance Planner</span><span class="footer-sources"><a href="https://forum.navigraph.com/t/ofp-wrong-msa/22775" target="_blank" rel="noreferrer">SimBrief MORA</a></span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
+      <footer><span>Velocity XL Performance Planner</span><span class="footer-sources">Terreno e obstáculos não avaliados.</span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./js/layout.js?v=20261020-07"></script>
-    <script type="module" src="./js/app.js?v=20261020-03"></script>
+    <script src="./js/layout.js?v=20261021-unified"></script>
+    <script type="module" src="./js/app.js?v=20261021-01"></script>
   </body>
 </html>
