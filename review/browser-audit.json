@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-10-21T19:35:44.931Z",
+  "browser": "Chromium in-app browser",
+  "checks": 72,
+  "widths": [
+    320,
+    375,
+    390,
+    430,
+    768,
+    1024,
+    1440,
+    1920
+  ],
+  "issues": []
+}

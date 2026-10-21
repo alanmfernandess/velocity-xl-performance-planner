@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { assertDeclaration, cssRule } from "./css-utils.mjs";
 
 const index=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const app=readFileSync(new URL("../js/app.js",import.meta.url),"utf8");
@@ -9,14 +10,14 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 
 test("uses a pinned Lucide release and cache-busted local assets",()=>{
   assert.match(index,/lucide@0\.468\.0/);
-  assert.match(index,/styles\.css\?v=\d{8}-\d+/);
+  assert.match(index,/styles\.css\?v=[\w-]+/);
   assert.match(index,/js\/app\.js\?v=\d{8}-\d+/);
 });
 
 test("oxygen recommendation button aligns with the adjacent controls",()=>{
-  assert.match(css,/\.oxygen-controls > button \{ align-self:end; \}/);
-  assert.match(css,/\.oxygen-controls select \{[^}]*height:36px/);
-  assert.match(css,/\.text-button \{ height:36px/);
+  assertDeclaration(css,".oxygen-controls > button","align-self","end");
+  assertDeclaration(css,".oxygen-controls select","min-height","var(--control-height)");
+  assertDeclaration(css,".text-button","min-height","var(--control-height)");
 });
 
 test("performance ranking replaces the tiny SVG and contains the metric selector on mobile",()=>{
@@ -25,8 +26,8 @@ test("performance ranking replaces the tiny SVG and contains the metric selector
   assert.match(app,/rankMetricLevels\(results\.map/);
   assert.match(app,/data-ranking-toggle/);
   assert.match(app,/data-rank-altitude/);
-  assert.match(css,/\[data-view-panel="performance"\] \.chart-tabs \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
-  assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.ranking-top \{ grid-template-columns:minmax\(0,1fr\)/);
+  assertDeclaration(css,'[data-view-panel="performance"] .chart-tabs',"grid-template-columns","repeat(3,minmax(0,1fr))");
+  assertDeclaration(css,".ranking-top","grid-template-columns","minmax(0,1fr)",600);
 });
 
 test("flight phases stay live in the icing card after Route and Profile tabs are removed",()=>{
@@ -38,8 +39,8 @@ test("flight phases stay live in the icing card after Route and Profile tabs are
   assert.match(app,/\$\("#cruiseStats"\)\.textContent=`\$\{Math\.round\(selected\.cruiseTimeHr/);
   assert.match(app,/\$\("#descentStats"\)\.textContent=`\$\{Math\.round\(selected\.descent\.timeHr/);
   assert.match(app,/renderMissionScore\(selected,missionScore\)/);
-  assert.match(css,/\.phase-footer \{ border-top:1px solid var\(--line\)/);
-  assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.phase-grid \{ grid-template-columns:minmax\(0,1fr\)/);
+  assertDeclaration(css,".phase-footer","border-top","1px solid var(--line)");
+  assertDeclaration(css,".phase-grid","grid-template-columns","minmax(0,1fr)",600);
 });
 
 test("ICE exposes route timing, terminal validity, alternate risk, and vertical exit",()=>{
@@ -55,20 +56,21 @@ test("A/B matrix keeps B controls above four aligned comparison metrics",()=>{
   }
   assert.match(app,/\$\("#scenarioMatrixRows"\)\.innerHTML=\[/);
   assert.match(app,/comparison\.delta\.marginGal/);
-  assert.match(css,/\.scenario-matrix-head,\.scenario-matrix-row \{[^}]*grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(cssRule(css,".scenario-matrix-head"),/grid-template-columns:\s*minmax\(0,1fr\)/);
 });
 
 test("mission strip centers each complete information group",()=>{
-  assert.match(css,/\.mission-strip div \{[^}]*justify-content:center; align-content:center/);
-  assert.match(css,/\.mission-strip strong \{[^}]*grid-column:1\/-1/);
-  assert.match(css,/\.mission-strip small \{[^}]*text-align:center/);
-  assert.doesNotMatch(css,/\.mission-strip strong \{[^}]*position:absolute/);
+  assertDeclaration(css,".mission-strip div","justify-content","center");
+  assertDeclaration(css,".mission-strip div","align-content","center");
+  assertDeclaration(css,".mission-strip strong","grid-column","1/-1");
+  assertDeclaration(css,".mission-strip small","text-align","center");
+  assert.doesNotMatch(cssRule(css,".mission-strip strong"),/position:\s*absolute/);
 });
 
 test("A/B matrix stacks each metric for narrow screens without horizontal overflow",()=>{
-  assert.match(css,/@media \(max-width:760px\) \{[\s\S]*?\.scenario-matrix-head,\.scenario-matrix-row \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(css,/\.scenario-metric,\.scenario-change \{ grid-column:1\/-1; \}/);
-  assert.match(css,/\.scenario-matrix \{[^}]*overflow:hidden/);
+  assertDeclaration(css,".scenario-matrix-row","grid-template-columns","repeat(2,minmax(0,1fr))",760);
+  assertDeclaration(css,".scenario-metric","grid-column","1/-1",760);
+  assertDeclaration(css,".scenario-matrix","overflow","hidden");
 });
 
 test("GLIDE focuses an OFP point and keeps the full route navigable on narrow screens",()=>{
@@ -79,9 +81,9 @@ test("GLIDE focuses an OFP point and keeps the full route navigable on narrow sc
   assert.match(app,/glide\.samples\.map\(\(sample,index\)=>/);
   assert.match(app,/state\.glideSampleIndex=Number\(button\.dataset\.glideIndex\)/);
   assert.match(app,/state\.selectedAltitudeFt=null;state\.glideSampleIndex=null;/);
-  assert.match(css,/\.glide-route \{[^}]*overflow-x:auto/);
-  assert.match(css,/\.glide-focus \{[^}]*grid-template-columns:minmax\(0,1\.2fr\)/);
-  assert.match(css,/\.glide-focus \{ grid-template-columns:minmax\(0,1fr\); \}/);
+  assertDeclaration(css,".glide-route","overflow-x","auto");
+  assert.match(cssRule(css,".glide-focus"),/grid-template-columns:\s*minmax\(0,1\.2fr\)/);
+  assertDeclaration(css,".glide-focus","grid-template-columns","minmax(0,1fr)",760);
 });
 
 test("STEP CLIMB compares complete remaining profiles and explains no-step cases",()=>{
@@ -91,8 +93,8 @@ test("STEP CLIMB compares complete remaining profiles and explains no-step cases
   assert.match(app,/stepPlan\.comparison/);
   assert.match(app,/stepNoNetGain/);
   assert.match(app,/availableAltitudesFt:analysis\.results\.filter\(operationallyAvailable\)/);
-  assert.match(css,/\.step-profiles \{[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(css,/@media \(max-width:600px\) \{[\s\S]*?\.step-profiles \{ grid-template-columns:minmax\(0,1fr\)/);
+  assertDeclaration(css,".step-profiles","grid-template-columns","repeat(2,minmax(0,1fr))");
+  assertDeclaration(css,".step-profiles","grid-template-columns","minmax(0,1fr)",600);
 });
 
 test("discrete icon rules cover every primary calculator surface",()=>{
@@ -112,8 +114,8 @@ test("flight cost uses a manual per-liter price and a bounded mission-score pena
   assert.match(app,/localStorage\.setItem\("velocityxl\.financial"/);
   assert.match(app,/calculateFinancialImpact\(\{currentCost:cost,minimumViableCost\}\)/);
   assert.match(app,/preflightSnapshot=\{missionScore:structuredClone\(lastRenderedMissionScore\),financial:structuredClone\(lastRenderedFinancial\)\}/);
-  assert.match(css,/\.cost-detail-grid \{[^}]*grid-template-columns:1fr 1fr/);
-  assert.match(css,/@media \(max-width:700px\) \{[\s\S]*?\.cost-detail-grid \{ grid-template-columns:1fr/);
+  assertDeclaration(css,".cost-detail-grid","grid-template-columns","1fr 1fr");
+  assertDeclaration(css,".cost-detail-grid","grid-template-columns","1fr",700);
 });
 
 test("flight cost separates the OFP alternate scenario without changing planned cost",()=>{
@@ -122,7 +124,7 @@ test("flight cost separates the OFP alternate scenario without changing planned 
   assert.match(app,/const alternate=Number\.isFinite\(alternateFuelGal\)/);
   assert.match(app,/formatMoney\(financial\.cost\+alternateData\.cost\)/);
   assert.match(app,/buildFinancialAnalysis\(plan,selected,alternateAdvice\)/);
-  assert.match(css,/\.cost-alternate-grid \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assertDeclaration(css,".cost-alternate-grid","grid-template-columns","repeat(3,minmax(0,1fr))");
 });
 
 test("in-flight calibration and completed-flight records use only Calibration and History",()=>{
@@ -137,8 +139,10 @@ test("in-flight calibration and completed-flight records use only Calibration an
 test("approved four-area layout keeps each original tool in a dedicated module",()=>{
   const layout=readFileSync(new URL("../js/layout.js",import.meta.url),"utf8");
   assert.match(index,/id="areaNav"/);
-  assert.match(index,/design-system\.css/);
+  assert.doesNotMatch(index,/design-system\.css/);
+  assert.match(index,/href="\.\/styles\.css\?/);
   for(const area of ["mission","planning","route","flight"])assert.match(layout,new RegExp(`\\['${area}'`));
+  assert.match(layout,/flight: 'calibration'/);
   for(const key of ["etp","alternate","compare","load","wb","glide","oxygen","confidence","ride","ice","cost","steps","update"])
     assert.match(layout,new RegExp(`['"]${key}['"]`));
   assert.match(app,/function setOpenTool\(key\)/);
@@ -182,10 +186,10 @@ test("RIDE exposes comfort preferences, route evidence, and explicit apply actio
 
 test("icon styling remains discrete and preserves operational status colors",()=>{
   assert.match(css,/\.ui-icon\s*\{/);
-  assert.match(css,/width:13px/);
+  assert.match(css,/width:\s*13px/);
   assert.match(css,/status-ui-icon/);
-  assert.match(css,/color:var\(--green\)/);
-  assert.match(css,/color:var\(--orange\)/);
-  assert.match(css,/color:var\(--red\)/);
-  assert.match(css,/\.level-item\.unavailable \.level-status \{ color:var\(--red\); \}/);
+  assert.match(css,/color:\s*var\(--green\)/);
+  assert.match(css,/color:\s*var\(--orange\)/);
+  assert.match(css,/color:\s*var\(--red\)/);
+  assertDeclaration(css,".level-item.unavailable .level-status","color","var(--red)");
 });

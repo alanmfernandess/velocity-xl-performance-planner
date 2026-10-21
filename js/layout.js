@@ -189,7 +189,7 @@
   const oldTools = $('.flight-tools-panel'); if (oldTools) oldTools.remove();
   const oldDashboard = $('.dashboard-grid'); if (oldDashboard) oldDashboard.remove();
 
-  const state = { area: 'mission', module: { mission: 'overview', planning: 'config', route: 'overview', flight: 'update' } };
+  const state = { area: 'mission', module: { mission: 'overview', planning: 'config', route: 'overview', flight: 'calibration' } };
   function activate(area, module = state.module[area]) {
     if (!areaNodes.has(area)) return;
     state.area = area;
