@@ -125,12 +125,12 @@ test("flight cost separates the OFP alternate scenario without changing planned 
   assert.match(css,/\.cost-alternate-grid \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
 });
 
-test("completed-flight calibration lives under Manual Update without a separate DEBRIEF tab",()=>{
+test("in-flight calibration and completed-flight records use only Calibration and History",()=>{
   assert.doesNotMatch(index,/data-tool-view="debrief"|data-tool-panel="debrief"/);
   const manualPanel=index.slice(index.indexOf('data-tool-panel="update"'),index.indexOf('class="mission-strip"'));
-  assert.match(manualPanel,/data-manual-mode="flight"[\s\S]*data-manual-mode="finished"/);
-  assert.match(manualPanel,/data-manual-panel="flight"[\s\S]*id="manualUpdateForm"[\s\S]*id="calibrationForm"/);
-  assert.match(manualPanel,/data-manual-panel="finished"[\s\S]*id="debriefForm"[\s\S]*id="debriefHistory"/);
+  assert.doesNotMatch(manualPanel,/data-manual-mode=/);
+  assert.match(manualPanel,/id="manualFlightPanel"[\s\S]*id="manualUpdateForm"[\s\S]*id="calibrationForm"/);
+  assert.match(manualPanel,/id="manualFinishedPanel"[\s\S]*id="debriefForm"[\s\S]*id="debriefHistory"/);
   assert.match(app,/localStorage\.setItem\("velocityxl\.debriefs"/);
 });
 
@@ -145,14 +145,15 @@ test("approved four-area layout keeps each original tool in a dedicated module",
   assert.match(app,/selectedTools\[module\.dataset\.modulePanel\]=key/);
 });
 
-test("Manual Update remains the single entry to in-flight and completed-flight data",()=>{
+test("in-flight and completed-flight inputs remain accessible through two modules",()=>{
   assert.match(index,/class="manual-update-strip"[^>]*data-tool-trigger="update"/);
   assert.doesNotMatch(index,/data-tool-view="update"/);
   assert.match(index,/id="manualUpdateStripValue"[\s\S]*id="manualUpdateStripState"/);
-  assert.match(app,/manualUpdateStrip\.addEventListener/);
+  assert.match(app,/manualUpdateStrip\.addEventListener\("click",\(\)=>window\.VelocityLayout\?\.activate\("flight","calibration"\)\)/);
   const layout=readFileSync(new URL("../js/layout.js",import.meta.url),"utf8");
-  assert.match(layout,/moduleNodes\.get\('flight:calibration'\)\.append\(calibration\)/);
-  assert.match(layout,/moduleNodes\.get\('flight:completed'\)\.append\(finishedPanel\)/);
+  assert.match(layout,/\['flight',[^\n]*\[\['calibration', 'calibration'\], \['history', 'history'\]\]/);
+  assert.match(layout,/moduleNodes\.get\('flight:calibration'\)\.append\(flightPanel\)/);
+  assert.match(layout,/moduleNodes\.get\('flight:history'\)\.append\(finishedPanel\)/);
   assert.match(layout,/moduleNodes\.get\('flight:history'\)\.append\(history\)/);
 });
 

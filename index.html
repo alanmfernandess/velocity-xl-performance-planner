@@ -23,7 +23,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css?v=20261018-18" />
-    <link rel="stylesheet" href="./design-system.css?v=20261020-04" />
+    <link rel="stylesheet" href="./design-system.css?v=20261020-05" />
   </head>
   <body>
     <header class="topbar">
@@ -75,7 +75,7 @@
       </section>
 
       <section class="panel flight-tools-panel" aria-label="Flight tools">
-        <button class="manual-update-strip" id="tool-card-update" data-tool-trigger="update" type="button" aria-controls="tool-panel-update" aria-expanded="false">
+        <button class="manual-update-strip" id="tool-card-update" data-tool-trigger="update" type="button" aria-controls="manualFlightPanel" aria-expanded="false">
           <span class="manual-update-strip-icon" aria-hidden="true"></span>
           <span class="manual-update-strip-copy"><small data-i18n="manualFlightStatusTitle">ATUALIZAÇÃO EM VOO</small><strong id="manualUpdateStripValue">—</strong></span>
           <small class="manual-update-strip-state" id="manualUpdateStripState" data-i18n="manualNoUpdate">Sem atualização registrada</small>
@@ -363,13 +363,9 @@
         </div>
         <div class="tool-view" data-tool-panel="update">
           <div class="manual-mode-top">
-          <div class="manual-mode-tabs" role="tablist" data-i18n-aria-label="manualUpdate">
-            <button id="manualFlightTab" type="button" class="active" role="tab" aria-controls="manualFlightPanel" data-manual-mode="flight" aria-selected="true" data-i18n="manualInFlight">Em voo</button>
-            <button id="manualFinishedTab" type="button" role="tab" aria-controls="manualFinishedPanel" data-manual-mode="finished" aria-selected="false" data-i18n="manualFinished">Voo concluído</button>
-          </div>
           <span id="manualConfidence">—</span>
           </div>
-          <div id="manualFlightPanel" class="manual-mode-panel" data-manual-panel="flight" role="tabpanel" aria-labelledby="manualFlightTab">
+          <div id="manualFlightPanel" class="manual-mode-panel">
           <div class="update-grid">
             <form id="manualUpdateForm" class="compact-form">
               <label><span data-i18n="position">Posição</span><select id="manualWaypoint"></select></label>
@@ -390,7 +386,7 @@
             </form>
           </div>
           </div>
-          <div id="manualFinishedPanel" class="manual-mode-panel" data-manual-panel="finished" role="tabpanel" aria-labelledby="manualFinishedTab" hidden>
+          <div id="manualFinishedPanel" class="manual-mode-panel" hidden>
             <div class="debrief-layout">
             <form id="debriefForm" class="debrief-form">
               <div class="debrief-head"><strong data-i18n="debriefResultTitle">Resultado do voo</strong><span id="debriefFlightContext">—</span></div>
@@ -513,7 +509,7 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./js/layout.js?v=20261020-05"></script>
-    <script type="module" src="./js/app.js?v=20261020-02"></script>
+    <script src="./js/layout.js?v=20261020-06"></script>
+    <script type="module" src="./js/app.js?v=20261020-03"></script>
   </body>
 </html>

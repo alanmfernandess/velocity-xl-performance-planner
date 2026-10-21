@@ -43,7 +43,7 @@
     ['mission', 'gauge', 'missionTitle', [['overview', 'overview'], ['score', 'score']]],
     ['planning', 'sliders-horizontal', 'planningTitle', [['config', 'config'], ['levels', 'levels'], ['optimize', 'optimize'], ['systems', 'systems'], ['analyses', 'analyses']]],
     ['route', 'route', 'routeTitle', [['overview', 'overview'], ['matrix', 'matrix'], ['ice', 'ice'], ['ride', 'ride'], ['decisions', 'decisions']]],
-    ['flight', 'radio-tower', 'flightTitle', [['update', 'update'], ['calibration', 'calibration'], ['completed', 'completed'], ['history', 'history']]],
+    ['flight', 'radio-tower', 'flightTitle', [['calibration', 'calibration'], ['history', 'history']]],
   ];
   const areaNodes = new Map();
   const moduleNodes = new Map();
@@ -158,7 +158,6 @@
     'route:ice': ['ice'],
     'route:ride': ['ride'],
     'route:decisions': ['etp', 'alternate', 'glide', 'steps'],
-    'flight:update': ['update'],
   };
   for (const [destination, keys] of Object.entries(toolGroups)) {
     const module = moduleNodes.get(destination);
@@ -177,23 +176,13 @@
   const updatePanel = $('[data-tool-panel="update"]');
   const flightPanel = $('#manualFlightPanel');
   const finishedPanel = $('#manualFinishedPanel');
-  const calibration = $('#calibrationForm');
   const history = $('.debrief-history-wrap');
-  if (flightPanel && updatePanel) {
-    const flight = moduleNodes.get('flight:update');
-    const grid = item(); grid.className = 'flight-update-grid'; flight.append(grid); grid.append(flightPanel);
-    const summary = item(); summary.className = 'panel flight-summary';
-    summary.innerHTML = `<div class="shared-card-head"><span data-layout-text="remainingLeg">${text('remainingLeg')}</span>${icon('route')}</div><p class="flight-summary-empty" data-layout-text="awaitingUpdate">${text('awaitingUpdate')}</p>`;
-    const assessment = $('#remainingAssessment');
-    if (assessment) summary.append(assessment);
-    grid.append(summary);
-  }
-  if (calibration) moduleNodes.get('flight:calibration').append(calibration);
-  if (finishedPanel) { finishedPanel.hidden = false; moduleNodes.get('flight:completed').append(finishedPanel); }
+  const confidence = $('#manualConfidence');
+  if (confidence) moduleNodes.get('flight:calibration').append(confidence);
+  if (flightPanel && updatePanel) moduleNodes.get('flight:calibration').append(flightPanel);
+  if (finishedPanel) { finishedPanel.hidden = false; moduleNodes.get('flight:history').append(finishedPanel); }
   if (history) { history.open = true; moduleNodes.get('flight:history').append(history); }
-  const modeTabs = $('.manual-mode-tabs'); if (modeTabs) modeTabs.hidden = true;
-  if (flightPanel) flightPanel.hidden = false;
-  if (updatePanel) updatePanel.hidden = true;
+  const oldModeTop = $('.manual-mode-top'); if (oldModeTop) oldModeTop.remove();
 
   const oldTools = $('.flight-tools-panel'); if (oldTools) oldTools.remove();
   const oldDashboard = $('.dashboard-grid'); if (oldDashboard) oldDashboard.remove();

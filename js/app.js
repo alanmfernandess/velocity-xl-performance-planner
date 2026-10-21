@@ -1199,7 +1199,7 @@ toolCardPanels.forEach((panel)=>{
   panel.setAttribute("role","region");
   panel.setAttribute("aria-labelledby",key==="update"?"tool-card-update":`tool-card-${key}`);
 });
-manualUpdateStrip.addEventListener("click",()=>window.VelocityLayout?.activate("flight","update"));
+manualUpdateStrip.addEventListener("click",()=>window.VelocityLayout?.activate("flight","calibration"));
 function setOpenTool(key){
   if(!key)return;
   const panel=toolCardPanels.find((item)=>item.dataset.toolPanel===key);
@@ -1219,10 +1219,6 @@ function setOpenTool(key){
   if(key==="glide")centerGlideRoutePoint();
 }
 Object.values(initialTools).forEach(setOpenTool);
-$$('[data-manual-mode]').forEach((button)=>button.addEventListener("click",()=>{
-  $$('[data-manual-mode]').forEach((item)=>{const active=item===button;item.classList.toggle("active",active);item.setAttribute("aria-selected",String(active));});
-  $$('[data-manual-panel]').forEach((panel)=>panel.hidden=panel.dataset.manualPanel!==button.dataset.manualMode);
-}));
 $("#payloadInput").addEventListener("input",(event)=>{setPayloadAndScaleStations(Number(event.target.value));render();}); $("#fuelInput").addEventListener("input",(event)=>{state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{state.reserveMinutes=Number(event.target.value);render();});
 $("#diversionWaypoint").addEventListener("change",(event)=>{state.diversionWaypointIndex=Number(event.target.value);render();});
 $("#scenarioBMode").addEventListener("change",(event)=>{state.scenarioB.mode=event.target.value;render();});
