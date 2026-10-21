@@ -179,6 +179,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .app-module[data-module-panel="flight:history"] .debrief-phase-tabs button { min-width: 0; min-height: var(--control-height); padding: 0 var(--space-2); font-size: var(--ui-body); }
 .app-module[data-module-panel="flight:history"] .debrief-actions { justify-content: flex-end; margin-top: var(--space-6); }
 .app-module[data-module-panel="flight:history"] .debrief-actions .primary-button { min-width: 180px; min-height: var(--control-height); padding: 0 var(--space-4); }
+.app-module[data-module-panel="flight:history"] > .debrief-history-wrap { box-sizing: border-box; width: 100%; max-width: 800px; margin: 0 auto; padding: var(--space-4) var(--space-5); }
 .debrief-history-wrap { display: block; }
 .debrief-history-wrap summary { min-height: 44px; display: flex; align-items: center; font-size: var(--ui-title); font-weight: 650; }
 .debrief-history { min-width: 0; }
@@ -232,6 +233,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   .app-module > :is(.panel, .levels-section), .tool-host .tool-view { padding: var(--space-4); }
   .app-module[data-module-panel="flight:history"] > #manualFinishedPanel { padding: var(--space-4); }
   .app-module[data-module-panel="flight:history"] .debrief-form { padding: var(--space-4); }
+  .app-module[data-module-panel="flight:history"] > .debrief-history-wrap { padding: var(--space-4); }
 }
 @media (max-width: 430px) {
   .topbar { flex-wrap: wrap; }
