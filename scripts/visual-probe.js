@@ -27,6 +27,10 @@ window.VelocityVisualProbe = (root = document) => {
     return new Set([...range.getClientRects()].filter(rect => rect.width > 0).map(rect => Math.round(rect.top))).size;
   };
   const scoped = selector => [...root.querySelectorAll(selector)].filter(visible);
+  const intersects = (a, b, tolerance = 1) =>
+    Math.min(a.right, b.right) - Math.max(a.left, b.left) > tolerance &&
+    Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > tolerance;
+  const control = element => element?.querySelector('.ui-unit-input, select, input:not([type="range"]):not([type="checkbox"])') || element;
 
   const roles = scoped('[data-ui-role]');
   const signatures = new Map();
@@ -82,13 +86,80 @@ window.VelocityVisualProbe = (root = document) => {
   }
 
   for (const element of scoped('input:not([type="range"]):not([type="checkbox"]), select')) {
-    const box = element.getBoundingClientRect();
+    const wrapper = element.closest('.ui-unit-input');
+    const box = (wrapper || element).getBoundingClientRect();
     const style = getComputedStyle(element);
     if (box.height < 43.5) issues.push({ code: 'short-control', target: key(element), detail: String(box.height) });
     if (parseFloat(style.fontSize) < 15.9) issues.push({ code: 'small-editable-text', target: key(element), detail: style.fontSize });
-    const wrapper = element.closest('.input-with-unit');
     if (wrapper && parseFloat(style.borderLeftWidth) > 0)
       issues.push({ code: 'double-input-border', target: key(element) });
+    if (wrapper && (element.getBoundingClientRect().top < box.top - .5 || element.getBoundingClientRect().bottom > box.bottom + .5))
+      issues.push({ code: 'inner-control-outside', target: key(element) });
+  }
+
+  // Compare the rectangles that draw the controls, rather than their nested inputs.
+  for (const row of scoped('[data-ui-control-row]')) {
+    const fields = [...row.children].filter(child => visible(child) && (child.matches('.ui-field, button')));
+    const boxes = fields.map(controlElement => ({ element: controlElement, rect: control(controlElement).getBoundingClientRect() }));
+    if (innerWidth >= 768 || row.dataset.uiControlRow === 'cost') {
+      for (let index = 1; index < boxes.length; index += 1) {
+        const a = boxes[0], b = boxes[index];
+        for (const edge of ['top', 'bottom', 'height']) {
+          if (Math.abs(a.rect[edge] - b.rect[edge]) > 1)
+            issues.push({ code: 'control-row-drift', target: key(row), detail: `${key(a.element)} / ${key(b.element)} ${edge} ${a.rect[edge].toFixed(1)}/${b.rect[edge].toFixed(1)}` });
+        }
+        if (a.element.matches('.ui-field') && b.element.matches('.ui-field')) {
+          const appearance = item => {
+            const outer = control(item), inner = outer.matches('.ui-unit-input') ? outer.querySelector('input') : outer;
+            const boundary = getComputedStyle(outer), type = getComputedStyle(inner);
+            return [boundary.borderTopWidth, boundary.borderRadius, type.paddingLeft, type.fontFamily,
+              type.fontSize, type.fontWeight, type.lineHeight];
+          };
+          const first = appearance(a.element), second = appearance(b.element);
+          if (first.some((value, property) => value !== second[property]))
+            issues.push({ code: 'control-style-drift', target: key(row), detail: `${key(a.element)} ${first.join('/')} / ${key(b.element)} ${second.join('/')}` });
+        }
+      }
+    }
+  }
+  for (const field of scoped('.ui-field')) {
+    const fieldBox = field.getBoundingClientRect();
+    const childBox = control(field).getBoundingClientRect();
+    if (childBox.bottom > fieldBox.bottom + 1 || childBox.top < fieldBox.top - 1)
+      issues.push({ code: 'field-row-underflow', target: key(field) });
+  }
+  for (const container of scoped('[data-ui-overlap-group]')) {
+    const children = [...container.children].filter(visible);
+    for (let i = 0; i < children.length; i += 1)
+      for (let j = i + 1; j < children.length; j += 1)
+        if (intersects(children[i].getBoundingClientRect(), children[j].getBoundingClientRect()))
+          issues.push({ code: 'sibling-overlap', target: key(container), detail: `${key(children[i])} / ${key(children[j])}` });
+  }
+  for (const pair of scoped('[data-ui-card-pair]')) {
+    if (getComputedStyle(pair).gridTemplateColumns.split(' ').length < 2) continue;
+    const cards = [...pair.children].filter(visible);
+    if (cards.length !== 2) continue;
+    const a = cards[0].getBoundingClientRect(), b = cards[1].getBoundingClientRect();
+    if (Math.abs(a.top - b.top) > 1 || Math.abs(a.bottom - b.bottom) > 1 || Math.abs(a.height - b.height) > 1)
+      issues.push({ code: 'card-pair-drift', target: key(pair), detail: `${a.height.toFixed(1)}/${b.height.toFixed(1)}` });
+  }
+  const costPanel = root.querySelector('#costUnassessed');
+  const moneyUnit = root.querySelector('#fuelPriceSymbol');
+  if (visible(costPanel) && visible(moneyUnit) && intersects(costPanel.getBoundingClientRect(), moneyUnit.getBoundingClientRect()))
+    issues.push({ code: 'unit-panel-collision', target: '#fuelPriceSymbol / #costUnassessed' });
+  for (const button of scoped('button')) {
+    const boundary = button.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(button);
+    const escaped = [...range.getClientRects()].find(rect => rect.width > 0 &&
+        (rect.left < boundary.left - 1 || rect.right > boundary.right + 1 || rect.top < boundary.top - 1 || rect.bottom > boundary.bottom + 1));
+    if (escaped) issues.push({ code: 'button-text-outside', target: key(button),
+      detail: `${boundary.left.toFixed(1)},${boundary.right.toFixed(1)} / ${escaped.left.toFixed(1)},${escaped.right.toFixed(1)}` });
+  }
+  for (const element of scoped('.ui-field, .ui-unit-input, .panel, .tool-view, .kpi')) {
+    const rect = element.getBoundingClientRect();
+    if (rect.left < -1 || rect.right > innerWidth + 1)
+      issues.push({ code: 'viewport-overflow', target: key(element), detail: `${rect.left.toFixed(1)}/${rect.right.toFixed(1)}` });
   }
 
   const textTargets = scoped('[data-ui-role], .app-module strong, .app-module output, .app-module small, button');
@@ -165,7 +236,7 @@ window.VelocityVisualProbe = (root = document) => {
       issues.push({ code: 'outside-card', target: key(element), detail: key(container) });
   }
   const bottoms = selector => scoped(selector).map(element => Math.round(element.getBoundingClientRect().bottom));
-  for (const selector of ['#manualUpdateForm select, #manualUpdateForm .input-with-unit', '#calibrationForm .input-with-unit, #calibrationForm > button']) {
+  for (const selector of ['#manualUpdateForm select, #manualUpdateForm .ui-unit-input', '#calibrationForm .ui-unit-input, #calibrationForm > button']) {
     const values = bottoms(selector);
     if (values.length >= 2 && innerWidth >= 768 && Math.max(...values) - Math.min(...values) > 2)
       issues.push({ code: 'form-baseline-drift', target: selector, detail: values.join(',') });

@@ -35,6 +35,9 @@
   --space-5: 20px;
   --space-6: 24px;
   --control-height: 44px;
+  --control-radius: 10px;
+  --control-padding: 12px;
+  --field-gap: 4px;
   --card-radius: 15px;
 }
 
@@ -415,6 +418,7 @@ select:focus-visible {
   background: var(--panel-soft);
 }
 .module-nav button {
+  flex: 0 0 auto;
   min-height: var(--control-height);
   padding: 0 var(--space-4);
   border: 0;
@@ -442,17 +446,112 @@ select:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
-  align-items: start;
+  align-items: stretch;
 }
-.app-module :where(input:not([type="range"]):not([type="checkbox"]), select),
-.plan-form input {
+/* Shared Field / TextInput / NumberInput / SelectField / UnitInput contracts.
+   The outer rectangle is always the control measured by the layout audit. */
+.ui-field {
+  min-width: 0;
+}
+.ui-field > span:first-child:not(.ui-unit-input) {
+  display: block;
+  margin: 0 0 var(--field-gap);
+  color: var(--muted);
+  font-family: var(--font-family);
+  font-size: var(--ui-caption);
+  font-weight: 500;
+  line-height: var(--ui-leading-label);
+  letter-spacing: var(--ui-tracking-label);
+}
+.ui-field > :where(input:not([type="range"]):not([type="checkbox"]), select),
+.ui-unit-input {
+  display: block;
+  width: 100%;
   min-height: var(--control-height);
   min-width: 0;
-  padding-inline: var(--space-3);
+  padding-inline: var(--control-padding);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--control-radius);
   background: var(--panel-soft);
   font-size: var(--ui-control);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text);
+  outline: none;
+}
+.ui-field > :is(input:not([type="range"]):not([type="checkbox"]), select) {
+  height: var(--control-height);
+}
+.ui-field > select {
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='m2 4 4 4 4-4' fill='none' stroke='%23758394' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 12px 12px;
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+}
+.ui-field > :is(input, select):focus,
+.ui-unit-input:focus-within {
+  border-color: #8bbce9;
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--blue-soft);
+}
+.ui-unit-input {
+  display: flex;
+  align-items: stretch;
+  padding-inline: 0;
+}
+.ui-unit-input > input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: calc(var(--control-height) - 2px);
+  padding: 0 var(--control-padding);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: var(--ui-control);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.ui-unit-input > input:focus {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.ui-unit-input > small {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0 var(--control-padding) 0 var(--space-1);
+  color: var(--muted);
+  font-size: var(--ui-caption);
+  white-space: nowrap;
+}
+/* Shared Card, Metric and Status primitives. Module rules choose composition. */
+.ui-card {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  background: var(--panel);
+}
+.ui-card--compact { min-height: 112px; }
+.ui-card--summary,
+.ui-card--technical { min-height: 0; }
+.ui-metric {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ui-status {
+  font-family: var(--font-family);
+  font-size: var(--ui-caption);
+  font-weight: 600;
+  line-height: 1.35;
 }
 .app-module :is(label > span:first-child, .range-control b, .select-control > span) {
   font-size: var(--ui-caption);
@@ -640,36 +739,9 @@ select:focus-visible {
   display: block;
   min-width: 0;
 }
-.field > span {
-  display: block;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  margin: 0 0 5px 2px;
-}
-.field input {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid var(--line);
-  background: var(--panel-soft);
-  color: var(--text);
-  border-radius: 10px;
-  padding: 0 10px;
-  outline: none;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-.field input:focus {
-  border-color: #8bbce9;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--blue-soft);
-}
-.primary-button {
-  border: 0;
-  border-radius: 10px;
-  background: var(--blue);
-  color: #fff;
+/* Button variants share one geometry, including disabled controls. */
+.ui-button {
+  border-radius: var(--control-radius);
   font-size: var(--ui-body);
   font-weight: 650;
   min-height: var(--control-height);
@@ -679,6 +751,16 @@ select:focus-visible {
   gap: var(--space-2);
   padding: 0 var(--space-4);
   line-height: 1.2;
+}
+.primary-button {
+  border: 1px solid var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+.text-button {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--blue);
 }
 .primary-button:disabled {
   cursor: wait;
@@ -692,14 +774,8 @@ select:focus-visible {
   margin: 0;
 }
 .kpi {
-  min-height: 112px;
-  border: 1px solid var(--line);
-  border-radius: var(--card-radius);
-  background: var(--panel);
-  padding: var(--space-4);
   display: grid;
   justify-content: space-between;
-  min-width: 0;
   grid-template-rows: auto auto auto;
   align-items: start;
   gap: var(--space-2);
@@ -765,20 +841,13 @@ select:focus-visible {
 .kpi.featured[data-status="unknown"] > strong {
   color: var(--blue);
 }
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--card-radius);
-  min-width: 0;
-  padding: var(--space-4);
-}
 .controls-panel {
-  padding: 18px;
+  padding: var(--space-4);
   display: grid;
   gap: var(--space-4);
 }
 .fuel-panel {
-  padding: 18px;
+  padding: var(--space-4);
   width: 100%;
 }
 .mission-score-panel {
@@ -966,61 +1035,6 @@ select:focus-visible {
 .tool-view {
   display: none;
   grid-column: 1/-1;
-  min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--card-radius);
-  background: var(--panel);
-}
-.input-with-unit {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  min-height: var(--control-height);
-}
-.app-module .input-with-unit input {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  min-width: 0;
-  flex: 1 1 auto;
-  width: 100%;
-}
-.app-module .input-with-unit input:focus {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-.input-with-unit:focus-within {
-  border-color: #8bbce9;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--blue-soft);
-}
-.input-with-unit small {
-  color: var(--muted);
-  padding: 0 9px 0 3px;
-  font-size: var(--ui-caption);
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-.text-button {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-  color: var(--blue);
-  font-size: var(--ui-body);
-  font-weight: 650;
-  min-height: var(--control-height);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-4);
-  line-height: 1.2;
 }
 .text-button:disabled {
   opacity: .45;
@@ -1150,7 +1164,7 @@ select:focus-visible {
 .app-module .ui-icon-inline {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 .ui-icon-heading {
   display: inline-flex;
@@ -1312,8 +1326,7 @@ select:focus-visible {
 }
 .recommendation-card {
   display: grid;
-  grid-template-rows: auto auto auto;
-  align-content: start;
+  grid-template-rows: auto 1fr auto;
   gap: var(--space-4);
 }
 .recommendation-card > .mission-score-action {
@@ -1324,9 +1337,6 @@ select:focus-visible {
 }
 .recommendation-card > .mission-score-action > strong {
   max-width: 48ch;
-  font-size: var(--ui-display);
-  font-weight: 550;
-  line-height: 1.3;
 }
 .recommendation-actions {
   display: flex;
@@ -1393,7 +1403,7 @@ select:focus-visible {
   font-weight: 700;
 }
 .insight-panel {
-  padding: 18px;
+  padding: var(--space-4);
 }
 .mode-control {
   display: flex;
@@ -1484,30 +1494,6 @@ select:focus-visible {
 .power-manual-fields label {
   min-width: 0;
 }
-.power-manual-fields label > span:first-child {
-  display: block;
-  margin: 0 0 4px 2px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  letter-spacing: .075em;
-}
-.power-manual-fields input {
-  width: 100%;
-  min-width: 0;
-  height: 34px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-soft);
-  color: var(--text);
-  padding: 0 8px;
-  outline: none;
-  font-weight: 600;
-}
-.power-manual-fields input:focus {
-  border-color: #8bbce9;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--blue-soft);
-}
 .select-control {
   display: flex;
   align-items: center;
@@ -1521,13 +1507,8 @@ select:focus-visible {
   color: var(--muted);
 }
 .select-control select {
-  min-width: 0;
-  border: 1px solid var(--line);
-  background: var(--panel-soft);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 6px 8px;
-  outline: none;
+  width: auto;
+  flex: 0 0 auto;
 }
 .range-control {
   display: block;
@@ -1787,27 +1768,12 @@ select:focus-visible {
 .compact-form label > span:first-child {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  color: var(--muted);
-  text-transform: uppercase;
-  margin: 0 0 var(--space-1);
 }
 .calibration-head > span {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
   color: var(--muted);
   text-transform: uppercase;
-}
-.compact-form :is(select, input) {
-  width: 100%;
-  min-width: 0;
-  font-weight: 600;
-}
-.compact-form select:focus {
-  border-color: #8bbce9;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--blue-soft);
 }
 .compact-form :is(.primary-button, .text-button) {
   width: auto;
@@ -1964,14 +1930,8 @@ select:focus-visible {
   gap: 10px;
 }
 .inline-select select {
-  min-width: 0;
+  width: auto;
   max-width: 55%;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #fff;
-  color: var(--text);
-  padding: 5px 7px;
-  font-weight: 600;
 }
 .advisor-strip {
   grid-column: 1/-1;
@@ -2038,26 +1998,6 @@ select:focus-visible {
 }
 .wb-inputs label {
   min-width: 0;
-}
-.wb-inputs label>span:first-child {
-  margin: 0 0 4px 2px;
-  color: var(--muted);
-}
-.wb-inputs input {
-  width: 100%;
-  min-width: 0;
-  height: 34px;
-  border: 0;
-  background: transparent;
-  padding: 0 8px;
-  color: var(--text);
-  font-weight: 700;
-  outline: none;
-}
-.wb-inputs .input-with-unit:focus-within {
-  border-color: #8bbce9;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--blue-soft);
 }
 .wb-chart-card {
   grid-column: 2;
@@ -2190,25 +2130,6 @@ select:focus-visible {
 }
 .oxygen-controls label {
   min-width: 0;
-}
-.oxygen-controls label > span {
-  display: block;
-  margin: 0 0 4px 2px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-  text-transform: uppercase;
-  letter-spacing: .07em;
-}
-.oxygen-controls select {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 0 8px;
-  background: var(--panel-soft);
-  color: var(--text);
-  font-weight: 600;
-  min-height: var(--control-height);
 }
 .seat-map {
   display: grid;
@@ -2789,7 +2710,6 @@ select:focus-visible {
   align-self: flex-start;
   color: var(--muted);
   font-size: var(--ui-caption);
-  letter-spacing: .05em;
 }
 .ride-module-summary>div:first-child>strong {
   color: var(--blue);
@@ -3155,7 +3075,6 @@ select:focus-visible {
   align-self: flex-start;
   color: var(--muted);
   font-size: var(--ui-caption);
-  letter-spacing: .05em;
 }
 .ice-module-summary>div:first-child>strong {
   color: var(--blue);
@@ -3492,83 +3411,14 @@ select:focus-visible {
   color: var(--muted);
   font-size: var(--ui-caption);
 }
-.cost-price-row label>span {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: var(--ui-caption);
-}
 .cost-price-row>div>strong {
   display: block;
   font-size: var(--ui-display);
 }
 .cost-price-row label {
   display: grid;
-  grid-template-rows: auto 38px;
   min-width: 0;
   align-content: end;
-}
-.cost-price-row select {
-  width: 100%;
-  min-width: 0;
-  height: 38px;
-  color: var(--text);
-  font-weight: 600;
-  outline: none;
-  appearance: none;
-  padding: 0 32px 0 11px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--panel-soft);
-}
-.cost-price-row input {
-  width: 100%;
-  min-width: 0;
-  height: 38px;
-  color: var(--text);
-  font-weight: 600;
-  outline: none;
-}
-.cost-currency {
-  position: relative;
-}
-.cost-currency::after {
-  content: "";
-  position: absolute;
-  right: 13px;
-  bottom: 15px;
-  width: 6px;
-  height: 6px;
-  border-right: 1.5px solid var(--muted);
-  border-bottom: 1.5px solid var(--muted);
-  transform: rotate(45deg);
-  pointer-events: none;
-}
-.cost-price-row .input-with-unit {
-  height: 38px;
-  border-color: var(--line);
-  border-radius: 9px;
-  background: var(--panel-soft);
-}
-.cost-price-row .input-with-unit input {
-  height: 36px;
-  padding: 0 9px 0 11px;
-  border: 0;
-  background: transparent;
-}
-.cost-price-row .input-with-unit small {
-  padding: 0 11px 0 5px;
-  font-size: var(--ui-caption);
-}
-.cost-price-row select:focus {
-  border-color: #8bbce9;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--blue-soft);
-}
-.cost-price-row .input-with-unit:focus-within {
-  border-color: #8bbce9;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--blue-soft);
 }
 .cost-unassessed {
   padding: 18px;
@@ -4395,6 +4245,10 @@ select:focus-visible {
 
 @media (max-width: 360px) {
   /* Layout */
+  .app-area[data-area-panel="planning"] .module-nav,
+  .app-area[data-area-panel="route"] .module-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .mission-score-summary {
     grid-template-columns: minmax(0,1fr);
     justify-items: center;

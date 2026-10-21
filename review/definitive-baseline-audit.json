@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-10-21T22:41:12.291Z",
+  "browser": "141.0.7390.37",
+  "fixture": "Synthetic 18-waypoint OFP; all values illustrative; no SimBrief network call",
+  "widths": [
+    320,
+    375,
+    390,
+    430,
+    768,
+    1024,
+    1440,
+    1920
+  ],
+  "modules": {
+    "mission": [
+      "overview",
+      "score"
+    ],
+    "planning": [
+      "config",
+      "optimize",
+      "systems",
+      "analyses"
+    ],
+    "route": [
+      "overview",
+      "ice",
+      "ride",
+      "decisions"
+    ],
+    "flight": [
+      "calibration"
+    ]
+  },
+  "states": [],
+  "screenshots": [
+    "definitive-before/mobile-mission-overview.png",
+    "definitive-before/mobile-planning-config.png",
+    "definitive-before/mobile-planning-config-full.png",
+    "definitive-before/mobile-route-ice.png",
+    "definitive-before/mobile-route-ice-full.png",
+    "definitive-before/mobile-flight-calibration.png",
+    "definitive-before/mobile-flight-calibration-full.png",
+    "definitive-before/mobile-planning-cost-unassessed.png",
+    "definitive-before/mobile-planning-cost-unassessed-full.png",
+    "definitive-before/tablet-mission-overview.png",
+    "definitive-before/tablet-planning-config.png",
+    "definitive-before/tablet-route-ice.png",
+    "definitive-before/tablet-flight-calibration.png",
+    "definitive-before/tablet-planning-cost-unassessed.png",
+    "definitive-before/desktop-mission-overview.png",
+    "definitive-before/desktop-planning-config.png",
+    "definitive-before/desktop-route-ice.png",
+    "definitive-before/desktop-flight-calibration.png",
+    "definitive-before/desktop-planning-cost-unassessed.png"
+  ],
+  "errors": [],
+  "selectorCoverage": {},
+  "typography": [],
+  "negativeChecks": []
+}

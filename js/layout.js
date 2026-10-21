@@ -107,7 +107,7 @@
   }
   const missionOverview = moduleNodes.get('mission:overview');
   move('.kpi-grid', 'mission:overview');
-  const overviewGrid = item(); overviewGrid.className = 'summary-grid'; missionOverview.append(overviewGrid);
+  const overviewGrid = item(); overviewGrid.className = 'summary-grid'; overviewGrid.dataset.uiCardPair = ''; overviewGrid.dataset.uiOverlapGroup = ''; missionOverview.append(overviewGrid);
   const score = $('.mission-score-panel'); if (score) overviewGrid.append(score);
   const recommendation = item(); recommendation.className = 'panel recommendation-card';
   recommendation.innerHTML = `<div class="shared-card-head"><span data-layout-text="missionAdjustment">${text('missionAdjustment')}</span>${icon('wind')}</div><div class="recommendation-actions"><button type="button" class="primary-button" data-open-module="planning:config" data-layout-text="openPlanning">${text('openPlanning')}</button><button type="button" class="text-button" data-open-module="route:overview" data-layout-text="openRoute">${text('openRoute')}</button></div>`;
@@ -178,13 +178,34 @@
   const oldTools = $('.flight-tools-panel'); if (oldTools) oldTools.remove();
   const oldDashboard = $('.dashboard-grid'); if (oldDashboard) oldDashboard.remove();
 
+  // Structural UI primitives are attached to both moved and generated nodes.
+  // Module classes retain only their own layout and aviation-specific treatments.
+  const componentKinds = [
+    ['.panel', 'ui-card ui-card--summary'],
+    ['.tool-view', 'ui-card ui-card--technical'],
+    ['.kpi', 'ui-card ui-card--compact ui-metric'],
+    ['.mission-strip > div, .planning-live-metrics > div, .cost-kpis > span, .wb-kpis > div', 'ui-metric'],
+    ['.primary-button', 'ui-button ui-button--primary'],
+    ['.text-button', 'ui-button ui-button--outline'],
+    ['.status-pill, .feasibility-badge, .area-context, #iceModuleStatus, #rideModuleStatus', 'ui-status'],
+  ];
+  const adoptComponents = () => {
+    for (const [selector, names] of componentKinds) {
+      const classes = names.split(' ');
+      document.querySelectorAll(selector).forEach(element => {
+        if (classes.some(name => !element.classList.contains(name))) element.classList.add(...classes);
+      });
+    }
+  };
+  adoptComponents();
+
   // Presentation roles are assigned after the existing controls move into their areas.
   // The observer below also covers result rows generated after an OFP is imported.
   const visualRoles = {
-    label: '.app-module label > span:first-child:not(.input-with-unit), .range-control b, .planning-live-metrics span, .calibration-head > span, .shared-card-head > span, .kpi > span:first-of-type, .mission-strip span, .navigation-point > span, .advisor-card > span, .glide-kpis b, .wb-kpis b, .cost-kpis b, .ice-decision-grid span, .ride-decision-grid span',
-    secondary: '#payloadOutput, #fuelOutput, #layoutFuelMargin, #layoutOxygenSummary, #powerSettingValue, .navigation-speeds strong, #calibrationMode, #calibrationFactors, #fuelRequiredSide',
+    label: '.app-module label > span:first-child:not(.ui-unit-input), .range-control b, .planning-live-metrics span, .calibration-head > span, .shared-card-head > span, .kpi > span:first-of-type, .mission-strip span, .navigation-point > span, .advisor-card > span, .glide-kpis b, .wb-kpis b, .cost-kpis b, .cost-summary span, .cost-alternate-grid b, .cost-price-row > div > span, .ice-module-summary > div:first-child > span, .ride-module-summary > div:first-child > span, .ice-decision-grid span, .ride-decision-grid span',
+    secondary: '#payloadOutput, #fuelOutput, #layoutFuelMargin, #layoutOxygenSummary, #powerSettingValue, .navigation-speeds strong, #calibrationMode, #calibrationFactors, #fuelRequiredSide, #costAlternateIncrement, .cost-alternate-grid strong, .cost-kpis strong, #costBreakdownTotal',
     emphasis: '.advisor-card > strong, .glide-kpis strong, .wb-kpis strong, .cost-kpis strong, .ice-decision-grid strong, .ride-decision-grid strong',
-    primary: '.kpi > strong, .planning-live-summary .weight-meter strong, .mission-strip strong, .ride-module-summary > div:first-child > strong, .ice-module-summary > div:first-child > strong',
+    primary: '.kpi > strong, .planning-live-summary .weight-meter strong, .mission-strip strong, .ride-module-summary > div:first-child > strong, .ice-module-summary > div:first-child > strong, #etpDistance, #pnrDistance, #estimatedFlightCost, #financialEfficiency, #costOrigin, #missionScoreAction',
   };
   const applyVisualRoles = () => {
     for (const [role, selector] of Object.entries(visualRoles)) {
@@ -226,6 +247,7 @@
     if (forward) document.getElementById(forward.dataset.forwardClick)?.click();
   });
   const observer = new MutationObserver(() => {
+    adoptComponents();
     applyVisualRoles();
     const pairs = [
       ['#cruiseIcingValue', '#layoutIceStatus'],
@@ -241,7 +263,7 @@
     if (context && badge) {
       const value = badge.hidden ? '' : badge.textContent;
       const tone = badge.classList.contains('viable') ? 'viable' : badge.classList.contains('marginal') ? 'marginal' : badge.classList.contains('unknown') ? 'unknown' : 'not-viable';
-      const className = `area-context ${tone}`;
+      const className = `area-context ui-status ${tone}`;
       if (context.textContent !== value) context.textContent = value;
       if (context.className !== className) context.className = className;
     }

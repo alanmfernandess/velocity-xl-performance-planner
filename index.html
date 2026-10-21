@@ -11,7 +11,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261021-final-ui" />
+    <link rel="stylesheet" href="./styles.css?v=20261021-definitive-ui" />
   </head>
   <body>
     <header class="topbar">
@@ -49,7 +49,7 @@
           <p id="planTimestamp">—</p>
         </div>
         <form class="plan-form" id="simbriefImportForm">
-          <label class="field id-field"><span data-i18n="pilotId">Pilot ID / Alias</span><input id="quickPilotId" autocomplete="off" placeholder="123456" /></label>
+          <label class="ui-field field id-field"><span data-i18n="pilotId">Pilot ID / Alias</span><input id="quickPilotId" autocomplete="off" placeholder="123456" /></label>
           <button class="primary-button" id="importLatest" type="submit" data-i18n="importLatest">Importar OFP</button>
         </form>
       </section>
@@ -106,7 +106,7 @@
               <b class="status-pill" id="alternateStatus">—</b>
             </article>
             <article class="advisor-card">
-              <label class="inline-select"><span data-i18n="diversionFrom">Desvio a partir de</span><select id="diversionWaypoint"></select></label>
+              <label class="ui-field inline-select"><span data-i18n="diversionFrom">Desvio a partir de</span><select id="diversionWaypoint"></select></label>
               <strong id="diversionRoute">SBSP → SBRJ</strong>
               <small id="diversionLegMeta">—</small>
               <b class="status-pill" id="diversionStatus">—</b>
@@ -121,12 +121,12 @@
         <div class="tool-view" data-tool-panel="wb">
           <div class="wb-layout">
             <div class="wb-inputs">
-              <label><span data-i18n="pilot">Piloto</span><span class="input-with-unit"><input data-wb-key="pilot" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
-              <label><span data-i18n="copilot">Copiloto</span><span class="input-with-unit"><input data-wb-key="copilot" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
-              <label><span data-i18n="rearLeft">Traseiro E</span><span class="input-with-unit"><input data-wb-key="rearLeft" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
-              <label><span data-i18n="rearCenter">Traseiro C</span><span class="input-with-unit"><input data-wb-key="rearCenter" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
-              <label><span data-i18n="rearRight">Traseiro D</span><span class="input-with-unit"><input data-wb-key="rearRight" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
-              <label><span data-i18n="baggage">Bagagem</span><span class="input-with-unit"><input data-wb-key="baggage" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label class="ui-field"><span data-i18n="pilot">Piloto</span><span class="ui-unit-input"><input data-wb-key="pilot" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label class="ui-field"><span data-i18n="copilot">Copiloto</span><span class="ui-unit-input"><input data-wb-key="copilot" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label class="ui-field"><span data-i18n="rearLeft">Traseiro E</span><span class="ui-unit-input"><input data-wb-key="rearLeft" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label class="ui-field"><span data-i18n="rearCenter">Traseiro C</span><span class="ui-unit-input"><input data-wb-key="rearCenter" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label class="ui-field"><span data-i18n="rearRight">Traseiro D</span><span class="ui-unit-input"><input data-wb-key="rearRight" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
+              <label class="ui-field"><span data-i18n="baggage">Bagagem</span><span class="ui-unit-input"><input data-wb-key="baggage" type="number" min="0" step="1" /><small data-wb-unit>lb</small></span></label>
               <button class="text-button wb-randomize" id="randomizeWeightBalance" type="button" data-i18n="randomizeWeightBalance" data-i18n-title="randomizeWeightBalanceHint">Sortear passageiros e bagagem</button>
             </div>
             <div class="wb-chart-card">
@@ -170,9 +170,9 @@
         <div class="tool-view" data-tool-panel="oxygen">
           <div class="oxygen-layout">
             <div class="oxygen-controls">
-              <label><span data-i18n="cabinAltitude">Nível de voo</span><select id="oxygenAltitude"></select></label>
-              <label><span data-i18n="bottle">Garrafa</span><select id="oxygenBottle"></select></label>
-              <label><span data-i18n="quantity">Quantidade</span><select id="oxygenBottleCount"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+              <label class="ui-field"><span data-i18n="cabinAltitude">Nível de voo</span><select id="oxygenAltitude"></select></label>
+              <label class="ui-field"><span data-i18n="bottle">Garrafa</span><select id="oxygenBottle"></select></label>
+              <label class="ui-field"><span data-i18n="quantity">Quantidade</span><select id="oxygenBottleCount"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
               <button class="text-button" id="applyOxygenRecommendation" type="button" data-i18n="applyOxygen">Aplicar recomendação</button>
             </div>
             <div class="seat-map" aria-label="5 seats">
@@ -270,11 +270,11 @@
           </div>
         </div>
         <div class="tool-view" data-tool-panel="cost">
-          <div class="cost-module">
-            <div class="cost-price-row">
+          <div class="cost-module" data-ui-overlap-group>
+            <div class="cost-price-row" data-ui-control-row="cost" data-ui-overlap-group>
               <div><span data-i18n="fuelPrice">Preço do combustível</span><strong id="costOrigin">—</strong></div>
-              <label class="cost-currency"><span data-i18n="currency">Moeda</span><select id="fuelPriceCurrency"><option value="BRL">BRL</option><option value="USD">USD</option></select></label>
-              <label class="cost-price"><span data-i18n="pricePerLiter">Valor por litro</span><span class="input-with-unit"><input id="fuelPricePerLiter" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" /><small id="fuelPriceSymbol">R$</small></span></label>
+              <label class="ui-field cost-currency"><span data-i18n="currency">Moeda</span><select id="fuelPriceCurrency"><option value="BRL">BRL</option><option value="USD">USD</option></select></label>
+              <label class="ui-field cost-price"><span data-i18n="pricePerLiter">Valor por litro</span><span class="ui-unit-input"><input id="fuelPricePerLiter" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" /><small id="fuelPriceSymbol">R$</small></span></label>
             </div>
             <div class="cost-unassessed" id="costUnassessed" data-i18n="costUnassessed">Informe o valor por litro para avaliar o custo.</div>
             <div class="cost-content" id="costContent" hidden>
@@ -320,20 +320,20 @@
           </div>
           <div id="manualFlightPanel" class="manual-mode-panel">
           <div class="update-grid">
-            <form id="manualUpdateForm" class="compact-form">
-              <label><span data-i18n="position">Posição</span><select id="manualWaypoint"></select></label>
-              <label><span>FL</span><select id="manualAltitude"></select></label>
-              <label><span data-i18n="fuelRemaining">Combustível restante</span><span class="input-with-unit"><input id="manualFuel" type="number" min="0" step="0.1" required /><small id="manualFuelUnit">gal</small></span></label>
+            <form id="manualUpdateForm" class="compact-form" data-ui-control-row="manual" data-ui-overlap-group>
+              <label class="ui-field"><span data-i18n="position">Posição</span><select id="manualWaypoint"></select></label>
+              <label class="ui-field"><span>FL</span><select id="manualAltitude"></select></label>
+              <label class="ui-field"><span data-i18n="fuelRemaining">Combustível restante</span><span class="ui-unit-input"><input id="manualFuel" type="number" min="0" step="0.1" required /><small id="manualFuelUnit">gal</small></span></label>
               <button class="primary-button" type="submit" data-i18n="update">Atualizar</button>
             </form>
             <div class="remaining-assessment" id="remainingAssessment" hidden aria-live="polite">
               <div class="remaining-assessment-head"><span data-i18n="remainingFuelTitle">Combustível · trecho restante</span><strong id="remainingStatus">—</strong></div>
               <div class="remaining-assessment-values"><span id="remainingDistance">—</span><span id="remainingRequired">—</span><strong id="remainingMargin">—</strong></div>
             </div>
-            <form id="calibrationForm" class="compact-form calibration-form">
+            <form id="calibrationForm" class="compact-form calibration-form" data-ui-control-row="calibration" data-ui-overlap-group>
               <div class="calibration-head"><span data-i18n="calibration">Calibração</span><div class="calibration-value"><strong id="calibrationMode">NORMAL</strong><output id="calibrationFactors">TAS ×1,00 · FF ×1,00</output></div><small id="calibrationGate" class="calibration-gate" role="status"></small></div>
-              <label><span data-i18n="observedTas">TAS observada</span><span class="input-with-unit"><input id="observedTas" type="number" min="100" max="350" step="1" required /><small>kt</small></span></label>
-              <label><span data-i18n="observedFuelFlow">Fuel flow observado</span><span class="input-with-unit"><input id="observedFuelFlow" type="number" min="1" step="0.1" required /><small id="observedFuelFlowUnit">gal/h</small></span></label>
+              <label class="ui-field"><span data-i18n="observedTas">TAS observada</span><span class="ui-unit-input"><input id="observedTas" type="number" min="100" max="350" step="1" required /><small>kt</small></span></label>
+              <label class="ui-field"><span data-i18n="observedFuelFlow">Fuel flow observado</span><span class="ui-unit-input"><input id="observedFuelFlow" type="number" min="1" step="0.1" required /><small id="observedFuelFlowUnit">gal/h</small></span></label>
               <button class="primary-button" id="calibrateObserved" type="submit" data-i18n="calibrate" disabled>Calibrar</button>
               <button class="text-button" id="resetCalibration" type="button" data-i18n="reset">Redefinir</button>
             </form>
@@ -360,14 +360,14 @@
                 <div class="power-toggle"><button class="active" data-power-type="AUTO" type="button" data-i18n="automatic">Automático</button><button data-power-type="MANUAL" type="button">MAP / RPM</button></div>
               </div>
               <div class="power-auto-readout" id="powerAutoReadout"><strong id="powerSettingValue">24,0&quot; · 2.450 RPM</strong><small id="powerPercent">74%</small></div>
-              <div class="power-manual-fields" id="powerManualFields" hidden>
-                <label><span>MAP</span><span class="input-with-unit"><input id="manualMap" type="number" min="10" max="32" step="0.1" inputmode="decimal" /><small>inHg</small></span></label>
-                <label><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label>
+              <div class="power-manual-fields" id="powerManualFields" data-ui-control-row="power" data-ui-overlap-group hidden>
+                <label class="ui-field"><span>MAP</span><span class="ui-unit-input"><input id="manualMap" type="number" min="10" max="32" step="0.1" inputmode="decimal" /><small>inHg</small></span></label>
+                <label class="ui-field"><span>RPM</span><input id="manualRpm" type="number" min="1200" max="2700" step="50" inputmode="numeric" /></label>
               </div>
             </div>
             <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /></label>
             <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
-            <label class="select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
+            <label class="ui-field select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
             <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
             <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
             <div class="mission-proposal" id="missionProposal" hidden aria-live="polite">
@@ -409,7 +409,7 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./js/layout.js?v=20261021-final-ui"></script>
+    <script src="./js/layout.js?v=20261021-definitive-ui"></script>
     <script type="module" src="./js/app.js?v=20261021-01"></script>
   </body>
 </html>

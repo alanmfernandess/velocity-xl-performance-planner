@@ -77,15 +77,19 @@ const audit = async (page, label) => {
       const box = element.getBoundingClientRect();
       const css = getComputedStyle(element);
       return { selector: element.id ? `#${element.id}` : element.className?.baseVal || element.className || element.tagName.toLowerCase(),
-        x: Math.round(box.x), y: Math.round(box.y), right: Math.round(box.right), width: Math.round(box.width), height: Math.round(box.height),
-        fontSize: css.fontSize, padding: css.padding };
+        x: Math.round(box.x), y: Math.round(box.y), top: Math.round(box.top), right: Math.round(box.right), bottom: Math.round(box.bottom),
+        width: Math.round(box.width), height: Math.round(box.height), borderWidth: css.borderTopWidth,
+        borderRadius: css.borderRadius, fontSize: css.fontSize, fontWeight: css.fontWeight,
+        lineHeight: css.lineHeight, padding: css.padding };
     });
     return {
       viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth,
       heading: dimensions('.area-heading h1'),
       primaryButtons: dimensions('.primary-button'),
       textButtons: dimensions('.text-button'),
-      inputs: dimensions('.field input, .input-with-unit input'),
+      inputs: dimensions('.ui-field > input, .ui-field > select, .ui-unit-input'),
+      costControls: dimensions('#fuelPriceCurrency, .cost-price .ui-unit-input'),
+      calibrationControls: dimensions('#manualWaypoint, #manualAltitude, #manualUpdateForm .ui-unit-input, #calibrationForm .ui-unit-input, #calibrationForm > button'),
       kpis: dimensions('.kpi-grid .kpi'),
       summaryPanels: dimensions('.summary-grid > .panel'),
       activeArea: document.querySelector('.app-area:not([hidden])')?.dataset.areaPanel,
@@ -112,7 +116,7 @@ const audit = async (page, label) => {
   if (expectedModule && data.activeModule !== expectedModule) issues.push(`navigation opened ${data.activeModule || 'nothing'}`);
   if (data.heading.length && data.rootScale === '1' && data.heading[0].fontSize !== '24px') issues.push(`screen title ${data.heading[0].fontSize}`);
   report.states.push({ label, ...data, issues });
-  if (/planning:config|planning:systems|flight:calibration|route:ice|route:ride|mission:overview/.test(label))
+  if (/planning:config|planning:systems|planning:analyses|flight:calibration|route:ice|route:ride|mission:overview/.test(label))
     report.typography.push({ label, values: probe.typography });
   if (issues.length) report.errors.push({ label, issues });
 };
@@ -124,7 +128,7 @@ const activate = async (page, area, module) => {
 const screenshot = async (page, width, area, module) => {
   const device = captureWidths.get(width);
   if (!device) return;
-  const folder = baseline ? 'baseline' : 'final';
+  const folder = baseline ? 'definitive-before' : 'definitive-after';
   const name = `${device}-${area}-${module}.png`;
   const file = path.join(output, folder, name);
   await fs.mkdir(path.dirname(file), { recursive: true });
@@ -146,27 +150,42 @@ try {
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.VelocityLayout);
     await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
-    if (width === 390) {
-      const negative = await page.evaluate(() => {
-        const fixture = document.createElement('section');
-        fixture.className = 'app-module';
-        fixture.innerHTML = '<div data-ui-role="secondary" style="width:28px;white-space:nowrap;overflow:hidden">123 gal</div><div data-ui-role="secondary" style="width:22px">163 kg</div><span class="ui-icon-inline" style="position:relative;display:inline-block"><svg class="ui-icon" style="position:absolute;left:0;top:0"></svg>Collision</span><div class="panel" style="width:45px"><strong style="white-space:nowrap">OVERSIZED VALUE</strong></div>';
-        document.body.append(fixture);
-        const result = window.VelocityVisualProbe(fixture).issues.map(issue => issue.code);
-        fixture.remove();
-        return result;
-      });
-      report.negativeChecks = negative;
-      for (const expected of ['clipped-text', 'split-number-unit', 'icon-text-collision', 'text-outside-card'])
-        if (!negative.includes(expected)) report.errors.push({ label: 'negative detector', issues: [`failed to detect ${expected}`] });
+    if (width === 390 && !baseline) {
+      const cases = {
+        '38px select beside 44px input': ['control-row-drift', '<div data-ui-control-row="cost" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="ui-field"><span>A</span><select style="min-height:38px;height:38px"><option>A</option></select></label><label class="ui-field"><span>B</span><input value="4"></label></div>'],
+        '38px grid track around 44px control': ['field-row-underflow', '<label class="ui-field" style="display:grid;grid-template-rows:auto 38px"><span>Price</span><span class="ui-unit-input"><input value="7"><small>R$</small></span></label>'],
+        'money unit over next panel': ['unit-panel-collision', '<span class="ui-unit-input" style="position:relative"><input value="7"><small id="fuelPriceSymbol" style="position:absolute;right:6px;bottom:-40px">R$</small></span><div id="costUnassessed" style="height:44px;background:#eee">Next panel</div>'],
+        'icon over label': ['icon-text-collision', '<span class="ui-icon-inline" style="position:relative;display:inline-block"><svg class="ui-icon" style="position:absolute;left:0;top:0"></svg>Collision</span>'],
+        'number separated from unit': ['split-number-unit', '<div data-ui-role="secondary" style="width:22px">163 kg</div>'],
+        'truncated operational text': ['clipped-text', '<div data-ui-role="secondary" style="width:28px;white-space:nowrap;overflow:hidden">123 gal</div>'],
+        'unequal paired cards': ['card-pair-drift', '<div data-ui-card-pair style="display:grid;grid-template-columns:1fr 1fr"><div class="panel" style="height:44px"></div><div class="panel" style="height:70px"></div></div>'],
+        'different secondary typography': ['secondary-value-mismatch', '<strong id="payloadOutput" data-ui-role="secondary">2 kg</strong><strong id="layoutFuelMargin" data-ui-role="secondary" style="font-size:13px">3 gal</strong>'],
+        'button text outside border': ['button-text-outside', '<button style="width:38px;white-space:nowrap;overflow:visible"><span>Record flight now</span></button>'],
+        'narrow-screen overflow': ['viewport-overflow', '<div class="panel" style="width:600px;height:44px"></div>'],
+      };
+      for (const [name, [expected, html]] of Object.entries(cases)) {
+        const codes = await page.evaluate(markup => {
+          const fixture = document.createElement('section');
+          fixture.className = 'app-module';
+          fixture.style.cssText = 'position:absolute;left:0;top:0;width:390px;z-index:-1';
+          fixture.innerHTML = markup;
+          document.body.append(fixture);
+          const found = window.VelocityVisualProbe(fixture).issues.map(issue => issue.code);
+          fixture.remove();
+          return found;
+        }, html);
+        report.negativeChecks.push({ name, expected, detected: codes.includes(expected), codes });
+        if (!codes.includes(expected)) report.errors.push({ label: `negative detector: ${name}`, issues: [`failed to detect ${expected}`] });
+      }
     }
     await page.locator('#quickPilotId').focus();
     const focusShadow = await page.locator('#quickPilotId').evaluate(element => getComputedStyle(element).boxShadow);
     if (focusShadow === 'none') report.errors.push({ label: `${width}px focus`, issues: ['Pilot ID focus indication is missing'] });
     if (!baseline) await audit(page, `${width}px no OFP`);
     if (width === 1440 && !baseline) {
-      await page.screenshot({ path: path.join(output, 'final', 'desktop-no-ofp.png'), animations: 'disabled' });
-      report.screenshots.push('final/desktop-no-ofp.png');
+      await fs.mkdir(path.join(output, 'definitive-after'), { recursive: true });
+      await page.screenshot({ path: path.join(output, 'definitive-after', 'desktop-no-ofp.png'), animations: 'disabled' });
+      report.screenshots.push('definitive-after/desktop-no-ofp.png');
     }
     await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
     await page.locator('#importLatest').click();
@@ -174,7 +193,7 @@ try {
     if (width === 390 && !baseline) {
       await activate(page, 'flight', 'calibration');
       await page.locator('#observedTas').focus();
-      const fieldFocus = await page.locator('#observedTas').evaluate(element => getComputedStyle(element.closest('.input-with-unit')).boxShadow);
+      const fieldFocus = await page.locator('#observedTas').evaluate(element => getComputedStyle(element.closest('.ui-unit-input')).boxShadow);
       if (fieldFocus === 'none') report.errors.push({ label: '390px calibration focus', issues: ['unit field has no focus indicator'] });
     }
     if (baseline) {
@@ -183,9 +202,51 @@ try {
           await activate(page, area, module);
           await screenshot(page, width, area, module);
         }
+        await activate(page, 'planning', 'analyses');
+        await screenshot(page, width, 'planning', 'cost-unassessed');
       }
       await context.close();
       continue;
+    }
+    await activate(page, 'planning', 'config');
+    for (const mode of ['ECON', 'NORMAL', 'FAST']) {
+      await page.locator(`[data-mode="${mode}"]`).click();
+      await audit(page, `${width}px PT-BR LB/GAL A planning:config ${mode}`);
+    }
+    await page.locator('[data-mode="NORMAL"]').click();
+    if ([390, 1440].includes(width)) {
+      await activate(page, 'mission', 'overview');
+      const original = await page.evaluate(() => {
+        const badge = document.querySelector('#feasibilityBadge');
+        const score = document.querySelector('#missionScoreStatus');
+        const level = document.querySelector('#kpiSelectedLevel');
+        return { badge: badge.className, badgeText: badge.textContent, badgeHidden: badge.hidden,
+          score: score.dataset.status, scoreText: score.textContent, level: level.dataset.status };
+      });
+      for (const [tone, badgeClass, caption] of [['marginal', 'marginal', 'MARGINAL'], ['not-viable', 'unavailable', 'INVIÁVEL']]) {
+        await page.evaluate(({ tone, badgeClass, caption }) => {
+          const badge = document.querySelector('#feasibilityBadge');
+          badge.className = `feasibility-badge ${badgeClass}`;
+          badge.hidden = false;
+          badge.textContent = caption;
+          const score = document.querySelector('#missionScoreStatus');
+          score.dataset.status = tone;
+          score.textContent = caption;
+          document.querySelector('#kpiSelectedLevel').dataset.status = tone;
+        }, { tone, badgeClass, caption });
+        await audit(page, `${width}px synthetic ${tone} status`);
+      }
+      await page.evaluate(saved => {
+        const badge = document.querySelector('#feasibilityBadge');
+        badge.className = saved.badge;
+        badge.hidden = saved.badgeHidden;
+        badge.textContent = saved.badgeText;
+        const score = document.querySelector('#missionScoreStatus');
+        if (saved.score === undefined) delete score.dataset.status; else score.dataset.status = saved.score;
+        score.textContent = saved.scoreText;
+        const level = document.querySelector('#kpiSelectedLevel');
+        if (saved.level === undefined) delete level.dataset.status; else level.dataset.status = saved.level;
+      }, original);
     }
     for (const [area, keys] of Object.entries(modules)) {
       for (const module of keys) {
@@ -209,12 +270,18 @@ try {
         }
         for (const tool of tools[`${area}:${module}`] || []) {
           const trigger = page.locator(`[data-tool-view="${tool}"]:visible`);
-          if (await trigger.count()) {
-            await trigger.click();
+          const panel = page.locator(`[data-tool-panel="${tool}"]:visible`);
+          if (await trigger.count()) await trigger.click();
+          if (await panel.count()) {
             await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:${tool}`);
             if (tool === 'cost') {
+              if (captureWidths.has(width)) await screenshot(page, width, area, 'cost-unassessed');
               await page.locator('#fuelPricePerLiter').fill('7.25');
               await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:cost priced`);
+              if (captureWidths.has(width)) await screenshot(page, width, area, 'cost');
+              await page.locator('#fuelPriceCurrency').selectOption('USD');
+              await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:cost USD`);
+              await page.locator('#fuelPriceCurrency').selectOption('BRL');
             }
           }
         }
@@ -274,8 +341,8 @@ try {
     if (width === 390) {
       await page.locator('#toast').evaluate(element => { element.textContent = 'A very long alert about weather, available oxygen and fuel margin across the route, used solely to check line wrapping in the visual audit.'; element.classList.add('show'); });
       await audit(page, `${width}px long alert`);
-      await page.screenshot({ path: path.join(output, 'final', 'mobile-long-alert.png'), animations: 'disabled' });
-      report.screenshots.push('final/mobile-long-alert.png');
+      await page.screenshot({ path: path.join(output, 'definitive-after', 'mobile-long-alert.png'), animations: 'disabled' });
+      report.screenshots.push('definitive-after/mobile-long-alert.png');
       await activate(page, 'flight', 'calibration');
       const bottomClearance = await page.evaluate(() => {
         document.documentElement.style.scrollBehavior = 'auto';
@@ -286,6 +353,12 @@ try {
       });
       if (bottomClearance.footerBottom > bottomClearance.navTop + 1)
         report.errors.push({ label: '390px bottom navigation', issues: [`footer ends at ${bottomClearance.footerBottom}px behind navigation at ${bottomClearance.navTop}px`] });
+      await page.locator('#toast').evaluate(element => element.classList.remove('show'));
+      await page.locator('[data-language="pt-BR"]').click();
+      await page.locator('[data-fuel-unit="gal"]').click();
+      await page.locator('#resetCalibration').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: path.join(output, 'definitive-after', 'mobile-flight-calibration-bottom.png'), animations: 'disabled' });
+      report.screenshots.push('definitive-after/mobile-flight-calibration-bottom.png');
     }
     if (width === 1440) {
       const coverage = await page.evaluate(() => {
@@ -321,6 +394,6 @@ try {
   server.close();
 }
 
-await fs.writeFile(path.join(output, baseline ? 'baseline-browser-audit.json' : 'browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
+await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
 if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;

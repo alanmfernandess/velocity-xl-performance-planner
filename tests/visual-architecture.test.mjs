@@ -18,8 +18,9 @@ test("one stylesheet owns visual tokens and component dimensions", () => {
     ["--ui-display", "calc(24px * var(--ui-scale))"],
     ["--control-height", "44px"],
   ]) assertDeclaration(css, ":root", name, value);
-  assertDeclaration(css, ".primary-button", "min-height", "var(--control-height)");
-  assertDeclaration(css, ".text-button", "min-height", "var(--control-height)");
+  assertDeclaration(css, ".ui-button", "min-height", "var(--control-height)");
+  assert.match(layout, /\['\.primary-button', 'ui-button ui-button--primary'\]/);
+  assert.match(layout, /\['\.text-button', 'ui-button ui-button--outline'\]/);
   assertDeclaration(css, ".module-nav button", "min-height", "var(--control-height)");
 });
 
@@ -44,4 +45,14 @@ test("removed visual variables have no JavaScript writer", () => {
   assert.doesNotMatch(app, /--(?:ice-status|topbar-height)/);
   assert.match(app, /setProperty\("--score"/);
   assert.match(app, /setProperty\("--score-color"/);
+});
+
+test("editable fields and visual cards use shared component contracts", () => {
+  for (const selector of [".ui-field", ".ui-unit-input", ".ui-button", ".ui-card", ".ui-metric", ".ui-status"])
+    assert.match(cssRule(css, selector), /[a-z-]+:/);
+  for (const id of ["manualWaypoint", "manualAltitude", "manualFuel", "observedTas", "observedFuelFlow", "fuelPriceCurrency", "fuelPricePerLiter"])
+    assert.match(html, new RegExp(`<label class="ui-field[^"]*"[^>]*>[\\s\\S]*?id="${id}"`));
+  assert.match(layout, /const componentKinds = \[/);
+  assert.doesNotMatch(css, /grid-template-rows:\s*auto\s+38px|\.cost-price-row\s+\.ui-unit-input\s*\{|\.wb-inputs input\s*\{/);
+  assertDeclaration(css, ".ui-field > select", "appearance", "none");
 });

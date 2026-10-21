@@ -20,7 +20,8 @@ const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 test("oxygen recommendation remains accessible with aligned controls", () => {
   assert.match(index, /id="applyOxygenRecommendation"/);
   assertDeclaration(css, ".oxygen-controls > button", "align-self", "end");
-  assertDeclaration(css, ".oxygen-controls select", "min-height", "var(--control-height)");
+  assert.match(index, /class="ui-field"[^>]*><span[^>]*data-i18n="cabinAltitude"[^<]*<\/span><select id="oxygenAltitude"/);
+  assertDeclaration(css, '.ui-unit-input', "min-height", "var(--control-height)");
 });
 
 test("one optimization action presents an explicit proposal", () => {
