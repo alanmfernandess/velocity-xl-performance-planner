@@ -131,6 +131,22 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .mode-control button, .power-toggle button, .chart-tabs button, .manual-mode-tabs button { min-height: var(--control-height); font-size: var(--ui-body); }
 .controls-panel { display: grid; gap: var(--space-4); }
 .controls-panel .mission-optimize-button { justify-self: start; }
+.planning-config-grid, .flight-update-grid { min-width: 0; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, .65fr); gap: var(--space-4); align-items: start; }
+.planning-config-grid > *, .flight-update-grid > * { min-width: 0; }
+.planning-live-summary, .flight-summary { min-height: 266px; display: grid; grid-template-rows: 32px 1fr auto; gap: var(--space-4); align-content: start; }
+.planning-live-summary .weight-meter { align-self: center; margin: 0; }
+.planning-live-summary .weight-meter > div:first-child { display: grid; gap: var(--space-1); }
+.planning-live-summary .weight-meter > div:first-child > span { display: none; }
+.planning-live-summary .weight-meter strong { font-size: var(--ui-display); font-weight: 600; }
+.planning-live-summary .weight-meter small { color: var(--muted); font-size: var(--ui-caption); }
+.planning-live-metrics { display: grid; gap: var(--space-2); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.planning-live-metrics > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.planning-live-metrics span { color: var(--muted); font-size: var(--ui-caption); }
+.planning-live-metrics strong { font-size: var(--ui-body); font-weight: 600; text-align: right; }
+.flight-summary { grid-template-rows: 32px 1fr; }
+.flight-summary-empty { align-self: center; margin: 0; color: var(--muted); font-size: var(--ui-body); text-align: center; }
+.flight-summary:has(#remainingAssessment:not([hidden])) .flight-summary-empty { display: none; }
+.flight-summary #remainingAssessment { align-self: center; }
 
 /* Modules contain the original live components. Choices only switch the visible tool. */
 .tool-choice { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -157,6 +173,13 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .app-module[data-module-panel="planning:optimize"] > .primary-button { justify-self: start; }
 
 .route-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.route-rail-card { min-width: 0; padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--card-radius); background: var(--panel); }
+.route-rail-card .shared-card-head strong { min-width: 0; color: var(--muted); font-size: var(--ui-caption); font-weight: 500; text-align: right; letter-spacing: 0; text-transform: none; }
+.route-rail { min-height: 24px; padding: var(--space-1); display: flex; gap: var(--space-1); border-radius: 999px; background: var(--panel-soft); }
+.route-rail span { min-width: 0; flex: 1; border-radius: 999px; background: #a9c8e8; }
+.route-rail span.viable { background: var(--green); }
+.route-rail span.marginal { background: var(--orange); }
+.route-rail span.unavailable { background: var(--red); }
 .route-overview-card { min-height: 90px; min-width: 0; padding: var(--space-4); display: grid; grid-template-columns: 24px minmax(0, 1fr) 18px; align-items: center; gap: var(--space-3); border: 1px solid var(--line); border-radius: var(--card-radius); background: var(--panel); text-align: left; }
 .route-overview-card > svg:first-child { width: 22px; height: 22px; color: var(--blue); }
 .route-overview-card > svg:last-child { width: 18px; height: 18px; color: var(--muted); }
@@ -189,6 +212,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   .module-nav button { min-width: 0; padding: 0 var(--space-2); white-space: normal; line-height: 1.2; }
   .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .summary-grid, .route-overview-grid { grid-template-columns: 1fr; }
+  .planning-config-grid, .flight-update-grid { grid-template-columns: 1fr; }
+  .flight-summary:not(:has(#remainingAssessment:not([hidden]))) { display: none; }
   .mission-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mission-strip > div { border-bottom: 1px solid var(--line); }
   .tool-choice .tool-card { flex: 1 1 140px; }

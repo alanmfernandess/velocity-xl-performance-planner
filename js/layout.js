@@ -19,6 +19,8 @@
       openRoute: 'Analisar rota', loadOptimizer: 'LOAD Optimizer', flightTools: 'Ferramentas',
       reviewScore: 'Mission Score', riskAssessment: 'Riscos e restrições',
       planningShort: 'Planejar', routeShort: 'Rota',
+      takeoffWeight: 'Peso de decolagem', oxygen: 'Oxigênio', fuelMargin: 'Margem de combustível',
+      remainingLeg: 'Trecho restante', awaitingUpdate: 'Aguardando atualização manual', routeLegs: 'Trechos da rota',
     },
     'en-US': {
       mission: 'Mission', planning: 'Planning', route: 'Route & risks', flight: 'In flight',
@@ -33,6 +35,8 @@
       openRoute: 'Review route', loadOptimizer: 'LOAD Optimizer', flightTools: 'Tools',
       reviewScore: 'Mission Score', riskAssessment: 'Risks and constraints',
       planningShort: 'Plan', routeShort: 'Route',
+      takeoffWeight: 'Takeoff weight', oxygen: 'Oxygen', fuelMargin: 'Fuel margin',
+      remainingLeg: 'Remaining leg', awaitingUpdate: 'Awaiting manual update', routeLegs: 'Route legs',
     }
   };
   const areas = [
@@ -120,7 +124,17 @@
   const reasons = $('#missionScoreReasons'); if (reasons) detailedScore.append(reasons);
   moduleNodes.get('mission:score').append(detailedScore);
 
-  move('.controls-panel', 'planning:config');
+  const controls = move('.controls-panel', 'planning:config');
+  if (controls) {
+    const config = moduleNodes.get('planning:config');
+    const grid = item(); grid.className = 'planning-config-grid';
+    config.append(grid); grid.append(controls);
+    const aside = item(); aside.className = 'panel planning-live-summary';
+    aside.innerHTML = `<div class="shared-card-head"><span data-layout-text="takeoffWeight">${text('takeoffWeight')}</span>${icon('scale')}</div><div class="planning-live-metrics"><div><span data-layout-text="oxygen">${text('oxygen')}</span><strong id="layoutOxygenSummary">—</strong></div><div><span data-layout-text="fuelMargin">${text('fuelMargin')}</span><strong id="layoutFuelMargin">—</strong></div></div>`;
+    const weight = controls.querySelector('.weight-meter');
+    if (weight) aside.insertBefore(weight, aside.querySelector('.planning-live-metrics'));
+    grid.append(aside);
+  }
   move('.visual-panel', 'planning:levels');
   move('.levels-section', 'planning:levels');
   const optimizeButton = document.createElement('button');
@@ -130,7 +144,7 @@
 
   move('.terrain-panel', 'route:matrix');
   const routeOverview = moduleNodes.get('route:overview');
-  routeOverview.innerHTML = `<div class="route-overview-grid">
+  routeOverview.innerHTML = `<div class="route-rail-card"><div class="shared-card-head"><span data-layout-text="routeLegs">${text('routeLegs')}</span><strong id="layoutRouteMeta">—</strong></div><div class="route-rail" id="layoutRouteRail" aria-label="Trechos da rota"></div></div><div class="route-overview-grid">
     <button class="route-overview-card" type="button" data-open-module="route:matrix">${icon('mountain')}<span><strong data-layout-text="routeTerrain">${text('routeTerrain')}</strong><small id="layoutTerrainStatus">—</small></span>${icon('chevron-right')}</button>
     <button class="route-overview-card" type="button" data-open-module="route:ice">${icon('snowflake')}<span><strong data-layout-text="routeIce">${text('routeIce')}</strong><small id="layoutIceStatus">—</small></span>${icon('chevron-right')}</button>
     <button class="route-overview-card" type="button" data-open-module="route:ride">${icon('waves')}<span><strong data-layout-text="routeRide">${text('routeRide')}</strong><small id="layoutRideStatus">—</small></span>${icon('chevron-right')}</button>
@@ -165,7 +179,15 @@
   const finishedPanel = $('#manualFinishedPanel');
   const calibration = $('#calibrationForm');
   const history = $('.debrief-history-wrap');
-  if (flightPanel && updatePanel) moduleNodes.get('flight:update').append(flightPanel);
+  if (flightPanel && updatePanel) {
+    const flight = moduleNodes.get('flight:update');
+    const grid = item(); grid.className = 'flight-update-grid'; flight.append(grid); grid.append(flightPanel);
+    const summary = item(); summary.className = 'panel flight-summary';
+    summary.innerHTML = `<div class="shared-card-head"><span data-layout-text="remainingLeg">${text('remainingLeg')}</span>${icon('route')}</div><p class="flight-summary-empty" data-layout-text="awaitingUpdate">${text('awaitingUpdate')}</p>`;
+    const assessment = $('#remainingAssessment');
+    if (assessment) summary.append(assessment);
+    grid.append(summary);
+  }
   if (calibration) moduleNodes.get('flight:calibration').append(calibration);
   if (finishedPanel) { finishedPanel.hidden = false; moduleNodes.get('flight:completed').append(finishedPanel); }
   if (history) { history.open = true; moduleNodes.get('flight:history').append(history); }
@@ -209,11 +231,26 @@
   const observer = new MutationObserver(() => {
     const pairs = [
       ['#terrainStatus', '#layoutTerrainStatus'], ['#cruiseIcingValue', '#layoutIceStatus'],
-      ['#rideValue', '#layoutRideStatus'],
+      ['#rideValue', '#layoutRideStatus'], ['#oxygenValue', '#layoutOxygenSummary'],
+      ['#kpiFuelDelta', '#layoutFuelMargin'], ['#terrainIntro', '#layoutRouteMeta'],
     ];
     for (const [source, target] of pairs) {
       const origin = $(source), display = $(target);
       if (origin && display && display.textContent !== origin.textContent) display.textContent = origin.textContent;
+    }
+    const legs = [...document.querySelectorAll('#routeMatrixOverview button')];
+    const rail = $('#layoutRouteRail');
+    if (rail && legs.length) {
+      const signature = legs.map(button => button.className.replace(/\bactive\b/g, '').trim()).join('|');
+      if (rail.dataset.signature !== signature) {
+        rail.dataset.signature = signature;
+        rail.replaceChildren(...legs.map(button => {
+          const segment = document.createElement('span');
+          segment.className = button.classList.contains('unavailable') ? 'unavailable' : button.classList.contains('marginal') ? 'marginal' : button.classList.contains('viable') ? 'viable' : 'outside-cruise';
+          segment.title = button.getAttribute('aria-label') || '';
+          return segment;
+        }));
+      }
     }
     const context = $('[data-area-context="mission"]');
     const badge = $('#feasibilityBadge');
