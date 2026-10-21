@@ -1,5 +1,7 @@
 # Etapa 1 — Unified Mission Optimization Engine
 
+Atualização visual posterior: [consolidação final da interface e capturas para aprovação](final-ui-report.md).
+
 Branch: `feature/unified-mission-optimization`, criada a partir de `visual-css-consolidation` (`5cabda7`). Esta prévia **não foi incorporada à `main` nem publicada no GitHub Pages**. Execute `npm run serve` nesta branch e abra `http://127.0.0.1:4173/` para navegar.
 
 ## 1. Arquitetura

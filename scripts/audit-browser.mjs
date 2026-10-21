@@ -62,9 +62,11 @@ const report = {
   browser: await browser.version(),
   fixture: 'Synthetic 18-waypoint OFP; all values illustrative; no SimBrief network call',
   widths, modules, states: [], screenshots: [], errors: [], selectorCoverage: {},
+  typography: [], negativeChecks: [],
 };
 const captureWidths = new Map([[390, 'mobile'], [768, 'tablet'], [1440, 'desktop']]);
 const audit = async (page, label) => {
+  const probe = await page.evaluate(() => window.VelocityVisualProbe());
   const data = await page.evaluate(() => {
     const visible = element => {
       const box = element.getBoundingClientRect();
@@ -94,6 +96,7 @@ const audit = async (page, label) => {
     };
   });
   const issues = [];
+  issues.push(...probe.issues.map(issue => `${issue.code}: ${issue.target}${issue.detail ? ` (${issue.detail})` : ''}`));
   if (data.scrollWidth > data.viewport + 1) issues.push(`horizontal overflow ${data.scrollWidth - data.viewport}px`);
   if (data.legacyTriggerVisible) issues.push('retired manual update trigger is visible');
   for (const item of [...data.primaryButtons, ...data.textButtons, ...data.inputs]) {
@@ -109,6 +112,8 @@ const audit = async (page, label) => {
   if (expectedModule && data.activeModule !== expectedModule) issues.push(`navigation opened ${data.activeModule || 'nothing'}`);
   if (data.heading.length && data.rootScale === '1' && data.heading[0].fontSize !== '24px') issues.push(`screen title ${data.heading[0].fontSize}`);
   report.states.push({ label, ...data, issues });
+  if (/planning:config|planning:systems|flight:calibration|route:ice|route:ride|mission:overview/.test(label))
+    report.typography.push({ label, values: probe.typography });
   if (issues.length) report.errors.push({ label, issues });
 };
 const activate = async (page, area, module) => {
@@ -140,6 +145,21 @@ try {
     await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.VelocityLayout);
+    await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
+    if (width === 390) {
+      const negative = await page.evaluate(() => {
+        const fixture = document.createElement('section');
+        fixture.className = 'app-module';
+        fixture.innerHTML = '<div data-ui-role="secondary" style="width:28px;white-space:nowrap;overflow:hidden">123 gal</div><div data-ui-role="secondary" style="width:22px">163 kg</div><span class="ui-icon-inline" style="position:relative;display:inline-block"><svg class="ui-icon" style="position:absolute;left:0;top:0"></svg>Collision</span><div class="panel" style="width:45px"><strong style="white-space:nowrap">OVERSIZED VALUE</strong></div>';
+        document.body.append(fixture);
+        const result = window.VelocityVisualProbe(fixture).issues.map(issue => issue.code);
+        fixture.remove();
+        return result;
+      });
+      report.negativeChecks = negative;
+      for (const expected of ['clipped-text', 'split-number-unit', 'icon-text-collision', 'text-outside-card'])
+        if (!negative.includes(expected)) report.errors.push({ label: 'negative detector', issues: [`failed to detect ${expected}`] });
+    }
     await page.locator('#quickPilotId').focus();
     const focusShadow = await page.locator('#quickPilotId').evaluate(element => getComputedStyle(element).boxShadow);
     if (focusShadow === 'none') report.errors.push({ label: `${width}px focus`, issues: ['Pilot ID focus indication is missing'] });
@@ -151,6 +171,12 @@ try {
     await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
     await page.locator('#importLatest').click();
     await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
+    if (width === 390 && !baseline) {
+      await activate(page, 'flight', 'calibration');
+      await page.locator('#observedTas').focus();
+      const fieldFocus = await page.locator('#observedTas').evaluate(element => getComputedStyle(element.closest('.input-with-unit')).boxShadow);
+      if (fieldFocus === 'none') report.errors.push({ label: '390px calibration focus', issues: ['unit field has no focus indicator'] });
+    }
     if (baseline) {
       if (captureWidths.has(width)) {
         for (const [area, module] of [['mission', 'overview'], ['planning', 'config'], ['route', 'ice'], ['flight', 'calibration']]) {
@@ -165,7 +191,7 @@ try {
       for (const module of keys) {
         await activate(page, area, module);
         await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}`);
-        if (captureWidths.has(width) && ['mission:overview', 'planning:config', 'route:ice', 'flight:calibration'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
+        if (captureWidths.has(width) && ['mission:overview', 'mission:score', 'planning:config', 'planning:systems', 'route:ice', 'route:ride', 'flight:calibration'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
         if (area === 'planning' && module === 'optimize') {
           await page.locator('#optimizeMission').click();
           await page.locator('#missionProposal:visible').waitFor();
@@ -202,6 +228,7 @@ try {
       if (!applied || `FL${applied.fl}` !== proposedFl || Number(await page.locator('#fuelInput').inputValue()) !== applied.fuelOnboardGal)
         report.errors.push({ label: '1440px explicit apply', issues: ['Applied fuel/FL and stored proposal disagree'] });
       await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
       await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
       await page.locator('#importLatest').click();
       await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
@@ -223,11 +250,42 @@ try {
     await audit(page, `${width}px EN-US KG/L A- mission:overview`);
     await page.locator('[data-font-size="normal"]').click();
     await audit(page, `${width}px EN-US KG/L A mission:overview`);
+    if ([390, 1440].includes(width)) {
+      await activate(page, 'planning', 'config');
+      const setRange = async (selector, value) => page.locator(selector).evaluate((element, next) => {
+        element.value = String(next);
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }, value);
+      await setRange('#payloadInput', 1100);
+      await setRange('#fuelInput', 87);
+      await audit(page, `${width}px EN-US KG/L A planning:config maximum load`);
+      await setRange('#payloadInput', 0);
+      await setRange('#fuelInput', 0);
+      await audit(page, `${width}px EN-US KG/L A planning:config minimum load`);
+      await setRange('#payloadInput', 520);
+      await setRange('#fuelInput', 77);
+      await page.locator('[data-weight-unit="lb"]').click();
+      await audit(page, `${width}px EN-US LB/L A planning:config`);
+      await page.locator('[data-weight-unit="kg"]').click();
+      await page.locator('[data-fuel-unit="gal"]').click();
+      await audit(page, `${width}px EN-US KG/GAL A planning:config`);
+      await page.locator('[data-fuel-unit="l"]').click();
+    }
     if (width === 390) {
       await page.locator('#toast').evaluate(element => { element.textContent = 'A very long alert about weather, available oxygen and fuel margin across the route, used solely to check line wrapping in the visual audit.'; element.classList.add('show'); });
       await audit(page, `${width}px long alert`);
       await page.screenshot({ path: path.join(output, 'final', 'mobile-long-alert.png'), animations: 'disabled' });
       report.screenshots.push('final/mobile-long-alert.png');
+      await activate(page, 'flight', 'calibration');
+      const bottomClearance = await page.evaluate(() => {
+        document.documentElement.style.scrollBehavior = 'auto';
+        window.scrollTo(0, document.body.scrollHeight);
+        const footer = document.querySelector('footer').getBoundingClientRect();
+        const nav = document.querySelector('.mobile-area-nav').getBoundingClientRect();
+        return { footerBottom: footer.bottom, navTop: nav.top };
+      });
+      if (bottomClearance.footerBottom > bottomClearance.navTop + 1)
+        report.errors.push({ label: '390px bottom navigation', issues: [`footer ends at ${bottomClearance.footerBottom}px behind navigation at ${bottomClearance.navTop}px`] });
     }
     if (width === 1440) {
       const coverage = await page.evaluate(() => {
@@ -238,6 +296,23 @@ try {
         return { total: rows.length, unmatched: rows.filter(row => !row.matched) };
       });
       report.selectorCoverage = coverage;
+      await page.setViewportSize({ width: 720, height: 900 });
+      await activate(page, 'planning', 'config');
+      await audit(page, '1440px at 200% equivalent viewport planning:config');
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await activate(page, 'flight', 'calibration');
+      await page.locator('[data-fuel-unit="gal"]').click();
+      await page.locator('#manualWaypoint').selectOption({ index: 2 });
+      await page.locator('#manualAltitude').selectOption('18000');
+      await page.locator('#manualFuel').fill('60');
+      await page.locator('#manualUpdateForm button[type="submit"]').click();
+      await page.locator('#observedTas').fill('245');
+      await page.locator('#observedFuelFlow').fill('17.5');
+      if (await page.locator('#calibrateObserved').isEnabled()) {
+        await page.locator('#calibrateObserved').click();
+        const calibration = await page.evaluate(() => JSON.parse(localStorage.getItem('velocityxl.calibration') || 'null'));
+        if (!calibration?.reference) report.errors.push({ label: 'calibration regression', issues: ['valid TAS/GPH observation was not stored'] });
+      } else report.errors.push({ label: 'calibration regression', issues: ['calibration remained disabled after a complete update'] });
     }
     await context.close();
   }

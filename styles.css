@@ -23,6 +23,11 @@
   --ui-body: calc(14px * var(--ui-scale));
   --ui-title: calc(16px * var(--ui-scale));
   --ui-display: calc(24px * var(--ui-scale));
+  --ui-control: max(16px, calc(16px * var(--ui-scale)));
+  --ui-leading-label: 1.35;
+  --ui-leading-value: 1.35;
+  --ui-tracking-label: .04em;
+  --ui-tracking-value: 0;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -91,6 +96,39 @@ button:focus-visible {
 input:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
+}
+
+/* Semantic text roles remain identical across HTML element types and modules. */
+.app-module [data-ui-role="label"] {
+  font-family: var(--font-family);
+  font-size: var(--ui-caption);
+  font-weight: 500;
+  line-height: var(--ui-leading-label);
+  letter-spacing: var(--ui-tracking-label);
+}
+.app-module [data-ui-role="secondary"] {
+  font-family: var(--font-family);
+  font-size: var(--ui-body);
+  font-weight: 600;
+  line-height: var(--ui-leading-value);
+  letter-spacing: var(--ui-tracking-value);
+  font-variant-numeric: tabular-nums;
+}
+.app-module [data-ui-role="emphasis"] {
+  font-family: var(--font-family);
+  font-size: var(--ui-title);
+  font-weight: 600;
+  line-height: var(--ui-leading-value);
+  letter-spacing: var(--ui-tracking-value);
+  font-variant-numeric: tabular-nums;
+}
+.app-module [data-ui-role="primary"] {
+  font-family: var(--font-family);
+  font-size: var(--ui-display);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: var(--ui-tracking-value);
+  font-variant-numeric: tabular-nums;
 }
 select:focus-visible {
   outline: 2px solid var(--blue);
@@ -194,7 +232,6 @@ select:focus-visible {
 }
 .plan-identity h1 {
   font: 600 var(--ui-display)/1.2 var(--font-family);
-  letter-spacing: -.025em;
   margin: 11px 0 6px;
   line-height: 1.15;
 }
@@ -210,16 +247,13 @@ select:focus-visible {
 .plan-status-row {
   display: flex;
   align-items: center;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   min-width: 0;
 }
 .plan-status-row small {
-  min-width: 0;
   color: var(--muted);
   font-size: var(--ui-caption);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .plan-form {
   display: grid;
@@ -341,7 +375,6 @@ select:focus-visible {
   font-size: var(--ui-display);
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -.025em;
 }
 .area-context {
   max-width: 45%;
@@ -411,8 +444,7 @@ select:focus-visible {
   gap: var(--space-4);
   align-items: start;
 }
-.app-module input:not([type="range"]):not([type="checkbox"]),
-.app-module select,
+.app-module :where(input:not([type="range"]):not([type="checkbox"]), select),
 .plan-form input {
   min-height: var(--control-height);
   min-width: 0;
@@ -420,7 +452,7 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel-soft);
-  font-size: var(--ui-body);
+  font-size: var(--ui-control);
 }
 .app-module :is(label > span:first-child, .range-control b, .select-control > span) {
   font-size: var(--ui-caption);
@@ -492,10 +524,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--card-radius);
   background: var(--panel);
-}
-.app-module[data-module-panel="flight:calibration"] > #calibrationReference {
-  justify-self: end;
-  font-size: var(--ui-caption);
 }
 .app-module[data-module-panel="planning:optimize"] > .primary-button {
   justify-self: start;
@@ -630,7 +658,6 @@ select:focus-visible {
   padding: 0 10px;
   outline: none;
   font-weight: 600;
-  font-size: var(--ui-body);
   text-transform: uppercase;
 }
 .field input:focus {
@@ -689,7 +716,6 @@ select:focus-visible {
 }
 .kpi > strong {
   font: 600 var(--ui-display)/1.1 var(--font-family);
-  letter-spacing: -.04em;
   align-self: center;
   margin: 0;
   min-width: 0;
@@ -830,7 +856,6 @@ select:focus-visible {
 .mission-score-dial strong {
   color: var(--score-color);
   font: 700 var(--ui-display) var(--font-family);
-  letter-spacing: -.04em;
   display: block;
   line-height: 1;
 }
@@ -954,19 +979,33 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel-soft);
-  overflow: hidden;
   min-height: var(--control-height);
 }
-.input-with-unit input {
+.app-module .input-with-unit input {
   border: 0;
   border-radius: 0;
   background: transparent;
+  box-shadow: none;
+  min-width: 0;
+  flex: 1 1 auto;
+  width: 100%;
+}
+.app-module .input-with-unit input:focus {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.input-with-unit:focus-within {
+  border-color: #8bbce9;
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--blue-soft);
 }
 .input-with-unit small {
   color: var(--muted);
   padding: 0 9px 0 3px;
   font-size: var(--ui-caption);
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 .text-button {
   border: 1px solid var(--line);
@@ -1028,9 +1067,9 @@ select:focus-visible {
   padding: 11px 16px;
   border-right: 1px solid var(--line);
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: 14px minmax(0,1fr);
   grid-template-rows: auto auto auto;
-  justify-content: center;
+  justify-content: stretch;
   align-content: center;
   align-items: center;
   column-gap: 6px;
@@ -1046,18 +1085,12 @@ select:focus-visible {
   font-size: var(--ui-caption);
   text-transform: uppercase;
   letter-spacing: .07em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .mission-strip strong {
   grid-column: 1/-1;
   max-width: 100%;
   font: 650 var(--ui-title) var(--font-family);
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .mission-strip strong[data-status="viable"] {
   color: var(--green);
@@ -1077,9 +1110,6 @@ select:focus-visible {
   color: var(--muted);
   font-size: var(--ui-caption);
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .toast {
   position: fixed;
@@ -1117,10 +1147,10 @@ select:focus-visible {
   stroke-linejoin: round;
   vertical-align: -2px;
 }
-.ui-icon-inline {
+.app-module .ui-icon-inline {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
 }
 .ui-icon-heading {
   display: inline-flex;
@@ -1242,9 +1272,7 @@ select:focus-visible {
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
   font-size: var(--ui-body);
   font-weight: 600;
 }
@@ -1253,9 +1281,6 @@ select:focus-visible {
   grid-row: 2;
   min-width: 0;
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--muted);
   font-size: var(--ui-caption);
 }
@@ -1440,10 +1465,7 @@ select:focus-visible {
 }
 .power-auto-readout strong {
   min-width: 0;
-  font-size: var(--ui-caption);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .power-auto-readout small {
   color: var(--green);
@@ -1479,7 +1501,6 @@ select:focus-visible {
   color: var(--text);
   padding: 0 8px;
   outline: none;
-  font-size: var(--ui-caption);
   font-weight: 600;
 }
 .power-manual-fields input:focus {
@@ -1506,7 +1527,6 @@ select:focus-visible {
   color: var(--text);
   border-radius: 8px;
   padding: 6px 8px;
-  font-size: var(--ui-caption);
   outline: none;
 }
 .range-control {
@@ -1515,9 +1535,10 @@ select:focus-visible {
   padding: 12px 0 8px;
 }
 .range-control > span {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--ui-caption);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: baseline;
+  gap: var(--space-2);
 }
 .range-control b {
   color: var(--muted);
@@ -1525,7 +1546,7 @@ select:focus-visible {
 }
 .range-control output {
   color: var(--text);
-  font-weight: 600;
+  white-space: nowrap;
 }
 .range-control input {
   width: 100%;
@@ -1752,9 +1773,9 @@ select:focus-visible {
 }
 .compact-form {
   display: grid;
-  grid-template-columns: minmax(0,1.5fr) minmax(0,.65fr) minmax(0,1fr) minmax(88px,.6fr);
+  grid-template-columns: minmax(180px,1.5fr) minmax(100px,.55fr) minmax(180px,1fr) max-content;
   align-items: end;
-  gap: 9px;
+  gap: var(--space-3);
   min-width: 0;
 }
 .compact-form > * {
@@ -1764,43 +1785,23 @@ select:focus-visible {
   min-width: 0;
 }
 .compact-form label > span:first-child {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   color: var(--muted);
-  font-size: var(--ui-caption);
   text-transform: uppercase;
-  letter-spacing: .075em;
-  margin: 0 0 5px 2px;
+  margin: 0 0 var(--space-1);
 }
 .calibration-head > span {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   color: var(--muted);
-  font-size: var(--ui-caption);
   text-transform: uppercase;
-  letter-spacing: .075em;
-  margin: 0 0 5px 2px;
 }
-.compact-form select {
+.compact-form :is(select, input) {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--panel-soft);
-  color: var(--text);
-  padding: 0 9px;
-  outline: none;
-  font-size: var(--ui-caption);
-  font-weight: 600;
-}
-.compact-form input {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--panel-soft);
-  color: var(--text);
-  padding: 0 9px;
-  outline: none;
-  font-size: var(--ui-caption);
   font-weight: 600;
 }
 .compact-form select:focus {
@@ -1808,53 +1809,33 @@ select:focus-visible {
   background: #fff;
   box-shadow: 0 0 0 3px var(--blue-soft);
 }
-.compact-form input:focus {
-  border-color: #8bbce9;
-  background: #fff;
-  box-shadow: 0 0 0 3px var(--blue-soft);
-}
-.compact-form .primary-button {
-  width: 100%;
-  min-width: 0;
-  padding-inline: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.compact-form .text-button {
-  width: 100%;
-  min-width: 0;
-  padding-inline: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.compact-form :is(.primary-button, .text-button) {
+  width: auto;
+  white-space: nowrap;
 }
 .calibration-form {
-  grid-template-columns: minmax(0,1.25fr) minmax(0,1fr) minmax(0,1.15fr) minmax(88px,.65fr) minmax(72px,.55fr);
+  grid-template-columns: minmax(180px,1fr) minmax(180px,1fr) max-content max-content;
   border-top: 1px solid var(--line);
-  padding-top: 18px;
+  padding-top: var(--space-4);
 }
 .calibration-head {
-  align-self: end;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
   min-width: 0;
 }
 .calibration-value {
-  height: 36px;
-  display: flex;
+  grid-column: 1;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.calibration-head strong {
-  flex: 0 0 auto;
-  font-size: var(--ui-caption);
 }
 .calibration-head output {
-  min-width: 0;
   color: var(--muted);
-  font-size: var(--ui-caption);
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .calibration-form #calibrateObserved:disabled {
   opacity: .42;
@@ -1862,6 +1843,8 @@ select:focus-visible {
 }
 .calibration-gate {
   display: block;
+  grid-column: 2;
+  text-align: right;
   color: var(--muted);
   font-size: var(--ui-caption);
   line-height: 1.3;
@@ -1988,7 +1971,6 @@ select:focus-visible {
   background: #fff;
   color: var(--text);
   padding: 5px 7px;
-  font-size: var(--ui-caption);
   font-weight: 600;
 }
 .advisor-strip {
@@ -2058,12 +2040,8 @@ select:focus-visible {
   min-width: 0;
 }
 .wb-inputs label>span:first-child {
-  display: block;
   margin: 0 0 4px 2px;
   color: var(--muted);
-  font-size: var(--ui-caption);
-  font-weight: 700;
-  letter-spacing: .055em;
 }
 .wb-inputs input {
   width: 100%;
@@ -2073,7 +2051,6 @@ select:focus-visible {
   background: transparent;
   padding: 0 8px;
   color: var(--text);
-  font-size: var(--ui-caption);
   font-weight: 700;
   outline: none;
 }
@@ -2181,9 +2158,7 @@ select:focus-visible {
 }
 .wb-stations #wbStationRows b {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -2232,7 +2207,6 @@ select:focus-visible {
   padding: 0 8px;
   background: var(--panel-soft);
   color: var(--text);
-  font-size: var(--ui-caption);
   font-weight: 600;
   min-height: var(--control-height);
 }
@@ -2500,13 +2474,12 @@ select:focus-visible {
   color: var(--muted);
   font-size: var(--ui-caption);
   text-align: right;
-  overflow-wrap: anywhere;
 }
 .glide-route {
   position: relative;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(102px,1fr);
+  grid-auto-columns: minmax(102px,max-content);
   min-width: 0;
   overflow-x: auto;
   padding: 16px 2px 4px;
@@ -2552,16 +2525,10 @@ select:focus-visible {
 }
 .glide-route-point span {
   display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .glide-route-point small {
   display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 4px;
   color: var(--muted);
@@ -2586,7 +2553,6 @@ select:focus-visible {
 .glide-focus-main small {
   color: var(--muted);
   font-size: var(--ui-caption);
-  overflow-wrap: anywhere;
 }
 .glide-focus-main strong {
   color: var(--blue);
@@ -2708,7 +2674,6 @@ select:focus-visible {
   margin: 13px 0 12px;
   font-size: var(--ui-title);
   font-weight: 600;
-  overflow-wrap: anywhere;
 }
 .step-profile-card.suggested > strong {
   color: var(--blue);
@@ -2774,7 +2739,6 @@ select:focus-visible {
   background: var(--panel-soft);
   color: var(--muted);
   font-size: var(--ui-caption);
-  overflow-wrap: anywhere;
 }
 .step-comparison-points b {
   color: var(--text);
@@ -2795,8 +2759,11 @@ select:focus-visible {
   color: inherit;
 }
 #calibrationReference {
+  grid-column: 2;
+  grid-row: 1;
   color: var(--muted);
   font-size: var(--ui-caption);
+  text-align: right;
 }
 /* The old trigger remains in the DOM for existing handlers; Calibration owns its UI. */
 #tool-card-update {
@@ -2826,9 +2793,6 @@ select:focus-visible {
 }
 .ride-module-summary>div:first-child>strong {
   color: var(--blue);
-  font-size: var(--ui-display);
-  font-weight: 600;
-  line-height: 1;
 }
 .ride-module-summary>div:first-child>small {
   color: var(--muted);
@@ -2961,7 +2925,7 @@ select:focus-visible {
 }
 .ride-decision-grid {
   display: grid;
-  grid-template-columns: repeat(4,minmax(0,1fr));
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr));
   gap: 7px;
 }
 .ride-decision-grid>div {
@@ -2974,17 +2938,12 @@ select:focus-visible {
 }
 .ride-decision-grid span {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--muted);
   font-size: var(--ui-caption);
   letter-spacing: .04em;
 }
 .ride-decision-grid strong {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 5px;
   color: var(--blue);
@@ -2992,9 +2951,6 @@ select:focus-visible {
 }
 .ride-decision-grid small {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   margin-top: 4px;
   color: var(--muted);
   font-size: var(--ui-caption);
@@ -3098,7 +3054,7 @@ select:focus-visible {
 }
 .ride-route-focus {
   display: grid;
-  grid-template-columns: 1.4fr repeat(4,minmax(0,.75fr));
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,150px),1fr));
   gap: 1px;
   margin-top: 10px;
   overflow: hidden;
@@ -3112,23 +3068,18 @@ select:focus-visible {
 }
 .ride-route-focus span {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--muted);
   font-size: var(--ui-caption);
 }
 .ride-route-focus strong {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 4px;
   font-size: var(--ui-body);
 }
 .ride-module-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr));
   gap: 10px;
 }
 .ride-phase-list {
@@ -3182,7 +3133,6 @@ select:focus-visible {
 .ride-evidence-list strong {
   display: block;
   margin-top: 4px;
-  overflow-wrap: anywhere;
   font-size: var(--ui-body);
 }
 .ice-module {
@@ -3208,9 +3158,6 @@ select:focus-visible {
   letter-spacing: .05em;
 }
 .ice-module-summary>div:first-child>strong {
-  font-size: var(--ui-display);
-  font-weight: 600;
-  line-height: 1;
   color: var(--blue);
 }
 .ice-module-summary>div:first-child>small {
@@ -3256,7 +3203,7 @@ select:focus-visible {
 }
 .ice-decision-grid {
   display: grid;
-  grid-template-columns: repeat(4,minmax(0,1fr));
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr));
   gap: 7px;
 }
 .ice-decision-grid>div {
@@ -3286,17 +3233,12 @@ select:focus-visible {
 }
 .ice-decision-grid span {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--muted);
   font-size: var(--ui-caption);
   letter-spacing: .04em;
 }
 .ice-decision-grid strong {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 5px;
   color: var(--blue);
@@ -3304,9 +3246,6 @@ select:focus-visible {
 }
 .ice-decision-grid small {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   margin-top: 4px;
   color: var(--muted);
   font-size: var(--ui-caption);
@@ -3420,7 +3359,7 @@ select:focus-visible {
 }
 .ice-route-focus {
   display: grid;
-  grid-template-columns: 1.4fr repeat(3,minmax(0,.7fr));
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,150px),1fr));
   gap: 1px;
   margin-top: 10px;
   overflow: hidden;
@@ -3434,16 +3373,11 @@ select:focus-visible {
 }
 .ice-route-focus span {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--muted);
   font-size: var(--ui-caption);
 }
 .ice-route-focus strong {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   margin-top: 4px;
   font-size: var(--ui-body);
@@ -3503,7 +3437,6 @@ select:focus-visible {
 .ice-evidence-list strong {
   display: block;
   margin-top: 4px;
-  overflow-wrap: anywhere;
   font-size: var(--ui-body);
 }
 .ice-composition-track {
@@ -3580,7 +3513,6 @@ select:focus-visible {
   min-width: 0;
   height: 38px;
   color: var(--text);
-  font-size: var(--ui-body);
   font-weight: 600;
   outline: none;
   appearance: none;
@@ -3594,7 +3526,6 @@ select:focus-visible {
   min-width: 0;
   height: 38px;
   color: var(--text);
-  font-size: var(--ui-body);
   font-weight: 600;
   outline: none;
 }
@@ -3694,6 +3625,7 @@ select:focus-visible {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 }
 .cost-alternate-head>div {
@@ -3709,10 +3641,7 @@ select:focus-visible {
 }
 .cost-alternate-head>div>strong {
   margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: var(--ui-body);
-  white-space: nowrap;
 }
 .cost-alternate-head>strong {
   color: var(--cost-green);
@@ -3722,7 +3651,7 @@ select:focus-visible {
 }
 .cost-alternate-grid {
   display: grid;
-  grid-template-columns: repeat(3,minmax(0,1fr));
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr));
   gap: 1px;
   margin-top: 12px;
   overflow: hidden;
@@ -3743,8 +3672,6 @@ select:focus-visible {
 .cost-alternate-grid strong {
   display: block;
   margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: var(--ui-body);
   white-space: nowrap;
 }
@@ -3767,11 +3694,8 @@ select:focus-visible {
 .cost-alternate-phases b {
   font-size: var(--ui-caption);
   min-width: 0;
-  overflow: hidden;
   color: var(--muted);
   font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .cost-alternate-phases strong {
   font-size: var(--ui-caption);
@@ -3779,7 +3703,7 @@ select:focus-visible {
 }
 .cost-kpis {
   display: grid;
-  grid-template-columns: repeat(4,minmax(0,1fr));
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr));
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -3800,8 +3724,6 @@ select:focus-visible {
 .cost-kpis strong {
   display: block;
   margin-top: 5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: var(--ui-body);
   white-space: nowrap;
 }
@@ -3943,6 +3865,14 @@ select:focus-visible {
   }
 }
 
+@media (max-width: 900px) {
+  /* Four decision indicators need at least 200 px each. */
+  .ride-decision-grid,
+  .ice-decision-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+
 @media (max-width: 760px) {
   /* Base */
   body {
@@ -4066,6 +3996,10 @@ select:focus-visible {
   .planning-config-grid {
     grid-template-columns: 1fr;
   }
+  .ride-decision-grid,
+  .ice-decision-grid {
+    grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr));
+  }
   .tool-choice .tool-card {
     flex: 1 1 140px;
   }
@@ -4162,7 +4096,7 @@ select:focus-visible {
     grid-column: auto;
   }
   .glide-route {
-    grid-auto-columns: minmax(88px,1fr);
+    grid-auto-columns: minmax(88px,max-content);
   }
   .glide-focus {
     grid-template-columns: minmax(0,1fr);
@@ -4188,35 +4122,17 @@ select:focus-visible {
   .ride-recommendation button {
     width: 100%;
   }
-  .ride-decision-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .ride-module-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .ride-route-focus {
-    grid-template-columns: 1fr 1fr;
-  }
   .ride-route-focus>div:first-child {
     grid-column: 1/-1;
   }
   .ice-module-grid {
     grid-template-columns: 1fr;
   }
-  .ice-decision-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .ice-route-focus {
-    grid-template-columns: 1fr 1fr;
-  }
   .cost-price-row {
     grid-template-columns: 1fr 1fr;
   }
   .cost-price-row>div {
     grid-column: 1/-1;
-  }
-  .cost-kpis {
-    grid-template-columns: 1fr 1fr;
   }
   .cost-detail-grid {
     grid-template-columns: 1fr;
@@ -4360,6 +4276,18 @@ select:focus-visible {
   .calibration-form {
     grid-template-columns: 1fr;
   }
+  .calibration-head {
+    grid-template-columns: minmax(0,1fr);
+  }
+  #calibrationReference {
+    grid-column: 1;
+    grid-row: auto;
+    text-align: left;
+  }
+  .calibration-gate {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
   .advisor-grid {
     grid-template-columns: 1fr;
   }
@@ -4425,7 +4353,7 @@ select:focus-visible {
     text-align: center;
   }
   .glide-route {
-    grid-auto-columns: minmax(80px,1fr);
+    grid-auto-columns: minmax(80px,max-content);
   }
   .ride-module-summary {
     align-items: flex-start;
@@ -4438,9 +4366,6 @@ select:focus-visible {
   }
   .ride-preference button {
     padding-inline: 5px;
-  }
-  .ride-decision-grid {
-    grid-template-columns: 1fr 1fr;
   }
   .ride-evidence-list {
     grid-template-columns: 1fr;
@@ -4470,6 +4395,32 @@ select:focus-visible {
 
 @media (max-width: 360px) {
   /* Layout */
+  .mission-score-summary {
+    grid-template-columns: minmax(0,1fr);
+    justify-items: center;
+    text-align: center;
+  }
+  #missionScoreStatus {
+    justify-content: center;
+  }
+  .navigation-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .navigation-scale,
+  .navigation-speeds {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .mission-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mission-strip div {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .mission-strip div:last-child {
+    border-bottom: 0;
+  }
   .plan-form {
     grid-template-columns: minmax(0, 1fr);
   }

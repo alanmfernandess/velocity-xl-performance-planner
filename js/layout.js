@@ -171,12 +171,29 @@
   const flightPanel = $('#manualFlightPanel');
   const confidence = $('#calibrationReference');
   if (updateStrip) moduleNodes.get('flight:calibration').append(updateStrip);
-  if (confidence) moduleNodes.get('flight:calibration').append(confidence);
   if (flightPanel && updatePanel) moduleNodes.get('flight:calibration').append(flightPanel);
+  if (confidence) $('.calibration-head')?.insertBefore(confidence, $('.calibration-value'));
   const oldModeTop = $('.manual-mode-top'); if (oldModeTop) oldModeTop.remove();
 
   const oldTools = $('.flight-tools-panel'); if (oldTools) oldTools.remove();
   const oldDashboard = $('.dashboard-grid'); if (oldDashboard) oldDashboard.remove();
+
+  // Presentation roles are assigned after the existing controls move into their areas.
+  // The observer below also covers result rows generated after an OFP is imported.
+  const visualRoles = {
+    label: '.app-module label > span:first-child:not(.input-with-unit), .range-control b, .planning-live-metrics span, .calibration-head > span, .shared-card-head > span, .kpi > span:first-of-type, .mission-strip span, .navigation-point > span, .advisor-card > span, .glide-kpis b, .wb-kpis b, .cost-kpis b, .ice-decision-grid span, .ride-decision-grid span',
+    secondary: '#payloadOutput, #fuelOutput, #layoutFuelMargin, #layoutOxygenSummary, #powerSettingValue, .navigation-speeds strong, #calibrationMode, #calibrationFactors, #fuelRequiredSide',
+    emphasis: '.advisor-card > strong, .glide-kpis strong, .wb-kpis strong, .cost-kpis strong, .ice-decision-grid strong, .ride-decision-grid strong',
+    primary: '.kpi > strong, .planning-live-summary .weight-meter strong, .mission-strip strong, .ride-module-summary > div:first-child > strong, .ice-module-summary > div:first-child > strong',
+  };
+  const applyVisualRoles = () => {
+    for (const [role, selector] of Object.entries(visualRoles)) {
+      document.querySelectorAll(selector).forEach(element => {
+        if (element.dataset.uiRole !== role) element.dataset.uiRole = role;
+      });
+    }
+  };
+  applyVisualRoles();
 
   const state = { area: 'mission', module: { mission: 'overview', planning: 'config', route: 'overview', flight: 'calibration' } };
   function activate(area, module = state.module[area]) {
@@ -209,6 +226,7 @@
     if (forward) document.getElementById(forward.dataset.forwardClick)?.click();
   });
   const observer = new MutationObserver(() => {
+    applyVisualRoles();
     const pairs = [
       ['#cruiseIcingValue', '#layoutIceStatus'],
       ['#rideValue', '#layoutRideStatus'], ['#oxygenValue', '#layoutOxygenSummary'],

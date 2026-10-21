@@ -64,6 +64,13 @@ root.walkRules(rule => {
     if (prop === 'font-size' && /\b\d+(?:\.\d+)?px\b/.test(decl.value) && rule.selector !== 'html') {
       report('raw-type-size', decl, 'Use the central type scale; document a technical exception if needed');
     }
+    if ((prop === 'text-overflow' && normalized(decl.value) === 'ellipsis') ||
+        (prop === 'overflow-wrap' && normalized(decl.value) === 'anywhere') ||
+        (prop === 'word-break' && normalized(decl.value) === 'break-all') ||
+        prop === 'zoom' || prop === 'font-stretch' ||
+        (prop === 'letter-spacing' && /^-/.test(decl.value.trim()))) {
+      report('content-compression', decl, `${prop}: ${decl.value} can hide or deform interface text`);
+    }
   }
   const display = byProperty.get('display')?.value;
   if (display === 'grid' || display === 'inline-grid') {
