@@ -617,6 +617,34 @@ function missionReasonIcon(code,status) {
   return ({fuel:"fuel","weight-balance":"scale","flight-profile":"area-chart",icing:"snowflake",turbulence:"waves",oxygen:"heart-pulse",alternate:"map-pinned",financial:"dollar-sign",efficiency:"gauge"})[code]||"triangle-alert";
 }
 
+function weatherDiagnosticText(mission) {
+  const pt=state.language==="pt-BR";
+  const coverage=mission?.weatherCoverage;
+  const parts=[];
+  const missing=coverage?.iceMissingReasons || {};
+  const mapping={
+    OUTSIDE_FORECAST_WINDOW: pt?"GFS fora do horário do voo":"GFS outside flight time",
+    MISSING_FLIGHT_TIME: pt?"Horário do OFP indisponível":"OFP time unavailable",
+    OUTSIDE_SPATIAL_COVERAGE: pt?"GFS sem cobertura da rota":"GFS lacks route coverage",
+    OUTSIDE_VERTICAL_COVERAGE: pt?"GFS sem cobertura da altitude":"GFS lacks altitude coverage",
+    MOISTURE_FIELDS_MISSING: pt?"GFS sem umidade/nuvens":"GFS humidity/clouds missing",
+    PROVIDER_UNAVAILABLE: pt?"GFS indisponível":"GFS unavailable",
+    MODEL_FIELDS_MISSING: pt?"Dados atmosféricos insuficientes":"Atmospheric fields missing",
+    HEIGHT_LEVELS_MISSING: pt?"Níveis de pressão ausentes":"Pressure levels missing",
+  };
+  for(const [reason,count] of Object.entries(missing).sort((a,b)=>b[1]-a[1]).slice(0,2)){
+    parts.push(`${mapping[reason]||reason} (${count})`);
+  }
+  if(mission?.diagnosticReasons?.includes("ALTERNATE_ICE_NOT_ASSESSED"))parts.push(pt?"Alternado sem dados ICE suficientes":"Alternate icing evidence insufficient");
+  if(mission?.diagnosticReasons?.includes("ICE_SIGMET_VERTICAL_LIMIT_UNKNOWN"))parts.push(pt?"SIGMET sem limites verticais":"SIGMET vertical limits missing");
+  if(mission?.diagnosticReasons?.includes("RIDE_EVIDENCE_LIMITED"))parts.push(pt?"RIDE sem dados suficientes":"RIDE evidence insufficient");
+  if(mission?.diagnosticReasons?.includes("ALTERNATE_DISTANCE_UNKNOWN"))parts.push(pt?"Distância do alternado desconhecida":"Alternate distance unknown");
+  const sources=coverage?.sources;
+  const status=sources?[`GFS: ${sources.OPEN_METEO?.status||"—"}`,`AWC: ${sources.AWC?.status||"—"}`].join(" · "):"";
+  const coverageLabel=Number.isFinite(coverage?.ice)?`ICE ${Math.round(coverage.ice*100)}%`:"";
+  return [parts.join(" · ") || (pt?"Evidência meteorológica insuficiente":"Insufficient weather evidence"),coverageLabel,status].filter(Boolean).join(" · ");
+}
+
 function missionAction(score) {
   const pt=state.language==="pt-BR",code=score.reasons.find((reason)=>reason.blocking||reason.impact>=4)?.code;
   if(score.status==="unknown") return pt?"Dados insuficientes para confirmar as condições meteorológicas.":"Insufficient data to confirm weather conditions.";
@@ -632,7 +660,7 @@ function missionAction(score) {
   return pt?"Nenhum ajuste obrigatório.":"No mandatory adjustment.";
 }
 
-function renderMissionScore(result,score) {
+function renderMissionScore(result,score,mission=null) {
   const color=score.status==="viable"?"var(--green)":score.status==="marginal"?"var(--orange)":score.status==="unknown"?"var(--blue)":"var(--red)";
   $("#missionScoreLevel").textContent=`FL${result.fl}`;
   $("#missionScoreMode").textContent=state.mode;
@@ -654,7 +682,7 @@ function renderMissionScore(result,score) {
   const excluded=new Set(negatives.map((item)=>item.code));
   const items=[...negatives,...missionPositiveReasons(result,excluded)].slice(0,3);
   $("#missionScoreReasons").innerHTML=items.map((item)=>`<div class="${item.status}">${iconMarkup(missionReasonIcon(item.code,item.status),"reason-icon")}<span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value||"OK")}</strong></div>`).join("");
-  $("#missionScoreAction").textContent=missionAction(score);
+  $("#missionScoreAction").textContent=score.status==="unknown"&&mission?weatherDiagnosticText(mission):missionAction(score);
 }
 
 function renderMissionStrip(result,missionScore) {
@@ -884,7 +912,7 @@ function render() {
     $("#proposalWb").textContent=weightBalanceLabel(selected.weightBalance.status);
     $("#proposalOxygen").textContent=oxygenLabel(selected.oxygen.status);
     const reasonText=missionScore.reasons.slice(0,2).map((reason)=>missionReasonLabel(reason,selected));
-    if(optimizedMission.status==="unknown") reasonText.push(pt?"Dados meteorológicos insuficientes":"Insufficient weather evidence");
+    if(optimizedMission.status==="unknown") reasonText.push(weatherDiagnosticText(optimizedMission));
     if(!hasSolution&&optimizedMission.status!=="unknown") reasonText.unshift(pt?"Nenhuma solução viável":"No feasible solution");
     $("#proposalReason").textContent=reasonText.join(" · ")||(`${pt?"Melhor equilíbrio no preset":"Best balance for preset"} ${state.mode}`);
     $("#proposalTerrain").textContent=pt?"Terreno e obstáculos não avaliados. Estimativa para simulador.":"Terrain and obstacles not assessed. Simulator estimate.";
@@ -904,7 +932,7 @@ function render() {
   if(document.activeElement!==$("#manualMap")) $("#manualMap").value=Number(state.powerSetting.mapInHg).toFixed(1);
   if(document.activeElement!==$("#manualRpm")) $("#manualRpm").value=String(Math.round(state.powerSetting.rpm));
   $("#kpiAltitude").textContent=hasSolution?`FL${selected.fl}`:"—"; $("#kpiLevelMeta").textContent=hasSolution?t("recommendedLevel"):optimizedMission.status==="unknown"?(state.language==="pt-BR"?"NÃO AVALIADO":"NOT ASSESSED"):(state.language==="pt-BR"?"SEM SOLUÇÃO":"NO SOLUTION"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(selected.feasibility.fuelMarginGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
-  renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore); renderOxygenPlanner(analysis); renderWeightBalance(optimizedMission.currentWeightBalance); renderRideOptimizer(optimizedMission,selected);
+  renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore,optimizedMission); renderOxygenPlanner(analysis); renderWeightBalance(optimizedMission.currentWeightBalance); renderRideOptimizer(optimizedMission,selected);
   $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1);
   $("#payloadOutput").textContent=formatWeight(state.payloadLb); $("#fuelOutput").textContent=formatFuel(state.fuelOnboardGal,0);
   const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight,currentWb=optimizedMission.currentWeightBalance; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(currentWb.takeoff.cgIn,2)}→${number(currentWb.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||currentWb.status==="unavailable"?"var(--red)":"";
