@@ -1,0 +1,43 @@
+name: Validate ICE weather coverage fix
+
+on:
+  push:
+    branches:
+      - fix/ice-weather-coverage-diagnostics
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Unit and CSS tests
+        run: npm test
+      - name: Mission validation
+        run: npm run validate:missions
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser audit 2.0
+        run: npm run audit:browser:v2
+      - name: Save browser audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ice-weather-coverage-validation
+          path: |
+            review/engine-v2-browser-audit.json
+            review/engine-v2/
+          retention-days: 7
+          if-no-files-found: ignore

@@ -173,6 +173,36 @@ function sampleTime(location, altitudeFt, timeMs) {
     validAtMs: timeMs, method: "pressure-height and time interpolation" };
 }
 
+/** Explain why a real GFS forecast cannot be applied at a 4D flight sample.
+ * Availability of a downloaded snapshot is NOT evidence of route coverage.
+ * Statuses describe data availability; they must never be used to assert safe weather.
+ */
+export function gfsSampleStatus(snapshot, point, alreadySampled = undefined) {
+  if (snapshot?.status !== "available") return snapshot?.status === "stale" ? "PROVIDER_STALE" : "PROVIDER_UNAVAILABLE";
+  if (!Number.isFinite(point?.lat) || !Number.isFinite(point?.lon)) return "INVALID_COORDINATES";
+  if (!Number.isFinite(point?.timestampMs)) return "MISSING_FLIGHT_TIME";
+  if (!Number.isFinite(point?.altitudeFt)) return "INVALID_ALTITUDE";
+  const available = alreadySampled === undefined ? sampleGfs(snapshot, point) : alreadySampled;
+  if (available) return available.humidity === null || available.cloudCover === null
+    ? "MOISTURE_FIELDS_MISSING" : "COVERED";
+  const nearby = (snapshot.locations || []).map((location) => ({
+    location,
+    distance: Math.hypot((location.lat - point.lat) * 60,
+      (location.lon - point.lon) * 60 * Math.cos(point.lat * Math.PI / 180)),
+  })).sort((a, b) => a.distance - b.distance);
+  if (!nearby.length) return "NO_MODEL_LOCATIONS";
+  if (nearby[0].distance > 100) return "OUTSIDE_SPATIAL_COVERAGE";
+  const location = nearby[0].location;
+  if (!location.times?.length) return "MISSING_FORECAST_TIMES";
+  if (point.timestampMs < location.times[0] || point.timestampMs > location.times.at(-1)) return "OUTSIDE_FORECAST_WINDOW";
+  const hour = Math.max(0, location.times.findIndex((time) => time >= point.timestampMs));
+  const heights = PRESSURE_LEVELS.map((level) => finite(location.hourly?.[`geopotential_height_${level}hPa`]?.[hour]))
+    .filter((height) => height !== null).map((height) => height * 3.280839895);
+  if (heights.length < 2) return "HEIGHT_LEVELS_MISSING";
+  if (point.altitudeFt < Math.min(...heights) || point.altitudeFt > Math.max(...heights)) return "OUTSIDE_VERTICAL_COVERAGE";
+  return "MODEL_FIELDS_MISSING";
+}
+
 /** Atmospheric model value at a 4D position, or null outside its actual coverage. */
 export function sampleGfs(snapshot, { lat, lon, altitudeFt, timestampMs }) {
   if (snapshot?.status !== "available" || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;

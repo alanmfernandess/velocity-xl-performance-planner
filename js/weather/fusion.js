@@ -1,4 +1,4 @@
-import { sampleGfs } from "./open-meteo.js";
+import { sampleGfs, gfsSampleStatus } from "./open-meteo.js";
 import { awcEvidenceAt } from "./awc.js";
 import { weatherAtAltitude, isaTemperatureC } from "../engine.js?v=20261021-unified";
 
@@ -19,6 +19,7 @@ export function createWeatherSnapshot(plan, { gfs = null, awc = null, errors = [
 
 export function weatherAt(snapshot, plan, point) {
   const model = sampleGfs(snapshot?.gfs, point);
+  const gfsStatus = gfsSampleStatus(snapshot?.gfs, point, model);
   const fix = nearestFix(plan, point);
   const ofp = fix ? weatherAtAltitude(fix, point.altitudeFt) : null;
   const hasOfpWind = fix && ((fix.windLevels || []).some((level) => Number.isFinite(level.windDir) && Number.isFinite(level.windSpd))
@@ -36,6 +37,6 @@ export function weatherAt(snapshot, plan, point) {
     evidence: awcEvidenceAt(snapshot?.awc, point),
     provenance: { atmosphere: model ? "OPEN_METEO" : hasOfpWind || hasOfpTemperature ? "SIMBRIEF" : "UNAVAILABLE",
       model: model?.model || null, validAtMs: model?.validAtMs ?? null, method: model?.method || (fix ? "nearest OFP fix" : null),
-      coverage: model?.coverage || null, awc: snapshot?.awc?.status || "unavailable" },
+      coverage: model?.coverage || null, gfsStatus, awc: snapshot?.awc?.status || "unavailable" },
   };
 }

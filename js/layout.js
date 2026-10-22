@@ -203,9 +203,9 @@
   // The observer below also covers result rows generated after an OFP is imported.
   const visualRoles = {
     label: '.app-module label > span:first-child:not(.ui-unit-input), .range-control b, .planning-live-metrics span, .calibration-head > span, .shared-card-head > span, .kpi > span:first-of-type, .mission-strip span, .navigation-point > span, .advisor-card > span, .glide-kpis b, .wb-kpis b, .cost-kpis b, .cost-summary span, .cost-alternate-grid b, .cost-price-row > div > span, .ice-module-summary > div:first-child > span, .ride-module-summary > div:first-child > span, .ice-decision-grid span, .ride-decision-grid span',
-    secondary: '#payloadOutput, #fuelOutput, #layoutFuelMargin, #layoutOxygenSummary, #powerSettingValue, .navigation-speeds strong, #calibrationMode, #calibrationFactors, #fuelRequiredSide, #costAlternateIncrement, .cost-alternate-grid strong, .cost-kpis strong, #costBreakdownTotal',
+    secondary: '#payloadOutput, #fuelOutput, #layoutFuelMargin, #layoutOxygenSummary, #powerSettingValue, .navigation-speeds strong, #calibrationMode, #calibrationFactors, #fuelRequiredSide, #costAlternateIncrement, .cost-alternate-grid strong, .cost-kpis strong, #costBreakdownTotal, #missionScoreAction',
     emphasis: '.advisor-card > strong, .glide-kpis strong, .wb-kpis strong, .cost-kpis strong, .ice-decision-grid strong, .ride-decision-grid strong',
-    primary: '.kpi > strong, .planning-live-summary .weight-meter strong, .mission-strip strong, .ride-module-summary > div:first-child > strong, .ice-module-summary > div:first-child > strong, #etpDistance, #pnrDistance, #estimatedFlightCost, #financialEfficiency, #costOrigin, #missionScoreAction',
+    primary: '.kpi > strong, .planning-live-summary .weight-meter strong, .mission-strip strong, .ride-module-summary > div:first-child > strong, .ice-module-summary > div:first-child > strong, #etpDistance, #pnrDistance, #estimatedFlightCost, #financialEfficiency, #costOrigin',
   };
   const applyVisualRoles = () => {
     for (const [role, selector] of Object.entries(visualRoles)) {

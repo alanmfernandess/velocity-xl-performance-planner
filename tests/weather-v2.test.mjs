@@ -5,7 +5,7 @@ import { DEMO_PLAN, PERFORMANCE } from "../js/config.js";
 import { calculateAtAltitude, calculateEtpPnr } from "../js/engine.js";
 import { optimizeMission } from "../js/unified-optimization.js";
 import { buildTrajectory } from "../js/trajectory.js";
-import { buildGfsUrl, fetchGfsSnapshot, parseGfsResponse, representativePoints, sampleGfs } from "../js/weather/open-meteo.js";
+import { buildGfsUrl, fetchGfsSnapshot, parseGfsResponse, representativePoints, sampleGfs, gfsSampleStatus } from "../js/weather/open-meteo.js";
 import { awcEvidenceAt, normalizeSigmet, parseAwcSnapshot } from "../js/weather/awc.js";
 import { createWeatherSnapshot } from "../js/weather/fusion.js";
 
@@ -157,4 +157,70 @@ test("PNR distinguishes beyond destination from a nonexistent return point", () 
   const insufficient = calculateEtpPnr({ ...base, fuelOnboardGal: 1 }).pnr;
   assert.equal(insufficient.status, "UNAVAILABLE");
   assert.equal(insufficient.distanceNm, null);
+});
+
+test("GFS available does not imply applicable coverage at the flight time or altitude", () => {
+  const locations = parseGfsResponse(gfsRaw, 2);
+  const snapshot = { status: "available", locations };
+  const point = { lat: locations[0].lat, lon: locations[0].lon, altitudeFt: 18000,
+    timestampMs: locations[0].times[2] };
+  assert.equal(gfsSampleStatus(snapshot, point), "COVERED");
+  assert.equal(gfsSampleStatus(snapshot, { ...point, timestampMs: locations[0].times[0] - 3600000 }), "OUTSIDE_FORECAST_WINDOW");
+  assert.equal(gfsSampleStatus(snapshot, { ...point, altitudeFt: 60000 }), "OUTSIDE_VERTICAL_COVERAGE");
+  assert.equal(gfsSampleStatus(snapshot, { ...point, timestampMs: null }), "MISSING_FLIGHT_TIME");
+  assert.equal(gfsSampleStatus({ status: "unavailable" }, point), "PROVIDER_UNAVAILABLE");
+});
+
+test("an expired OFP cannot receive an ICE score from a current GFS download or terminal TAF", () => {
+  const locations = parseGfsResponse(gfsRaw.map((location, index) => ({ ...location,
+    latitude: index ? DEMO_PLAN.destination.lat : DEMO_PLAN.origin.lat,
+    longitude: index ? DEMO_PLAN.destination.lon : DEMO_PLAN.origin.lon })), 2);
+  const scheduledOffMs = locations[0].times[0] - 115 * 60_000;
+  const historicPlan = { ...plan, scheduledOffMs, scheduledOnMs: scheduledOffMs + 47 * 60_000,
+    meteorology: { alternate: {
+      metar: "SBRJ 202200Z 08010KT 9999 BKN040 03/M02 Q0992",
+      taf: "SBRJ 201800Z 2020/2106 08010KT 9999 SCT017 BKN040",
+    } } };
+  const weatherSnapshot = createWeatherSnapshot(historicPlan, { gfs: { status: "available", locations } });
+  const mission = optimizeMission({ ...input, plan: historicPlan, weatherSnapshot });
+  assert.equal(mission.weatherCoverage.sources.OPEN_METEO.status, "available");
+  assert.equal(mission.status, "unknown");
+  assert.equal(mission.viabilityStatus, "UNKNOWN");
+  assert.equal(mission.missionScore.partial, true);
+  assert.equal(mission.diagnostic.result.icing.coverage, 0);
+  assert.equal(mission.diagnostic.result.icing.coverageReasons.OUTSIDE_FORECAST_WINDOW,
+    mission.diagnostic.result.trajectory.samples.length);
+  assert.ok(Object.values(mission.weatherCoverage.icePhases).every((phase) => phase.total > 0 && phase.covered === 0));
+  assert.equal(mission.diagnostic.result.icing.alternateCoverage.terminalEvidence, true);
+  assert.equal(mission.diagnostic.result.icing.alternateCoverage.assessed, 0);
+  assert.equal(mission.diagnostic.result.icing.alternate.status, "unknown");
+  assert.ok(mission.diagnosticReasons.includes("ALTERNATE_ICE_NOT_ASSESSED"));
+  assert.ok(mission.candidates.filter((candidate) => !candidate.physicalBlockers.length)
+    .every((candidate) => candidate.status === "unknown"));
+});
+
+test("unknown ICE exposure reports actual missing-weather causes without manufacturing a score", () => {
+  const mission = optimizeMission({ ...input, weatherSnapshot: createWeatherSnapshot(plan) });
+  assert.equal(mission.viabilityStatus, "UNKNOWN");
+  assert.ok(mission.diagnosticReasons.some((reason) => reason.startsWith("ICE_")));
+  assert.ok(mission.weatherCoverage.iceMissingReasons);
+  assert.ok(Object.keys(mission.weatherCoverage.iceMissingReasons).length > 0);
+  assert.ok(mission.weatherCoverage.icePhases.climb.total > 0);
+  assert.equal(mission.missionScore.partial, true);
+});
+
+test("seven route fixes with temperatures but missing moisture remain unknown, with transparent counts", () => {
+  const fixes = Array.from({ length: 8 }, (_, i) => ({
+    ...plan.waypoints[Math.min(i, plan.waypoints.length - 1)],
+    ident: ["IS401","IS402","TOC","RE","ABTAR","TOD","AFPAC","BIAR"][i],
+    lat: -23.7 + i * 0.02, lon: -46.6 + i * 0.02, distanceNm: i * 18,
+    oatC: i === 7 ? -13 : -14,
+    windLevels: [], weatherText: "", weatherBulletins: [],
+  }));
+  const sevenLegPlan = { ...plan, waypoints: fixes, distanceNm: 126, plannedAltitudeFt: 10000 };
+  const mission = optimizeMission({ ...input, plan: sevenLegPlan,
+    weatherSnapshot: createWeatherSnapshot(sevenLegPlan) });
+  assert.equal(mission.candidates.length, 9);
+  assert.ok(Object.values(mission.weatherCoverage.iceMissingReasons).some((count) => count > 0));
+  assert.equal(mission.weatherCoverage.sources.OPEN_METEO.status, "unavailable");
 });

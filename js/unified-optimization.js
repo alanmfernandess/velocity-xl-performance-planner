@@ -7,7 +7,7 @@ import {
 import { buildTrajectory } from "./trajectory.js";
 import { sampleGfs } from "./weather/open-meteo.js";
 import { createWeatherSnapshot } from "./weather/fusion.js";
-import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js";
+import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261022-01";
 import { scoreMissionV2 } from "./mission-score-v2.js";
 
 const STATUS_RANK = { viable: 0, marginal: 1, unknown: 2, "not-viable": 3 };
@@ -89,6 +89,13 @@ function evaluateCandidate(input, altitudeFt, weatherSnapshot, performancePlan) 
   const unknown = result.icing.compatibility === "UNKNOWN" || result.icing.confidence === "limited"
     || ["limited", "unknown"].includes(result.turbulence.confidence)
     || (alternate.alternate && !alternate.destination);
+  const unknownReasons = [
+    ...(result.icing.compatibility === "UNKNOWN" ? ["ICE_COMPATIBILITY_UNKNOWN"] : []),
+    ...(result.icing.confidence === "limited" ? ["ICE_EVIDENCE_LIMITED"] : []),
+    ...(["limited", "unknown"].includes(result.turbulence.confidence) ? ["RIDE_EVIDENCE_LIMITED"] : []),
+    ...(alternate.alternate && !alternate.destination ? ["ALTERNATE_DISTANCE_UNKNOWN"] : []),
+    ...((result.icing.limitations || []).filter((code) => code === "ALTERNATE_ICE_NOT_ASSESSED" || code === "ICE_SIGMET_VERTICAL_LIMIT_UNKNOWN")),
+  ];
   const limitations = [
     "TERRAIN_NOT_ASSESSED",
     ...(!result.icing.confidence || result.icing.confidence === "limited" ? ["ICE_EVIDENCE_LIMITED"] : []),
@@ -110,7 +117,7 @@ function evaluateCandidate(input, altitudeFt, weatherSnapshot, performancePlan) 
       alternate: alternate.destination?.status || "unknown", weather: weatherSnapshot.status },
     blockers: [...new Set(physicalBlockers)], limitations };
   return { altitudeFt, mode, result, recommendedFuelGal, rawFuelGal, alternate, etpPnr, glide,
-    cost, physicalBlockers: eligibility.blockers, unknown, limitations, eligibility, converged };
+    cost, physicalBlockers: eligibility.blockers, unknown, unknownReasons: [...new Set(unknownReasons)], limitations, eligibility, converged };
 }
 
 /**
@@ -176,6 +183,7 @@ export function optimizeMission(input) {
   });
   return {
     version: "2.0", ofpId: weatherSnapshot.ofpKey, weatherSnapshot,
+    diagnosticReasons: diagnostic.unknownReasons || [], weatherCoverage: { ice: diagnostic.result.icing.coverage, icePhases: diagnostic.result.icing.phaseCoverage, iceMissingReasons: diagnostic.result.icing.coverageReasons, alternate: diagnostic.result.icing.alternateCoverage, ride: diagnostic.result.turbulence.coverage, sources: weatherSnapshot.sources },
     plan: input.plan, mode: input.mode, selected, diagnostic, candidates, ranked,
     eligible: candidates.filter((candidate) => candidate.eligibility.status === "ELIGIBLE"),
     unknown: candidates.filter((candidate) => candidate.eligibility.status === "UNKNOWN"),

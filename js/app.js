@@ -1,5 +1,5 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261021-unified";
-import { optimizeMission } from "./unified-optimization.js";
+import { optimizeMission } from "./unified-optimization.js?v=20261022-01";
 import { fetchGfsSnapshot } from "./weather/open-meteo.js";
 import { fetchAwcSnapshot } from "./weather/awc.js";
 import { createWeatherSnapshot } from "./weather/fusion.js";
@@ -189,8 +189,8 @@ Object.assign(COPY["pt-BR"], { calibrationNeedsUpdate:"Atualize posição, FL e 
 Object.assign(COPY["en-US"], { calibrationNeedsUpdate:"Update position, FL and fuel before calibrating.", calibrationReady:"Position, FL and fuel confirmed." });
 Object.assign(COPY["pt-BR"], { remainingFuelTitle:"Combustível · trecho restante", remainingFuelViable:"SUFICIENTE", remainingFuelMarginal:"MARGEM BAIXA", remainingFuelUnavailable:"INSUFICIENTE", remainingUnknown:"NÃO AVALIADO", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Necessário ${fuel}`, remainingMargin:(fuel)=>`Margem ${fuel}` });
 Object.assign(COPY["en-US"], { remainingFuelTitle:"Fuel · remaining route", remainingFuelViable:"SUFFICIENT", remainingFuelMarginal:"LOW MARGIN", remainingFuelUnavailable:"INSUFFICIENT", remainingUnknown:"UNASSESSED", remainingDistance:(distance,fl)=>`${distance} NM · FL${fl}`, remainingRequired:(fuel)=>`Required ${fuel}`, remainingMargin:(fuel)=>`Margin ${fuel}` });
-Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Escolha um módulo", closeTool:"Fechar", toolHintEtp:"Pontos de decisão", toolHintAlternate:"Alternados", toolHintCompare:"Comparar cenários", toolHintLoad:"Carga e combustível", toolHintWb:"Peso e centro de gravidade", toolHintGlide:"Alcance planado", toolHintOxygen:"Oxigênio", toolHintConfidence:"Confiança do modelo", toolHintRide:"Conforto de voo", toolHintIce:"Gelo por trecho", toolHintSteps:"Subida em etapas", toolHintUpdate:"Em voo · Voo concluído", thermalWindow:"Janela térmica", routeBand:"Faixa da rota", iceExposure:"Exposição", flightPhases:"Fases do voo", ofpEvidence:"Evidências do OFP", indexReading:"Leitura do índice" });
-Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintIce:"Icing by leg", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete", thermalWindow:"Thermal window", routeBand:"Route band", iceExposure:"Exposure", flightPhases:"Flight phases", ofpEvidence:"OFP evidence", indexReading:"Index reading" });
+Object.assign(COPY["pt-BR"], { flightTools:"Ferramentas de voo", chooseTool:"Escolha um módulo", closeTool:"Fechar", toolHintEtp:"Pontos de decisão", toolHintAlternate:"Alternados", toolHintCompare:"Comparar cenários", toolHintLoad:"Carga e combustível", toolHintWb:"Peso e centro de gravidade", toolHintGlide:"Alcance planado", toolHintOxygen:"Oxigênio", toolHintConfidence:"Confiança do modelo", toolHintRide:"Conforto de voo", toolHintIce:"Gelo por trecho", toolHintSteps:"Subida em etapas", toolHintUpdate:"Em voo · Voo concluído", thermalWindow:"Janela térmica", routeBand:"Faixa da rota", iceExposure:"Exposição", flightPhases:"Fases do voo", ofpEvidence:"Evidências do OFP", weatherEvidence:"Cobertura meteorológica", indexReading:"Leitura do índice" });
+Object.assign(COPY["en-US"], { flightTools:"Flight tools", chooseTool:"Choose a module", closeTool:"Close", toolHintEtp:"Decision points", toolHintAlternate:"Alternates", toolHintCompare:"Compare scenarios", toolHintLoad:"Load and fuel", toolHintWb:"Weight and balance", toolHintGlide:"Glide range", toolHintOxygen:"Oxygen", toolHintConfidence:"Model confidence", toolHintRide:"Ride comfort", toolHintIce:"Icing by leg", toolHintSteps:"Step climb", toolHintUpdate:"In flight · Flight complete", thermalWindow:"Thermal window", routeBand:"Route band", iceExposure:"Exposure", flightPhases:"Flight phases", ofpEvidence:"OFP evidence", weatherEvidence:"Weather coverage", indexReading:"Index reading" });
 Object.assign(COPY["pt-BR"], { manualFlightStatusTitle:"ATUALIZAÇÃO EM VOO", manualNoUpdate:"Sem atualização registrada", manualUpdateRecorded:"Atualização registrada" });
 Object.assign(COPY["en-US"], { manualFlightStatusTitle:"IN-FLIGHT UPDATE", manualNoUpdate:"No update recorded", manualUpdateRecorded:"Update recorded" });
 Object.assign(COPY["pt-BR"], { toolHintCost:"Custo e eficiência", fuelPrice:"Preço do combustível", currency:"Moeda", pricePerLiter:"Valor por litro", costUnassessed:"Informe o valor por litro para avaliar o custo.", estimatedFlightCost:"Custo estimado do voo", financialEfficiency:"Eficiência financeira", costPerNm:"Por NM", costPerHour:"Por hora", costPerPerson:"Por pessoa", requiredFuelValue:"Abastecimento requerido", costBreakdown:"Custo por fase", modeComparison:"Comparação de modos", possibleSavings:"Economia possível", costInFlight:"Projeção após atualização manual" });
@@ -334,19 +334,37 @@ function iceBlue(score, minimum=.08, maximum=.82) {
   return `rgba(37,129,217,${(minimum+(maximum-minimum)*ratio).toFixed(3)})`;
 }
 
+function weatherMissingLabel(reason,pt) {
+  const mapping={
+    OUTSIDE_FORECAST_WINDOW: pt?"GFS fora do horário do voo":"GFS outside flight time",
+    MISSING_FLIGHT_TIME: pt?"Horário do OFP indisponível":"OFP time unavailable",
+    OUTSIDE_SPATIAL_COVERAGE: pt?"GFS sem cobertura da rota":"GFS lacks route coverage",
+    OUTSIDE_VERTICAL_COVERAGE: pt?"GFS sem cobertura da altitude":"GFS lacks altitude coverage",
+    MOISTURE_FIELDS_MISSING: pt?"GFS sem umidade/nuvens":"GFS humidity/clouds missing",
+    PROVIDER_UNAVAILABLE: pt?"GFS indisponível":"GFS unavailable",
+    MODEL_FIELDS_MISSING: pt?"Dados atmosféricos insuficientes":"Atmospheric fields missing",
+    HEIGHT_LEVELS_MISSING: pt?"Níveis de pressão ausentes":"Pressure levels missing",
+  };
+  return mapping[reason]||reason||"—";
+}
+
 function renderIceModule(plan,analysis,selected) {
   const pt=state.language==="pt-BR",icing=selected.icing,score=clamp(Math.round(icing.riskScore||0),0,100);
-  const weatherSources=["SIMBRIEF",state.weatherSnapshot?.sources?.OPEN_METEO?.status==="available"?"GFS":null,
-    state.weatherSnapshot?.sources?.AWC?.status==="available"?"AWC":null].filter(Boolean).join(" · ");
+  const assessed=icing.compatibility!=="UNKNOWN";
+  const gfsStatus=state.weatherSnapshot?.sources?.OPEN_METEO?.status||"unavailable";
+  const awcStatus=state.weatherSnapshot?.sources?.AWC?.status||"unavailable";
+  const weatherSources=["SIMBRIEF",gfsStatus==="available"?`GFS ${Math.round((icing.coverage||0)*100)}%`:`GFS ${pt?"indisponível":"unavailable"}`,
+    awcStatus==="available"?"AWC":`AWC ${awcStatus==="stale"?(pt?"vencido":"stale"):(pt?"indisponível":"unavailable")}`].join(" · ");
   const exposureLabel=(minutes)=>minutes>0&&minutes<1?"<1 min":`${number(minutes||0,0)} min`;
-  const source=icing.confidence==="weather"?t("icingWeather"):icing.confidence==="estimated"?t("weatherEstimated"):t("icingLimited");
-  $("#iceModuleLevel").textContent=`ICE · FL${selected.fl}`;
-  $("#iceModuleIndex").textContent=number(score);
-  $("#iceModuleStatus").textContent=icingLabel(icing);
+  const source=assessed?(icing.confidence==="weather"?t("icingWeather"):icing.confidence==="estimated"?t("weatherEstimated"):t("icingLimited")):`ICE ${Math.round((icing.coverage||0)*100)}% ${pt?"avaliado":"assessed"}`;
+  $("#iceModuleLevel").textContent=`ICE · FL${selected.fl}${assessed?"":` · ${pt?"diagnóstico":"diagnostic"}`}`;
+  $("#iceModuleIndex").textContent=assessed?number(score):"—";
+  $("#iceModuleStatus").textContent=assessed?icingLabel(icing):t("icingLimited");
   $("#iceModuleConfidence").textContent=source;
-  $("#iceIndexTrack").setAttribute("aria-valuenow",String(score));
-  $("#iceIndexFill").style.width=`${score}%`;
-  $("#iceIndexMarker").style.left=`${score}%`;
+  if(assessed){$("#iceIndexTrack").setAttribute("role","meter");$("#iceIndexTrack").setAttribute("aria-valuenow",String(score));$("#iceIndexTrack").removeAttribute("aria-label");}
+  else{$("#iceIndexTrack").setAttribute("role","img");$("#iceIndexTrack").removeAttribute("aria-valuenow");$("#iceIndexTrack").setAttribute("aria-label",t("icingLimited"));}
+  $("#iceIndexFill").style.width=assessed?`${score}%`:"0%";
+  $("#iceIndexMarker").style.left=assessed?`${score}%`:"0%";
   $("#iceIndexFill").style.background=iceBlue(score,.38,.95);
   $("#iceIndexMarker").style.background=iceBlue(score,.55,1);
 
@@ -360,15 +378,15 @@ function renderIceModule(plan,analysis,selected) {
   const riskSegments=(segments[peakIndex]?.riskScore||0)>=PERFORMANCE.icing.watchScore?segments.slice(riskStart,riskEnd+1):[];
   const firstRisk=riskSegments[0],lastRisk=riskSegments.at(-1);
   $("#iceRiskWindowLabel").textContent=pt?"TRECHO CRÍTICO":"CRITICAL LEG";
-  $("#iceRiskWindow").textContent=firstRisk?`${firstRisk.from||"—"} → ${lastRisk?.to||firstRisk.to||"—"}`:(pt?"SEM TRECHO":"NO LEG");
-  $("#iceRiskWindowMeta").textContent=firstRisk?`${number(firstRisk.startNm,0)}–${number(lastRisk?.endNm??firstRisk.endNm,0)} NM · ${number(riskSegments.reduce((sum,segment)=>sum+(segment.minutes||0),0),0)} min`:(pt?"abaixo do limite":"below threshold");
+  $("#iceRiskWindow").textContent=firstRisk?`${firstRisk.from||"—"} → ${lastRisk?.to||firstRisk.to||"—"}`:assessed?(pt?"SEM TRECHO":"NO LEG"):(pt?"NÃO AVALIADO":"NOT ASSESSED");
+  $("#iceRiskWindowMeta").textContent=firstRisk?`${number(firstRisk.startNm,0)}–${number(lastRisk?.endNm??firstRisk.endNm,0)} NM · ${number(riskSegments.reduce((sum,segment)=>sum+(segment.minutes||0),0),0)} min`:assessed?(pt?"abaixo do limite":"below threshold"):(pt?"sem cobertura suficiente":"insufficient coverage");
   const terminalView=(terminal)=>terminal?`${number(terminal.riskScore||0)}/100`:"—";
   $("#iceDestinationLabel").textContent=pt?"DESTINO":"DESTINATION";
   $("#iceDestinationRisk").textContent=terminalView(icing.destination);
-  $("#iceDestinationMeta").textContent=icing.destination?`${exposureLabel(icing.destination.exposureMinutes)} · ${icingLabel(icing.destination)}`:"—";
+  $("#iceDestinationMeta").textContent=icing.destination?`${exposureLabel(icing.destination.exposureMinutes)} · ${icingLabel(icing.destination)}${assessed?"":` · ${pt?"terminal":"terminal"}`}`:"—";
   $("#iceAlternateLabel").textContent=pt?"ALTERNADO":"ALTERNATE";
-  $("#iceAlternateRisk").textContent=icing.alternate?`${icing.alternate.ident} · ${terminalView(icing.alternate)}`:"—";
-  $("#iceAlternateMeta").textContent=icing.alternate?`${exposureLabel(icing.alternate.exposureMinutes)} · ${icingLabel(icing.alternate)}`:(pt?"não informado":"not filed");
+  $("#iceAlternateRisk").textContent=icing.alternate?`${icing.alternate.ident} · ${icing.alternate.status==="unknown"?"—":terminalView(icing.alternate)}`:"—";
+  $("#iceAlternateMeta").textContent=icing.alternate?.status==="unknown"?t("icingLimited"):icing.alternate?`${exposureLabel(icing.alternate.exposureMinutes)} · ${icingLabel(icing.alternate)}`:(pt?"não informado":"not filed");
   const escapeButton=$("#iceEscapeLevel"),escapeAltitude=icing.escapeAltitudeFt;
   $("#iceEscapeLabel").textContent=pt?"SAÍDA VERTICAL":"VERTICAL EXIT";
   escapeButton.querySelector("strong").textContent=Number.isFinite(escapeAltitude)?`FL${Math.round(escapeAltitude/100)}`:"—";
@@ -376,7 +394,7 @@ function renderIceModule(plan,analysis,selected) {
   escapeButton.disabled=true;
   escapeButton.onclick=null;
   const temperatureNm=temperatureSegments.reduce((sum,segment)=>sum+Math.max(0,(Number(segment.endNm)||0)-(Number(segment.startNm)||0)),0);
-  $("#iceRouteExposure").textContent=segments.length?`${temperatureSegments.length}/${segments.length} · ${number(temperatureNm,0)} NM`:"—";
+  $("#iceRouteExposure").textContent=segments.length?`${temperatureSegments.length}/${segments.length} ${pt?"frio":"cold"} · ${number(temperatureNm,0)} NM`:"—";
   $("#iceRouteLabels").innerHTML=segments.length?`<span>${escapeHtml(segments[0].from||plan.origin.icao)}</span>${segments.map((segment)=>`<span>${escapeHtml(segment.to||"—")}</span>`).join("")}`:"";
   $("#iceRouteBand").innerHTML=segments.map((segment,index)=>{
     const value=clamp(Math.round(segment.riskScore||0),0,100),available=segment.evidenceAvailable;
@@ -400,12 +418,20 @@ function renderIceModule(plan,analysis,selected) {
     {label:pt?"DESCIDA":"DESCENT",minutes:icing.descentExposureMinutes||0},
   ];
   const maxPhase=Math.max(1,...phases.map((phase)=>phase.minutes));
-  $("#iceExposureTotal").textContent=exposureLabel(icing.exposureMinutes);
-  $("#icePhaseList").innerHTML=phases.map((phase)=>`<div><span>${phase.label}</span><div><i style="width:${phase.minutes/maxPhase*100}%;background:${iceBlue(score,.28,.9)}"></i></div><strong>${exposureLabel(phase.minutes)}</strong></div>`).join("");
+  $("#iceExposureTotal").textContent=assessed?exposureLabel(icing.exposureMinutes):"—";
+  $("#icePhaseList").innerHTML=phases.map((phase)=>`<div><span>${phase.label}</span><div><i style="width:${assessed?phase.minutes/maxPhase*100:0}%;background:${iceBlue(score,.28,.9)}"></i></div><strong>${assessed?exposureLabel(phase.minutes):"—"}</strong></div>`).join("");
 
   const oats=segments.map((segment)=>segment.oatC).filter(Number.isFinite),evidenceCount=segments.filter((segment)=>segment.evidenceAvailable).length;
   const oatRange=oats.length?`${number(Math.min(...oats),0)}° a ${number(Math.max(...oats),0)}°C`:"—";
   const coverage=Math.round((icing.combinedCoverage||0)*100);
+  const phaseCoverage=icing.phaseCoverage||{};
+  const phaseCounts=["climb","cruise","descent"].map((phase)=>`${phaseCoverage[phase]?.covered||0}/${phaseCoverage[phase]?.total||0}`).join(" · ");
+  const [missingReason,missingCount]=Object.entries(icing.coverageReasons||{}).sort((a,b)=>b[1]-a[1])[0]||[];
+  const alternateCoverage=icing.alternateCoverage;
+  const alternateCounts=alternateCoverage?.total?`${alternateCoverage.assessed}/${alternateCoverage.total}`:"—";
+  const shortUtc=(value)=>Number.isFinite(value)?new Date(value).toLocaleString(pt?"pt-BR":"en-US",{timeZone:"UTC",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}):"—";
+  const firstGfsHour=state.weatherSnapshot?.gfs?.locations?.[0]?.times?.[0];
+  const timeWindow=`${shortUtc(plan.scheduledOffMs)} / ${shortUtc(firstGfsHour)}`;
   const weatherPoints=[icing.originWeather,icing.destination?.weather,icing.alternate?.weather].filter(Boolean);
   const validForecasts=weatherPoints.filter((weather)=>weather.tafValid||Number.isFinite(weather.metarAgeMinutes)&&weather.metarAgeMinutes<=PERFORMANCE.icing.metarMaximumAgeMin).length;
   const ages=weatherPoints.map((weather)=>weather.metarAgeMinutes).filter(Number.isFinite);
@@ -413,12 +439,13 @@ function renderIceModule(plan,analysis,selected) {
   const tafKinds=[...new Set(weatherPoints.flatMap((weather)=>weather.sources||[]).map((item)=>item.kind).filter((kind)=>!["metar","legacy"].includes(kind)))];
   const tafModes=tafKinds.length?tafKinds.map((kind)=>kind.replace("prob","PROB").replace("temporary",pt?"TEMPO":"TEMPO").replace("becoming","BECMG").replace("prevailing",pt?"PREDOMINANTE":"PREVAILING").toUpperCase()).join(" · "):"—";
   $("#iceEvidenceCoverage").textContent=`${coverage}%`;
-  $("#iceEvidenceList").innerHTML=`<div><span>${pt?"TEMPERATURA":"TEMPERATURE"}</span><strong>${oatRange}</strong></div><div><span>${pt?"COBERTURA COMBINADA":"COMBINED COVERAGE"}</span><strong>${coverage}%</strong></div><div><span>${pt?"EVIDÊNCIA APLICÁVEL":"APPLICABLE EVIDENCE"}</span><strong>${evidenceCount}/${segments.length||0} ${pt?"trechos":"legs"}</strong></div><div><span>${pt?"VALIDADE TERMINAL":"TERMINAL VALIDITY"}</span><strong>${validForecasts}/${weatherPoints.length||0}</strong></div><div><span>${pt?"METAR MAIS PRÓXIMO":"NEAREST METAR"}</span><strong>${Number.isFinite(freshest)?`${number(freshest,0)} min`:"—"}</strong></div><div><span>${pt?"GRUPOS TAF":"TAF GROUPS"}</span><strong>${tafModes}</strong></div><div><span>${pt?"PROTEÇÃO":"PROTECTION"}</span><strong>${pt?"NÃO INSTALADA":"NOT INSTALLED"}</strong></div><div><span>${pt?"FONTE":"SOURCE"}</span><strong>${weatherSources} · ${source}</strong></div>`;
+  $("#iceEvidenceList").innerHTML=`<div><span>${pt?"TEMPERATURA":"TEMPERATURE"}</span><strong>${oatRange}</strong></div><div><span>${pt?"COBERTURA COMBINADA":"COMBINED COVERAGE"}</span><strong>${coverage}%</strong></div><div><span>${pt?"EVIDÊNCIA APLICÁVEL":"APPLICABLE EVIDENCE"}</span><strong>${evidenceCount}/${segments.length||0} ${pt?"trechos":"legs"}</strong></div><div><span>${pt?"FASES · S / C / D":"PHASES · C / C / D"}</span><strong>${phaseCounts}</strong></div><div><span>${pt?"LACUNA PRINCIPAL":"MAIN GAP"}</span><strong>${weatherMissingLabel(missingReason,pt)}${missingCount?` (${missingCount})`:""}</strong></div><div><span>${pt?"ALTERNADO · ROTA":"ALTERNATE · ROUTE"}</span><strong>${alternateCounts}${alternateCoverage?.terminalEvidence?` · ${pt?"TAF/METAR terminal":"terminal TAF/METAR"}`:""}</strong></div><div><span>${pt?"VALIDADE TERMINAL":"TERMINAL VALIDITY"}</span><strong>${validForecasts}/${weatherPoints.length||0}</strong></div><div><span>${pt?"METAR MAIS PRÓXIMO":"NEAREST METAR"}</span><strong>${Number.isFinite(freshest)?`${number(freshest,0)} min`:"—"}</strong></div><div><span>${pt?"GRUPOS TAF":"TAF GROUPS"}</span><strong>${tafModes}</strong></div><div><span>${pt?"PROTEÇÃO":"PROTECTION"}</span><strong>${pt?"NÃO INSTALADA":"NOT INSTALLED"}</strong></div><div><span>${pt?"FONTE":"SOURCE"}</span><strong>${weatherSources}</strong></div><div><span>${pt?"OFP / GFS UTC":"OFP / GFS UTC"}</span><strong>${timeWindow}</strong></div>`;
+  $(".ice-module-grid").classList.toggle("unassessed",!assessed);
 
   const reading=score>=PERFORMANCE.icing.cautionScore?(pt?"ÍNDICE ELEVADO":"HIGH INDEX"):score>=PERFORMANCE.icing.watchScore?(pt?"ÍNDICE MODERADO":"MODERATE INDEX"):(pt?"ÍNDICE BAIXO":"LOW INDEX");
-  $("#iceCompositionLabel").textContent=reading;
-  $("#iceCompositionValue").textContent=`${number(score)}/100`;
-  $("#iceCompositionFill").style.width=`${score}%`;
+  $("#iceCompositionLabel").textContent=assessed?reading:t("icingLimited");
+  $("#iceCompositionValue").textContent=assessed?`${number(score)}/100`:"—";
+  $("#iceCompositionFill").style.width=assessed?`${score}%`:"0%";
   $("#iceCompositionFill").style.background=iceBlue(score,.36,1);
 }
 
@@ -617,6 +644,30 @@ function missionReasonIcon(code,status) {
   return ({fuel:"fuel","weight-balance":"scale","flight-profile":"area-chart",icing:"snowflake",turbulence:"waves",oxygen:"heart-pulse",alternate:"map-pinned",financial:"dollar-sign",efficiency:"gauge"})[code]||"triangle-alert";
 }
 
+function weatherDiagnosticText(mission) {
+  const pt=state.language==="pt-BR";
+  const coverage=mission?.weatherCoverage;
+  const parts=[];
+  const missing=coverage?.iceMissingReasons || {};
+  for(const [reason,count] of Object.entries(missing).sort((a,b)=>b[1]-a[1]).slice(0,2)){
+    parts.push(`${weatherMissingLabel(reason,pt)} (${count})`);
+  }
+  if(mission?.diagnosticReasons?.includes("ALTERNATE_ICE_NOT_ASSESSED"))parts.push(pt?"Alternado sem dados ICE suficientes":"Alternate icing evidence insufficient");
+  if(mission?.diagnosticReasons?.includes("ICE_SIGMET_VERTICAL_LIMIT_UNKNOWN"))parts.push(pt?"SIGMET sem limites verticais":"SIGMET vertical limits missing");
+  if(mission?.diagnosticReasons?.includes("RIDE_EVIDENCE_LIMITED"))parts.push(pt?"RIDE sem dados suficientes":"RIDE evidence insufficient");
+  if(mission?.diagnosticReasons?.includes("ALTERNATE_DISTANCE_UNKNOWN"))parts.push(pt?"Distância do alternado desconhecida":"Alternate distance unknown");
+  const sources=coverage?.sources;
+  const gfsStatus=sources?.OPEN_METEO?.status;
+  const awcStatus=sources?.AWC?.status;
+  const gfsLabel=gfsStatus==="available"?(pt?"GFS: recebido":"GFS: received")
+    :gfsStatus==="stale"?(pt?"GFS: vencido":"GFS: stale"):(pt?"GFS: indisponível":"GFS: unavailable");
+  const awcLabel=awcStatus==="available"?(pt?"AWC: atual":"AWC: current")
+    :awcStatus==="stale"?(pt?"AWC: vencido":"AWC: stale"):(pt?"AWC: indisponível":"AWC: unavailable");
+  const status=sources?[gfsLabel,awcLabel].join(" · "):"";
+  const coverageLabel=Number.isFinite(coverage?.ice)?`ICE ${Math.round(coverage.ice*100)}%`:"";
+  return [parts.join(" · ") || (pt?"Evidência meteorológica insuficiente":"Insufficient weather evidence"),coverageLabel,status].filter(Boolean).join(" · ");
+}
+
 function missionAction(score) {
   const pt=state.language==="pt-BR",code=score.reasons.find((reason)=>reason.blocking||reason.impact>=4)?.code;
   if(score.status==="unknown") return pt?"Dados insuficientes para confirmar as condições meteorológicas.":"Insufficient data to confirm weather conditions.";
@@ -632,9 +683,9 @@ function missionAction(score) {
   return pt?"Nenhum ajuste obrigatório.":"No mandatory adjustment.";
 }
 
-function renderMissionScore(result,score) {
+function renderMissionScore(result,score,mission=null) {
   const color=score.status==="viable"?"var(--green)":score.status==="marginal"?"var(--orange)":score.status==="unknown"?"var(--blue)":"var(--red)";
-  $("#missionScoreLevel").textContent=`FL${result.fl}`;
+  $("#missionScoreLevel").textContent=score.status==="unknown"?`FL${result.fl} · ${state.language==="pt-BR"?"DIAGNÓSTICO":"DIAGNOSTIC"}`:`FL${result.fl}`;
   $("#missionScoreMode").textContent=state.mode;
   $("#missionScoreValue").textContent=score.partial?"—":score.score;
   $("#missionScoreStatus").textContent=missionStatusLabel(score.status);
@@ -644,7 +695,7 @@ function renderMissionScore(result,score) {
   dial.style.setProperty("--score-color",color);
   dial.setAttribute("aria-label",score.partial?`${t("missionScore")} · ${t("weatherLimited")}`:`${t("missionScore")} ${score.score} ${state.language==="pt-BR"?"de":"of"} 100`);
   const primary=score.reasons.find((reason)=>reason.blocking||reason.impact>=4);
-  $("#missionScoreSummary").textContent=primary?missionReasonLabel(primary,result):(state.language==="pt-BR"?"Parâmetros principais dentro das margens.":"Main parameters are within margins.");
+  $("#missionScoreSummary").textContent=score.status==="unknown"?(state.language==="pt-BR"?"Gelo na rota não avaliado.":"Route icing not assessed."):primary?missionReasonLabel(primary,result):(state.language==="pt-BR"?"Parâmetros principais dentro das margens.":"Main parameters are within margins.");
   const negatives=score.reasons.filter((reason)=>reason.impact>=4||reason.code==="financial").slice(0,3).map((reason)=>({
     code:reason.code,
     label:missionReasonLabel(reason,result),
@@ -654,15 +705,16 @@ function renderMissionScore(result,score) {
   const excluded=new Set(negatives.map((item)=>item.code));
   const items=[...negatives,...missionPositiveReasons(result,excluded)].slice(0,3);
   $("#missionScoreReasons").innerHTML=items.map((item)=>`<div class="${item.status}">${iconMarkup(missionReasonIcon(item.code,item.status),"reason-icon")}<span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value||"OK")}</strong></div>`).join("");
-  $("#missionScoreAction").textContent=missionAction(score);
+  $("#missionScoreAction").textContent=score.status==="unknown"&&mission?weatherDiagnosticText(mission):missionAction(score);
 }
 
 function renderMissionStrip(result,missionScore) {
   $("#missionRiskValue").textContent=missionScore.partial?"—":`${missionScore.score}/100`;
   $("#missionRiskStatus").textContent=missionStatusLabel(missionScore.status);
   $("#missionRiskValue").dataset.status=missionScore.status;
-  $("#cruiseIcingValue").textContent=`${number(result.icing.riskScore)}/100`;
-  $("#cruiseIcingValue").setAttribute("aria-label",`${t("iceProbabilityAria")}: ${number(result.icing.riskScore)} / 100`);
+  const iceAssessed=result.icing.compatibility!=="UNKNOWN";
+  $("#cruiseIcingValue").textContent=iceAssessed?`${number(result.icing.riskScore)}/100`:"—";
+  $("#cruiseIcingValue").setAttribute("aria-label",iceAssessed?`${t("iceProbabilityAria")}: ${number(result.icing.riskScore)} / 100`:t("icingLimited"));
   $("#cruiseIcingMeta").textContent=`FL${result.fl} · ${t(result.icing.confidence==="weather"?"icingWeather":result.icing.confidence==="estimated"?"weatherEstimated":"icingLimited")}`;
   $("#rideValue").textContent=rideLabel(result.turbulence.status);
   $("#rideMeta").textContent=result.turbulence.riskScore===null?t("weatherLimited"):`${rideScoreLabel(result.turbulence)}/100`;
@@ -884,7 +936,7 @@ function render() {
     $("#proposalWb").textContent=weightBalanceLabel(selected.weightBalance.status);
     $("#proposalOxygen").textContent=oxygenLabel(selected.oxygen.status);
     const reasonText=missionScore.reasons.slice(0,2).map((reason)=>missionReasonLabel(reason,selected));
-    if(optimizedMission.status==="unknown") reasonText.push(pt?"Dados meteorológicos insuficientes":"Insufficient weather evidence");
+    if(optimizedMission.status==="unknown") reasonText.push(weatherDiagnosticText(optimizedMission));
     if(!hasSolution&&optimizedMission.status!=="unknown") reasonText.unshift(pt?"Nenhuma solução viável":"No feasible solution");
     $("#proposalReason").textContent=reasonText.join(" · ")||(`${pt?"Melhor equilíbrio no preset":"Best balance for preset"} ${state.mode}`);
     $("#proposalTerrain").textContent=pt?"Terreno e obstáculos não avaliados. Estimativa para simulador.":"Terrain and obstacles not assessed. Simulator estimate.";
@@ -904,7 +956,7 @@ function render() {
   if(document.activeElement!==$("#manualMap")) $("#manualMap").value=Number(state.powerSetting.mapInHg).toFixed(1);
   if(document.activeElement!==$("#manualRpm")) $("#manualRpm").value=String(Math.round(state.powerSetting.rpm));
   $("#kpiAltitude").textContent=hasSolution?`FL${selected.fl}`:"—"; $("#kpiLevelMeta").textContent=hasSolution?t("recommendedLevel"):optimizedMission.status==="unknown"?(state.language==="pt-BR"?"NÃO AVALIADO":"NOT ASSESSED"):(state.language==="pt-BR"?"SEM SOLUÇÃO":"NO SOLUTION"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(selected.feasibility.fuelMarginGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
-  renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore); renderOxygenPlanner(analysis); renderWeightBalance(optimizedMission.currentWeightBalance); renderRideOptimizer(optimizedMission,selected);
+  renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected); renderAlternateAdvisor(plan,alternateAdvice); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore,optimizedMission); renderOxygenPlanner(analysis); renderWeightBalance(optimizedMission.currentWeightBalance); renderRideOptimizer(optimizedMission,selected);
   $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1);
   $("#payloadOutput").textContent=formatWeight(state.payloadLb); $("#fuelOutput").textContent=formatFuel(state.fuelOnboardGal,0);
   const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight,currentWb=optimizedMission.currentWeightBalance; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(currentWb.takeoff.cgIn,2)}→${number(currentWb.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||currentWb.status==="unavailable"?"var(--red)":"";
