@@ -56,3 +56,13 @@ test("editable fields and visual cards use shared component contracts", () => {
   assert.doesNotMatch(css, /grid-template-rows:\s*auto\s+38px|\.cost-price-row\s+\.ui-unit-input\s*\{|\.wb-inputs input\s*\{/);
   assertDeclaration(css, ".ui-field > select", "appearance", "none");
 });
+
+test("mission adjustment uses body typography instead of KPI display typography", () => {
+  const secondaryRole = layout.match(/secondary:\s*'([^']+)'/)?.[1] || "";
+  const primaryRole = layout.match(/primary:\s*'([^']+)'/)?.[1] || "";
+  assert.match(secondaryRole, /#missionScoreAction/);
+  assert.doesNotMatch(primaryRole, /#missionScoreAction/);
+  assertDeclaration(css, '.app-module [data-ui-role="secondary"]', "font-size", "var(--ui-body)");
+  assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
+  assert.match(html, /js\\/layout\\.js\\?v=20261022-adjustment-typography/);
+});
