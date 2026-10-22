@@ -10,6 +10,7 @@ import { awcEvidenceAt, normalizeSigmet, parseAwcSnapshot } from "../js/weather/
 import { createWeatherSnapshot } from "../js/weather/fusion.js";
 
 const gfsRaw = JSON.parse(await readFile(new URL("./fixtures/open-meteo-gfs-2026-10-21.json", import.meta.url)));
+const awcRaw = JSON.parse(await readFile(new URL("./fixtures/awc-sigmet-2026-10-21.json", import.meta.url)));
 const start = Date.parse("2026-10-21T00:00:00Z");
 const plan = { ...DEMO_PLAN, scheduledOffMs: start, scheduledOnMs: start + 2 * 3600_000 };
 const input = { plan, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 77, reserveMinutes: 45,
@@ -73,6 +74,15 @@ test("AWC official SIGMET applies only inside polygon, valid interval and altitu
   assert.equal(awcEvidenceAt(snapshot, { ...inside, timestampMs: start + 5 * 3600_000 }).length, 0);
   assert.equal(parseAwcSnapshot(raw, start + 3 * 3600_000).status, "stale");
   assert.equal(normalizeSigmet({ validTimeFrom: "bad", validTimeTo: "bad" }), null);
+});
+
+test("a real AWC volcanic-ash SIGMET remains unrelated to ICE and RIDE", () => {
+  const generatedAtMs = Date.parse(awcRaw.generatedAt);
+  const snapshot = parseAwcSnapshot(awcRaw, generatedAtMs + 60_000);
+  assert.equal(snapshot.status, "available");
+  assert.ok(snapshot.sigmets.length >= 1);
+  assert.ok(snapshot.sigmets.every((item) => item.phenomenon === "OTHER" && item.polygon.length >= 3));
+  assert.equal(snapshot.sigmets[0].topFt, 14000);
 });
 
 test("4D profile conserves phase distance and time and uses destination elevation", () => {

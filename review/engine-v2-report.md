@@ -75,7 +75,7 @@ Saída completa reproduzível: [`engine-v2-scenarios.json`](engine-v2-scenarios.
 
 ## 12. Testes
 
-`npm test`: 98 testes passando, incluindo propriedades físicas, calibração K1/K2, contrato GFS com fixture real, SIGMET AWC com fixture real, trajetória, bloqueios e ausência de solução. `npm run lint:css`: 834 regras, 2615 declarações, zero problemas. `npm run validate:missions`: onze cenários passando. `npm run audit:browser:v2`: 339 estados em oito larguras, sem falhas, com 46 capturas; dados detalhados no JSON de auditoria. `npm run verify:weather-live`: verificação opcional de rede, sem polling de SimBrief quando o identificador não é fornecido. O registro da última consulta está em [`engine-v2-live-verification.log`](engine-v2-live-verification.log): GFS e AWC upstream verificados; snapshot publicado HTTP 404.
+`npm test`: 99 testes passando, incluindo propriedades físicas, calibração K1/K2, contrato GFS com fixture real, SIGMET AWC com fixture real, trajetória, bloqueios e ausência de solução. `npm run lint:css`: 834 regras, 2615 declarações, zero problemas. `npm run validate:missions`: onze cenários passando. `npm run audit:browser:v2`: 339 estados em oito larguras, sem falhas, com 46 capturas; dados detalhados no JSON de auditoria. `npm run verify:weather-live`: verificação opcional de rede, sem polling de SimBrief quando o identificador não é fornecido. O registro da última consulta está em [`engine-v2-live-verification.log`](engine-v2-live-verification.log): GFS e AWC upstream verificados; snapshot publicado HTTP 404.
 
 ## 13. Evidência em navegador
 
