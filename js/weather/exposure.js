@@ -84,6 +84,10 @@ export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot 
     : riskScore >= PERFORMANCE.icing.watchScore ? "watch" : "low";
   const coverage = trajectory.samples.length ? covered / trajectory.samples.length : 0;
   const modelAvailable = covered > 0;
+  // A terminal TAF cannot establish moisture coverage for an unobserved
+  // climb, cruise, descent, or diversion corridor.
+  const routePhaseUnassessed = Object.values(phaseCoverage)
+    .some(({ covered: phaseCovered, total }) => total > 0 && phaseCovered === 0);
   // terminalWeatherAtTime returns {sources, tafValid, metarAgeMinutes}, not metar/taf.
   // Validity has already been applied to sources. Never treat a raw outdated bulletin as evidence.
   const alternateTerminalWeather = baseline.alternate?.weather;
@@ -91,11 +95,12 @@ export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot 
     && alternateTerminalWeather.sources.some((source) => ["metar", "legacy", "prevailing", "temporary", "becoming", "probability", "prob", "tempo"].includes(source.kind)
       || Boolean(source.text) && source.weight > 0);
   const alternateCoverageInsufficient = Boolean(alternateAirport && trajectory.alternateSamples?.length
-    && !alternateAssessed.length && !alternateEvidence.length && !validAlternateTerminalEvidence);
-  const compatibility = blocking ? "INCOMPATIBLE" : unresolvedVertical || alternateCoverageInsufficient || !modelAvailable && baseline.confidence === "limited" ? "UNKNOWN"
+    && !alternateAssessed.length && !alternateEvidence.length);
+  const compatibility = blocking ? "INCOMPATIBLE" : unresolvedVertical || alternateCoverageInsufficient || routePhaseUnassessed
+    || !modelAvailable && baseline.confidence === "limited" ? "UNKNOWN"
     : status === "low" ? "LOW_EXPOSURE_ESTIMATED" : "CAUTION";
   return { ...baseline, status, riskScore, compatibility, blocking,
-    confidence: modelAvailable ? "estimated" : baseline.confidence,
+    confidence: routePhaseUnassessed ? "limited" : modelAvailable ? "estimated" : baseline.confidence,
     coverage, phaseCoverage, coverageReasons, alternateCoverage: { assessed: alternateAssessed.length, total: alternatePoints.length, terminalEvidence: Boolean(validAlternateTerminalEvidence) }, combinedCoverage: Math.max(coverage, baseline.combinedCoverage || 0),
     exposureMinutes: Math.max(baseline.exposureMinutes || 0, Object.values(byPhase).reduce((a, b) => a + b, 0)),
     climbExposureMinutes: Math.max(baseline.climbExposureMinutes || 0, byPhase.climb),
@@ -112,6 +117,7 @@ export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot 
       weather: baseline.alternate?.weather || null, evidence: alternateEvidence } : baseline.alternate,
     trajectoryEvidence: [...assessments.filter((sample) => sample.evidence.length).flatMap((sample) => sample.evidence), ...alternateEvidence],
     limitations: [coverage < 1 ? "ICE_PARTIAL_COVERAGE" : null,
+      routePhaseUnassessed ? "ICE_ROUTE_PHASE_NOT_ASSESSED" : null,
       alternateCoverageInsufficient ? "ALTERNATE_ICE_NOT_ASSESSED" : null,
       unresolvedVertical ? "ICE_SIGMET_VERTICAL_LIMIT_UNKNOWN" : null,
       "NUMERICAL_CLOUD_AND_HUMIDITY_DO_NOT_CONFIRM_SUPERCOOLED_LIQUID_WATER"].filter(Boolean) };

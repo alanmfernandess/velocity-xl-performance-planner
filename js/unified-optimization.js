@@ -7,7 +7,7 @@ import {
 import { buildTrajectory } from "./trajectory.js";
 import { sampleGfs } from "./weather/open-meteo.js";
 import { createWeatherSnapshot } from "./weather/fusion.js";
-import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js";
+import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261022-01";
 import { scoreMissionV2 } from "./mission-score-v2.js";
 
 const STATUS_RANK = { viable: 0, marginal: 1, unknown: 2, "not-viable": 3 };

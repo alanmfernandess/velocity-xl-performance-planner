@@ -3306,6 +3306,12 @@ select:focus-visible {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+.ice-module-grid.unassessed {
+  grid-template-columns: minmax(0,1fr);
+}
+.ice-module-grid.unassessed>section:first-child {
+  display: none;
+}
 .ice-phase-list {
   display: grid;
   gap: 9px;

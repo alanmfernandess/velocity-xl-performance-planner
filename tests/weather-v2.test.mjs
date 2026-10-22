@@ -171,6 +171,34 @@ test("GFS available does not imply applicable coverage at the flight time or alt
   assert.equal(gfsSampleStatus({ status: "unavailable" }, point), "PROVIDER_UNAVAILABLE");
 });
 
+test("an expired OFP cannot receive an ICE score from a current GFS download or terminal TAF", () => {
+  const locations = parseGfsResponse(gfsRaw.map((location, index) => ({ ...location,
+    latitude: index ? DEMO_PLAN.destination.lat : DEMO_PLAN.origin.lat,
+    longitude: index ? DEMO_PLAN.destination.lon : DEMO_PLAN.origin.lon })), 2);
+  const scheduledOffMs = locations[0].times[0] - 115 * 60_000;
+  const historicPlan = { ...plan, scheduledOffMs, scheduledOnMs: scheduledOffMs + 47 * 60_000,
+    meteorology: { alternate: {
+      metar: "SBRJ 202200Z 08010KT 9999 BKN040 03/M02 Q0992",
+      taf: "SBRJ 201800Z 2020/2106 08010KT 9999 SCT017 BKN040",
+    } } };
+  const weatherSnapshot = createWeatherSnapshot(historicPlan, { gfs: { status: "available", locations } });
+  const mission = optimizeMission({ ...input, plan: historicPlan, weatherSnapshot });
+  assert.equal(mission.weatherCoverage.sources.OPEN_METEO.status, "available");
+  assert.equal(mission.status, "unknown");
+  assert.equal(mission.viabilityStatus, "UNKNOWN");
+  assert.equal(mission.missionScore.partial, true);
+  assert.equal(mission.diagnostic.result.icing.coverage, 0);
+  assert.equal(mission.diagnostic.result.icing.coverageReasons.OUTSIDE_FORECAST_WINDOW,
+    mission.diagnostic.result.trajectory.samples.length);
+  assert.ok(Object.values(mission.weatherCoverage.icePhases).every((phase) => phase.total > 0 && phase.covered === 0));
+  assert.equal(mission.diagnostic.result.icing.alternateCoverage.terminalEvidence, true);
+  assert.equal(mission.diagnostic.result.icing.alternateCoverage.assessed, 0);
+  assert.equal(mission.diagnostic.result.icing.alternate.status, "unknown");
+  assert.ok(mission.diagnosticReasons.includes("ALTERNATE_ICE_NOT_ASSESSED"));
+  assert.ok(mission.candidates.filter((candidate) => !candidate.physicalBlockers.length)
+    .every((candidate) => candidate.status === "unknown"));
+});
+
 test("unknown ICE exposure reports actual missing-weather causes without manufacturing a score", () => {
   const mission = optimizeMission({ ...input, weatherSnapshot: createWeatherSnapshot(plan) });
   assert.equal(mission.viabilityStatus, "UNKNOWN");
