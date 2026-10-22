@@ -3,10 +3,13 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { PRESSURE_LEVELS } from '../js/weather/open-meteo.js';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const baselineIndex = process.argv.indexOf('--baseline');
 const baseline = baselineIndex >= 0;
+const engineV2 = process.argv.includes('--engine-v2');
+const afterFolder = engineV2 ? 'engine-v2' : 'definitive-after';
 const root = baseline ? path.resolve(process.argv[baselineIndex + 1]) : projectRoot;
 const output = path.join(projectRoot, 'review');
 const widths = [320, 375, 390, 430, 768, 1024, 1440, 1920];
@@ -44,6 +47,26 @@ const fixture = {
     ],
   })),
 };
+function gfsFixture(url) {
+  const params = new URL(url).searchParams;
+  const latitudes = params.get('latitude').split(',').map(Number);
+  const longitudes = params.get('longitude').split(',').map(Number);
+  const times = Array.from({ length: 48 }, (_, index) => `2026-10-${index < 24 ? '21' : '22'}T${String(index % 24).padStart(2, '0')}:00`);
+  const hourlyUnits = { time: 'iso8601', cape: 'J/kg', freezing_level_height: 'm', precipitation: 'mm', cloud_cover: '%' };
+  const hourly = { time: times, cape: times.map(() => 0), freezing_level_height: times.map(() => 3000),
+    precipitation: times.map(() => 0), cloud_cover: times.map(() => 0) };
+  for (const level of PRESSURE_LEVELS) {
+    const metres = 44330 * (1 - (level / 1013.25) ** .1903);
+    const fields = { temperature: [15 - .0065 * metres, '°C'], relative_humidity: [25, '%'], cloud_cover: [0, '%'],
+      wind_speed: [20, 'kn'], wind_direction: [240, '°'], vertical_velocity: [0, 'm/s'], geopotential_height: [metres, 'm'] };
+    for (const [field, [value, unit]] of Object.entries(fields)) {
+      const name = `${field}_${level}hPa`;
+      hourlyUnits[name] = unit;
+      hourly[name] = times.map(() => value);
+    }
+  }
+  return latitudes.map((latitude, index) => ({ latitude, longitude: longitudes[index], hourly_units: hourlyUnits, hourly }));
+}
 const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer(async (request, response) => {
   const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
@@ -60,7 +83,7 @@ const browser = await chromium.launch({ headless: true });
 const report = {
   generatedAt: new Date().toISOString(),
   browser: await browser.version(),
-  fixture: 'Synthetic 18-waypoint OFP; all values illustrative; no SimBrief network call',
+  fixture: 'Synthetic 18-waypoint OFP and synthetic clear GFS/AWC responses; all values illustrative; no live API call',
   widths, modules, states: [], screenshots: [], errors: [], selectorCoverage: {},
   typography: [], negativeChecks: [],
 };
@@ -128,7 +151,7 @@ const activate = async (page, area, module) => {
 const screenshot = async (page, width, area, module) => {
   const device = captureWidths.get(width);
   if (!device) return;
-  const folder = baseline ? 'definitive-before' : 'definitive-after';
+  const folder = baseline ? 'definitive-before' : afterFolder;
   const name = `${device}-${area}-${module}.png`;
   const file = path.join(output, folder, name);
   await fs.mkdir(path.dirname(file), { recursive: true });
@@ -143,10 +166,16 @@ const screenshot = async (page, width, area, module) => {
 
 try {
   for (const width of widths) {
+    let awcMode = 'clear';
     const context = await browser.newContext({ viewport: { width, height: width <= 430 ? 844 : width === 768 ? 1024 : 900 }, deviceScaleFactor: 1 });
     const page = await context.newPage();
     page.on('pageerror', error => report.errors.push({ label: `${width}px`, pageError: error.message }));
     await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
+    await page.route('**/v1/gfs?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gfsFixture(route.request().url())) }));
+    await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ generatedAt: new Date().toISOString(), sigmets: awcMode === 'ice' ? [{ hazard: 'ICE',
+        validTimeFrom: Date.parse('2026-10-21T11:00:00Z') / 1000, validTimeTo: Date.parse('2026-10-21T16:00:00Z') / 1000,
+        base: 5000, top: 12000, coords: [{ lat: -24, lon: -47 }, { lat: -24, lon: -42 }, { lat: -22, lon: -42 }, { lat: -22, lon: -47 }] }] : [], pireps: [] }) }));
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.VelocityLayout);
     await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
@@ -183,13 +212,14 @@ try {
     if (focusShadow === 'none') report.errors.push({ label: `${width}px focus`, issues: ['Pilot ID focus indication is missing'] });
     if (!baseline) await audit(page, `${width}px no OFP`);
     if (width === 1440 && !baseline) {
-      await fs.mkdir(path.join(output, 'definitive-after'), { recursive: true });
-      await page.screenshot({ path: path.join(output, 'definitive-after', 'desktop-no-ofp.png'), animations: 'disabled' });
-      report.screenshots.push('definitive-after/desktop-no-ofp.png');
+      await fs.mkdir(path.join(output, afterFolder), { recursive: true });
+      await page.screenshot({ path: path.join(output, afterFolder, 'desktop-no-ofp.png'), animations: 'disabled' });
+      report.screenshots.push(`${afterFolder}/desktop-no-ofp.png`);
     }
     await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
     await page.locator('#importLatest').click();
     await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
+    await page.waitForFunction(() => document.querySelector('#missionRiskValue')?.textContent !== '—', { timeout: 10000 });
     if (width === 390 && !baseline) {
       await activate(page, 'flight', 'calibration');
       await page.locator('#observedTas').focus();
@@ -341,8 +371,8 @@ try {
     if (width === 390) {
       await page.locator('#toast').evaluate(element => { element.textContent = 'A very long alert about weather, available oxygen and fuel margin across the route, used solely to check line wrapping in the visual audit.'; element.classList.add('show'); });
       await audit(page, `${width}px long alert`);
-      await page.screenshot({ path: path.join(output, 'definitive-after', 'mobile-long-alert.png'), animations: 'disabled' });
-      report.screenshots.push('definitive-after/mobile-long-alert.png');
+      await page.screenshot({ path: path.join(output, afterFolder, 'mobile-long-alert.png'), animations: 'disabled' });
+      report.screenshots.push(`${afterFolder}/mobile-long-alert.png`);
       await activate(page, 'flight', 'calibration');
       const bottomClearance = await page.evaluate(() => {
         document.documentElement.style.scrollBehavior = 'auto';
@@ -357,8 +387,8 @@ try {
       await page.locator('[data-language="pt-BR"]').click();
       await page.locator('[data-fuel-unit="gal"]').click();
       await page.locator('#resetCalibration').scrollIntoViewIfNeeded();
-      await page.screenshot({ path: path.join(output, 'definitive-after', 'mobile-flight-calibration-bottom.png'), animations: 'disabled' });
-      report.screenshots.push('definitive-after/mobile-flight-calibration-bottom.png');
+      await page.screenshot({ path: path.join(output, afterFolder, 'mobile-flight-calibration-bottom.png'), animations: 'disabled' });
+      report.screenshots.push(`${afterFolder}/mobile-flight-calibration-bottom.png`);
     }
     if (width === 1440) {
       const coverage = await page.evaluate(() => {
@@ -387,13 +417,55 @@ try {
         if (!calibration?.reference) report.errors.push({ label: 'calibration regression', issues: ['valid TAS/GPH observation was not stored'] });
       } else report.errors.push({ label: 'calibration regression', issues: ['calibration remained disabled after a complete update'] });
     }
+    if (engineV2 && [390, 1440].includes(width)) {
+      awcMode = 'ice';
+      await page.locator('#importLatest').click();
+      await page.waitForFunction(() => document.querySelector('#kpiAltitude')?.textContent === '—');
+      await activate(page, 'planning', 'optimize');
+      await audit(page, `${width}px EN-US KG/L A planning:optimize no feasible FL`);
+      if (await page.locator('#applyMissionProposal').isEnabled())
+        report.errors.push({ label: `${width}px no solution`, issues: ['an incompatible mission can still be applied'] });
+      const file = `${width === 390 ? 'mobile' : 'desktop'}-icing-no-solution.png`;
+      await page.screenshot({ path: path.join(output, afterFolder, file), animations: 'disabled' });
+      report.screenshots.push(`${afterFolder}/${file}`);
+    }
     await context.close();
+  }
+  if (engineV2) {
+    for (const [width, mode] of [[390, 'partial'], [390, 'offline'], [1440, 'offline']]) {
+      const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 } });
+      const page = await context.newPage();
+      page.on('pageerror', error => report.errors.push({ label: `${width}px ${mode}`, pageError: error.message }));
+      await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
+      await page.route('**/v1/gfs?**', route => mode === 'offline' ? route.fulfill({ status: 503, body: 'unavailable' })
+        : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gfsFixture(route.request().url())) }));
+      await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status: 404, body: 'unavailable' }));
+      await page.goto(base, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => !!window.VelocityLayout);
+      await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
+      await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
+      await page.locator('#importLatest').click();
+      await page.waitForTimeout(mode === 'offline' ? 1800 : 500);
+      await activate(page, 'planning', 'optimize');
+      await page.locator('#optimizeMission').click();
+      await audit(page, `${width}px ${mode} weather planning:optimize`);
+      if (mode === 'offline' && (await page.locator('#kpiAltitude').textContent())?.trim() !== '—')
+        report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather appears as a recommended FL'] });
+      if (mode === 'offline' && (await page.locator('#missionRiskValue').textContent())?.trim() !== '—')
+        report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather appears as a numeric mission score'] });
+      if (mode === 'offline' && await page.locator('#applyMissionProposal').isEnabled())
+        report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather proposal can be applied'] });
+      const name = `${width === 390 ? 'mobile' : 'desktop'}-${mode}-weather.png`;
+      await page.screenshot({ path: path.join(output, afterFolder, name), animations: 'disabled' });
+      report.screenshots.push(`${afterFolder}/${name}`);
+      await context.close();
+    }
   }
 } finally {
   await browser.close();
   server.close();
 }
 
-await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
+await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'engine-v2-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
 if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;

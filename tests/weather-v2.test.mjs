@@ -28,6 +28,11 @@ test("real GFS response shape preserves units, pressure height and missing cover
   assert.throws(() => parseGfsResponse([{ ...gfsRaw[0], hourly_units: { ...gfsRaw[0].hourly_units, geopotential_height_500hPa: "ft" } }], 1), /unit/);
 });
 
+test("weather snapshot retains the OFP identity across otherwise identical plans", () => {
+  assert.notEqual(createWeatherSnapshot({ ...plan, ofpId: "ONE" }).ofpKey,
+    createWeatherSnapshot({ ...plan, ofpId: "TWO" }).ofpKey);
+});
+
 test("GFS queries locations together and never one request per FL", () => {
   const points = representativePoints(plan);
   const url = buildGfsUrl(points);

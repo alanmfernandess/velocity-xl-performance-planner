@@ -20,9 +20,13 @@ A interface mantém quatro áreas: **Missão** (resultado e score), **Planejamen
 
 O combustível recomendado resolve iterativamente o efeito do próprio combustível no peso e na performance, visando a margem configurada em `js/config.js`, até o limite utilizável. Se não houver solução viável, o estado permanece **INVIÁVEL**. Se faltarem evidências meteorológicas essenciais, o estado é **NÃO AVALIADO**, mesmo com pontuação numérica alta. O terreno e os obstáculos são sempre identificados como não avaliados.
 
+Na versão 2.0, os nove FLs compartilham um único snapshot de **SimBrief, Open-Meteo GFS e AWC**. O GFS fornece temperatura, vento, umidade e nuvens por níveis reais de altura geopotencial; o AWC fornece SIGMET e PIREP publicados por um workflow do GitHub. A trajetória estimada amostra subida, cruzeiro, descida e desvio ao alternado. ICE e RIDE são avaliados ao longo dessas amostras, inclusive quando uma camada crítica é atravessada antes do cruzeiro. Um SIGMET relevante pode impedir a recomendação; indicadores numéricos de gelo e turbulência continuam sendo estimativas, não observações diretas nem certificação.
+
+O AWC não oferece CORS para a aplicação estática. O arquivo [`.github/workflows/awc-snapshot.yml`](.github/workflows/awc-snapshot.yml) publica o snapshot na branch `weather-snapshots`. **A atualização agendada só passa a funcionar após o workflow ser incorporado à branch padrão.** Antes disso, o aplicativo mostra a fonte AWC como indisponível e utiliza as demais evidências. A branch `feature/unified-mission-engine-v2` não altera o site público nem a `main`.
+
 O perfil estimado possui, para cada fase, MAP, RPM, potência estimada, duração, distância e consumo. TAS, GS e fuel flow de cruzeiro são calculados com altitude, temperatura, peso, potência e vento por trecho. Subida e descida usam hipóteses de fase centralizadas em `js/config.js`; a fonte técnica não fornece uma tabela completa de MAP/RPM por preset e fase. Por isso, os presets diferenciam principalmente o cruzeiro, enquanto as hipóteses comuns de subida e descida permanecem explícitas. Não apresentamos essas hipóteses como tabela de performance certificada.
 
-O **Mission Score** parte de 100 e desconta margem de combustível, limites de perfil, W&B, oxigênio, ICE, RIDE, alternado, eficiência e custo quando houver preço. Motivos e impactos acompanham o resultado. Restrições impeditivas limitam a pontuação a 39; o status operacional também considera condições marginais e falta de evidência, independentemente do número. MORA e Confidence Envelope não entram na fórmula.
+O **Mission Score 2.0** parte de 100 e desconta penalidades com pesos máximos: ICE 35, RIDE 20, combustível 15, performance 10, W&B 5, oxigênio 5, alternado 5 e eficiência/custo 5. Elegibilidade é avaliada antes do score: uma restrição impeditiva não pode ser compensada por uma boa pontuação. Se uma dimensão essencial não for avaliada, o score exibido fica indeterminado. MORA e Confidence Envelope não entram na fórmula.
 
 ## Calibração
 
@@ -35,7 +39,7 @@ Os fatores têm limites matemáticos em `js/config.js`, ficam salvos no `localSt
 
 ## Limitações dos módulos
 
-- **ICE/RIDE:** índices heurísticos extraídos da evidência do OFP; dados ausentes permanecem desconhecidos. O índice de gelo não é probabilidade certificada.
+- **ICE/RIDE:** índices heurísticos combinam evidência do OFP, previsão GFS e avisos AWC quando disponíveis. Dados ausentes permanecem desconhecidos. O índice de gelo não é probabilidade certificada; gradiente de vento não equivale a EDR observado. A unidade do campo `shear` do SimBrief não foi confirmada e ele não provoca bloqueio severo no motor 2.0.
 - **ETP/PNR:** integra ventos e tempos por trecho quando o navlog fornece coordenadas e distâncias; lacunas usam a média da rota. Reserva, subida, descida e consumo estimado participam do PNR.
 - **GLIDE:** alcance e tempo teóricos. Altitude MSL não indica altura livre sobre o terreno; nenhum local de pouso é classificado como seguro.
 - **Alternado/desvio:** requer coordenadas ou distância utilizável; estima tempo, combustível e margem no pouso.
@@ -55,15 +59,20 @@ Abra `http://localhost:4173/`. Para executar a suíte e as verificações visuai
 npm test
 npm run lint:css
 npm run audit:browser
+npm run audit:browser:v2
+npm run validate:missions
+npm run verify:weather-live
 ```
 
-A auditoria de navegador usa um OFP **sintético**, com números ilustrativos, em 320, 375, 390, 430, 768, 1024, 1440 e 1920 px. As capturas e o relatório ficam em `review/`.
+A auditoria de navegador usa um OFP **sintético**, com números ilustrativos, em 320, 375, 390, 430, 768, 1024, 1440 e 1920 px. As capturas e o relatório ficam em `review/`. A verificação de rede é opcional e controlada: não consulta SimBrief sem `SIMBRIEF_PILOT_ID`, para evitar polling não autorizado. O relatório detalhado está em [`review/engine-v2-report.md`](review/engine-v2-report.md).
 
 ## Fontes técnicas
 
 - [SimBrief — Fetching a User's Latest OFP Data](https://developers.navigraph.com/docs/simbrief/fetching-ofp-data)
 - [Navigraph — formato JSON v2 do fetcher](https://forum.navigraph.com/t/fetching-a-users-latest-ofp-data/5297)
 - [Black Square Velocity XL User Guide](https://downloads.justflight.com/products/JFF003720/BKSQ_VelocityManual.pdf)
+- [Open-Meteo GFS API](https://open-meteo.com/en/docs/gfs-api)
+- [Aviation Weather Center API](https://aviationweather.gov/data/api/)
 
 O manual documenta os limites do motor e procedimentos gerais; os coeficientes de TAS, consumo e fases do aplicativo são estimativas configuráveis em `js/config.js`. Os dados de performance de uma aeronave experimental específica devem ser calibrados no simulador, pois esta aplicação não possui telemetria.
 

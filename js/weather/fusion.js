@@ -9,7 +9,7 @@ const nearestFix = (plan, point) => (plan.waypoints || [])
 /** A reproducible, immutable snapshot for all nine candidates. */
 export function createWeatherSnapshot(plan, { gfs = null, awc = null, errors = [] } = {}) {
   const gfsReady = gfs?.status === "available", awcReady = awc?.status === "available";
-  return { ofpKey: `${plan?.generatedAtMs || "unknown"}:${plan?.origin?.icao}:${plan?.destination?.icao}`,
+  return { ofpKey: `${plan?.ofpId || "unknown"}:${plan?.generatedAtMs || "unknown"}:${plan?.origin?.icao}:${plan?.destination?.icao}`,
     status: gfsReady && awcReady ? "FULL_WEATHER" : gfsReady || awcReady ? "PARTIAL_WEATHER" : "SIMBRIEF_ONLY",
     sources: { SIMBRIEF: { status: "available", generatedAtMs: plan?.generatedAtMs ?? null },
       OPEN_METEO: { status: gfs?.status || "unavailable", fetchedAtMs: gfs?.fetchedAtMs ?? null, model: gfs?.model || null },

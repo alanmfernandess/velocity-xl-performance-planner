@@ -1,0 +1,24 @@
+
+> velocity-xl-performance-planner@1.0.0 verify:weather-live
+> node scripts/verify-weather-live.mjs
+
+{
+  "OPEN_METEO": {
+    "status": "VERIFIED",
+    "locations": 2,
+    "validAt": "2026-10-22T00:00:00.000Z",
+    "altitudeFt": 18000
+  },
+  "AWC_UPSTREAM": {
+    "status": "VERIFIED",
+    "sigmets": 137
+  },
+  "AWC_PUBLISHED": {
+    "status": "NOT_VERIFIED",
+    "reason": "HTTP_404"
+  },
+  "SIMBRIEF": {
+    "status": "NOT_VERIFIED",
+    "reason": "Pilot ID not provided; no automatic polling"
+  }
+}

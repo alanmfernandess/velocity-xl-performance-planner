@@ -1,0 +1,808 @@
+{
+  "generatedAt": "2026-10-22T18:27:23.061Z",
+  "fixture": "Deterministic synthetic weather and OFP data, illustrative and never used in production",
+  "results": [
+    {
+      "scenario": "short-clear",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": 140,
+      "exploratoryFl": null,
+      "viability": "ELIGIBLE",
+      "status": "viable",
+      "eteMinutes": 54,
+      "fuelGal": 30.62,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 100,
+      "reasons": [],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "long-headwind",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [
+        {
+          "fl": 100,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 120,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 140,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 160,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 180,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 200,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "OXYGEN",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 220,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "OXYGEN",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 240,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "OXYGEN",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 250,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "OXYGEN",
+            "ALTERNATE"
+          ]
+        }
+      ],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": null,
+      "exploratoryFl": null,
+      "viability": "NO_FEASIBLE_SOLUTION",
+      "status": "not-viable",
+      "eteMinutes": 278,
+      "fuelGal": 102.25,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 67,
+      "reasons": [
+        {
+          "code": "FUEL_CAPACITY",
+          "type": "constraint"
+        },
+        {
+          "code": "FUEL",
+          "type": "constraint"
+        },
+        {
+          "code": "ALTERNATE",
+          "type": "constraint"
+        },
+        {
+          "code": "fuel",
+          "impact": 15,
+          "type": "score"
+        },
+        {
+          "code": "alternate",
+          "impact": 5,
+          "type": "score"
+        },
+        {
+          "code": "performance",
+          "impact": 10,
+          "type": "score"
+        }
+      ],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "long-tailwind",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [
+        {
+          "fl": 220,
+          "reasons": [
+            "OXYGEN"
+          ]
+        },
+        {
+          "fl": 240,
+          "reasons": [
+            "OXYGEN"
+          ]
+        },
+        {
+          "fl": 250,
+          "reasons": [
+            "OXYGEN"
+          ]
+        }
+      ],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": 180,
+      "exploratoryFl": null,
+      "viability": "MARGINAL",
+      "status": "marginal",
+      "eteMinutes": 186,
+      "fuelGal": 72.89,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 97,
+      "reasons": [
+        {
+          "code": "weight-balance",
+          "impact": 3,
+          "type": "score"
+        }
+      ],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "midlevel-icing",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": 140,
+      "exploratoryFl": null,
+      "viability": "ELIGIBLE",
+      "status": "viable",
+      "eteMinutes": 84,
+      "fuelGal": 40.1,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 100,
+      "reasons": [],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "climb-icing-sigmet",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [
+        {
+          "fl": 100,
+          "reasons": [
+            "ICE"
+          ]
+        },
+        {
+          "fl": 120,
+          "reasons": [
+            "ICE"
+          ]
+        },
+        {
+          "fl": 140,
+          "reasons": [
+            "ICE"
+          ]
+        },
+        {
+          "fl": 160,
+          "reasons": [
+            "ICE"
+          ]
+        },
+        {
+          "fl": 180,
+          "reasons": [
+            "ICE"
+          ]
+        },
+        {
+          "fl": 200,
+          "reasons": [
+            "ICE"
+          ]
+        },
+        {
+          "fl": 220,
+          "reasons": [
+            "ICE"
+          ]
+        },
+        {
+          "fl": 240,
+          "reasons": [
+            "ICE"
+          ]
+        },
+        {
+          "fl": 250,
+          "reasons": [
+            "ICE"
+          ]
+        }
+      ],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": null,
+      "exploratoryFl": null,
+      "viability": "NO_FEASIBLE_SOLUTION",
+      "status": "not-viable",
+      "eteMinutes": 84,
+      "fuelGal": 40.16,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "INCOMPATIBLE",
+        "index": 100
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 65,
+      "reasons": [
+        {
+          "code": "ICE",
+          "type": "constraint"
+        },
+        {
+          "code": "icing",
+          "impact": 35,
+          "type": "score"
+        }
+      ],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "moderate-ride",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": 120,
+      "exploratoryFl": null,
+      "viability": "ELIGIBLE",
+      "status": "viable",
+      "eteMinutes": 84,
+      "fuelGal": 40.12,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "light",
+        "index": 20
+      },
+      "score": 96,
+      "reasons": [
+        {
+          "code": "turbulence",
+          "impact": 4,
+          "type": "score"
+        }
+      ],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "severe-ride-sigmet",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [
+        {
+          "fl": 200,
+          "reasons": [
+            "RIDE"
+          ]
+        },
+        {
+          "fl": 220,
+          "reasons": [
+            "RIDE"
+          ]
+        },
+        {
+          "fl": 240,
+          "reasons": [
+            "RIDE"
+          ]
+        },
+        {
+          "fl": 250,
+          "reasons": [
+            "RIDE"
+          ]
+        }
+      ],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": 140,
+      "exploratoryFl": null,
+      "viability": "ELIGIBLE",
+      "status": "viable",
+      "eteMinutes": 84,
+      "fuelGal": 40.1,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 100,
+      "reasons": [],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "weather-insufficient",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [],
+      "weatherMode": "SIMBRIEF_ONLY",
+      "selectedFl": null,
+      "exploratoryFl": 160,
+      "viability": "UNKNOWN",
+      "status": "unknown",
+      "eteMinutes": 84,
+      "fuelGal": 40.16,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "UNKNOWN",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": null,
+      "reasons": [
+        {
+          "code": "WEATHER_EVIDENCE",
+          "type": "limitation"
+        }
+      ],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED",
+        "ICE_EVIDENCE_LIMITED"
+      ]
+    },
+    {
+      "scenario": "fuel-capacity",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [
+        {
+          "fl": 100,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 120,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 140,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 160,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 180,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 200,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "OXYGEN",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 220,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "OXYGEN",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 240,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "OXYGEN",
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 250,
+          "reasons": [
+            "FUEL_CAPACITY",
+            "FUEL",
+            "OXYGEN",
+            "ALTERNATE"
+          ]
+        }
+      ],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": null,
+      "exploratoryFl": null,
+      "viability": "NO_FEASIBLE_SOLUTION",
+      "status": "not-viable",
+      "eteMinutes": 371,
+      "fuelGal": 132.08,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 67,
+      "reasons": [
+        {
+          "code": "FUEL_CAPACITY",
+          "type": "constraint"
+        },
+        {
+          "code": "FUEL",
+          "type": "constraint"
+        },
+        {
+          "code": "ALTERNATE",
+          "type": "constraint"
+        },
+        {
+          "code": "fuel",
+          "impact": 15,
+          "type": "score"
+        },
+        {
+          "code": "alternate",
+          "impact": 5,
+          "type": "score"
+        },
+        {
+          "code": "performance",
+          "impact": 10,
+          "type": "score"
+        }
+      ],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "weight-incompatible",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [
+        {
+          "fl": 100,
+          "reasons": [
+            "WEIGHT"
+          ]
+        },
+        {
+          "fl": 120,
+          "reasons": [
+            "WEIGHT"
+          ]
+        },
+        {
+          "fl": 140,
+          "reasons": [
+            "WEIGHT"
+          ]
+        },
+        {
+          "fl": 160,
+          "reasons": [
+            "WEIGHT"
+          ]
+        },
+        {
+          "fl": 180,
+          "reasons": [
+            "WEIGHT"
+          ]
+        },
+        {
+          "fl": 200,
+          "reasons": [
+            "WEIGHT"
+          ]
+        },
+        {
+          "fl": 220,
+          "reasons": [
+            "WEIGHT"
+          ]
+        },
+        {
+          "fl": 240,
+          "reasons": [
+            "WEIGHT"
+          ]
+        },
+        {
+          "fl": 250,
+          "reasons": [
+            "WEIGHT"
+          ]
+        }
+      ],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": null,
+      "exploratoryFl": null,
+      "viability": "NO_FEASIBLE_SOLUTION",
+      "status": "not-viable",
+      "eteMinutes": 88,
+      "fuelGal": 43.84,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 84,
+      "reasons": [
+        {
+          "code": "WEIGHT",
+          "type": "constraint"
+        },
+        {
+          "code": "weight-balance",
+          "impact": 5,
+          "type": "score"
+        },
+        {
+          "code": "performance",
+          "impact": 10,
+          "type": "score"
+        }
+      ],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    },
+    {
+      "scenario": "alternate-inadequate",
+      "preset": "NORMAL",
+      "candidates": 9,
+      "excluded": [
+        {
+          "fl": 100,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 120,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 140,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 160,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 180,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 200,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 220,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 240,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        },
+        {
+          "fl": 250,
+          "reasons": [
+            "ALTERNATE"
+          ]
+        }
+      ],
+      "weatherMode": "FULL_WEATHER",
+      "selectedFl": null,
+      "exploratoryFl": null,
+      "viability": "NO_FEASIBLE_SOLUTION",
+      "status": "not-viable",
+      "eteMinutes": 84,
+      "fuelGal": 40.47,
+      "power": {
+        "mapInHg": 24,
+        "rpm": 2450
+      },
+      "ice": {
+        "status": "LOW_EXPOSURE_ESTIMATED",
+        "index": 0
+      },
+      "ride": {
+        "status": "smooth",
+        "index": 0
+      },
+      "score": 95,
+      "reasons": [
+        {
+          "code": "ALTERNATE",
+          "type": "constraint"
+        },
+        {
+          "code": "alternate",
+          "impact": 5,
+          "type": "score"
+        }
+      ],
+      "limitations": [
+        "TERRAIN_NOT_ASSESSED"
+      ]
+    }
+  ]
+}
