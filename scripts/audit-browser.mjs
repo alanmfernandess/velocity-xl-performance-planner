@@ -306,6 +306,17 @@ try {
           if(captureWidths.has(width) && await page.locator('#topLevelCards .top-level-card').count()){
             await page.locator('#topLevelCards .top-level-card').first().click();
             await audit(page, `${width}px pilot analysis mission:overview`);
+            const actionGeometry = await page.evaluate(() => {
+              const apply = document.querySelector('#applyPilotAlternative')?.getBoundingClientRect();
+              const rerank = document.querySelector('#recalculateRanking')?.getBoundingClientRect();
+              return apply && rerank ? { apply: { x: apply.x, width: apply.width, height: apply.height },
+                rerank: { x: rerank.x, width: rerank.width, height: rerank.height } } : null;
+            });
+            if (!actionGeometry || Math.abs(actionGeometry.apply.width - actionGeometry.rerank.width) > 1
+              || Math.abs(actionGeometry.apply.height - actionGeometry.rerank.height) > 1
+              || Math.abs(actionGeometry.apply.x - actionGeometry.rerank.x) > 1)
+              report.errors.push({ label: `${width}px pilot decision button geometry`,
+                issues: [JSON.stringify(actionGeometry) || 'missing action buttons'] });
             await page.locator('#pilotAnalysis').scrollIntoViewIfNeeded();
             await screenshot(page,width,'mission','analysis');
             if(width===390){
