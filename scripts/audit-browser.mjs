@@ -115,6 +115,7 @@ const audit = async (page, label) => {
       calibrationControls: dimensions('#manualWaypoint, #manualAltitude, #manualUpdateForm .ui-unit-input, #calibrationForm .ui-unit-input, #calibrationForm > button'),
       kpis: dimensions('.kpi-grid .kpi'),
       summaryPanels: dimensions('.summary-grid > .panel'),
+      missionAdjustment: dimensions('#missionScoreAction'),
       activeArea: document.querySelector('.app-area:not([hidden])')?.dataset.areaPanel,
       activeModule: document.querySelector('.app-module:not([hidden])')?.dataset.modulePanel,
       fontFamily: getComputedStyle(document.body).fontFamily,
@@ -138,6 +139,12 @@ const audit = async (page, label) => {
   const expectedModule = label.match(/(?:mission|planning|route|flight):(?:overview|score|config|optimize|systems|analyses|ice|ride|decisions|calibration)/)?.[0];
   if (expectedModule && data.activeModule !== expectedModule) issues.push(`navigation opened ${data.activeModule || 'nothing'}`);
   if (data.heading.length && data.rootScale === '1' && data.heading[0].fontSize !== '24px') issues.push(`screen title ${data.heading[0].fontSize}`);
+  if (data.activeModule === 'mission:overview' && data.missionAdjustment.length) {
+    const actualPx = Number.parseFloat(data.missionAdjustment[0].fontSize);
+    const expectedPx = 14 * Number(data.rootScale);
+    if (!Number.isFinite(actualPx) || !Number.isFinite(expectedPx) || Math.abs(actualPx - expectedPx) > 0.25)
+      issues.push(`mission adjustment font ${data.missionAdjustment[0].fontSize}, expected ${expectedPx}px body text`);
+  }
   report.states.push({ label, ...data, issues });
   if (/planning:config|planning:systems|planning:analyses|flight:calibration|route:ice|route:ride|mission:overview/.test(label))
     report.typography.push({ label, values: probe.typography });
