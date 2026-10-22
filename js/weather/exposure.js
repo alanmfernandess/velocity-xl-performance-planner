@@ -32,6 +32,7 @@ export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot 
   const baseline = calculateIcingRisk({ plan, result });
   const byPhase = phaseMinutes();
   let modelPeak = 0, covered = 0, explicit = false, unresolvedVertical = false, temperatureMinutes = 0;
+  const coverageReasons = {}; const phaseCoverage = { climb: { covered: 0, total: 0 }, cruise: { covered: 0, total: 0 }, descent: { covered: 0, total: 0 } };
   const alternateAirport = plan.alternates?.[0];
   const alternatePoint = alternateAirport && trajectory.endMs !== null && Number.isFinite(alternateAirport.lat)
     && Number.isFinite(alternateAirport.lon) ? { lat: alternateAirport.lat, lon: alternateAirport.lon,
@@ -69,6 +70,8 @@ export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot 
     const score = Math.max(modelScore, severeReport ? 100 : reported.length ? 70 : 0);
     const coveredSample = moistureKnown || reported.length > 0;
     if (coveredSample) covered += 1;
+    if (phaseCoverage[point.phase]) { phaseCoverage[point.phase].total += 1; if (coveredSample) phaseCoverage[point.phase].covered += 1; }
+    if (!coveredSample) { const reason = wx.provenance?.gfsStatus || "NO_MOISTURE_EVIDENCE"; coverageReasons[reason] = (coverageReasons[reason] || 0) + 1; }
     modelPeak = Math.max(modelPeak, score);
     if (temperatureRelevant) temperatureMinutes += point.minutes;
     if (score >= PERFORMANCE.icing.watchScore) byPhase[point.phase] += point.minutes;
@@ -81,13 +84,19 @@ export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot 
     : riskScore >= PERFORMANCE.icing.watchScore ? "watch" : "low";
   const coverage = trajectory.samples.length ? covered / trajectory.samples.length : 0;
   const modelAvailable = covered > 0;
+  // terminalWeatherAtTime returns {sources, tafValid, metarAgeMinutes}, not metar/taf.
+  // Validity has already been applied to sources. Never treat a raw outdated bulletin as evidence.
+  const alternateTerminalWeather = baseline.alternate?.weather;
+  const validAlternateTerminalEvidence = Array.isArray(alternateTerminalWeather?.sources)
+    && alternateTerminalWeather.sources.some((source) => ["metar", "legacy", "prevailing", "temporary", "becoming", "probability", "prob", "tempo"].includes(source.kind)
+      || Boolean(source.text) && source.weight > 0);
   const alternateCoverageInsufficient = Boolean(alternateAirport && trajectory.alternateSamples?.length
-    && !alternateAssessed.length && !alternateEvidence.length && !baseline.alternate?.weather?.metar && !baseline.alternate?.weather?.taf);
+    && !alternateAssessed.length && !alternateEvidence.length && !validAlternateTerminalEvidence);
   const compatibility = blocking ? "INCOMPATIBLE" : unresolvedVertical || alternateCoverageInsufficient || !modelAvailable && baseline.confidence === "limited" ? "UNKNOWN"
     : status === "low" ? "LOW_EXPOSURE_ESTIMATED" : "CAUTION";
   return { ...baseline, status, riskScore, compatibility, blocking,
     confidence: modelAvailable ? "estimated" : baseline.confidence,
-    coverage, combinedCoverage: Math.max(coverage, baseline.combinedCoverage || 0),
+    coverage, phaseCoverage, coverageReasons, alternateCoverage: { assessed: alternateAssessed.length, total: alternatePoints.length, terminalEvidence: Boolean(validAlternateTerminalEvidence) }, combinedCoverage: Math.max(coverage, baseline.combinedCoverage || 0),
     exposureMinutes: Math.max(baseline.exposureMinutes || 0, Object.values(byPhase).reduce((a, b) => a + b, 0)),
     climbExposureMinutes: Math.max(baseline.climbExposureMinutes || 0, byPhase.climb),
     cruiseExposureMinutes: Math.max(baseline.cruiseExposureMinutes || 0, byPhase.cruise),
