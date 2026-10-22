@@ -454,7 +454,9 @@ select:focus-visible {
   min-width: 0;
 }
 .ui-field > span:first-child:not(.ui-unit-input) {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   margin: 0 0 var(--field-gap);
   color: var(--muted);
   font-family: var(--font-family);
@@ -615,7 +617,7 @@ select:focus-visible {
 .tool-host .tool-view.active {
   display: block;
 }
-.app-module[data-module-panel="flight:calibration"] > #manualFlightPanel {
+.app-module[data-module-panel="flight:update"] > #manualFlightPanel {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
@@ -623,9 +625,6 @@ select:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--card-radius);
   background: var(--panel);
-}
-.app-module[data-module-panel="planning:optimize"] > .primary-button {
-  justify-self: start;
 }
 .route-overview-grid {
   display: grid;
@@ -1415,6 +1414,7 @@ select:focus-visible {
 .insight-panel {
   padding: var(--space-4);
 }
+.mode-priority-label { display: block; margin-bottom: var(--space-1); color: var(--muted); font-size: var(--ui-caption); }
 .mode-control {
   display: flex;
   padding: 3px;
@@ -1451,31 +1451,6 @@ select:focus-visible {
   color: var(--muted);
   font-size: var(--ui-caption);
 }
-.power-toggle {
-  display: flex;
-  min-width: 0;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-soft);
-}
-.power-toggle button {
-  min-width: 0;
-  border: 0;
-  border-radius: 6px;
-  padding: 5px 7px;
-  background: transparent;
-  color: var(--muted);
-  font-size: var(--ui-body);
-  font-weight: 700;
-  white-space: nowrap;
-  min-height: var(--control-height);
-}
-.power-toggle button.active {
-  background: #fff;
-  color: var(--blue);
-  box-shadow: 0 1px 5px #17202a12;
-}
 .power-auto-readout {
   display: flex;
   align-items: baseline;
@@ -1494,15 +1469,6 @@ select:focus-visible {
 }
 .power-auto-readout small.limited {
   color: var(--orange);
-}
-.power-manual-fields {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,.8fr);
-  gap: 8px;
-  margin-top: 10px;
-}
-.power-manual-fields label {
-  min-width: 0;
 }
 .select-control {
   display: flex;
@@ -1582,7 +1548,11 @@ select:focus-visible {
   min-height: var(--control-height);
   letter-spacing: .035em;
 }
-.mission-proposal {
+.planning-config-right { display: grid; gap: var(--space-3); min-width: 0; }
+.planning-config-right > .mission-optimize-button { width: 100%; }
+
+/* Operational decision: one ranking snapshot, one contextual pilot comparison. */
+.pilot-decision-panel {
   display: grid;
   gap: var(--space-4);
   padding: var(--space-5);
@@ -1590,48 +1560,84 @@ select:focus-visible {
   border-radius: var(--card-radius);
   background: var(--panel);
 }
-.mission-proposal[hidden] { display: none; }
-.mission-proposal-head {
+.pilot-decision-panel[hidden], .pilot-analysis[hidden], .marginal-levels[hidden] { display: none; }
+.pilot-decision-heading, .pilot-analysis-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
-}
-.mission-proposal-head > div,
-.mission-proposal-metrics > div,
-.mission-power-grid > div { display: grid; gap: var(--space-1); min-width: 0; }
-.mission-proposal :is(span, small) { color: var(--muted); font-size: var(--ui-caption); }
-.mission-proposal :is(strong, b) { color: var(--text); }
-.mission-proposal-head strong { font-size: var(--ui-title); }
-.mission-proposal-metrics,
-.mission-power-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex-wrap: wrap;
   gap: var(--space-3);
 }
-.mission-proposal-metrics > div,
-.mission-power-grid > div {
-  padding: var(--space-3);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel-soft);
-}
-.mission-proposal-metrics strong { font-size: var(--ui-display); }
-.mission-power-grid strong { font-size: var(--ui-body); }
-.mission-advisories { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.mission-advisories > span {
-  display: inline-flex;
+.pilot-decision-heading > div, .pilot-analysis-heading > div { display: grid; gap: var(--space-1); }
+.pilot-decision-heading span, .pilot-analysis-heading span { color: var(--muted); font-size: var(--ui-caption); }
+.pilot-decision-heading h2 { margin: 0; font-size: var(--ui-title); }
+.pilot-decision-heading > strong { font-size: var(--ui-body); }
+.top-level-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: var(--space-3); }
+.top-level-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: 8px;
-  background: var(--blue-soft);
-  color: var(--blue);
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  background: var(--panel-soft);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
 }
-.mission-advisories strong { color: var(--blue); font-size: var(--ui-body); }
-.mission-proposal p { margin: 0; font-size: var(--ui-body); }
-.mission-proposal > small { line-height: 1.4; }
-.mission-proposal .text-button { justify-self: start; min-height: var(--control-height); }
+.top-level-card:first-child { border-color: var(--blue); }
+.top-level-card:focus-visible, .analysis-mode-switch button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.trophy { display: grid; justify-items: center; width: 32px; font-size: var(--ui-caption); font-weight: 700; }
+.trophy svg { width: 28px; height: 28px; }
+.top-level-card:nth-child(1) .trophy { color: #a47524; }
+.top-level-card:nth-child(2) .trophy { color: #718293; }
+.top-level-card:nth-child(3) .trophy { color: #a46d50; }
+.top-level-identity { display: grid; gap: var(--space-1); }
+.top-level-identity strong { font-size: var(--ui-title); }
+.top-level-identity small, .top-level-metrics b { color: var(--muted); font-size: var(--ui-caption); }
+.top-level-status { font-size: var(--ui-caption); font-weight: 700; }
+.top-level-status.viable { color: var(--green); }
+.top-level-status.marginal { color: var(--orange); }
+.top-level-metrics { grid-column: 1/-1; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-2); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.top-level-metrics > span { display: grid; min-width: 0; gap: var(--space-1); }
+.top-level-metrics strong { font-size: var(--ui-body); white-space: nowrap; }
+.marginal-levels { display: grid; gap: var(--space-2); }
+.marginal-levels h3 { margin: 0; font-size: var(--ui-caption); color: var(--orange); }
+.marginal-levels > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-3); }
+.decision-diagnostic { margin: 0; font-size: var(--ui-body); color: var(--muted); }
+.pilot-analysis { display: grid; gap: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-4); }
+.pilot-analysis-heading strong { font-size: var(--ui-title); }
+.analysis-mode-switch { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: var(--space-2); }
+.analysis-mode-switch button { min-height: var(--control-height); border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft); color: var(--text); font: inherit; font-size: var(--ui-body); cursor: pointer; }
+.analysis-mode-switch button.active { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
+.analysis-manual-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-3); max-width: 440px; }
+.analysis-manual-fields[hidden] { display: none; }
+.analysis-state { font-size: var(--ui-body); font-weight: 700; }
+.analysis-state[data-status="viable"] { color: var(--green); }
+.analysis-state[data-status="marginal"] { color: var(--orange); }
+.analysis-state[data-status="not-viable"] { color: var(--red); }
+.analysis-comparison { display: grid; gap: var(--space-1); }
+.analysis-comparison-head, .analysis-comparison-row { display: grid; grid-template-columns: minmax(0,1fr) repeat(3,minmax(0,1fr)); gap: var(--space-2); padding: var(--space-2); border-bottom: 1px solid var(--line); font-size: var(--ui-body); }
+.analysis-comparison-head { color: var(--muted); font-size: var(--ui-caption); }
+.analysis-comparison-head b { text-align: right; }
+.analysis-comparison-row strong { text-align: right; }
+.analysis-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.analysis-actions > button { min-height: var(--control-height); }
+
+/* One in-flight update and optional calibration pair. */
+.flight-update-form { display: grid; gap: var(--space-3); }
+.flight-context-row, .flight-observation-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: var(--space-3); align-items: end; }
+.flight-update-form :is(.ui-field, .ui-unit-input) { min-width: 0; }
+.flight-update-form .primary-button { width: 100%; }
+.flight-update-form .calibration-gate { grid-column: 1/-1; text-align: left; }
+.calibration-state { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3) 0; border-top: 1px solid var(--line); font-size: var(--ui-body); }
+.calibration-state > span, .calibration-state > small { color: var(--muted); }
+.calibration-technical { width: 100%; font-size: var(--ui-body); }
+.calibration-technical summary { cursor: pointer; color: var(--blue); }
+.calibration-technical output { display: inline-block; margin-right: var(--space-3); }
+.calibration-technical .text-button { min-height: var(--control-height); }
 .fuel-bar {
   height: 8px;
   display: flex;
@@ -1761,61 +1767,6 @@ select:focus-visible {
   grid-template-columns: minmax(0,1fr);
   gap: 18px;
   min-width: 0;
-}
-.compact-form {
-  display: grid;
-  grid-template-columns: minmax(180px,1.5fr) minmax(100px,.55fr) minmax(180px,1fr) max-content;
-  align-items: end;
-  gap: var(--space-3);
-  min-width: 0;
-}
-.compact-form > * {
-  min-width: 0;
-}
-.compact-form label {
-  min-width: 0;
-}
-.compact-form label > span:first-child {
-  display: inline-flex;
-  align-items: center;
-}
-.calibration-head > span {
-  display: inline-flex;
-  align-items: center;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-.compact-form :is(.primary-button, .text-button) {
-  width: auto;
-  white-space: nowrap;
-}
-.calibration-form {
-  grid-template-columns: minmax(180px,1fr) minmax(180px,1fr) max-content max-content;
-  border-top: 1px solid var(--line);
-  padding-top: var(--space-4);
-}
-.calibration-head {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: minmax(0,1fr) auto;
-  align-items: center;
-  gap: var(--space-1) var(--space-3);
-  min-width: 0;
-}
-.calibration-value {
-  grid-column: 1;
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  min-width: 0;
-}
-.calibration-head output {
-  color: var(--muted);
-}
-.calibration-form #calibrateObserved:disabled {
-  opacity: .42;
-  cursor: not-allowed;
 }
 .calibration-gate {
   display: block;
@@ -3862,6 +3813,8 @@ select:focus-visible {
   .planning-config-grid {
     grid-template-columns: 1fr;
   }
+  .top-level-cards, .marginal-levels > div { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .flight-context-row, .flight-observation-row { grid-template-columns: minmax(0,1fr); }
   .ride-decision-grid,
   .ice-decision-grid {
     grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr));
@@ -3920,18 +3873,6 @@ select:focus-visible {
   }
   .navigation-speeds {
     grid-column: 1/-1;
-  }
-  .compact-form {
-    grid-template-columns: 1fr 1fr;
-  }
-  .calibration-form {
-    grid-template-columns: 1fr 1fr;
-  }
-  .compact-form .primary-button {
-    align-self: end;
-  }
-  .calibration-head {
-    align-self: end;
   }
   .glide-kpis {
     grid-template-columns: 1fr 1fr;
@@ -4013,10 +3954,11 @@ select:focus-visible {
 }
 
 @media (max-width: 600px) {
-  .mission-proposal-metrics,
-  .mission-power-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  .pilot-decision-panel { padding: var(--space-4); }
+  .top-level-cards, .marginal-levels > div { grid-template-columns: minmax(0,1fr); }
+
+  .analysis-mode-switch { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .analysis-comparison-head, .analysis-comparison-row { grid-template-columns: minmax(64px,1fr) repeat(3,minmax(0,1fr)); font-size: var(--ui-caption); }
   /* Components */
   /* Modules */
   .step-profiles {
@@ -4142,15 +4084,6 @@ select:focus-visible {
   .navigation-point > strong {
     font-size: var(--ui-title);
   }
-  .compact-form {
-    grid-template-columns: 1fr;
-  }
-  .calibration-form {
-    grid-template-columns: 1fr;
-  }
-  .calibration-head {
-    grid-template-columns: minmax(0,1fr);
-  }
   #calibrationReference {
     grid-column: 1;
     grid-row: auto;
@@ -4266,19 +4199,6 @@ select:focus-visible {
 }
 
 @media (max-width: 360px) {
-  /* At 320px, allow the power-mode selector to occupy its own row.
-     Otherwise its min-content width expands the entire configuration card. */
-  .planning-config-grid .power-heading {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-  .planning-config-grid .power-toggle {
-    width: 100%;
-    flex: 1 1 100%;
-  }
-  .planning-config-grid .power-toggle button {
-    flex: 1 1 0;
-  }
   /* Layout */
   .app-area[data-area-panel="planning"] .module-nav,
   .app-area[data-area-panel="route"] .module-nav {

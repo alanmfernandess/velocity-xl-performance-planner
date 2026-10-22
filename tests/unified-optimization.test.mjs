@@ -12,27 +12,27 @@ const base = { plan: DEMO_PLAN, mode: "NORMAL", payloadLb: 520, fuelOnboardGal: 
 const run = (overrides = {}) => optimizeMission({ ...base, ...overrides });
 
 for (const mode of ["ECON", "NORMAL", "FAST"]) {
-  test(`${mode} remains selected throughout the single mission recommendation`, () => {
+  test(`${mode} evaluates nine independent levels in the 27-combination matrix`, () => {
     const mission = run({ mode });
     assert.equal(mission.mode, mode);
-    assert.equal(mission.candidates.length, ALTITUDES_FT.length);
-    assert.ok(mission.candidates.every((candidate) => candidate.mode === mode));
-    assert.ok(mission.candidates.includes(mission.selected));
-    assert.equal(mission.recommendedAltitudeFt, mission.selected.altitudeFt);
-    assert.equal(mission.powerProfile.cruise.power.rpm, PERFORMANCE.modes[mode].rpm);
-    assert.equal(mission.powerProfile.climb.power.rpm, PERFORMANCE.powerModel.phases.climb.rpm);
-    assert.equal(mission.powerProfile.descent.power.rpm, PERFORMANCE.powerModel.phases.descent.rpm);
+    assert.equal(mission.candidates.length, ALTITUDES_FT.length * 3);
+    const presetCandidates = mission.candidates.filter((candidate) => candidate.mode === mode);
+    assert.deepEqual(presetCandidates.map((candidate) => candidate.altitudeFt), ALTITUDES_FT);
+    const candidate = presetCandidates.find((item) => item.altitudeFt === 18000);
+    assert.equal(candidate.result.cruise.power.rpm, PERFORMANCE.modes[mode].rpm);
+    assert.equal(candidate.result.climb.power.rpm, PERFORMANCE.powerModel.phases.climb.rpm);
+    assert.equal(candidate.result.descent.power.rpm, PERFORMANCE.powerModel.phases.descent.rpm);
     for (const phase of ["climb", "cruise", "descent"]) {
-      const profile = mission.powerProfile[phase];
-      assert.ok(Math.abs(profile.fuelGal - profile.timeHr * profile.fuelFlowGph) < 1e-9,
-        `${phase} fuel must equal duration × mean flow within floating-point tolerance`);
+      const profile = candidate.result[phase];
+      assert.ok(Math.abs(profile.fuelGal - profile.timeHr * profile.fuelFlowGph) < 1e-9);
     }
   });
 }
 
-test("one evaluated candidate supplies every selected auxiliary result", () => {
+test("one evaluated diagnostic candidate supplies auxiliary results when weather is unknown", () => {
   const mission = run();
-  const c = mission.selected;
+  const c = mission.diagnostic;
+  assert.equal(mission.selected, null);
   assert.strictEqual(mission.alternate, c.alternate);
   assert.strictEqual(mission.etpPnr, c.etpPnr);
   assert.strictEqual(mission.glide, c.glide);
@@ -40,7 +40,7 @@ test("one evaluated candidate supplies every selected auxiliary result", () => {
   assert.strictEqual(mission.weightBalance, c.result.weightBalance);
   assert.equal(mission.financial.cost, c.cost);
   assert.equal(mission.missionScore.score, c.score.score);
-  assert.ok(mission.recommendedFuelGal >= c.result.fuelRequiredGal || c.physicalBlockers.includes("FUEL_CAPACITY"));
+  assert.equal(mission.recommendedFuelGal, null);
 });
 
 test("proposal never mutates entered occupants, fuel or oxygen", () => {
@@ -48,14 +48,14 @@ test("proposal never mutates entered occupants, fuel or oxygen", () => {
   const before = structuredClone(input);
   run(input);
   assert.deepEqual(input, before);
-  assert.ok(run().recommendedFuelGal <= AIRCRAFT.usableFuelGal);
+  assert.ok(run().diagnostic.recommendedFuelGal <= AIRCRAFT.usableFuelGal);
 });
 
 test("K1 changes cruise speed and time without changing MAP, RPM or flow", () => {
   const a = run();
   const b = run({ calibration: { tasFactor: .9, fuelFlowFactor: 1, reference: null } });
-  const baseline = a.candidates.find((candidate) => candidate.altitudeFt === 18000).result;
-  const slower = b.candidates.find((candidate) => candidate.altitudeFt === 18000).result;
+  const baseline = a.candidates.find((candidate) => candidate.altitudeFt === 18000 && candidate.mode === "NORMAL").result;
+  const slower = b.candidates.find((candidate) => candidate.altitudeFt === 18000 && candidate.mode === "NORMAL").result;
   assert.ok(slower.tasKt < baseline.tasKt);
   assert.ok(slower.cruiseTimeHr > baseline.cruiseTimeHr);
   assert.ok(Math.abs(slower.fuelFlowGph - baseline.fuelFlowGph) < 1e-9);
@@ -65,8 +65,8 @@ test("K1 changes cruise speed and time without changing MAP, RPM or flow", () =>
 
 test("K2 changes cruise flow, trip fuel and cost without changing TAS or MAP/RPM", () => {
   const a = run(), b = run({ calibration: { tasFactor: 1, fuelFlowFactor: 1.2, reference: null } });
-  const baseline = a.candidates.find((candidate) => candidate.altitudeFt === 18000);
-  const higher = b.candidates.find((candidate) => candidate.altitudeFt === 18000);
+  const baseline = a.candidates.find((candidate) => candidate.altitudeFt === 18000 && candidate.mode === "NORMAL");
+  const higher = b.candidates.find((candidate) => candidate.altitudeFt === 18000 && candidate.mode === "NORMAL");
   assert.ok(higher.result.tasKt <= baseline.result.tasKt); // Extra recommended fuel raises weight slightly.
   assert.ok(higher.result.fuelFlowGph > baseline.result.fuelFlowGph);
   assert.ok(higher.result.tripFuelGal > baseline.result.tripFuelGal);
@@ -81,9 +81,9 @@ test("combined K1/K2 acts once and respects the reference regime", () => {
   const reference = { mode: "NORMAL", altitudeFt: 18000, mapInHg: PERFORMANCE.modes.NORMAL.mapInHg,
     rpm: PERFORMANCE.modes.NORMAL.rpm };
   const combined = run({ calibration: { tasFactor: .9, fuelFlowFactor: 1.2, reference } });
-  const at18 = combined.candidates.find((candidate) => candidate.altitudeFt === 18000);
-  const at10 = combined.candidates.find((candidate) => candidate.altitudeFt === 10000);
-  const base18 = run().candidates.find((candidate) => candidate.altitudeFt === 18000);
+  const at18 = combined.candidates.find((candidate) => candidate.altitudeFt === 18000 && candidate.mode === "NORMAL");
+  const at10 = combined.candidates.find((candidate) => candidate.altitudeFt === 10000 && candidate.mode === "NORMAL");
+  const base18 = run().candidates.find((candidate) => candidate.altitudeFt === 18000 && candidate.mode === "NORMAL");
   assert.ok(at18.result.tasKt < base18.result.tasKt);
   assert.ok(at18.result.fuelFlowGph > base18.result.fuelFlowGph);
   assert.equal(at10.result.cruise.calibrationApplicable, false);
@@ -154,15 +154,15 @@ test("altitude, wind and OAT affect evaluated performance", () => {
     fix.windSpd = 0;
     for (const level of fix.windLevels || []) level.windSpd = 0;
   }
-  const calm = run({ plan: calmPlan }).candidates.find((item) => item.altitudeFt === 18000).result;
-  const windy = baseline.candidates.find((item) => item.altitudeFt === 18000).result;
+  const calm = run({ plan: calmPlan }).candidates.find((item) => item.altitudeFt === 18000 && item.mode === "NORMAL").result;
+  const windy = baseline.candidates.find((item) => item.altitudeFt === 18000 && item.mode === "NORMAL").result;
   assert.notEqual(calm.cruiseTimeHr, windy.cruiseTimeHr);
   const warmer = structuredClone(DEMO_PLAN);
   for (const fix of warmer.waypoints) {
     if (Number.isFinite(fix.oatC)) fix.oatC += 10;
     for (const level of fix.windLevels || []) if (Number.isFinite(level.oatC)) level.oatC += 10;
   }
-  const warm = run({ plan: warmer }).candidates.find((item) => item.altitudeFt === 18000).result;
+  const warm = run({ plan: warmer }).candidates.find((item) => item.altitudeFt === 18000 && item.mode === "NORMAL").result;
   assert.notEqual(warm.weather.oatC, windy.weather.oatC);
 });
 
@@ -173,7 +173,7 @@ test("explicit icing bulletin is reflected in candidates and the global status",
   assert.ok(fl160.result.icing.riskScore > 0);
   assert.ok(mission.iceAltitudeFt >= 10000);
   assert.ok(mission.iceAltitudeFt <= 25000);
-  assert.equal(mission.selected.result.icing, mission.selected.result.icing);
+  assert.equal(mission.diagnostic.status, "unknown");
 });
 
 test("reported turbulence affects comfort ranking without overriding physical blockers", () => {
@@ -183,13 +183,13 @@ test("reported turbulence affects comfort ranking without overriding physical bl
   assert.ok(fl220.result.turbulence.riskScore >= 0);
   assert.ok(mission.candidates.some((item) => item.result.turbulence.riskScore !== fl220.result.turbulence.riskScore));
   assert.ok(mission.comfortAltitudeFt >= 10000);
-  assert.ok(mission.selected.physicalBlockers.length === 0 || mission.status === "not-viable");
+  assert.ok(mission.diagnostic.physicalBlockers.length === 0 || mission.status === "not-viable");
 });
 
 test("W&B and oxygen are evaluated at proposed fuel and level", () => {
   const mission = run();
   assert.equal(mission.weightBalance.takeoff.weightLb,
-    AIRCRAFT.emptyWeightLb + base.payloadLb + mission.recommendedFuelGal * AIRCRAFT.fuelDensityLbGal + mission.oxygen.bottleWeightLb);
+    AIRCRAFT.emptyWeightLb + base.payloadLb + mission.diagnostic.recommendedFuelGal * AIRCRAFT.fuelDensityLbGal + mission.oxygen.bottleWeightLb);
   assert.equal(mission.oxygen.requiredMinutes >= 0, true);
   assert.equal(mission.currentWeightBalance.takeoff.weightLb,
     AIRCRAFT.emptyWeightLb + base.payloadLb + base.fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + mission.oxygen.bottleWeightLb);
@@ -210,7 +210,7 @@ test("alternate landing reserve and diversion are included in the chosen proposa
   assert.ok(mission.alternate.destination.fuelGal > 0);
   assert.ok(Number.isFinite(mission.alternate.destination.landingFuelGal));
   assert.ok(mission.alternate.diversion);
-  assert.equal(mission.alternate.destination.status, mission.selected.alternate.destination.status);
+  assert.equal(mission.alternate.destination.status, mission.diagnostic.alternate.destination.status);
 });
 
 test("ETP and PNR use route legs and calibrated cruise flow", () => {

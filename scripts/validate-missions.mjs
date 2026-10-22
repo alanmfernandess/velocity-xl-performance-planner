@@ -93,7 +93,7 @@ assert.equal(byName("weather-insufficient").status, "unknown");
 assert.equal(byName("weather-insufficient").selectedFl, null);
 assert.equal(byName("weight-incompatible").selectedFl, null);
 assert.ok(results.every((item) => item.viability !== "MARGINAL" || item.status === "marginal"));
-assert.ok(results.every((item) => item.candidates === 9 && item.fuelGal >= 0 && item.power.rpm <= AIRCRAFT.maxRpm));
-await writeFile(new URL("../review/engine-v2-scenarios.json", import.meta.url), `${JSON.stringify({ generatedAt: new Date().toISOString(),
+assert.ok(results.every((item) => item.candidates === 27 && item.fuelGal >= 0 && item.power.rpm <= AIRCRAFT.maxRpm));
+await writeFile(new URL("../review/decision-engine-v3-scenarios.json", import.meta.url), `${JSON.stringify({ generatedAt: new Date().toISOString(),
   fixture: "Deterministic synthetic weather and OFP data, illustrative and never used in production", results }, null, 2)}\n`);
 console.log(`${results.length} mission scenarios validated; ${results.filter((item) => item.selectedFl === null).length} without a recommendation`);

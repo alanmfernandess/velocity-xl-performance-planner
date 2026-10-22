@@ -9,15 +9,15 @@ const projectRoot = path.resolve(import.meta.dirname, '..');
 const baselineIndex = process.argv.indexOf('--baseline');
 const baseline = baselineIndex >= 0;
 const engineV2 = process.argv.includes('--engine-v2');
-const afterFolder = engineV2 ? 'engine-v2' : 'definitive-after';
+const afterFolder = engineV2 ? 'decision-engine-v3' : 'definitive-after';
 const root = baseline ? path.resolve(process.argv[baselineIndex + 1]) : projectRoot;
 const output = path.join(projectRoot, 'review');
 const widths = [320, 375, 390, 430, 768, 1024, 1440, 1920];
 const modules = {
   mission: ['overview', 'score'],
-  planning: ['config', 'optimize', 'systems', 'analyses'],
+  planning: ['config', 'systems', 'analyses'],
   route: ['overview', 'ice', 'ride', 'decisions'],
-  flight: ['calibration'],
+  flight: ['update'],
 };
 const tools = {
   'planning:systems': ['wb', 'oxygen'],
@@ -112,7 +112,7 @@ const audit = async (page, label) => {
       textButtons: dimensions('.text-button'),
       inputs: dimensions('.ui-field > input, .ui-field > select, .ui-unit-input'),
       costControls: dimensions('#fuelPriceCurrency, .cost-price .ui-unit-input'),
-      calibrationControls: dimensions('#manualWaypoint, #manualAltitude, #manualUpdateForm .ui-unit-input, #calibrationForm .ui-unit-input, #calibrationForm > button'),
+      calibrationControls: dimensions('#manualWaypoint, #manualAltitude, #manualUpdateForm .ui-unit-input, #manualUpdateForm > button'),
       kpis: dimensions('.kpi-grid .kpi'),
       summaryPanels: dimensions('.summary-grid > .panel'),
       missionAdjustment: dimensions('#missionScoreAction'),
@@ -120,7 +120,7 @@ const audit = async (page, label) => {
       activeModule: document.querySelector('.app-module:not([hidden])')?.dataset.modulePanel,
       fontFamily: getComputedStyle(document.body).fontFamily,
       rootScale: getComputedStyle(document.documentElement).getPropertyValue('--ui-scale').trim(),
-      legacyTriggerVisible: visible(document.querySelector('#tool-card-update')),
+      legacyTriggerVisible: (() => { const el=document.querySelector('#tool-card-update'); return el ? visible(el) : false; })(),
     };
   });
   const issues = [];
@@ -136,7 +136,7 @@ const audit = async (page, label) => {
     if (Math.max(...heights) - Math.min(...heights) > 2) issues.push(`KPI heights differ: ${heights.join(',')}`);
   }
   if (data.summaryPanels.length === 2 && data.viewport >= 768 && Math.abs(data.summaryPanels[0].y - data.summaryPanels[1].y) > 2) issues.push('summary cards do not align at the top');
-  const expectedModule = label.match(/(?:mission|planning|route|flight):(?:overview|score|config|optimize|systems|analyses|ice|ride|decisions|calibration)/)?.[0];
+  const expectedModule = label.match(/(?:mission|planning|route|flight):(?:overview|score|config|systems|analyses|ice|ride|decisions|update)/)?.[0];
   if (expectedModule && data.activeModule !== expectedModule) issues.push(`navigation opened ${data.activeModule || 'nothing'}`);
   if (data.heading.length && data.rootScale === '1' && data.heading[0].fontSize !== '24px') issues.push(`screen title ${data.heading[0].fontSize}`);
   if (data.activeModule === 'mission:overview' && data.missionAdjustment.length) {
@@ -146,13 +146,14 @@ const audit = async (page, label) => {
       issues.push(`mission adjustment font ${data.missionAdjustment[0].fontSize}, expected ${expectedPx}px body text`);
   }
   report.states.push({ label, ...data, issues });
-  if (/planning:config|planning:systems|planning:analyses|flight:calibration|route:ice|route:ride|mission:overview/.test(label))
+  if (/planning:config|planning:systems|planning:analyses|flight:update|route:ice|route:ride|mission:overview/.test(label))
     report.typography.push({ label, values: probe.typography });
   if (issues.length) report.errors.push({ label, issues });
 };
 const activate = async (page, area, module) => {
   await page.locator(`[data-area-button="${area}"]:visible`).first().click();
-  await page.locator(`[data-module-button="${area}:${module}"]:visible`).click();
+  const tab=page.locator(`[data-module-button="${area}:${module}"]:visible`);
+  if(await tab.count())await tab.click();
   await assert.doesNotReject(page.locator(`[data-module-panel="${area}:${module}"]:visible`).waitFor());
 };
 const screenshot = async (page, width, area, module) => {
@@ -164,7 +165,7 @@ const screenshot = async (page, width, area, module) => {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await page.screenshot({ path: file, fullPage: false, animations: 'disabled' });
   report.screenshots.push(`${folder}/${name}`);
-  if (width === 390 && area !== 'mission') {
+  if (width === 390 && (area !== 'mission' || module === 'analysis')) {
     const fullName = `${device}-${area}-${module}-full.png`;
     await page.screenshot({ path: path.join(output, folder, fullName), fullPage: true, animations: 'disabled' });
     report.screenshots.push(`${folder}/${fullName}`);
@@ -228,14 +229,14 @@ try {
     await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
     await page.waitForFunction(() => document.querySelector('#missionRiskValue')?.textContent !== '—', { timeout: 10000 });
     if (width === 390 && !baseline) {
-      await activate(page, 'flight', 'calibration');
+      await activate(page, 'flight', 'update');
       await page.locator('#observedTas').focus();
       const fieldFocus = await page.locator('#observedTas').evaluate(element => getComputedStyle(element.closest('.ui-unit-input')).boxShadow);
       if (fieldFocus === 'none') report.errors.push({ label: '390px calibration focus', issues: ['unit field has no focus indicator'] });
     }
     if (baseline) {
       if (captureWidths.has(width)) {
-        for (const [area, module] of [['mission', 'overview'], ['planning', 'config'], ['route', 'ice'], ['flight', 'calibration']]) {
+        for (const [area, module] of [['mission', 'overview'], ['planning', 'config'], ['route', 'ice'], ['flight', 'update']]) {
           await activate(page, area, module);
           await screenshot(page, width, area, module);
         }
@@ -289,21 +290,33 @@ try {
       for (const module of keys) {
         await activate(page, area, module);
         await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}`);
-        if (captureWidths.has(width) && ['mission:overview', 'mission:score', 'planning:config', 'planning:systems', 'route:ice', 'route:ride', 'flight:calibration'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
-        if (area === 'planning' && module === 'optimize') {
+        if (captureWidths.has(width) && ['mission:overview', 'mission:score', 'planning:config', 'planning:systems', 'route:ice', 'route:ride', 'flight:update'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
+        if (area === 'planning' && module === 'config') {
           await page.locator('#optimizeMission').click();
-          await page.locator('#missionProposal:visible').waitFor();
-          await audit(page, `${width}px optimized mission`);
-          const sync = await page.evaluate(() => ({
-            proposalFl: document.querySelector('#proposalFl').textContent,
-            kpiFl: document.querySelector('#kpiAltitude').textContent,
-            proposalStatus: document.querySelector('#proposalStatus').textContent,
-            badgeStatus: document.querySelector('#feasibilityBadge').textContent,
+          await page.locator('#pilotDecisionPanel:visible').waitFor();
+          await audit(page, `${width}px optimized mission:overview`);
+          const decision = await page.evaluate(() => ({
+            top: document.querySelectorAll('#topLevelCards .top-level-card').length,
+            unique: new Set([...document.querySelectorAll('#topLevelCards .top-level-card')].map(el => el.dataset.decisionFl)).size,
             applied: localStorage.getItem('velocityxl.appliedMission'),
           }));
-          if (sync.proposalFl !== sync.kpiFl || sync.proposalStatus !== sync.badgeStatus || sync.applied)
-            report.errors.push({ label: `${width}px recommendation sync`, issues: [JSON.stringify(sync)] });
-          if (captureWidths.has(width)) await screenshot(page, width, area, module);
+          if (decision.top !== decision.unique || decision.top > 3 || decision.applied)
+            report.errors.push({ label: `${width}px ranking contract`, issues: [JSON.stringify(decision)] });
+          if(captureWidths.has(width))await screenshot(page,width,'mission','decision');
+          if(captureWidths.has(width) && await page.locator('#topLevelCards .top-level-card').count()){
+            await page.locator('#topLevelCards .top-level-card').first().click();
+            await audit(page, `${width}px pilot analysis mission:overview`);
+            await page.locator('#pilotAnalysis').scrollIntoViewIfNeeded();
+            await screenshot(page,width,'mission','analysis');
+            if(width===390){
+              await page.locator('#applyPilotAlternative').scrollIntoViewIfNeeded();
+              const actionPath=path.join(output,afterFolder,'mobile-mission-analysis-action.png');
+              await page.screenshot({path:actionPath,animations:'disabled'});
+              report.screenshots.push(`${afterFolder}/mobile-mission-analysis-action.png`);
+            }
+            await page.locator('#cancelPilotAnalysis').click();
+          }
+          await activate(page,'planning','config');
         }
         for (const tool of tools[`${area}:${module}`] || []) {
           const trigger = page.locator(`[data-tool-view="${tool}"]:visible`);
@@ -325,19 +338,61 @@ try {
       }
     }
     if (width === 1440) {
-      await activate(page, 'planning', 'optimize');
-      const proposedFl = await page.locator('#proposalFl').textContent();
-      await page.locator('#applyMissionProposal').click();
-      const applied = await page.evaluate(() => JSON.parse(localStorage.getItem('velocityxl.appliedMission') || 'null'));
-      if (!applied || `FL${applied.fl}` !== proposedFl || Number(await page.locator('#fuelInput').inputValue()) !== applied.fuelOnboardGal)
-        report.errors.push({ label: '1440px explicit apply', issues: ['Applied fuel/FL and stored proposal disagree'] });
-      await page.reload({ waitUntil: 'domcontentloaded' });
-      await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
-      await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-      await page.locator('#importLatest').click();
-      await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
-      if (Number(await page.locator('#fuelInput').inputValue()) !== applied.fuelOnboardGal)
-        report.errors.push({ label: '1440px applied proposal restore', issues: ['Applied fuel was not restored for the same OFP'] });
+      await activate(page, 'planning', 'config');
+      await page.locator('#optimizeMission').click();
+      await page.locator('#pilotDecisionPanel:visible').waitFor();
+      const cards=page.locator('#topLevelCards .top-level-card');
+      if(await cards.count()){
+        await cards.first().click();
+        await page.locator('#pilotAnalysis:visible').waitFor();
+        const before=await page.evaluate(()=>localStorage.getItem('velocityxl.appliedMission'));
+        if(before)report.errors.push({label:'1440px selection',issues:['analysis applied without confirmation']});
+        const auto=await page.locator('#decisionAutoStatus').textContent();
+        const originalFuel=await page.locator('#analysisComparison').textContent();
+        await page.locator('[data-analysis-mode="FAST"]').click();
+        const fasterFuel=await page.locator('#analysisComparison').textContent();
+        if(originalFuel===fasterFuel || await page.locator('#decisionAutoStatus').textContent()!==auto)
+          report.errors.push({label:'1440px scenario switch',issues:['preset analysis did not recalculate or changed automatic recommendation']});
+        await page.locator('[data-analysis-mode="MANUAL"]').click();
+        await page.locator('#analysisMap').fill('99');
+        if(await page.locator('#applyPilotAlternative').isEnabled())
+          report.errors.push({label:'1440px invalid manual',issues:['out-of-range MAP may be applied']});
+        await page.locator('#analysisMap').fill('25.5');
+        await page.locator('#analysisRpm').fill('2475');
+        await audit(page,'1440px manual scenario mission:overview');
+        await page.locator('#cancelPilotAnalysis').click();
+        if(await page.locator('#pilotAnalysis').isVisible() || await page.evaluate(()=>localStorage.getItem('velocityxl.appliedMission')))
+          report.errors.push({label:'1440px cancel',issues:['cancel changed applied configuration']});
+        await cards.first().click();
+        const apply=page.locator('#applyPilotAlternative');
+        if(await apply.isEnabled()){
+          await apply.click();
+          if((await apply.textContent())?.includes('marginal'))await apply.click();
+          const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('velocityxl.appliedMission')||'null'));
+          if(!stored?.choice)report.errors.push({label:'1440px explicit apply',issues:['confirmed choice was not persisted']});
+          else {
+            const expectedFuel=stored.fuelOnboardGal;
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.addScriptTag({path:path.join(projectRoot,'scripts/visual-probe.js')});
+            await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
+            await page.locator('#importLatest').click();
+            await page.locator('#routeTitle').getByText('SBSP',{exact:false}).waitFor();
+            const restored=await page.evaluate(()=>({fuel:Number(document.querySelector('#fuelInput').value),level:document.querySelector('#kpiLevelMeta').textContent}));
+            if(restored.fuel!==expectedFuel || !/aplicada|applied/i.test(restored.level))
+              report.errors.push({label:'1440px applied restore',issues:[JSON.stringify(restored)]});
+            const otherOFP=route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({...fixture,destination:{...fixture.destination,icao_code:'SBNF'}})});
+            await page.route('**/api/xml.fetcher.php?**',otherOFP);
+            await page.locator('#importLatest').click();
+            await page.locator('#routeTitle').getByText('SBNF',{exact:false}).waitFor();
+            const otherLevel=await page.locator('#kpiLevelMeta').textContent();
+            if(/aplicada|applied/i.test(otherLevel))
+              report.errors.push({label:'1440px other OFP',issues:['configuration from previous OFP was restored']});
+            await page.unroute('**/api/xml.fetcher.php?**',otherOFP);
+            await page.locator('#importLatest').click();
+            await page.locator('#routeTitle').getByText('SBGL',{exact:false}).waitFor();
+          }
+        }
+      }
     }
     await page.locator('[data-language="en-US"]').click();
     await page.locator('[data-weight-unit="kg"]').click();
@@ -380,7 +435,7 @@ try {
       await audit(page, `${width}px long alert`);
       await page.screenshot({ path: path.join(output, afterFolder, 'mobile-long-alert.png'), animations: 'disabled' });
       report.screenshots.push(`${afterFolder}/mobile-long-alert.png`);
-      await activate(page, 'flight', 'calibration');
+      await activate(page, 'flight', 'update');
       const bottomClearance = await page.evaluate(() => {
         document.documentElement.style.scrollBehavior = 'auto';
         window.scrollTo(0, document.body.scrollHeight);
@@ -410,27 +465,26 @@ try {
       await activate(page, 'planning', 'config');
       await audit(page, '1440px at 200% equivalent viewport planning:config');
       await page.setViewportSize({ width: 1440, height: 900 });
-      await activate(page, 'flight', 'calibration');
+      await activate(page, 'flight', 'update');
       await page.locator('[data-fuel-unit="gal"]').click();
       await page.locator('#manualWaypoint').selectOption({ index: 2 });
       await page.locator('#manualAltitude').selectOption('18000');
       await page.locator('#manualFuel').fill('60');
-      await page.locator('#manualUpdateForm button[type="submit"]').click();
       await page.locator('#observedTas').fill('245');
+      if(await page.locator('#submitFlightUpdate').isEnabled())
+        report.errors.push({label:'1440px incomplete calibration',issues:['one optional reading enabled submission']});
       await page.locator('#observedFuelFlow').fill('17.5');
-      if (await page.locator('#calibrateObserved').isEnabled()) {
-        await page.locator('#calibrateObserved').click();
-        const calibration = await page.evaluate(() => JSON.parse(localStorage.getItem('velocityxl.calibration') || 'null'));
-        if (!calibration?.reference) report.errors.push({ label: 'calibration regression', issues: ['valid TAS/GPH observation was not stored'] });
-      } else report.errors.push({ label: 'calibration regression', issues: ['calibration remained disabled after a complete update'] });
+      await page.locator('#submitFlightUpdate').click();
+      const calibration=await page.evaluate(()=>JSON.parse(localStorage.getItem('velocityxl.calibration')||'null'));
+      if(!calibration?.reference)report.errors.push({label:'calibration regression',issues:['complete in-flight observation was not stored']});
     }
     if (engineV2 && [390, 1440].includes(width)) {
       awcMode = 'ice';
       await page.locator('#importLatest').click();
       await page.waitForFunction(() => document.querySelector('#kpiAltitude')?.textContent === '—');
-      await activate(page, 'planning', 'optimize');
-      await audit(page, `${width}px EN-US KG/L A planning:optimize no feasible FL`);
-      if (await page.locator('#applyMissionProposal').isEnabled())
+      await activate(page, 'planning', 'config');
+      await audit(page, `${width}px EN-US KG/L A planning:config no feasible FL`);
+      if (await page.locator('#topLevelCards .top-level-card').count())
         report.errors.push({ label: `${width}px no solution`, issues: ['an incompatible mission can still be applied'] });
       const file = `${width === 390 ? 'mobile' : 'desktop'}-icing-no-solution.png`;
       await page.screenshot({ path: path.join(output, afterFolder, file), animations: 'disabled' });
@@ -453,14 +507,15 @@ try {
       await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
       await page.locator('#importLatest').click();
       await page.waitForTimeout(mode === 'offline' ? 1800 : 500);
-      await activate(page, 'planning', 'optimize');
+      await activate(page, 'planning', 'config');
       await page.locator('#optimizeMission').click();
-      await audit(page, `${width}px ${mode} weather planning:optimize`);
+      await page.locator('#pilotDecisionPanel:visible').waitFor();
+      await audit(page, `${width}px ${mode} weather mission:overview`);
       if (mode === 'offline' && (await page.locator('#kpiAltitude').textContent())?.trim() !== '—')
         report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather appears as a recommended FL'] });
       if (mode === 'offline' && (await page.locator('#missionRiskValue').textContent())?.trim() !== '—')
         report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather appears as a numeric mission score'] });
-      if (mode === 'offline' && await page.locator('#applyMissionProposal').isEnabled())
+      if (mode === 'offline' && await page.locator('#topLevelCards .top-level-card').count())
         report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather proposal can be applied'] });
       const name = `${width === 390 ? 'mobile' : 'desktop'}-${mode}-weather.png`;
       await page.screenshot({ path: path.join(output, afterFolder, name), animations: 'disabled' });
@@ -473,6 +528,6 @@ try {
   server.close();
 }
 
-await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'engine-v2-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
+await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
 if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;

@@ -1187,9 +1187,9 @@ export function calibrationForMode(calibration, mode, altitudeFt, powerSetting =
   const values = calibration?.[mode] || calibration || {};
   const reference = values.reference;
   const selected = modePowerSetting(mode, powerSetting);
-  const applicable = !reference || (
+  const applicable = !reference || (!reference.legacy &&
     reference.mode === mode
-    && (reference.legacy || Math.abs(reference.altitudeFt - altitudeFt) <= PERFORMANCE.calibrationLimits.altitudeToleranceFt)
+    && Math.abs(reference.altitudeFt - altitudeFt) <= PERFORMANCE.calibrationLimits.altitudeToleranceFt
     && Math.abs(reference.mapInHg - selected.mapInHg) <= PERFORMANCE.calibrationLimits.mapToleranceInHg
     && Math.abs(reference.rpm - selected.rpm) <= PERFORMANCE.calibrationLimits.rpmTolerance
   );

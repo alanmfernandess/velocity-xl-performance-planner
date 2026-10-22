@@ -21,7 +21,7 @@ test("W&B random load action updates shared payload and oxygen occupancy before 
   assert.match(html,/id="randomizeWeightBalance"/);
   assertDeclaration(css,".wb-randomize","grid-column","1/-1");
   assert.match(app,/randomizeWeightBalance\(\{weightBalance:state\.weightBalance,fuelOnboardGal:state\.fuelOnboardGal,oxygenWeightLb:currentOxygenWeightLb\(\)\}\)/);
-  assert.match(app,/state\.weightBalance=randomized;\s*persistWeightBalance\(\);\s*\$\("#payloadInput"\)\.value=String\(state\.payloadLb\);\s*render\(\);/);
+  assert.match(app,/invalidateDecision\(true\);\s*state\.weightBalance=randomized;\s*persistWeightBalance\(\);\s*\$\("#payloadInput"\)\.value=String\(state\.payloadLb\);\s*render\(\);/);
   assert.match(app,/state\.oxygen\.seats=\[state\.weightBalance\.pilot,state\.weightBalance\.copilot/);
 });
 
@@ -37,8 +37,8 @@ test("A-minus/A/A-plus control persists a slightly smaller default font",()=>{
 });
 
 test("unified proposal does not silently change occupant stations",()=>{
-  assert.match(app,/optimizeMission\(\{\.\.\.state/);
+  assert.match(app,/optimizeMission\(decisionInput\(\)\)/);
   assert.match(app,/state\.weightBalance=randomized/);
-  assert.match(html,/id="applyMissionProposal"/);
+  assert.match(html,/id="applyPilotAlternative"/);
   assert.doesNotMatch(html,/id="levelCards"|id="missionRecovery"/);
 });

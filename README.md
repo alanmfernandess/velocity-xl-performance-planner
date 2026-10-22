@@ -1,6 +1,6 @@
 # Velocity XL Performance Planner
 
-Planejador visual para o **Black Square Velocity XL** no Microsoft Flight Simulator 2024. Importa o OFP mais recente do SimBrief por Pilot ID ou alias, utiliza a rota e os dados meteorológicos disponíveis e produz uma recomendação integrada no preset **ECON, NORMAL ou FAST** escolhido pelo usuário.
+Planejador visual para o **Black Square Velocity XL** no Microsoft Flight Simulator 2024. Importa o OFP mais recente do SimBrief por Pilot ID ou alias, utiliza a rota e os dados meteorológicos disponíveis e compara 27 combinações de nível e preset para apoiar a decisão do piloto.
 
 **Somente para simulação.** O modelo é estimado e não certificado; não avalia separação do terreno ou obstáculos. Não usa SimConnect nem telemetria do Xbox.
 
@@ -8,19 +8,19 @@ Planejador visual para o **Black Square Velocity XL** no Microsoft Flight Simula
 
 1. Importe um OFP do SimBrief.
 2. Informe carga, combustível, reserva, oxigênio e, se desejar, preço do combustível.
-3. Escolha ECON, NORMAL ou FAST e use **Otimizar missão**.
-4. Revise FL, combustível recomendado, ETE, potência por fase, Mission Score e as limitações exibidas.
-5. Use **Aplicar configuração** para gravar explicitamente o combustível e o FL recomendados. Ocupantes, bagagem, preset e cilindros não são alterados automaticamente.
+3. Selecione um perfil preferido e use **Otimizar missão** em **Planejamento → Configuração**.
+4. Em **Missão → Visão geral**, compare os três melhores FLs distintos. A recomendação automática fica separada da alternativa em análise.
+5. No card escolhido, alterne ECON/NORMAL/FAST ou informe MAP/RPM no modo manual. Compare score, combustível, tempo, ICE, RIDE e margens antes de **Aplicar configuração**. Alternativas marginais exigem confirmação adicional; estados desconhecidos ou incompatíveis não podem ser aplicados.
 
-A interface mantém quatro áreas: **Missão** (resultado e score), **Planejamento** (configuração, otimização, W&B, oxigênio e custos), **Rota & riscos** (ICE, RIDE, ETP/PNR, alternado/desvio, GLIDE e step climb) e **Em voo** (posição, combustível restante e calibração de cruzeiro). A atualização em voo não reclassifica retroativamente a missão planejada.
+A interface mantém quatro áreas: **Missão** (resultado e score), **Planejamento** (configuração, W&B, oxigênio e custos), **Rota & riscos** (ICE, RIDE, ETP/PNR, alternado/desvio, GLIDE e step climb) e **Em voo** (posição, combustível restante e calibração de cruzeiro). A atualização em voo não reclassifica retroativamente a missão planejada.
 
 ## Motor integrado
 
-`js/unified-optimization.js` avalia FL100–FL250 com o preset selecionado e devolve um único `optimizedMission`. Cada candidato reúne `calculateAtAltitude` e os módulos de gelo, turbulência, W&B, oxigênio, alternado, ETP/PNR, GLIDE, custo e Mission Score. Restrições físicas são classificadas antes das preferências de combustível, tempo, alcance e conforto. A recomendação global pode diferir do melhor FL para ICE e do melhor FL para RIDE. A configuração da tripulação e da bagagem permanece a informada pelo usuário.
+`js/unified-optimization.js` avalia os nove níveis FL100–FL250 em ECON, NORMAL e FAST: **27 combinações independentes**. Cada candidato reúne `calculateAtAltitude` e os módulos de gelo, turbulência, W&B, oxigênio, alternado, ETP/PNR, GLIDE, custo e Mission Score. Elegibilidade (`ELIGIBLE`, `MARGINAL`, `UNKNOWN`, `INCOMPATIBLE`) é avaliada antes do ranking. O Top 3 apresenta níveis distintos e plenamente viáveis; marginais aparecem separadamente. A configuração da tripulação e da bagagem permanece a informada pelo usuário. O cenário manual MAP/RPM usa o mesmo avaliador sem modificar a recomendação automática até aplicação explícita.
 
-O combustível recomendado resolve iterativamente o efeito do próprio combustível no peso e na performance, visando a margem configurada em `js/config.js`, até o limite utilizável. Se não houver solução viável, o estado permanece **INVIÁVEL**. Se faltarem evidências meteorológicas essenciais, o estado é **NÃO AVALIADO**, mesmo com pontuação numérica alta. O terreno e os obstáculos são sempre identificados como não avaliados.
+O combustível recomendado resolve iterativamente o efeito do próprio combustível no peso e na performance, visando a margem configurada em `js/config.js`, até o limite utilizável. Se não houver alternativa viável ou marginal avaliada, o painel apresenta **SEM RECOMENDAÇÃO CONFIRMADA** com os bloqueios disponíveis. Se faltarem evidências meteorológicas essenciais, o estado é **NÃO AVALIADO**, mesmo com pontuação numérica alta. O terreno e os obstáculos são sempre identificados como não avaliados.
 
-Na versão 2.0, os nove FLs compartilham um único snapshot de **SimBrief, Open-Meteo GFS e AWC**. O GFS fornece temperatura, vento, umidade e nuvens por níveis reais de altura geopotencial; o AWC fornece SIGMET e PIREP publicados por um workflow do GitHub. A trajetória estimada amostra subida, cruzeiro, descida e desvio ao alternado. ICE e RIDE são avaliados ao longo dessas amostras, inclusive quando uma camada crítica é atravessada antes do cruzeiro. Um SIGMET relevante pode impedir a recomendação; indicadores numéricos de gelo e turbulência continuam sendo estimativas, não observações diretas nem certificação.
+As 27 combinações compartilham um único snapshot de **SimBrief, Open-Meteo GFS e AWC**. O GFS fornece temperatura, vento, umidade e nuvens por níveis reais de altura geopotencial; o AWC fornece SIGMET e PIREP publicados por um workflow do GitHub. A trajetória estimada amostra subida, cruzeiro, descida e desvio ao alternado. ICE e RIDE são avaliados ao longo dessas amostras, inclusive quando uma camada crítica é atravessada antes do cruzeiro. Um SIGMET relevante pode impedir a recomendação; indicadores numéricos de gelo e turbulência continuam sendo estimativas, não observações diretas nem certificação.
 
 O AWC não oferece CORS para a aplicação estática. O arquivo [`.github/workflows/awc-snapshot.yml`](.github/workflows/awc-snapshot.yml), incorporado à `main`, publica o snapshot na branch `weather-snapshots` duas vezes por hora. O aplicativo identifica snapshots indisponíveis ou vencidos e usa as demais evidências disponíveis.
 
@@ -30,12 +30,12 @@ O **Mission Score 2.0** parte de 100 e desconta penalidades com pesos máximos: 
 
 ## Calibração
 
-Em cruzeiro estabilizado, o usuário informa no módulo **Em voo** posição, FL e combustível restante, seguidos apenas de **TAS observada** e **Fuel Flow observado**. O OFP precisa fornecer temperatura no ponto escolhido. O motor calcula:
+Em cruzeiro estabilizado, o usuário pode informar no formulário único de **Em voo** posição, FL e combustível restante. **TAS observada** e **Fuel Flow observado** são opcionais em conjunto: vazios, a ação apenas atualiza o trecho restante; preenchidos, a mesma ação também calibra. Um único valor bloqueia o envio sem descartar o que foi digitado. O OFP precisa fornecer temperatura no ponto escolhido. O motor calcula:
 
 - `K1 = TAS observada / TAS prevista`
 - `K2 = GPH observado / GPH previsto`
 
-Os fatores têm limites matemáticos em `js/config.js`, ficam salvos no `localStorage` e podem ser redefinidos. O contexto de referência guarda preset, FL, MAP, RPM, temperatura e peso estimado. A calibração só se aplica próxima desse regime; ela corrige o cruzeiro, sem alterar diretamente MAP/RPM nem calibrar subida ou descida. Calibrações antigas com K1/K2 válidos são migradas; os registros antigos de Debrief não são apagados, embora o módulo tenha sido removido do fluxo.
+Os fatores têm limites matemáticos em `js/config.js`, ficam salvos no `localStorage` e podem ser redefinidos. O contexto de referência guarda preset, FL, MAP, RPM, temperatura e peso estimado. A calibração só se aplica próxima desse regime; ela corrige o cruzeiro, sem alterar diretamente MAP/RPM nem calibrar subida ou descida. Calibrações antigas com K1/K2 válidos são preservadas, mas fatores legados sem referência suficiente ficam pendentes e não são aplicados em outro regime. A redefinição exige confirmação. Os registros antigos de Debrief não são apagados.
 
 ## Limitações dos módulos
 
@@ -44,7 +44,7 @@ Os fatores têm limites matemáticos em `js/config.js`, ficam salvos no `localSt
 - **GLIDE:** alcance e tempo teóricos. Altitude MSL não indica altura livre sobre o terreno; nenhum local de pouso é classificado como seguro.
 - **Alternado/desvio:** requer coordenadas ou distância utilizável; estima tempo, combustível e margem no pouso.
 - **Financeiro:** depende do preço por litro informado manualmente em BRL ou USD. Preço ausente produz custo indisponível, nunca custo zero.
-- **Persistência:** preferências e calibração são locais ao navegador/dispositivo. A configuração aplicada é restaurada somente para o mesmo OFP e preset.
+- **Persistência:** preferências e calibração são locais ao navegador/dispositivo. A configuração aplicada é restaurada somente para o mesmo OFP; escolhas antigas não passam para outra missão.
 
 ## Executar e verificar
 
@@ -64,7 +64,7 @@ npm run validate:missions
 npm run verify:weather-live
 ```
 
-A auditoria de navegador usa um OFP **sintético**, com números ilustrativos, em 320, 375, 390, 430, 768, 1024, 1440 e 1920 px. As capturas e o relatório ficam em `review/`. A verificação de rede é opcional e controlada: não consulta SimBrief sem `SIMBRIEF_PILOT_ID`, para evitar polling não autorizado. O relatório detalhado está em [`review/engine-v2-report.md`](review/engine-v2-report.md).
+A auditoria de navegador usa um OFP **sintético**, com números ilustrativos, em 320, 375, 390, 430, 768, 1024, 1440 e 1920 px. As capturas e o relatório ficam em `review/`. A verificação de rede é opcional e controlada: não consulta SimBrief sem `SIMBRIEF_PILOT_ID`, para evitar polling não autorizado. O relatório desta versão está em [`review/decision-engine-v3-report.md`](review/decision-engine-v3-report.md).
 
 ## Fontes técnicas
 

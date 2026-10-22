@@ -24,13 +24,16 @@ test("oxygen recommendation remains accessible with aligned controls", () => {
   assertDeclaration(css, '.ui-unit-input', "min-height", "var(--control-height)");
 });
 
-test("one optimization action presents an explicit proposal", () => {
+test("one optimization action exposes Top 3 without applying it", () => {
   assert.match(index, /id="optimizeMission"/);
-  assert.match(index, /id="missionProposal"[^>]*hidden/);
-  for (const id of ["proposalFl", "proposalFuel", "proposalTime", "missionPowerGrid", "proposalIceFl", "proposalRideFl", "proposalWb", "proposalOxygen", "applyMissionProposal"])
+  assert.match(index, /id="pilotDecisionPanel"[^>]*hidden/);
+  for (const id of ["topLevelCards", "pilotAnalysis", "analysisMap", "analysisRpm", "analysisComparison", "applyPilotAlternative"])
     assert.match(index, new RegExp(`id="${id}"`));
-  assert.match(app, /optimizeMission\(\{\.\.\.state/);
+  assert.match(app, /const snapshot=optimizeMission\(decisionInput\(\)\)/);
   assert.match(app, /localStorage\.setItem\("velocityxl\.appliedMission"/);
+  assert.doesNotMatch(index, /id="missionProposal"/);
+  assert.doesNotMatch(index, /id="powerManualFields"|id="manualMap"|id="manualRpm"/);
+  assert.match(index, /id="analysisMap"[\s\S]*id="analysisRpm"/);
 });
 
 test("obsolete comparison and debrief modules are absent from active UI", () => {
@@ -46,16 +49,16 @@ test("all four areas remain navigable and preserve operational modules", () => {
     assert.match(layout, new RegExp(`\\['${area}'`));
   for (const key of ["etp", "alternate", "wb", "glide", "oxygen", "ride", "ice", "cost", "steps"])
     assert.match(index, new RegExp(`data-tool-view="${key}"`));
-  assert.match(layout, /\['flight',[^\n]*\[\['calibration', 'calibration'\]\]/);
+  assert.match(layout, /\['flight',[^\n]*\[\['update', 'update'\]\]/);
 });
 
-test("calibration takes two observations and requires a complete flight context", () => {
+test("one in-flight form validates the optional calibration pair before updating", () => {
   assert.match(index, /id="manualUpdateForm"/);
-  assert.match(index, /id="calibrationForm"/);
+  assert.doesNotMatch(index, /id="calibrationForm"/);
   assert.match(index, /id="observedTas"/);
   assert.match(index, /id="observedFuelFlow"/);
-  assert.match(app, /function manualCalibrationReady\(/);
-  assert.match(app, /if\(!manualCalibrationReady\(\)\)/);
+  assert.match(app, /Boolean\(tasValue\)!==Boolean\(flowValue\)/);
+  assert.match(app, /if\(tasValue&&flowValue\)nextCalibration=deriveCalibration/);
   assert.match(engine, /CALIBRATION_ATMOSPHERE_UNAVAILABLE/);
 });
 
@@ -77,7 +80,7 @@ test("financial estimate uses manual fuel price and alternate scenario", () => {
   assert.match(index, /id="fuelPriceCurrency"[\s\S]*id="fuelPricePerLiter"/);
   assert.match(index, /id="costAlternate"[\s\S]*id="costAlternateTotal"/);
   assert.match(app, /localStorage\.setItem\("velocityxl\.financial"/);
-  assert.match(app, /buildFinancialAnalysis\(plan,selected,alternateAdvice,optimizedMission\)/);
+  assert.match(app, /buildFinancialAnalysis\(plan,selected,alternateAdvice,\{financial:activeCandidate\.financial\}\)/);
   assertDeclaration(css, ".cost-detail-grid", "grid-template-columns", "minmax(0,1fr)");
 });
 
