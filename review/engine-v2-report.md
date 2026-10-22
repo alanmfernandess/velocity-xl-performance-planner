@@ -1,6 +1,6 @@
 # Velocity XL Performance Planner — Engine 2.0
 
-Relatório de engenharia para revisão da branch `feature/unified-mission-engine-v2`.
+Relatório de engenharia da branch `feature/unified-mission-engine-v2`, integrada à `main` após aprovação visual.
 Base: `38da61c61fb00fb796d30a3125d2ba1b9c444f4d` (`fix/definitive-ui-quality`).
 Todos os OFPs e dados nos cenários automatizados são **sintéticos e ilustrativos**. O produto continua sendo uma estimativa para simulador, sem certificação aeronáutica.
 
@@ -21,9 +21,9 @@ Modificados: `js/simbrief.js`, `js/engine.js`, `js/unified-optimization.js`, `js
 | SimBrief | `https://www.simbrief.com/api/xml.fetcher.php?userid=…&json=v2` | Resposta real JSON v2 verificada uma vez com o Pilot ID informado anteriormente pelo usuário; não incluída no repositório | OFP, rota, navlog, vento, temperatura e avisos presentes |
 | Open-Meteo | `https://api.open-meteo.com/v1/gfs` | HTTP 200 e CORS no navegador verificados; fixture real reduzida | GFS global, níveis de pressão, CAPE, congelamento e precipitação |
 | AWC upstream | `https://aviationweather.gov/api/data/sigmet?format=json` e `/pirep?format=json&bbox=-130,20,-50,65` | Consulta real HTTP 200/204 e execução local do gerador verificadas | SIGMET global do feed e PIREP da região declarada |
-| AWC frontend | `https://raw.githubusercontent.com/alanmfernandess/velocity-xl-performance-planner/weather-snapshots/awc/latest.json` | **Ainda não publicado** nesta branch; HTTP 404 | Leitura estática quando o workflow estiver ativo |
+| AWC frontend | `https://raw.githubusercontent.com/alanmfernandess/velocity-xl-performance-planner/weather-snapshots/awc/latest.json` | HTTP 200, CORS `*` e snapshot recente verificados em 22/10/2026 | Leitura estática publicada pelo workflow |
 
-O workflow agendado a cada 30 minutos cria uma branch de dados de um único commit corrente, evitando crescimento histórico. GitHub Pages continua em `main`/raiz; o agendamento do GitHub Actions depende de o workflow estar na branch padrão. A prévia da branch de trabalho, portanto, usa GFS e OFP, com AWC indisponível até essa etapa. O teste de navegador simula uma resposta AWC identificada como sintética.
+O workflow agendado a cada 30 minutos cria uma branch de dados de um único commit corrente, evitando crescimento histórico. GitHub Pages usa `main`/raiz. A primeira execução manual do workflow [foi concluída](https://github.com/alanmfernandess/velocity-xl-performance-planner/actions/runs/39832564723) após a integração. O teste de navegador ainda usa uma resposta AWC sintética para manter a validação reproduzível.
 
 ## 4. Limitações das APIs
 
@@ -75,7 +75,7 @@ Saída completa reproduzível: [`engine-v2-scenarios.json`](engine-v2-scenarios.
 
 ## 12. Testes
 
-`npm test`: 99 testes passando, incluindo propriedades físicas, calibração K1/K2, contrato GFS com fixture real, SIGMET AWC com fixture real, trajetória, bloqueios e ausência de solução. `npm run lint:css`: 834 regras, 2615 declarações, zero problemas. `npm run validate:missions`: onze cenários passando. `npm run audit:browser:v2`: 339 estados em oito larguras, sem falhas, com 46 capturas; dados detalhados no JSON de auditoria. `npm run verify:weather-live`: verificação opcional de rede, sem polling de SimBrief quando o identificador não é fornecido. O registro da última consulta está em [`engine-v2-live-verification.log`](engine-v2-live-verification.log): GFS e AWC upstream verificados; snapshot publicado HTTP 404.
+`npm test`: 99 testes passando, incluindo propriedades físicas, calibração K1/K2, contrato GFS com fixture real, SIGMET AWC com fixture real, trajetória, bloqueios e ausência de solução. `npm run lint:css`: 834 regras, 2615 declarações, zero problemas. `npm run validate:missions`: onze cenários passando. `npm run audit:browser:v2`: 339 estados em oito larguras, sem falhas, com 46 capturas; dados detalhados no JSON de auditoria. `npm run verify:weather-live`: verificação opcional de rede, sem polling de SimBrief quando o identificador não é fornecido. O registro pré-publicação está em [`engine-v2-live-verification.log`](engine-v2-live-verification.log); após a publicação, o snapshot AWC foi lido com estado `available`, 136 SIGMETs e idade de um minuto. Um teste do site público em 1440 px e 390 px retornou HTTP 200, sem erro JavaScript nem overflow horizontal.
 
 ## 13. Evidência em navegador
 
@@ -83,7 +83,7 @@ Os arquivos em [`engine-v2/`](engine-v2/) são capturas reais do Chromium da int
 
 ## 14. Pendências externas e limites restantes
 
-O snapshot AWC publicado retorna 404 enquanto o workflow não está na branch padrão; a execução manual local do gerador foi verificada. O GFS não cobre necessariamente todas as amostras, principalmente fora do prazo de previsão. Previsão de gelo e RIDE continua heurística; o alternado usa um perfil intermediário estimado a partir da distância e tempo do desvio. ETP/PNR usam o modelo de performance e ventos da rota, mas não substituem cálculo operacional certificado. Terreno e obstáculos continuam não avaliados. Não há telemetria; a calibração depende de observações inseridas pelo usuário.
+O snapshot AWC está publicado, mas sua disponibilidade depende do GitHub Actions; quando indisponível ou vencido, a interface identifica a lacuna. O GFS não cobre necessariamente todas as amostras, principalmente fora do prazo de previsão. Previsão de gelo e RIDE continua heurística; o alternado usa um perfil intermediário estimado a partir da distância e tempo do desvio. ETP/PNR usam o modelo de performance e ventos da rota, mas não substituem cálculo operacional certificado. Terreno e obstáculos continuam não avaliados. Não há telemetria; a calibração depende de observações inseridas pelo usuário.
 
 ## 15. Reprodução e publicação
 
@@ -96,4 +96,4 @@ npm run verify:weather-live
 npm run serve
 ```
 
-Abra `http://localhost:4173/` para a prévia local. Após revisão e autorização de integração, incorporar a branch em `main` ativa a publicação existente do GitHub Pages e permite executar o workflow AWC por `workflow_dispatch`; verificar então o arquivo `weather-snapshots/awc/latest.json`, sua idade e o estado do app. Nenhum merge em `main` foi feito nesta entrega.
+Abra `http://localhost:4173/` para a prévia local ou o [site público](https://alanmfernandess.github.io/velocity-xl-performance-planner/). A versão aprovada `fc9adb2` foi integrada à `main` em 22/10/2026. O GitHub Pages concluiu a publicação desse commit; `index.html`, `js/app.js` e `styles.css` servidos pelo site corresponderam exatamente aos arquivos locais. O workflow AWC foi executado e o snapshot resultante foi validado como disponível.
