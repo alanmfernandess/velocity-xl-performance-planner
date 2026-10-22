@@ -69,3 +69,13 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
   assert.match(html, /styles\.css\?v=20261022-pde3/);
 });
+
+
+test("pilot decision action buttons share a full-width column and button dimensions", () => {
+  assertDeclaration(css, ".analysis-actions", "display", "grid");
+  assertDeclaration(css, ".analysis-actions", "grid-template-columns", "minmax(0, 1fr)");
+  assertDeclaration(css, ".analysis-actions > button", "width", "100%");
+  assertDeclaration(css, ".analysis-actions > button", "min-height", "var(--control-height)");
+  assert.match(html, /id="applyPilotAlternative"/);
+  assert.match(html, /id="recalculateRanking"/);
+});
