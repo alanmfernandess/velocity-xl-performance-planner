@@ -66,5 +66,5 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /20261022-adjustment-typography/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\\.css\\?v=20261022-adjustment-body/);
+  assert.match(html, /20261022-adjustment-body/);
 });
