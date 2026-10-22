@@ -1338,6 +1338,16 @@ select:focus-visible {
 .recommendation-card > .mission-score-action > strong {
   max-width: 48ch;
 }
+/* Operational guidance is body copy, never a KPI, regardless of runtime role
+   adoption or cached layout scripts. Scales uniformly with A-/A/A+. */
+.recommendation-card .mission-score-action > #missionScoreAction {
+  font-size: var(--ui-body);
+  font-weight: 600;
+  line-height: var(--ui-leading-value);
+  white-space: normal;
+  min-width: 0;
+  max-width: 100%;
+}
 .recommendation-actions {
   display: flex;
   flex-wrap: wrap;
