@@ -111,7 +111,7 @@ test("an icing layer crossed during climb blocks every higher FL and returns no 
   const mission = optimizeMission({ ...input, weatherSnapshot });
   assert.equal(mission.selected, null);
   assert.equal(mission.viabilityStatus, "NO_FEASIBLE_SOLUTION");
-  assert.equal(mission.candidates.length, 9);
+  assert.equal(mission.candidates.length, 27);
   assert.ok(mission.candidates.every((candidate) => candidate.physicalBlockers.includes("ICE")));
   assert.ok(mission.candidates.find((candidate) => candidate.altitudeFt === 22000).result.icing.climbExposureMinutes > 0);
 });
@@ -220,7 +220,7 @@ test("seven route fixes with temperatures but missing moisture remain unknown, w
   const sevenLegPlan = { ...plan, waypoints: fixes, distanceNm: 126, plannedAltitudeFt: 10000 };
   const mission = optimizeMission({ ...input, plan: sevenLegPlan,
     weatherSnapshot: createWeatherSnapshot(sevenLegPlan) });
-  assert.equal(mission.candidates.length, 9);
+  assert.equal(mission.candidates.length, 27);
   assert.ok(Object.values(mission.weatherCoverage.iceMissingReasons).some((count) => count > 0));
   assert.equal(mission.weatherCoverage.sources.OPEN_METEO.status, "unavailable");
 });

@@ -27,9 +27,10 @@ test("one stylesheet owns visual tokens and component dimensions", () => {
 test("cards size to content and hidden modules stay hidden", () => {
   assertDeclaration(css, ".summary-grid > .panel", "min-height", "0");
   assertDeclaration(css, ".planning-live-summary", "min-height", "0");
-  assert.doesNotMatch(cssRule(css, '.app-module[data-module-panel="flight:calibration"] > #manualFlightPanel'), /min-height:/);
+  assert.doesNotMatch(cssRule(css, ".flight-update-form"), /min-height:/);
+  assertDeclaration(css, '.app-module[data-module-panel="flight:update"] > #manualFlightPanel', "padding", "var(--space-4)");
   assert.match(cssRule(css, "[hidden]"), /display:\s*none\s*!important/);
-  assert.match(layout, /flight: 'calibration'/);
+  assert.match(layout, /flight: 'update'/);
 });
 
 test("responsive rules are grouped and iOS zoom remains available", () => {
@@ -64,7 +65,7 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assert.doesNotMatch(primaryRole, /#missionScoreAction/);
   assertDeclaration(css, '.app-module [data-ui-role="secondary"]', "font-size", "var(--ui-body)");
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
-  assert.match(html, /20261022-adjustment-typography/);
+  assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /20261022-adjustment-body/);
+  assert.match(html, /styles\.css\?v=20261022-pde3/);
 });

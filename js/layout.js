@@ -9,7 +9,7 @@
     'pt-BR': {
       mission: 'Missão', planning: 'Planejamento', route: 'Rota & riscos', flight: 'Em voo',
       overview: 'Visão geral', score: 'Avaliação', config: 'Configuração',
-      optimize: 'Otimização', systems: 'Peso & sistemas', analyses: 'Custo',
+      systems: 'Peso & sistemas', analyses: 'Custo',
       ice: 'ICE', ride: 'RIDE', decisions: 'Decisões', update: 'Atualização', calibration: 'Calibração',
       completed: 'Voo concluído', history: 'Histórico', noPlan: 'Importe um OFP para começar.',
       missionTitle: 'Decisão operacional', planningTitle: 'Preparar e otimizar',
@@ -25,7 +25,7 @@
     'en-US': {
       mission: 'Mission', planning: 'Planning', route: 'Route & risks', flight: 'In flight',
       overview: 'Overview', score: 'Assessment', config: 'Configuration',
-      optimize: 'Optimization', systems: 'Weight & systems', analyses: 'Cost',
+      systems: 'Weight & systems', analyses: 'Cost',
       ice: 'ICE', ride: 'RIDE', decisions: 'Decisions', update: 'Update', calibration: 'Calibration',
       completed: 'Completed flight', history: 'History', noPlan: 'Import an OFP to begin.',
       missionTitle: 'Operational decision', planningTitle: 'Prepare and optimize',
@@ -41,9 +41,9 @@
   };
   const areas = [
     ['mission', 'gauge', 'missionTitle', [['overview', 'overview'], ['score', 'score']]],
-    ['planning', 'sliders-horizontal', 'planningTitle', [['config', 'config'], ['optimize', 'optimize'], ['systems', 'systems'], ['analyses', 'analyses']]],
+    ['planning', 'sliders-horizontal', 'planningTitle', [['config', 'config'], ['systems', 'systems'], ['analyses', 'analyses']]],
     ['route', 'route', 'routeTitle', [['overview', 'overview'], ['ice', 'ice'], ['ride', 'ride'], ['decisions', 'decisions']]],
-    ['flight', 'radio-tower', 'flightTitle', [['calibration', 'calibration']]],
+    ['flight', 'radio-tower', 'flightTitle', [['update', 'update']]],
   ];
   const areaNodes = new Map();
   const moduleNodes = new Map();
@@ -88,7 +88,7 @@
       button.textContent = text(label);
       tabs.append(button);
     }
-    section.append(tabs);
+    if (modules.length > 1) section.append(tabs);
     for (const [module] of modules) {
       const panel = document.createElement('div');
       panel.className = 'app-module';
@@ -107,6 +107,7 @@
   }
   const missionOverview = moduleNodes.get('mission:overview');
   move('.kpi-grid', 'mission:overview');
+  move('#pilotDecisionPanel', 'mission:overview');
   const overviewGrid = item(); overviewGrid.className = 'summary-grid'; overviewGrid.dataset.uiCardPair = ''; overviewGrid.dataset.uiOverlapGroup = ''; missionOverview.append(overviewGrid);
   const score = $('.mission-score-panel'); if (score) overviewGrid.append(score);
   const recommendation = item(); recommendation.className = 'panel recommendation-card';
@@ -133,10 +134,10 @@
     aside.innerHTML = `<div class="shared-card-head"><span data-layout-text="takeoffWeight">${text('takeoffWeight')}</span>${icon('scale')}</div><div class="planning-live-metrics"><div><span data-layout-text="oxygen">${text('oxygen')}</span><strong id="layoutOxygenSummary">—</strong></div><div><span data-layout-text="fuelMargin">${text('fuelMargin')}</span><strong id="layoutFuelMargin">—</strong></div></div>`;
     const weight = controls.querySelector('.weight-meter');
     if (weight) aside.insertBefore(weight, aside.querySelector('.planning-live-metrics'));
-    grid.append(aside);
+    const right = item(); right.className = 'planning-config-right';
+    grid.append(right); right.append(aside);
+    const optimize = $('#optimizeMission'); if (optimize) right.append(optimize);
   }
-  move('#optimizeMission', 'planning:optimize');
-  move('#missionProposal', 'planning:optimize');
 
   const routeOverview = moduleNodes.get('route:overview');
   routeOverview.innerHTML = `<div class="route-rail-card"><div class="shared-card-head"><span data-layout-text="routeLegs">${text('routeLegs')}</span><strong id="layoutRouteMeta">—</strong></div><div class="route-rail" id="layoutRouteRail" aria-label="Trechos da rota"></div></div><div class="route-overview-grid">
@@ -167,12 +168,9 @@
   }
 
   const updatePanel = $('[data-tool-panel="update"]');
-  const updateStrip = $('#tool-card-update');
   const flightPanel = $('#manualFlightPanel');
   const confidence = $('#calibrationReference');
-  if (updateStrip) moduleNodes.get('flight:calibration').append(updateStrip);
-  if (flightPanel && updatePanel) moduleNodes.get('flight:calibration').append(flightPanel);
-  if (confidence) $('.calibration-head')?.insertBefore(confidence, $('.calibration-value'));
+  if (flightPanel && updatePanel) moduleNodes.get('flight:update').append(flightPanel);
   const oldModeTop = $('.manual-mode-top'); if (oldModeTop) oldModeTop.remove();
 
   const oldTools = $('.flight-tools-panel'); if (oldTools) oldTools.remove();
@@ -216,9 +214,10 @@
   };
   applyVisualRoles();
 
-  const state = { area: 'mission', module: { mission: 'overview', planning: 'config', route: 'overview', flight: 'calibration' } };
+  const state = { area: 'mission', module: { mission: 'overview', planning: 'config', route: 'overview', flight: 'update' } };
   function activate(area, module = state.module[area]) {
     if (!areaNodes.has(area)) return;
+    if (!moduleNodes.has(`${area}:${module}`)) module = areas.find(([name]) => name === area)[3][0][0];
     state.area = area;
     state.module[area] = module;
     for (const [key, node] of areaNodes) node.hidden = key !== area;

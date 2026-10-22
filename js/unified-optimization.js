@@ -11,6 +11,7 @@ import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js
 import { scoreMissionV2 } from "./mission-score-v2.js";
 
 const STATUS_RANK = { viable: 0, marginal: 1, unknown: 2, "not-viable": 3 };
+const PRESETS = ["ECON", "NORMAL", "FAST"];
 const PREFERENCE = {
   ECON: { fuel: .55, time: .10, range: .20, comfort: .15 },
   NORMAL: { fuel: .30, time: .30, range: .15, comfort: .25 },
@@ -116,38 +117,39 @@ function evaluateCandidate(input, altitudeFt, weatherSnapshot, performancePlan) 
       ice: result.icing.compatibility, ride: result.turbulence.status,
       alternate: alternate.destination?.status || "unknown", weather: weatherSnapshot.status },
     blockers: [...new Set(physicalBlockers)], limitations };
-  return { altitudeFt, mode, result, recommendedFuelGal, rawFuelGal, alternate, etpPnr, glide,
+  return { altitudeFt, mode, engineMode: mode, powerSetting, result, recommendedFuelGal, rawFuelGal, alternate, etpPnr, glide,
     cost, physicalBlockers: eligibility.blockers, unknown, unknownReasons: [...new Set(unknownReasons)], limitations, eligibility, converged };
 }
 
-/**
- * One evaluated candidate set and one selected mission. The returned proposal is
- * immutable application data; the UI must ask before applying its fuel/FL.
- */
-export function optimizeMission(input) {
-  if (!input?.plan || !PERFORMANCE.modes[input.mode]) return null;
-  const weatherSnapshot = input.weatherSnapshot || createWeatherSnapshot(input.plan);
-  const performancePlan = planWithForecast(input.plan, weatherSnapshot);
-  const candidates = ALTITUDES_FT.map((altitudeFt) => evaluateCandidate(input, altitudeFt, weatherSnapshot, performancePlan));
-  const priced = candidates.filter((candidate) => !candidate.physicalBlockers.length && Number.isFinite(candidate.cost));
+function scoreCandidates(candidates, input, referenceCandidates = candidates) {
+  const priced = referenceCandidates.filter((candidate) => !candidate.physicalBlockers.length && Number.isFinite(candidate.cost));
   const minimumViableCost = priced.length ? Math.min(...priced.map((candidate) => candidate.cost)) : null;
-  const physicallyAvailable = candidates.filter((candidate) => !candidate.physicalBlockers.length);
-  const minimumFuel = Math.min(...(physicallyAvailable.length ? physicallyAvailable : candidates).map((candidate) => candidate.result.fuelRequiredGal));
+  const physicallyAvailable = referenceCandidates.filter((candidate) => !candidate.physicalBlockers.length);
+  const basis = physicallyAvailable.length ? physicallyAvailable : referenceCandidates;
+  const minimumFuel = Math.min(...basis.map((candidate) => candidate.result.fuelRequiredGal));
   for (const candidate of candidates) {
     const financial = calculateFinancialImpact({ currentCost: candidate.cost, minimumViableCost });
     const score = scoreMissionV2(candidate, { minimumFuelGal: minimumFuel, financial });
     candidate.financial = { ...financial, cost: candidate.cost, currency: input.currency || "BRL", pricePerLiter: Number(input.pricePerLiter) || null };
-    candidate.status = candidate.physicalBlockers.length ? "not-viable" : candidate.unknown ? "unknown"
+    candidate.status = candidate.physicalBlockers.length ? "not-viable" : candidate.unknown || score.status === "unknown" ? "unknown"
       : candidate.eligibility.status === "MARGINAL" || score.status === "marginal" ? "marginal" : "viable";
+    if (candidate.status === "unknown") {
+      candidate.eligibility.status = "UNKNOWN";
+      if (score.partial) candidate.unknownReasons = [...new Set([...candidate.unknownReasons, "SCORE_DATA_INCOMPLETE"])];
+    }
+    if (candidate.status === "marginal") candidate.eligibility.status = "MARGINAL";
     candidate.score = { ...score, status: candidate.status };
     candidate.result.missionScore = candidate.score;
   }
-  const preference = { ...PREFERENCE[input.mode] };
-  if (input.ridePreference === "comfort") { preference.comfort += .15; preference.time -= .10; preference.fuel -= .05; }
-  if (input.ridePreference === "maximum") { preference.comfort += .30; preference.time -= .20; preference.fuel -= .10; }
-  const preferencePool = candidates.filter((item) => item.eligibility.status === "ELIGIBLE");
-  const comparison = preferencePool.length ? preferencePool : candidates.filter((item) => item.eligibility.status === "MARGINAL");
-  const basis = comparison.length ? comparison : candidates;
+}
+
+function rankCandidates(candidates, preferenceMode, ridePreference) {
+  const preference = { ...PREFERENCE[preferenceMode] };
+  if (ridePreference === "comfort") { preference.comfort += .15; preference.time -= .10; preference.fuel -= .05; }
+  if (ridePreference === "maximum") { preference.comfort += .30; preference.time -= .20; preference.fuel -= .10; }
+  const assessed = candidates.filter((item) => item.status === "viable");
+  const marginal = candidates.filter((item) => item.status === "marginal");
+  const basis = assessed.length ? assessed : marginal.length ? marginal : candidates;
   const fuels = basis.map((item) => item.result.fuelRequiredGal);
   const times = basis.map((item) => item.result.tripTimeHr);
   const ranges = basis.map((item) => item.result.maxRangeNm);
@@ -159,14 +161,68 @@ export function optimizeMission(input) {
       + preference.range * norm(ranges, candidate.result.maxRangeNm)
       + preference.comfort * norm(rides, candidate.result.turbulence.riskScore ?? 100, true);
   }
-  const ranked = [...candidates].sort((a, b) =>
+  return [...candidates].sort((a, b) =>
     STATUS_RANK[a.status] - STATUS_RANK[b.status]
     || (b.score.score - a.score.score)
     || (b.preferenceScore - a.preferenceScore)
-    || a.altitudeFt - b.altitudeFt);
-  const selected = ranked.find((candidate) => !candidate.physicalBlockers.length) || null;
+    || a.altitudeFt - b.altitudeFt
+    || PRESETS.indexOf(a.engineMode) - PRESETS.indexOf(b.engineMode));
+}
+
+const distinctLevels = (candidates, limit = 3) => {
+  const seen = new Set();
+  return candidates.filter((candidate) => {
+    if (seen.has(candidate.altitudeFt) || seen.size >= limit) return false;
+    seen.add(candidate.altitudeFt);
+    return true;
+  });
+};
+
+function closestPreset(powerSetting) {
+  return [...PRESETS].sort((a, b) => {
+    const distance = (mode) => Math.abs(powerSetting.mapInHg - PERFORMANCE.modes[mode].mapInHg) / 1.5
+      + Math.abs(powerSetting.rpm - PERFORMANCE.modes[mode].rpm) / 150;
+    return distance(a) - distance(b) || PRESETS.indexOf(a) - PRESETS.indexOf(b);
+  })[0];
+}
+
+/** Evaluate a pilot-selected scenario against the same weather and score basis. */
+export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, mapInHg, rpm }) {
+  if (!mission?.plan || !ALTITUDES_FT.includes(altitudeFt)) throw new RangeError("INVALID_SCENARIO_ALTITUDE");
+  if (mode !== "MANUAL" && !PRESETS.includes(mode)) throw new RangeError("INVALID_SCENARIO_MODE");
+  let engineMode = mode, powerSetting = { type: "AUTO" };
+  if (mode === "MANUAL") {
+    if (!Number.isFinite(mapInHg) || mapInHg < PERFORMANCE.powerModel.minimumMapInHg || mapInHg > AIRCRAFT.maxManifoldInHg
+      || !Number.isFinite(rpm) || rpm < PERFORMANCE.powerModel.minimumRpm || rpm > AIRCRAFT.maxRpm) throw new RangeError("INVALID_MANUAL_POWER");
+    powerSetting = { type: "MANUAL", mapInHg, rpm };
+    engineMode = closestPreset(powerSetting);
+  } else {
+    const cached = mission.candidates.find((candidate) => candidate.altitudeFt === altitudeFt && candidate.mode === mode);
+    if (cached) return cached;
+  }
+  const candidate = evaluateCandidate({ ...input, mode: engineMode, powerSetting }, altitudeFt,
+    mission.weatherSnapshot, mission.performancePlan || planWithForecast(input.plan, mission.weatherSnapshot));
+  if (mode === "MANUAL") candidate.mode = "MANUAL";
+  scoreCandidates([candidate], input, mission.candidates);
+  return candidate;
+}
+
+/**
+ * The 27 automatic combinations share one validated weather snapshot. The
+ * recommendation stays separate from pilot analysis and applied configuration.
+ */
+export function optimizeMission(input) {
+  if (!input?.plan || !PERFORMANCE.modes[input.mode]) return null;
+  const weatherSnapshot = input.weatherSnapshot || createWeatherSnapshot(input.plan);
+  const performancePlan = planWithForecast(input.plan, weatherSnapshot);
+  const candidates = PRESETS.flatMap((mode) => ALTITUDES_FT.map((altitudeFt) =>
+    evaluateCandidate({ ...input, mode, powerSetting: { type: "AUTO" } }, altitudeFt, weatherSnapshot, performancePlan)));
+  scoreCandidates(candidates, input);
+  const ranked = rankCandidates(candidates, input.mode, input.ridePreference);
+  const acceptable = ranked.filter((candidate) => candidate.status === "viable" || candidate.status === "marginal");
+  const selected = acceptable[0] || null;
   const diagnostic = selected || ranked[0];
-  const viableForAdvisory = candidates.filter((candidate) => !candidate.physicalBlockers.length);
+  const viableForAdvisory = acceptable;
   const pool = viableForAdvisory.length ? viableForAdvisory : candidates;
   const comfort = [...pool].sort((a, b) => (a.result.turbulence.riskScore ?? 100) - (b.result.turbulence.riskScore ?? 100))[0];
   const ice = [...pool].sort((a, b) => a.result.icing.riskScore - b.result.icing.riskScore)[0];
@@ -182,15 +238,17 @@ export function optimizeMission(input) {
     oxygenWeightLb: oxygenSystemWeightLb(input.oxygen),
   });
   return {
-    version: "2.0", ofpId: weatherSnapshot.ofpKey, weatherSnapshot,
+    version: "3.0", ofpId: weatherSnapshot.ofpKey, weatherSnapshot, performancePlan,
     diagnosticReasons: diagnostic.unknownReasons || [], weatherCoverage: { ice: diagnostic.result.icing.coverage, icePhases: diagnostic.result.icing.phaseCoverage, iceMissingReasons: diagnostic.result.icing.coverageReasons, alternate: diagnostic.result.icing.alternateCoverage, ride: diagnostic.result.turbulence.coverage, sources: weatherSnapshot.sources },
-    plan: input.plan, mode: input.mode, selected, diagnostic, candidates, ranked,
-    eligible: candidates.filter((candidate) => candidate.eligibility.status === "ELIGIBLE"),
+    plan: input.plan, mode: input.mode, selected, automaticRecommendation: selected, diagnostic, candidates, ranked,
+    topLevels: distinctLevels(ranked.filter((candidate) => candidate.status === "viable")),
+    marginalLevels: distinctLevels(ranked.filter((candidate) => candidate.status === "marginal"), ALTITUDES_FT.length),
+    eligible: candidates.filter((candidate) => candidate.status === "viable"),
     unknown: candidates.filter((candidate) => candidate.eligibility.status === "UNKNOWN"),
     incompatible: candidates.filter((candidate) => candidate.eligibility.status === "INCOMPATIBLE"),
     recommendedAltitudeFt: selected?.altitudeFt ?? null, recommendedFuelGal: selected?.recommendedFuelGal ?? null,
-    viabilityStatus: selected ? selected.eligibility.status : "NO_FEASIBLE_SOLUTION",
-    status: selected?.status || "not-viable", missionScore: diagnostic.score, reasons,
+    viabilityStatus: selected ? selected.eligibility.status : diagnostic.status === "unknown" ? "UNKNOWN" : "NO_FEASIBLE_SOLUTION",
+    status: selected?.status || diagnostic.status, missionScore: diagnostic.score, reasons,
     comfortAltitudeFt: comfort.altitudeFt, iceAltitudeFt: ice.altitudeFt,
     powerProfile: { climb: diagnostic.result.climb, cruise: diagnostic.result.cruise, descent: diagnostic.result.descent },
     alternate: diagnostic.alternate, etpPnr: diagnostic.etpPnr, glide: diagnostic.glide,

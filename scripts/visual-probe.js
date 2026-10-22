@@ -236,7 +236,7 @@ window.VelocityVisualProbe = (root = document) => {
       issues.push({ code: 'outside-card', target: key(element), detail: key(container) });
   }
   const bottoms = selector => scoped(selector).map(element => Math.round(element.getBoundingClientRect().bottom));
-  for (const selector of ['#manualUpdateForm select, #manualUpdateForm .ui-unit-input', '#calibrationForm .ui-unit-input, #calibrationForm > button']) {
+  for (const selector of ['#manualUpdateForm .flight-context-row select, #manualUpdateForm .flight-context-row .ui-unit-input', '#manualUpdateForm .flight-observation-row .ui-unit-input, #manualUpdateForm .flight-observation-row > button']) {
     const values = bottoms(selector);
     if (values.length >= 2 && innerWidth >= 768 && Math.max(...values) - Math.min(...values) > 2)
       issues.push({ code: 'form-baseline-drift', target: selector, detail: values.join(',') });
