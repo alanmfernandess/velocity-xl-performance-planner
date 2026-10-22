@@ -2,6 +2,8 @@
 
 Branch: `feature/pilot-decision-engine-v3` (base: `main` em `c2c557d8ff0d967750882bcc7eae5626a19df1c0`). Sem merge na `main`.
 
+Implementação: commit [`0af4022`](https://github.com/alanmfernandess/velocity-xl-performance-planner/commit/0af4022). Revisão: [PR #2](https://github.com/alanmfernandess/velocity-xl-performance-planner/pull/2).
+
 ## Motor e decisão
 
 O Unified Mission Engine usa o mesmo caminho de avaliação para as 27 combinações automáticas (FL100, FL120, FL140, FL160, FL180, FL200, FL220, FL240 e FL250 × ECON, NORMAL e FAST). Reaproveita um único snapshot meteorológico validado e calcula novamente performance, combustível, trajetória, ICE/RIDE, W&B, oxigênio, alternado, ETP/PNR, GLIDE, custo e Mission Score para cada combinação. O modo manual MAP/RPM é um 28º cenário somente quando solicitado, calculado pelo mesmo avaliador, sem alterar a matriz original.
