@@ -1623,8 +1623,10 @@ select:focus-visible {
 .analysis-comparison-head { color: var(--muted); font-size: var(--ui-caption); }
 .analysis-comparison-head b { text-align: right; }
 .analysis-comparison-row strong { text-align: right; }
-.analysis-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.analysis-actions > button { min-height: var(--control-height); }
+/* Decision actions share one full-width track and the same control geometry
+   on both desktop and mobile. Only their visual variants differ. */
+.analysis-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.analysis-actions > button { box-sizing: border-box; width: 100%; min-height: var(--control-height); }
 
 /* One in-flight update and optional calibration pair. */
 .flight-update-form { display: grid; gap: var(--space-3); }
