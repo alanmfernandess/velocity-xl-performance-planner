@@ -7,6 +7,9 @@
     "test": "npm run lint:css && node --test tests/*.test.mjs",
     "lint:css": "node scripts/audit-css.mjs",
     "audit:browser": "node scripts/audit-browser.mjs",
+    "audit:browser:v2": "node scripts/audit-browser.mjs --engine-v2",
+    "verify:weather-live": "node scripts/verify-weather-live.mjs",
+    "validate:missions": "node scripts/validate-missions.mjs",
     "serve": "python3 -m http.server 4173"
   },
   "devDependencies": {

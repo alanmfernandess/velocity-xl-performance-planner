@@ -1,0 +1,35 @@
+name: AWC weather snapshot
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17,47 * * * *"
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Query official AWC feeds
+        run: node scripts/update-awc-snapshot.mjs "$RUNNER_TEMP/awc/latest.json"
+      - name: Publish only the current snapshot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir "$RUNNER_TEMP/awc-publish"
+          cd "$RUNNER_TEMP/awc-publish"
+          git init -q
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git checkout -q -b weather-snapshots
+          mkdir -p awc
+          cp "$RUNNER_TEMP/awc/latest.json" awc/latest.json
+          git add awc/latest.json
+          git commit -qm 'Update current AWC weather snapshot'
+          # This dedicated data branch retains only the current snapshot.
+          git push -q --force origin weather-snapshots

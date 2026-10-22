@@ -163,15 +163,15 @@ export function parseSimBrief(data) {
   const origin = {
     icao: first(data.origin?.icao_code, data.origin?.icao, "ORIG"),
     name: first(data.origin?.name, "Origem"),
-    lat: number(first(data.origin?.pos_lat, data.origin?.latitude)),
-    lon: number(first(data.origin?.pos_long, data.origin?.longitude)),
+    lat: number(first(data.origin?.pos_lat, data.origin?.latitude), NaN),
+    lon: number(first(data.origin?.pos_long, data.origin?.longitude), NaN),
     elevationFt: number(first(data.origin?.elevation, data.origin?.elevation_ft), 0),
   };
   const destination = {
     icao: first(data.destination?.icao_code, data.destination?.icao, "DEST"),
     name: first(data.destination?.name, "Destino"),
-    lat: number(first(data.destination?.pos_lat, data.destination?.latitude)),
-    lon: number(first(data.destination?.pos_long, data.destination?.longitude)),
+    lat: number(first(data.destination?.pos_lat, data.destination?.latitude), NaN),
+    lon: number(first(data.destination?.pos_long, data.destination?.longitude), NaN),
     elevationFt: number(first(data.destination?.elevation, data.destination?.elevation_ft), 0),
   };
   const plannedAltitudeFt = number(first(data.general?.initial_altitude, data.general?.cruise_altitude), 18000);
@@ -187,8 +187,8 @@ export function parseSimBrief(data) {
   const route = rawFixes.map((fix) => ({ lat: number(fix.pos_lat, NaN), lon: number(fix.pos_long, NaN) }))
     .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
   if (route.length < 2) route.push(origin, destination);
-  const flightStart = Date.parse(first(data.times?.sched_off, data.times?.est_off));
-  const flightEnd = Date.parse(first(data.times?.sched_on, data.times?.est_on));
+  const flightStart = Date.parse(first(data.times?.sched_off, data.times?.est_off, data.times?.sched_out, data.times?.est_out));
+  const flightEnd = Date.parse(first(data.times?.sched_on, data.times?.est_on, data.times?.sched_in, data.times?.est_in));
   const advisoryMap = new Map();
   [data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.sigmets,
     data.weather?.airmet, data.weather?.airmets, data.airmets].flatMap(advisoryItems)
@@ -220,6 +220,9 @@ export function parseSimBrief(data) {
       shear: number(fix.shear, NaN),
       tropopauseFt: number(first(fix.tropopause_feet, fix.tropopause), NaN),
       altitudeFt: number(first(fix.altitude_feet, fix.altitude), NaN),
+      trackDeg: number(fix.track_true, NaN),
+      legDistanceNm: number(fix.distance, NaN),
+      ofpTimeTotalRaw: fix.time_total ?? null,
       // SimBrief navlog MORA applies to the leg ending at this fix.
       moraFt: number(fix.mora, NaN),
       stage: first(fix.stage, ""),
@@ -237,8 +240,8 @@ export function parseSimBrief(data) {
   }).filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon));
 
   if (!waypoints.length) waypoints.push(
-    { ident: origin.icao, lat: origin.lat, lon: origin.lon, distanceNm: 0, windDir: 0, windSpd: 0, oatC: NaN, windLevels: [] },
-    { ident: destination.icao, lat: destination.lat, lon: destination.lon, distanceNm: 0, windDir: 0, windSpd: 0, oatC: NaN, windLevels: [] },
+    { ident: origin.icao, lat: origin.lat, lon: origin.lon, distanceNm: 0, windDir: NaN, windSpd: NaN, oatC: NaN, windLevels: [] },
+    { ident: destination.icao, lat: destination.lat, lon: destination.lon, distanceNm: 0, windDir: NaN, windSpd: NaN, oatC: NaN, windLevels: [] },
   );
 
   const distanceNm = number(first(data.general?.route_distance, data.general?.air_distance, cumulativeNm), cumulativeNm);
@@ -279,6 +282,7 @@ export function parseSimBrief(data) {
   }).filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon));
   return {
     source: "SIMBRIEF",
+    ofpId: first(data.params?.request_id, data.params?.static_id, data.params?.sequence_id, null),
     origin,
     destination,
     alternate: first(alternate?.icao, "—"),

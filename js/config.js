@@ -112,6 +112,18 @@ export const PERFORMANCE = {
     marginalFuelMarginGal: 3,
   },
   optimization: { targetFuelMarginGal: 6 },
+  missionScoreV2: {
+    // Project preferences, not certified aircraft coefficients.
+    weights: { icing: 35, turbulence: 20, fuel: 15, performance: 10,
+      "weight-balance": 5, oxygen: 5, alternate: 5, efficiency: 5 },
+  },
+  trajectoryV2: {
+    maxCruiseSampleNm: 12,
+    maxSampleMinutes: 5,
+    maxVerticalSampleFt: 1500,
+    alternateSampleNm: 8,
+    alternateClimbCapFt: 3000,
+  },
   icing: {
     warmBoundaryC: 5,
     coldBoundaryC: -40,
@@ -132,6 +144,8 @@ export const PERFORMANCE = {
     alternateEtaOffsetMin: 35,
     watchBasePenalty: 4,
     cautionBasePenalty: 18,
+    forecast: { maxHeuristicScore: 70, humidityStartPct: 65,
+      precipitationSaturationMm: 2, precipitationWeight: 0.8 },
   },
   oxygen: {
     usableCapacityFraction: 0.9,
@@ -149,6 +163,10 @@ export const PERFORMANCE = {
     lightScore: 20,
     moderateScore: 45,
     severeScore: 75,
+    forecast: { verticalShearScaleKt: 12, verticalShearScore: 35,
+      horizontalShearScaleKt: 30, horizontalShearScore: 30,
+      capeScale: 1500, capeScore: 42, verticalVelocityScale: 2,
+      verticalVelocityScore: 30, maximumShearScore: 60 },
     lightPenalty: 4,
     moderatePenalty: 16,
     severePenalty: 100,

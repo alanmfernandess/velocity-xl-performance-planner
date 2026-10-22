@@ -22,9 +22,11 @@ for (const mode of ["ECON", "NORMAL", "FAST"]) {
     assert.equal(mission.powerProfile.cruise.power.rpm, PERFORMANCE.modes[mode].rpm);
     assert.equal(mission.powerProfile.climb.power.rpm, PERFORMANCE.powerModel.phases.climb.rpm);
     assert.equal(mission.powerProfile.descent.power.rpm, PERFORMANCE.powerModel.phases.descent.rpm);
-    assert.equal(mission.powerProfile.climb.fuelGal, mission.powerProfile.climb.timeHr * mission.powerProfile.climb.fuelFlowGph);
-    assert.equal(mission.powerProfile.cruise.fuelGal, mission.powerProfile.cruise.timeHr * mission.powerProfile.cruise.fuelFlowGph);
-    assert.equal(mission.powerProfile.descent.fuelGal, mission.powerProfile.descent.timeHr * mission.powerProfile.descent.fuelFlowGph);
+    for (const phase of ["climb", "cruise", "descent"]) {
+      const profile = mission.powerProfile[phase];
+      assert.ok(Math.abs(profile.fuelGal - profile.timeHr * profile.fuelFlowGph) < 1e-9,
+        `${phase} fuel must equal duration × mean flow within floating-point tolerance`);
+    }
   });
 }
 
@@ -56,7 +58,7 @@ test("K1 changes cruise speed and time without changing MAP, RPM or flow", () =>
   const slower = b.candidates.find((candidate) => candidate.altitudeFt === 18000).result;
   assert.ok(slower.tasKt < baseline.tasKt);
   assert.ok(slower.cruiseTimeHr > baseline.cruiseTimeHr);
-  assert.equal(slower.fuelFlowGph, baseline.fuelFlowGph);
+  assert.ok(Math.abs(slower.fuelFlowGph - baseline.fuelFlowGph) < 1e-9);
   assert.equal(slower.power.rpm, baseline.power.rpm);
   assert.equal(slower.power.availableMapInHg, baseline.power.availableMapInHg);
 });
@@ -120,7 +122,9 @@ test("unknown weather is not described as confirmed viable", () => {
 test("physical blockers outrank a high numeric score", () => {
   const mission = run({ payloadLb: 1500, weightBalance: { ...LOAD, baggage: 980 } });
   assert.equal(mission.status, "not-viable");
-  assert.ok(mission.selected.physicalBlockers.length);
+  assert.equal(mission.selected, null);
+  assert.equal(mission.viabilityStatus, "NO_FEASIBLE_SOLUTION");
+  assert.ok(mission.diagnostic.physicalBlockers.length);
 });
 
 test("cost remains unavailable without a positive entered price", () => {

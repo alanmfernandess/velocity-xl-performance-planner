@@ -1149,20 +1149,37 @@ function modePowerSetting(mode, powerSetting = {}) {
   return { source: "AUTO", mapInHg: modeData.mapInHg, rpm: modeData.rpm };
 }
 
-function climbProfile(altitudeFt, weightLb, weather, phaseName = "climb") {
-  const avgAltitudeRatio = altitudeFt / 2 / AIRCRAFT.serviceCeilingFt;
-  const baseRate = PERFORMANCE.climbRate.seaLevelFpm -
-    (PERFORMANCE.climbRate.seaLevelFpm - PERFORMANCE.climbRate.ceilingFpm) * avgAltitudeRatio;
-  const weightFactor = 1 - ((weightLb - PERFORMANCE.referenceWeightLb) / 100) * PERFORMANCE.climbWeightFactorPer100Lb;
+function climbProfile(altitudeFt, weightLb, weather, phaseName = "climb", startAltitudeFt = 0, plan = null) {
   const setting = PERFORMANCE.powerModel.phases[phaseName];
-  const power = powerAtAltitude({ altitudeFt, oatC: weather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
-  const referencePower = PERFORMANCE.powerModel.ratedHp * (setting.mapInHg / AIRCRAFT.normalManifoldInHg) * (setting.rpm / AIRCRAFT.maxRpm);
-  const powerRatio = clamp(power.estimatedHp / referencePower, 0.55, 1);
-  const rateFpm = Math.max(550, baseRate * weightFactor * (0.72 + 0.28 * powerRatio));
-  const timeHr = altitudeFt / rateFpm / 60;
-  const distanceNm = timeHr * PERFORMANCE.climbSpeedKt;
-  const fuelFlowGph = setting.fuelFlowGph * powerRatio;
-  return { rateFpm, timeHr, distanceNm, fuelGal: timeHr * fuelFlowGph, fuelFlowGph, power };
+  const fromFt = Math.max(0, Math.min(startAltitudeFt, altitudeFt));
+  const climbFt = Math.max(0, altitudeFt - fromFt);
+  const sections = Math.max(1, Math.ceil(climbFt / 1000));
+  let timeHr = 0, distanceNm = 0, fuelGal = 0, power = null, lastRate = 0;
+  const departureFix = plan?.waypoints?.[0] || plan?.origin;
+  const track = plan?.origin && plan?.destination ? bearingDeg(plan.origin, plan.destination) : null;
+  for (let index = 0; index < sections; index += 1) {
+    const sectionFt = climbFt / sections;
+    const midFt = fromFt + (index + .5) * sectionFt;
+    const localWeather = departureFix ? weatherAtAltitude(departureFix, midFt) : weather;
+    const temperatureC = Number.isFinite(localWeather.oatC) ? localWeather.oatC : isaTemperatureC(midFt);
+    power = powerAtAltitude({ altitudeFt: midFt, oatC: temperatureC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
+    const referencePower = PERFORMANCE.powerModel.ratedHp * (setting.mapInHg / AIRCRAFT.normalManifoldInHg) * (setting.rpm / AIRCRAFT.maxRpm);
+    const powerRatio = clamp(power.estimatedHp / referencePower, .55, 1);
+    const baseRate = PERFORMANCE.climbRate.seaLevelFpm -
+      (PERFORMANCE.climbRate.seaLevelFpm - PERFORMANCE.climbRate.ceilingFpm) * midFt / AIRCRAFT.serviceCeilingFt;
+    const currentWeightLb = weightLb - fuelGal * AIRCRAFT.fuelDensityLbGal;
+    const weightFactor = 1 - ((currentWeightLb - PERFORMANCE.referenceWeightLb) / 100) * PERFORMANCE.climbWeightFactorPer100Lb;
+    lastRate = Math.max(550, baseRate * weightFactor * (.72 + .28 * powerRatio));
+    const sectionHr = sectionFt / lastRate / 60;
+    const windKt = track === null ? 0 : windComponentKt(track, localWeather.windDir, localWeather.windSpd);
+    timeHr += sectionHr;
+    distanceNm += sectionHr * Math.max(90, PERFORMANCE.climbSpeedKt + windKt);
+    fuelGal += sectionHr * setting.fuelFlowGph * powerRatio;
+  }
+  power ||= powerAtAltitude({ altitudeFt: fromFt, oatC: weather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
+  return { rateFpm: climbFt / Math.max(1e-9, timeHr * 60), timeHr, distanceNm,
+    fuelGal, fuelFlowGph: timeHr ? fuelGal / timeHr : setting.fuelFlowGph, power,
+    startAltitudeFt: fromFt, endAltitudeFt: altitudeFt, finalRateFpm: lastRate };
 }
 
 export function calibrationForMode(calibration, mode, altitudeFt, powerSetting = {}) {
@@ -1212,46 +1229,79 @@ export function cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardG
   };
 }
 
-function descentProfile(altitudeFt, weather) {
-  const timeHr = altitudeFt / PERFORMANCE.descentRateFpm / 60;
+function descentProfile(altitudeFt, weather, destinationAltitudeFt = 0, plan = null) {
+  const descentFt = Math.max(0, altitudeFt - Math.max(0, destinationAltitudeFt));
+  const sections = Math.max(1, Math.ceil(descentFt / 1000));
   const setting = PERFORMANCE.powerModel.phases.descent;
-  const power = powerAtAltitude({ altitudeFt: altitudeFt / 2, oatC: weather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
   const referencePower = PERFORMANCE.powerModel.ratedHp
     * (setting.mapInHg / AIRCRAFT.normalManifoldInHg) * (setting.rpm / AIRCRAFT.maxRpm);
-  const fuelFlowGph = setting.fuelFlowGph
-    * clamp(power.estimatedHp / referencePower, .5, 1.2) ** PERFORMANCE.powerModel.fuelPowerExponent;
-  return { timeHr, distanceNm: timeHr * PERFORMANCE.descentSpeedKt, fuelGal: timeHr * fuelFlowGph, fuelFlowGph, rateFpm: PERFORMANCE.descentRateFpm, power };
+  const destinationFix = plan?.waypoints?.at(-1) || plan?.destination;
+  const track = plan?.origin && plan?.destination ? bearingDeg(plan.origin, plan.destination) : null;
+  let timeHr = 0, distanceNm = 0, fuelGal = 0, power = null;
+  for (let index = 0; index < sections; index += 1) {
+    const midFt = altitudeFt - (index + .5) * descentFt / sections;
+    const localWeather = destinationFix ? weatherAtAltitude(destinationFix, midFt) : weather;
+    power = powerAtAltitude({ altitudeFt: midFt, oatC: localWeather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
+    const sectionHr = (descentFt / sections) / PERFORMANCE.descentRateFpm / 60;
+    const windKt = track === null ? 0 : windComponentKt(track, localWeather.windDir, localWeather.windSpd);
+    timeHr += sectionHr;
+    distanceNm += sectionHr * Math.max(90, PERFORMANCE.descentSpeedKt + windKt);
+    fuelGal += sectionHr * setting.fuelFlowGph
+      * clamp(power.estimatedHp / referencePower, .5, 1.2) ** PERFORMANCE.powerModel.fuelPowerExponent;
+  }
+  power ||= powerAtAltitude({ altitudeFt, oatC: weather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
+  return { timeHr, distanceNm, fuelGal, fuelFlowGph: timeHr ? fuelGal / timeHr : setting.fuelFlowGph,
+    rateFpm: PERFORMANCE.descentRateFpm, power, startAltitudeFt: altitudeFt, endAltitudeFt: destinationAltitudeFt };
 }
 
-function cruiseRouteTime(plan, altitudeFt, tasKt, startNm, endNm, fallbackGsKt) {
+function integrateCruise({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, calibration, powerSetting,
+  startNm, endNm, climbFuelGal, fallbackGsKt }) {
   const fixes = (plan.waypoints || []).filter((fix) =>
     Number.isFinite(fix.distanceNm) && Number.isFinite(fix.lat) && Number.isFinite(fix.lon));
-  let timeHr = 0, coveredNm = 0;
+  let timeHr = 0, fuelGal = 0, coveredNm = 0;
+  const sections = [];
+  const addSection = (distanceNm, from, to) => {
+    const remainingFuelGal = Math.max(0, fuelOnboardGal - PERFORMANCE.taxiFuelGal - climbFuelGal - fuelGal);
+    const snapshot = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal: remainingFuelGal,
+      oxygenWeightLb, calibration, powerSetting });
+    const weather = from && to ? weatherAtAltitude(from, altitudeFt) : null;
+    const componentKt = weather ? windComponentKt(bearingDeg(from, to), weather.windDir, weather.windSpd) : snapshot.weather.componentKt;
+    const gsKt = Math.max(90, snapshot.tasKt + componentKt);
+    const durationHr = distanceNm / gsKt;
+    const consumedGal = durationHr * snapshot.fuelFlowGph;
+    sections.push({ distanceNm, timeHr: durationHr, fuelGal: consumedGal, tasKt: snapshot.tasKt, gsKt,
+      fuelFlowGph: snapshot.fuelFlowGph, startFuelGal: remainingFuelGal, componentKt });
+    timeHr += durationHr;
+    fuelGal += consumedGal;
+    coveredNm += distanceNm;
+  };
   for (let index = 0; index < fixes.length - 1; index += 1) {
     const from = fixes[index], to = fixes[index + 1];
     const segmentNm = Math.max(0, Math.min(endNm, to.distanceNm) - Math.max(startNm, from.distanceNm));
     if (!segmentNm) continue;
-    const weather = weatherAtAltitude(from, altitudeFt);
-    const componentKt = windComponentKt(bearingDeg(from, to), weather.windDir, weather.windSpd);
-    timeHr += segmentNm / Math.max(90, tasKt + componentKt);
-    coveredNm += segmentNm;
+    addSection(segmentNm, from, to);
   }
   const totalNm = Math.max(0, endNm - startNm);
-  return timeHr + Math.max(0, totalNm - coveredNm) / Math.max(90, fallbackGsKt);
+  if (totalNm > coveredNm) addSection(totalNm - coveredNm, null, null);
+  return { timeHr, fuelGal, sections, distanceNm: totalNm, gsKt: timeHr ? totalNm / timeHr : fallbackGsKt,
+    fuelFlowGph: timeHr ? fuelGal / timeHr : 0 };
 }
 
 export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {} }) {
   const takeoffWeightLb = AIRCRAFT.emptyWeightLb + payloadLb + fuelOnboardGal * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
   const cruise = cruiseSnapshot({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, calibration, powerSetting });
   const { weather, tasKt, gsKt: meanGsKt, fuelFlowGph } = cruise;
-  const climb = climbProfile(altitudeFt, takeoffWeightLb, weather);
-  const descent = descentProfile(altitudeFt, weather);
+  const climb = climbProfile(altitudeFt, takeoffWeightLb, weather, "climb", plan.origin?.elevationFt || 0, plan);
+  const descent = descentProfile(altitudeFt, weather, plan.destination?.elevationFt || 0, plan);
   const cruiseDistanceNm = Math.max(0, plan.distanceNm - climb.distanceNm - descent.distanceNm);
-  const cruiseTimeHr = cruiseRouteTime(plan, altitudeFt, tasKt, climb.distanceNm,
-    Math.max(climb.distanceNm, plan.distanceNm - descent.distanceNm), meanGsKt);
-  const gsKt = cruiseTimeHr > 0 ? cruiseDistanceNm / cruiseTimeHr : meanGsKt;
-  const cruiseFuelGal = cruiseTimeHr * fuelFlowGph;
-  const calibratedCruiseFlowGph = fuelFlowGph;
+  const cruiseIntegrated = integrateCruise({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb,
+    calibration, powerSetting, startNm: climb.distanceNm,
+    endNm: Math.max(climb.distanceNm, plan.distanceNm - descent.distanceNm),
+    climbFuelGal: climb.fuelGal, fallbackGsKt: meanGsKt });
+  const cruiseTimeHr = cruiseIntegrated.timeHr;
+  const gsKt = cruiseIntegrated.gsKt;
+  const cruiseFuelGal = cruiseIntegrated.fuelGal;
+  const calibratedCruiseFlowGph = cruiseTimeHr ? cruiseIntegrated.fuelFlowGph : fuelFlowGph;
   const tripFuelGal = climb.fuelGal + cruiseFuelGal + descent.fuelGal;
   const tripTimeHr = climb.timeHr + cruiseTimeHr + descent.timeHr;
   const reserveFuelGal = (reserveMinutes / 60) * PERFORMANCE.modes.ECON.fuelFlowGph;
@@ -1271,7 +1321,8 @@ export function calculateAtAltitude({ plan, altitudeFt, mode, payloadLb, fuelOnb
     power: cruise.power,
     weather,
     climb,
-    cruise: { timeHr: cruiseTimeHr, distanceNm: cruiseDistanceNm, fuelGal: cruiseFuelGal, fuelFlowGph, power: cruise.power, tasKt, gsKt,
+    cruise: { timeHr: cruiseTimeHr, distanceNm: cruiseDistanceNm, fuelGal: cruiseFuelGal, fuelFlowGph: calibratedCruiseFlowGph, power: cruise.power, tasKt, gsKt,
+      sections: cruiseIntegrated.sections,
       calibrationApplicable: cruise.factors.applicable },
     descent,
     cruiseDistanceNm,
@@ -1303,6 +1354,7 @@ export function assessFeasibility(result, { plan, fuelOnboardGal }) {
   if (weightMarginLb < 0) hardReasons.push("WEIGHT");
   if (fuelMarginGal < 0) hardReasons.push("FUEL");
   if (altitudeMarginFt < 0) hardReasons.push("ALTITUDE");
+  if (result.altitudeFt < Math.max(plan.origin?.elevationFt || 0, plan.destination?.elevationFt || 0)) hardReasons.push("AIRPORT_ABOVE_FL");
   if (profileMarginNm < PERFORMANCE.viability.minimumCruiseSegmentNm) hardReasons.push("PROFILE");
 
   if (!hardReasons.length) {
@@ -1536,13 +1588,23 @@ export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboard
     + Math.max(0, travelTime(result.climb.distanceNm, distance)) * result.fuelFlowGph;
   const remainingAfterReturn = (distance) => fuelOnboardGal - fuelTo(distance)
     - returnTime(distance) * result.fuelFlowGph - result.reserveFuelGal - result.descent.fuelGal;
-  lo = 0; hi = plan.distanceNm;
-  for (let iteration = 0; iteration < 35; iteration += 1) {
-    const mid = (lo + hi) / 2;
-    if (remainingAfterReturn(mid) >= 0) lo = mid; else hi = mid;
-  }
-  const pnrDistanceNm = (lo + hi) / 2;
+  const pnrAtOrigin = remainingAfterReturn(0);
   const pnrBeyondDestination = remainingAfterReturn(plan.distanceNm) >= 0;
+  lo = 0; hi = plan.distanceNm;
+  if (pnrBeyondDestination) {
+    lo = plan.distanceNm;
+    hi = Math.max(2 * plan.distanceNm, 1);
+    while (hi < 10000 && remainingAfterReturn(hi) >= 0) hi *= 2;
+  }
+  let pnrRawDistanceNm = null;
+  if (pnrAtOrigin >= 0 && remainingAfterReturn(hi) < 0) {
+    for (let iteration = 0; iteration < 40; iteration += 1) {
+      const mid = (lo + hi) / 2;
+      if (remainingAfterReturn(mid) >= 0) lo = mid; else hi = mid;
+    }
+    pnrRawDistanceNm = (lo + hi) / 2;
+  }
+  const pnrDistanceNm = pnrRawDistanceNm === null ? null : Math.min(plan.distanceNm, pnrRawDistanceNm);
   const outboundGsKt = plan.distanceNm / Math.max(.01, travelTime(0, plan.distanceNm));
   const returnGsKt = plan.distanceNm / Math.max(.01, travelTime(0, plan.distanceNm, true));
   return {
@@ -1557,12 +1619,13 @@ export function calculateEtpPnr({ plan, altitudeFt, mode, payloadLb, fuelOnboard
     },
     pnr: {
       distanceNm: pnrDistanceNm,
-      rawDistanceNm: pnrDistanceNm,
-      fraction: clamp(pnrDistanceNm / plan.distanceNm, 0, 1),
-      elapsedHr: result.climb.timeHr + travelTime(result.climb.distanceNm, pnrDistanceNm),
-      fuelRemainingGal: Math.max(0, fuelOnboardGal - fuelTo(pnrDistanceNm)),
+      rawDistanceNm: pnrRawDistanceNm,
+      status: pnrRawDistanceNm === null ? "UNAVAILABLE" : pnrBeyondDestination ? "BEYOND_DESTINATION" : "WITHIN_ROUTE",
+      fraction: pnrDistanceNm === null ? null : clamp(pnrDistanceNm / plan.distanceNm, 0, 1),
+      elapsedHr: pnrDistanceNm === null ? null : result.climb.timeHr + travelTime(result.climb.distanceNm, pnrDistanceNm),
+      fuelRemainingGal: pnrDistanceNm === null ? null : Math.max(0, fuelOnboardGal - fuelTo(pnrDistanceNm)),
       beyondDestination: pnrBeyondDestination,
-      waypoint: nearestWaypoint(plan, pnrDistanceNm),
+      waypoint: pnrDistanceNm === null ? null : nearestWaypoint(plan, pnrDistanceNm),
     },
     outboundGsKt,
     returnGsKt,
@@ -1608,10 +1671,9 @@ export function calculateStepClimbs({
     const remainingNm = plan.distanceNm - currentDistanceNm;
     const deltaAltitudeFt = candidateAltitudeFt - currentAltitudeFt;
     const candidateWeather = averageRouteWeather(plan, candidateAltitudeFt);
-    const stepClimb = climbProfile(candidateAltitudeFt, weightLb, candidateWeather, "enrouteClimb");
-    const climbRateFpm = Math.max(550, stepClimb.rateFpm);
-    const stepTimeHr = deltaAltitudeFt / climbRateFpm / 60;
-    const stepDistanceNm = stepTimeHr * PERFORMANCE.climbSpeedKt;
+    const stepClimb = climbProfile(candidateAltitudeFt, weightLb, candidateWeather, "enrouteClimb", currentAltitudeFt, plan);
+    const stepTimeHr = stepClimb.timeHr;
+    const stepDistanceNm = stepClimb.distanceNm;
     const stayFuelGal = remainingNm / current.gsKt * current.fuelFlowGph;
     const stepFuelGal = stepTimeHr * stepClimb.fuelFlowGph + Math.max(0, remainingNm - stepDistanceNm) / candidate.gsKt * candidate.fuelFlowGph;
     const savingGal = stayFuelGal - stepFuelGal;
@@ -1650,9 +1712,9 @@ export function calculateStepClimbs({
       }
       if (!point.altitudeFt) continue;
       const weightLb = AIRCRAFT.emptyWeightLb + payloadLb + Math.max(0, fuelGal) * AIRCRAFT.fuelDensityLbGal + oxygenWeightLb;
-      const climb = climbProfile(point.altitudeFt, weightLb, averageRouteWeather(plan, point.altitudeFt), "enrouteClimb");
-      const climbHr = (point.altitudeFt - altitudeFt) / climb.rateFpm / 60;
-      const climbNm = Math.min(Math.max(0, plan.distanceNm - distanceNm), climbHr * PERFORMANCE.climbSpeedKt);
+      const climb = climbProfile(point.altitudeFt, weightLb, averageRouteWeather(plan, point.altitudeFt), "enrouteClimb", altitudeFt, plan);
+      const climbHr = climb.timeHr;
+      const climbNm = Math.min(Math.max(0, plan.distanceNm - distanceNm), climb.distanceNm);
       fuelGal -= climbHr * climb.fuelFlowGph;
       timeHr += climbHr;
       distanceNm += climbNm;
