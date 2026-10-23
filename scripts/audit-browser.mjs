@@ -306,6 +306,17 @@ try {
           if(captureWidths.has(width) && await page.locator('#topLevelCards .top-level-card').count()){
             await page.locator('#topLevelCards .top-level-card').first().click();
             await audit(page, `${width}px pilot analysis mission:overview`);
+            const actionGeometry = await page.evaluate(() => {
+              const apply = document.querySelector('#applyPilotAlternative')?.getBoundingClientRect();
+              const rerank = document.querySelector('#recalculateRanking')?.getBoundingClientRect();
+              return apply && rerank ? { apply: { x: apply.x, width: apply.width, height: apply.height },
+                rerank: { x: rerank.x, width: rerank.width, height: rerank.height } } : null;
+            });
+            if (!actionGeometry || Math.abs(actionGeometry.apply.width - actionGeometry.rerank.width) > 1
+              || Math.abs(actionGeometry.apply.height - actionGeometry.rerank.height) > 1
+              || Math.abs(actionGeometry.apply.x - actionGeometry.rerank.x) > 1)
+              report.errors.push({ label: `${width}px pilot decision button geometry`,
+                issues: [JSON.stringify(actionGeometry) || 'missing action buttons'] });
             await page.locator('#pilotAnalysis').scrollIntoViewIfNeeded();
             await screenshot(page,width,'mission','analysis');
             if(width===390){
@@ -324,6 +335,48 @@ try {
           if (await trigger.count()) await trigger.click();
           if (await panel.count()) {
             await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:${tool}`);
+            if (tool === 'alternate') {
+              const metrics = await page.evaluate(() => {
+                const group = document.querySelector('[data-tool-panel="alternate"] .advisor-strip');
+                if (!group) return null;
+                const cells = [...group.children];
+                const groupBox = group.getBoundingClientRect();
+                return { group: { left: groupBox.left, right: groupBox.right },
+                  gap: getComputedStyle(group).columnGap,
+                  cells: cells.map(cell => {
+                    const box = cell.getBoundingClientRect();
+                    const label = cell.querySelector('b');
+                    const value = cell.querySelector('strong');
+                    const valueBox = value?.getBoundingClientRect();
+                    const labelBox = label?.getBoundingClientRect();
+                    const style = getComputedStyle(cell);
+                    return { x: box.x, right: box.right, width: box.width, y: box.y,
+                      labelScroll: label?.scrollWidth, labelWidth: label?.clientWidth,
+                      labelBottom: labelBox?.bottom, valueBottom: valueBox?.bottom,
+                      valueRight: valueBox?.right, valueLeft: valueBox?.left,
+                      borderTop: style.borderTopWidth, borderRight: style.borderRightWidth,
+                      borderBottom: style.borderBottomWidth, borderLeft: style.borderLeftWidth };
+                  }) };
+              });
+              const cells = metrics?.cells || [];
+              const metricIssues = [];
+              if (cells.length !== 3) metricIssues.push('expected three fuel metrics');
+              else {
+                if (cells.some(cell => Math.abs(cell.width - cells[0].width) > 1 || Math.abs(cell.y - cells[0].y) > 1))
+                  metricIssues.push('metric columns have unequal width or top alignment');
+                if (cells.some(cell => Math.abs(cell.valueBottom - cells[0].valueBottom) > 1))
+                  metricIssues.push('fuel values do not share a baseline');
+                if (cells.some(cell => cell.labelScroll > cell.labelWidth + 1))
+                  metricIssues.push('metric labels overflow their columns');
+                if (cells.some(cell => cell.right > metrics.group.right + 1 || cell.x < metrics.group.left - 1))
+                  metricIssues.push('metric columns exceed container');
+                if (cells.some(cell => cell.borderTop !== '0px' || cell.borderRight !== '0px'
+                    || cell.borderBottom !== '0px' || cell.borderLeft !== '0px'))
+                  metricIssues.push('unexpected metric divider');
+              }
+              if (metricIssues.length) report.errors.push({ label: `${width}px alternate fuel metrics`, issues: metricIssues, metrics });
+              if (captureWidths.has(width)) await screenshot(page, width, area, 'alternate');
+            }
             if (tool === 'cost') {
               if (captureWidths.has(width)) await screenshot(page, width, area, 'cost-unassessed');
               await page.locator('#fuelPricePerLiter').fill('7.25');

@@ -69,3 +69,27 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
   assert.match(html, /styles\.css\?v=20261022-pde3/);
 });
+
+
+test("pilot decision action buttons share a full-width column and button dimensions", () => {
+  assertDeclaration(css, ".analysis-actions", "display", "grid");
+  assertDeclaration(css, ".analysis-actions", "grid-template-columns", "minmax(0, 1fr)");
+  assertDeclaration(css, ".analysis-actions > button", "width", "100%");
+  assertDeclaration(css, ".analysis-actions > button", "min-height", "var(--control-height)");
+  assert.match(html, /id="applyPilotAlternative"/);
+  assert.match(html, /id="recalculateRanking"/);
+});
+
+
+test("alternate fuel metrics are balanced columns without dividing lines", () => {
+  assertDeclaration(css, ".advisor-strip", "grid-template-columns", "repeat(3, minmax(0, 1fr))");
+  assertDeclaration(css, ".advisor-strip", "gap", "var(--space-3)");
+  assertDeclaration(css, ".advisor-strip > span", "display", "flex");
+  assertDeclaration(css, ".advisor-strip > span", "flex-direction", "column");
+  assertDeclaration(css, ".advisor-strip > span", "align-items", "center");
+  assertDeclaration(css, ".advisor-strip strong", "font-size", "var(--ui-body)");
+  assert.doesNotMatch(cssRule(css, ".advisor-strip"), /border(?:-\\w+)?\\s*:/);
+  assert.doesNotMatch(cssRule(css, ".advisor-strip > span"), /border(?:-\\w+)?\\s*:/);
+  for (const id of ["fuelAtDestination", "alternateFuel", "alternateLandingFuel"])
+    assert.match(html, new RegExp(`id="${id}"`));
+});
