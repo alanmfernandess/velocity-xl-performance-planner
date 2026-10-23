@@ -79,3 +79,17 @@ test("pilot decision action buttons share a full-width column and button dimensi
   assert.match(html, /id="applyPilotAlternative"/);
   assert.match(html, /id="recalculateRanking"/);
 });
+
+
+test("alternate fuel metrics are balanced columns without dividing lines", () => {
+  assertDeclaration(css, ".advisor-strip", "grid-template-columns", "repeat(3, minmax(0, 1fr))");
+  assertDeclaration(css, ".advisor-strip", "gap", "var(--space-3)");
+  assertDeclaration(css, ".advisor-strip > span", "display", "flex");
+  assertDeclaration(css, ".advisor-strip > span", "flex-direction", "column");
+  assertDeclaration(css, ".advisor-strip > span", "align-items", "center");
+  assertDeclaration(css, ".advisor-strip strong", "font-size", "var(--ui-body)");
+  assert.doesNotMatch(cssRule(css, ".advisor-strip"), /border(?:-\\w+)?\\s*:/);
+  assert.doesNotMatch(cssRule(css, ".advisor-strip > span"), /border(?:-\\w+)?\\s*:/);
+  for (const id of ["fuelAtDestination", "alternateFuel", "alternateLandingFuel"])
+    assert.match(html, new RegExp(`id="${id}"`));
+});
