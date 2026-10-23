@@ -11,7 +11,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261023-heading-exact" />
+    <link rel="stylesheet" href="./styles.css?v=20261023-ice-simple" />
   </head>
   <body>
     <header class="topbar">
@@ -268,7 +268,17 @@
               </section>
               <section>
                 <div class="ice-section-heading"><div><span data-i18n="weatherEvidence">Cobertura meteorológica</span><strong id="iceEvidenceCoverage">—</strong></div></div>
-                <div class="ice-evidence-list" id="iceEvidenceList"></div>
+                <div class="ice-weather-summary">
+                  <div class="ice-coverage-track" id="iceCoverageTrack" role="meter" aria-label="Cobertura meteorológica" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="iceCoverageFill"></span></div>
+                  <p class="ice-coverage-context" id="iceCoverageContext">—</p>
+                  <div class="ice-coverage-notice" id="iceCoverageNotice" role="status" hidden><strong id="iceCoverageNoticeTitle">—</strong><span id="iceCoverageNoticeText">—</span></div>
+                  <div class="ice-coverage-alternate"><span id="iceCoverageAlternateLabel">ROTA DO ALTERNADO</span><strong id="iceCoverageAlternateValue">—</strong><small id="iceCoverageAlternateNote">—</small></div>
+                  <p class="ice-coverage-caveat" id="iceCoverageCaveat">—</p>
+                  <details class="ice-technical-details" id="iceCoverageDetails">
+                    <summary id="iceCoverageDetailsLabel">Ver detalhes técnicos</summary>
+                    <div class="ice-evidence-list" id="iceEvidenceList"></div>
+                  </details>
+                </div>
               </section>
             </div>
             <div class="ice-composition">
@@ -414,6 +424,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
     <script src="./js/layout.js?v=20261022-pde3"></script>
-    <script type="module" src="./js/app.js?v=20261022-06"></script>
+    <script type="module" src="./js/app.js?v=20261023-07"></script>
   </body>
 </html>

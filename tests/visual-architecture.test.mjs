@@ -67,7 +67,7 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261023-heading-exact/);
+  assert.match(html, /styles\.css\?v=20261023-ice-simple/);
 });
 
 
@@ -101,4 +101,20 @@ test("section title and eyebrow share the OFP SIMBRIEF content x-coordinate at e
   assertDeclaration(css, ".plan-bar", "padding", "var(--space-5) var(--space-6)");
   assert.match(css, /@media \(max-width: 760px\) \{[\s\S]*?\.plan-bar \{[\s\S]*?padding: var\(--space-4\);[\s\S]*?\.area-heading \{\s*min-height: 74px;\s*padding-inline: calc\(var\(--space-4\) \+ 1px\);/);
   assert.match(layout, /heading\.className = 'area-heading'/);
+});
+
+test("ICE evidence presents simple route coverage and on-demand technical facts without protection alert", () => {
+  assert.match(html, /id="iceCoverageTrack"[^>]*role="meter"/);
+  assert.match(html, /id="iceCoverageContext"/);
+  assert.match(html, /id="iceCoverageNotice"[^>]*hidden/);
+  assert.match(html, /<details class="ice-technical-details" id="iceCoverageDetails">/);
+  assert.match(html, /<div class="ice-evidence-list" id="iceEvidenceList"><\/div>/);
+  assert.match(app, /iceCoverageNoticeTitle/);
+  assert.match(app, /awcStatus==="stale"/);
+  assert.match(app, /Cobertura dos dados não significa ausência de gelo/);
+  assert.doesNotMatch(app, /PROTEÇÃO|NÃO INSTALADA|NOT INSTALLED/);
+  assertDeclaration(css, ".ice-technical-details > summary", "min-height", "var(--control-height)");
+  assertDeclaration(css, ".ice-technical-details .ice-evidence-list", "grid-template-columns", "minmax(0, 1fr)");
+  assertDeclaration(css, ".ice-technical-details:not([open]) > .ice-evidence-list", "display", "none");
+  assert.match(html, /js\/app\.js\?v=20261023-07/);
 });

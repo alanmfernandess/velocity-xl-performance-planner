@@ -662,8 +662,56 @@ function renderIceModule(plan,analysis,selected) {
   const freshest=ages.length?Math.min(...ages):NaN;
   const tafKinds=[...new Set(weatherPoints.flatMap((weather)=>weather.sources||[]).map((item)=>item.kind).filter((kind)=>!["metar","legacy"].includes(kind)))];
   const tafModes=tafKinds.length?tafKinds.map((kind)=>kind.replace("prob","PROB").replace("temporary",pt?"TEMPO":"TEMPO").replace("becoming","BECMG").replace("prevailing",pt?"PREDOMINANTE":"PREVAILING").toUpperCase()).join(" · "):"—";
+
   $("#iceEvidenceCoverage").textContent=`${coverage}%`;
-  $("#iceEvidenceList").innerHTML=`<div><span>${pt?"TEMPERATURA":"TEMPERATURE"}</span><strong>${oatRange}</strong></div><div><span>${pt?"COBERTURA COMBINADA":"COMBINED COVERAGE"}</span><strong>${coverage}%</strong></div><div><span>${pt?"EVIDÊNCIA APLICÁVEL":"APPLICABLE EVIDENCE"}</span><strong>${evidenceCount}/${segments.length||0} ${pt?"trechos":"legs"}</strong></div><div><span>${pt?"FASES · S / C / D":"PHASES · C / C / D"}</span><strong>${phaseCounts}</strong></div><div><span>${pt?"LACUNA PRINCIPAL":"MAIN GAP"}</span><strong>${weatherMissingLabel(missingReason,pt)}${missingCount?` (${missingCount})`:""}</strong></div><div><span>${pt?"ALTERNADO · ROTA":"ALTERNATE · ROUTE"}</span><strong>${alternateCounts}${alternateCoverage?.terminalEvidence?` · ${pt?"TAF/METAR terminal":"terminal TAF/METAR"}`:""}</strong></div><div><span>${pt?"VALIDADE TERMINAL":"TERMINAL VALIDITY"}</span><strong>${validForecasts}/${weatherPoints.length||0}</strong></div><div><span>${pt?"METAR MAIS PRÓXIMO":"NEAREST METAR"}</span><strong>${Number.isFinite(freshest)?`${number(freshest,0)} min`:"—"}</strong></div><div><span>${pt?"GRUPOS TAF":"TAF GROUPS"}</span><strong>${tafModes}</strong></div><div><span>${pt?"PROTEÇÃO":"PROTECTION"}</span><strong>${pt?"NÃO INSTALADA":"NOT INSTALLED"}</strong></div><div><span>${pt?"FONTE":"SOURCE"}</span><strong>${weatherSources}</strong></div><div><span>${pt?"OFP / GFS UTC":"OFP / GFS UTC"}</span><strong>${timeWindow}</strong></div>`;
+  $("#iceCoverageFill").style.width=`${coverage}%`;
+  $("#iceCoverageTrack").setAttribute("aria-valuenow",String(coverage));
+  $("#iceCoverageTrack").setAttribute("aria-label",pt?"Cobertura meteorológica":"Weather coverage");
+  $("#iceCoverageContext").textContent=pt
+    ? `Há dados meteorológicos aplicáveis em ${evidenceCount} de ${segments.length} trechos da rota principal.`
+    : `Applicable weather data for ${evidenceCount} of ${segments.length} main-route legs.`;
+  const awcNote=awcStatus==="stale"
+    ? (pt?"Os avisos oficiais do AWC estão vencidos. A análise não conta com avisos atualizados dessa fonte.":"Official AWC advisories are outdated. This assessment does not include current advisories from that source.")
+    : awcStatus!=="available"
+      ? (pt?"Avisos oficiais do AWC indisponíveis nesta avaliação.":"Official AWC advisories are unavailable for this assessment.")
+      : "";
+  const incomplete=!assessed||coverage<100||evidenceCount<segments.length;
+  const notice=$("#iceCoverageNotice");
+  notice.hidden=!incomplete&&!awcNote;
+  notice.classList.toggle("is-incomplete",incomplete);
+  if(incomplete){
+    $("#iceCoverageNoticeTitle").textContent=pt?"Cobertura meteorológica incompleta":"Incomplete weather coverage";
+    const gap=missingCount?weatherMissingLabel(missingReason,pt):pt?"Faltam dados aplicáveis para parte da análise de gelo.":"Some icing evidence is missing.";
+    $("#iceCoverageNoticeText").textContent=awcNote?`${gap} ${awcNote}`:gap;
+  } else if(awcNote){
+    $("#iceCoverageNoticeTitle").textContent=awcStatus==="stale"
+      ? (pt?"Avisos meteorológicos desatualizados":"Weather advisories are outdated")
+      : (pt?"Avisos meteorológicos indisponíveis":"Weather advisories unavailable");
+    $("#iceCoverageNoticeText").textContent=awcNote;
+  }
+  $("#iceCoverageAlternateLabel").textContent=pt?"ROTA DO ALTERNADO":"ALTERNATE ROUTE";
+  $("#iceCoverageAlternateValue").textContent=alternateCoverage?.total
+    ? (pt?`${alternateCoverage.assessed} de ${alternateCoverage.total}`:`${alternateCoverage.assessed} of ${alternateCoverage.total}`)
+    : "—";
+  $("#iceCoverageAlternateNote").textContent=pt?"Trechos com dados disponíveis":"Legs with available data";
+  $("#iceCoverageCaveat").textContent=pt
+    ? "Cobertura dos dados não significa ausência de gelo. Consulte o índice ICE para avaliar o risco."
+    : "Weather coverage does not mean icing-free conditions. Check the ICE index to assess risk.";
+  $("#iceCoverageDetailsLabel").textContent=pt?"Ver detalhes técnicos":"Show technical details";
+  const evidenceDetails=[
+    [pt?"TEMPERATURA":"TEMPERATURE",oatRange],
+    [pt?"COBERTURA COMBINADA":"COMBINED COVERAGE",`${coverage}%`],
+    [pt?"EVIDÊNCIA APLICÁVEL":"APPLICABLE EVIDENCE",`${evidenceCount}/${segments.length||0} ${pt?"trechos":"legs"}`],
+    [pt?"FASES · SUBIDA / CRUZEIRO / DESCIDA":"PHASES · CLIMB / CRUISE / DESCENT",phaseCounts],
+    [pt?"LACUNA PRINCIPAL":"MAIN GAP",`${weatherMissingLabel(missingReason,pt)}${missingCount?` (${missingCount})`:""}`],
+    [pt?"ALTERNADO · ROTA":"ALTERNATE ROUTE",`${alternateCounts}${alternateCoverage?.terminalEvidence?` · ${pt?"TAF/METAR terminal":"terminal TAF/METAR"}`:""}`],
+    [pt?"VALIDADE TERMINAL":"TERMINAL VALIDITY",`${validForecasts}/${weatherPoints.length||0}`],
+    [pt?"METAR MAIS RECENTE":"MOST RECENT METAR",Number.isFinite(freshest)?`${number(freshest,0)} min`:"—"],
+    [pt?"GRUPOS TAF":"TAF GROUPS",tafModes],
+    [pt?"FONTES":"SOURCES",weatherSources],
+    [pt?"OFP / GFS UTC":"OFP / GFS UTC",timeWindow],
+  ];
+  $("#iceEvidenceList").innerHTML=evidenceDetails.map(([label,value])=>`<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`).join("");
   $(".ice-module-grid").classList.toggle("unassessed",!assessed);
 
   const reading=score>=PERFORMANCE.icing.cautionScore?(pt?"ÍNDICE ELEVADO":"HIGH INDEX"):score>=PERFORMANCE.icing.watchScore?(pt?"ÍNDICE MODERADO":"MODERATE INDEX"):(pt?"ÍNDICE BAIXO":"LOW INDEX");
