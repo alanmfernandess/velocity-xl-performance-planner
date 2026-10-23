@@ -3673,6 +3673,7 @@ select:focus-visible {
 .tracker-metrics, .tracker-projection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr)); gap: var(--space-2); }
 .tracker-metrics > div, .tracker-projection-grid > div { display: grid; align-content: start; gap: var(--space-1); min-width: 0; padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--panel-soft); }
 .tracker-metrics strong, .tracker-projection-grid strong, .tracker-progress strong { font-size: var(--ui-title); font-variant-numeric: tabular-nums; }
+.tracker-projection-grid .tracker-unit-value { white-space: nowrap; }
 #trackerClock { font-size: var(--ui-display); white-space: nowrap; }
 .tracker-progress { display: grid; gap: var(--space-2); min-width: 0; }
 .tracker-progress-line > * { min-width: 0; }

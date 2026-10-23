@@ -363,7 +363,7 @@ function renderTrackerProjection(nowMs=Date.now()){
     [tw("reserve"),Number.isFinite(assessment?.reserveFuelGal)?formatFuel(assessment.reserveFuelGal,1):"—"],
     [tw("margin"),Number.isFinite(assessment?.marginGal)?formatFuel(assessment.marginGal,1):"—"],
     [tw("next"),p.nextFix]];
-  $("#trackerProjectionGrid").innerHTML=entries.map(([label,value])=>`<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+  $("#trackerProjectionGrid").innerHTML=entries.map(([label,value])=>`<div><span>${escapeHtml(label)}</span><strong${/\d\s(?:NM|gal|L)$/.test(value)?' class="tracker-unit-value"':''}>${escapeHtml(value)}</strong></div>`).join("");
   const matching=trackerWeatherAligned();
   const ice=remainingExposure(latestActiveCandidate?.result?.icing,p.distanceNm,matching);
   const ride=remainingExposure(latestActiveCandidate?.result?.turbulence,p.distanceNm,matching,"RIDE");
