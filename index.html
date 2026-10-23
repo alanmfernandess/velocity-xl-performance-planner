@@ -11,7 +11,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261022-pde3" />
+    <link rel="stylesheet" href="./styles.css?v=20261022-06" />
   </head>
   <body>
     <header class="topbar">
@@ -325,6 +325,20 @@
         </div>
         <div class="tool-view" data-tool-panel="update">
           <div id="manualFlightPanel" class="manual-mode-panel">
+          <section id="virtualTracker" class="virtual-tracker ui-card ui-card--technical" aria-labelledby="trackerTitle">
+            <div class="tracker-heading"><div><span id="trackerTitle">VIRTUAL FLIGHT TRACKER</span><strong id="trackerState">NÃO INICIADO</strong><small id="trackerTiming">—</small></div><small id="trackerOrigin">ESTIMADO</small></div>
+            <div class="tracker-metrics"><div><span id="trackerPhaseLabel">Fase</span><strong id="trackerPhase">—</strong></div><div><span id="trackerClockLabel">Tempo de simulação</span><strong id="trackerClock">00:00:00</strong></div><div><span id="trackerFlLabel">FL estimado</span><strong id="trackerFl">—</strong></div><div><span id="trackerFuelLabel">Combustível estimado</span><strong id="trackerFuel">—</strong></div><div><span id="trackerEteLabel">ETE restante</span><strong id="trackerEte">—</strong></div></div>
+            <div class="tracker-progress"><div class="tracker-progress-line"><span id="trackerFixes">— → —</span><strong id="trackerNextDistance">—</strong></div><progress id="trackerProgress" max="100" value="0"></progress><small id="trackerProvenance">PROJETADO · SEM TELEMETRIA</small></div>
+            <div class="tracker-actions"><button id="trackerPrimary" class="primary-button" type="button">Iniciar voo</button><button id="trackerSyncToggle" class="text-button" type="button" hidden>Sincronizar</button><button id="trackerProjectionToggle" class="text-button" type="button" hidden>Projeção restante</button><label class="ui-field tracker-factor"><span id="trackerFactorLabel">Tempo</span><select id="trackerFactor"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label><button id="trackerFinish" class="text-button" type="button" hidden>Encerrar</button></div>
+            <div id="trackerAttention" class="tracker-attention" role="status" hidden></div>
+            <form id="trackerSyncPanel" class="tracker-context" hidden>
+              <div class="tracker-context-heading"><strong id="trackerSyncTitle">Sincronizar</strong><button class="text-button" id="trackerSyncCancel" type="button">Cancelar</button></div>
+              <div class="tracker-sync-grid"><label class="ui-field"><span id="trackerFixLabel">Fixo</span><select id="trackerFix" required></select></label><label class="ui-field"><span id="trackerObservedFlLabel">FL observado · opcional</span><select id="trackerObservedFl"><option value="">—</option></select></label><label class="ui-field"><span id="trackerObservedFuelLabel">Combustível observado · opcional</span><span class="ui-unit-input"><input id="trackerObservedFuel" type="number" min="0" step="0.1" /><small id="trackerFuelUnit">gal</small></span></label><label class="ui-field"><span id="trackerElapsedLabel">Tempo simulado · min</span><input id="trackerElapsed" type="number" min="0" step="1" /></label></div>
+              <div class="tracker-phase-actions"><button class="text-button" data-tracker-phase="CRUISE" type="button">Confirmar TOC</button><button class="text-button" data-tracker-phase="DESCENT" type="button">Confirmar TOD</button><button class="text-button" data-tracker-phase="CLIMB" type="button">Subida</button></div>
+              <small id="trackerSyncMessage" role="status"></small><button id="trackerConfirmFix" class="primary-button" type="submit">Confirmar fixo</button>
+            </form>
+            <section id="trackerProjectionPanel" class="tracker-context" aria-labelledby="trackerProjectionTitle" hidden><div class="tracker-context-heading"><strong id="trackerProjectionTitle">PROJEÇÃO RESTANTE</strong><button id="trackerProjectionClose" class="text-button" type="button">Fechar</button></div><div class="tracker-projection-grid" id="trackerProjectionGrid"></div><label class="tracker-weather-match"><input id="trackerWeatherAligned" type="checkbox" /><span id="trackerWeatherMatchLabel">UTC do simulador corresponde ao OFP</span></label><div class="tracker-conditions" id="trackerConditions"></div><details class="tracker-events"><summary>TOC / TOD</summary><div id="trackerEvents"></div></details><small id="trackerProjectionNote"></small></section>
+          </section>
           <div class="update-grid">
             <form id="manualUpdateForm" class="flight-update-form" data-ui-overlap-group>
               <div class="flight-context-row" data-ui-control-row="manual-context">
@@ -400,6 +414,6 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
     <script src="./js/layout.js?v=20261022-pde3"></script>
-    <script type="module" src="./js/app.js?v=20261022-04"></script>
+    <script type="module" src="./js/app.js?v=20261022-06"></script>
   </body>
 </html>

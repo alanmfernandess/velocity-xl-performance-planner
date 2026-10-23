@@ -13,7 +13,8 @@ function groupSegments(samples, assessments) {
   samples.forEach((sample, index) => {
     const key = `${sample.from || "—"} → ${sample.to || "—"}`;
     const record = groups.get(key) || { from: sample.from, to: sample.to, startNm: sample.distanceNm,
-      endNm: sample.distanceNm, minutes: 0, riskScore: 0, oatC: null, evidenceAvailable: false, temperatureRelevant: false };
+      endNm: sample.distanceNm, minutes: 0, riskScore: 0, oatC: null, evidenceAvailable: false,
+      coveredSamples: 0, totalSamples: 0, temperatureRelevant: false };
     const assessment = assessments[index];
     record.startNm = Math.min(record.startNm, sample.distanceNm);
     record.endNm = Math.max(record.endNm, sample.distanceNm);
@@ -21,6 +22,8 @@ function groupSegments(samples, assessments) {
     record.riskScore = Math.max(record.riskScore, assessment.score || 0);
     if (Number.isFinite(assessment.oatC)) record.oatC = assessment.oatC;
     record.evidenceAvailable ||= assessment.covered;
+    record.totalSamples += 1;
+    if (assessment.covered) record.coveredSamples += 1;
     record.temperatureRelevant ||= assessment.temperatureRelevant;
     groups.set(key, record);
   });

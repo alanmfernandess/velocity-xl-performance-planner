@@ -156,6 +156,58 @@ function windForAltitude(fix, altitudeFt, levels) {
   return fix;
 }
 
+// JSON v2 durations may be HH:MM:SS. Bare text numbers are left unknown:
+// their unit cannot be inferred safely from an isolated navlog field.
+export function parseNavlogElapsedSeconds(value) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(/^(\d{1,3}):([0-5]\d):([0-5]\d)$/);
+  return match ? Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]) : null;
+}
+
+function operationalMarker(fix) {
+  const ident = String(fix?.ident || "").trim().toUpperCase();
+  const type = String(fix?.type || "").trim().toUpperCase();
+  const stage = String(fix?.stage || "").trim().toUpperCase();
+  if (/^(TOC|T\/O\/C|TOP OF CLIMB)$/.test(ident) || type === "TOC" || stage === "TOC") return "TOP_OF_CLIMB";
+  if (/^(TOD|T\/O\/D|TOP OF DESCENT)$/.test(ident) || type === "TOD" || stage === "TOD") return "TOP_OF_DESCENT";
+  return null;
+}
+
+export function normalizeOfpTocTod(rawFixes, totalDistanceNm) {
+  const result = { toc: null, tod: null, diagnostics: [] };
+  for (const fix of rawFixes) {
+    const kind = operationalMarker(fix);
+    if (!kind) continue;
+    const key = kind === "TOP_OF_CLIMB" ? "toc" : "tod";
+    if (result[key]) { result.diagnostics.push(key.toUpperCase() + "_DUPLICATE"); continue; }
+    const rawDistance = fix.cum_distance;
+    const distanceNm = rawDistance === "" || rawDistance == null ? null : Number(rawDistance);
+    const timeSec = parseNavlogElapsedSeconds(fix.time_total);
+    const lat = number(first(fix.pos_lat, fix.latitude), NaN);
+    const lon = number(first(fix.pos_long, fix.longitude), NaN);
+    const altitudeFt = number(first(fix.altitude_feet, fix.altitude), NaN);
+    const validDistance = Number.isFinite(distanceNm) && distanceNm >= 0
+      && (!Number.isFinite(totalDistanceNm) || distanceNm <= totalDistanceNm + 1);
+    const validCoords = Number.isFinite(lat) && Number.isFinite(lon);
+    const event = { kind, source: "SIMBRIEF", ident: String(fix.ident || kind),
+      distanceNm: validDistance ? distanceNm : null, timeSec,
+      altitudeFt: Number.isFinite(altitudeFt) ? altitudeFt : null,
+      lat: validCoords ? lat : null, lon: validCoords ? lon : null,
+      quality: validDistance && validCoords && timeSec !== null && Number.isFinite(altitudeFt) ? "COMPLETE"
+        : validDistance || validCoords || timeSec !== null || Number.isFinite(altitudeFt) ? "PARTIAL" : "UNKNOWN" };
+    if (!validDistance) result.diagnostics.push(key.toUpperCase() + "_DISTANCE_UNKNOWN");
+    if (fix.time_total != null && timeSec === null) result.diagnostics.push(key.toUpperCase() + "_TIME_AMBIGUOUS");
+    result[key] = event;
+  }
+  if (result.toc && result.tod && result.toc.distanceNm !== null && result.tod.distanceNm !== null
+    && result.tod.distanceNm < result.toc.distanceNm) {
+    result.diagnostics.push("TOD_BEFORE_TOC");
+    result.tod = null;
+  }
+  return result;
+}
+
 export function parseSimBrief(data) {
   const status = data?.fetch?.status;
   if (status && !String(status).toLowerCase().includes("success")) throw new Error(String(status).replace(/^Error:\s*/i, ""));
@@ -245,6 +297,7 @@ export function parseSimBrief(data) {
   );
 
   const distanceNm = number(first(data.general?.route_distance, data.general?.air_distance, cumulativeNm), cumulativeNm);
+  const ofpTocTod = normalizeOfpTocTod(rawFixes, distanceNm);
   const rawGenerated = first(data.params?.time_generated, data.times?.sched_out);
   const generatedDate = rawGenerated && Number.isNaN(Number(rawGenerated)) ? new Date(rawGenerated) : new Date(number(rawGenerated) * 1000);
   const rawAlternates = Array.isArray(data.alternate) ? data.alternate : data.alternate ? [data.alternate] : [];
@@ -305,6 +358,7 @@ export function parseSimBrief(data) {
       enrouteAdvisories,
     },
     waypoints,
+    ofpTocTod,
     alternateWaypoints,
   };
 }

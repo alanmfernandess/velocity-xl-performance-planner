@@ -4,11 +4,13 @@ import http from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { PRESSURE_LEVELS } from '../js/weather/open-meteo.js';
+import { parseSimBrief } from '../js/simbrief.js';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const baselineIndex = process.argv.indexOf('--baseline');
 const baseline = baselineIndex >= 0;
 const engineV2 = process.argv.includes('--engine-v2');
+const trackerOnly = process.argv.includes('--tracker-only');
 const afterFolder = engineV2 ? 'decision-engine-v3' : 'definitive-after';
 const root = baseline ? path.resolve(process.argv[baselineIndex + 1]) : projectRoot;
 const output = path.join(projectRoot, 'review');
@@ -47,6 +49,10 @@ const fixture = {
     ],
   })),
 };
+const trackerPlan = parseSimBrief(fixture);
+const trackerPlanKey = [trackerPlan.source,trackerPlan.ofpId,trackerPlan.generatedAt,trackerPlan.generatedAtMs,
+  trackerPlan.scheduledOffMs,trackerPlan.scheduledOnMs,trackerPlan.origin?.icao,trackerPlan.destination?.icao,
+  trackerPlan.alternate,trackerPlan.route,trackerPlan.distanceNm].join('|');
 function gfsFixture(url) {
   const params = new URL(url).searchParams;
   const latitudes = params.get('latitude').split(',').map(Number);
@@ -85,7 +91,7 @@ const report = {
   browser: await browser.version(),
   fixture: 'Synthetic 18-waypoint OFP and synthetic clear GFS/AWC responses; all values illustrative; no live API call',
   widths, modules, states: [], screenshots: [], errors: [], selectorCoverage: {},
-  typography: [], negativeChecks: [],
+  typography: [], negativeChecks: [], trackerStates: [],
 };
 const captureWidths = new Map([[390, 'mobile'], [768, 'tablet'], [1440, 'desktop']]);
 const audit = async (page, label) => {
@@ -173,6 +179,7 @@ const screenshot = async (page, width, area, module) => {
 };
 
 try {
+  if (!trackerOnly) {
   for (const width of widths) {
     let awcMode = 'clear';
     const context = await browser.newContext({ viewport: { width, height: width <= 430 ? 844 : width === 768 ? 1024 : 900 }, deviceScaleFactor: 1 });
@@ -576,11 +583,152 @@ try {
       await context.close();
     }
   }
+  }
+  if (engineV2 && !baseline) {
+    const trackerFolder = path.join(output, 'virtual-flight-tracker-v1');
+    await fs.mkdir(trackerFolder, { recursive: true });
+    const captureTracker = async (page, width, state) => {
+      if (!captureWidths.has(width)) return;
+      const device = captureWidths.get(width);
+      await page.locator('#toast').evaluate(element => element.classList.remove('show'));
+      for (const [suffix, target] of [['', page], ['-card', page.locator('#virtualTracker')]]) {
+        const name = `${device}-${state}${suffix}.png`;
+        await target.screenshot({ path: path.join(trackerFolder, name), animations: 'disabled',
+          ...(suffix ? { style: '.mobile-area-nav { visibility: hidden !important; }' } : {}) });
+        report.screenshots.push(`virtual-flight-tracker-v1/${name}`);
+      }
+    };
+    for (const width of widths) {
+      const context = await browser.newContext({ viewport: { width, height: width <= 430 ? 844 : width === 768 ? 1024 : 900 } });
+      const page = await context.newPage();
+      page.on('pageerror', error => report.errors.push({ label: `${width}px tracker`, pageError: error.message }));
+      await page.addInitScript((applied) => {
+        localStorage.setItem('velocityxl.appliedMission', JSON.stringify(applied));
+      }, { planKey: trackerPlanKey, choice: { altitudeFt: 18000, mode: 'NORMAL' },
+        engineMode: 'NORMAL', powerSetting: { type: 'AUTO' }, fuelOnboardGal: 77 });
+      await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
+      await page.route('**/v1/gfs?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gfsFixture(route.request().url())) }));
+      await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ generatedAt: new Date().toISOString(), sigmets: [], pireps: [] }) }));
+      const importPlan = async () => {
+        await page.locator('#quickPilotId').fill('TRACKER-FIXTURE');
+        await page.locator('#importLatest').click();
+        await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
+        await activate(page, 'flight', 'update');
+      };
+      await page.goto(base, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => !!window.VelocityLayout);
+      await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
+      await importPlan();
+      if (!await page.locator('#trackerPrimary').isEnabled()) report.errors.push({ label: `${width}px tracker`, issues: ['applied configuration did not enable start'] });
+      await audit(page, `${width}px tracker not started flight:update`);
+      await page.locator('#trackerPrimary').click();
+      const start = await page.evaluate(() => ({ width: document.querySelector('#virtualTracker').getBoundingClientRect().width,
+        metrics: [...document.querySelectorAll('.tracker-metrics > div')].map(item => { const r=item.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; }),
+        clock: document.querySelector('#trackerClock').textContent,
+        stored: JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1') || 'null') }));
+      if (start.stored?.status !== 'RUNNING') report.errors.push({ label: `${width}px tracker start`, issues: ['clock state was not persisted'] });
+      await audit(page, `${width}px tracker running flight:update`);
+      await page.waitForFunction((clock) => document.querySelector('#trackerClock').textContent !== clock,
+        start.clock, { timeout: 3500 });
+      const after = await page.evaluate(() => ({ width: document.querySelector('#virtualTracker').getBoundingClientRect().width,
+        metrics: [...document.querySelectorAll('.tracker-metrics > div')].map(item => { const r=item.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; }),
+        clock: document.querySelector('#trackerClock').textContent }));
+      if (start.width !== after.width || start.metrics.some((item,index) => Math.abs(item.x-after.metrics[index].x)>1 || Math.abs(item.y-after.metrics[index].y)>1 || Math.abs(item.height-after.metrics[index].height)>1))
+        report.errors.push({ label: `${width}px tracker stability`, issues: ['metric geometry shifted during clock tick'] });
+      if (start.clock === after.clock) report.errors.push({ label: `${width}px tracker clock`, issues: ['simulation clock did not advance'] });
+      await page.locator('#trackerFactor').selectOption('8');
+      await page.locator('#trackerSyncToggle').click();
+      await audit(page, `${width}px tracker sync flight:update`);
+      await captureTracker(page, width, 'checkpoint');
+      await page.locator('#trackerFix').selectOption('5');
+      await page.locator('#trackerObservedFuel').fill('60');
+      await page.locator('#trackerConfirmFix').click();
+      const sync = await page.evaluate(() => JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1') || 'null'));
+      if (sync?.checkpoints?.length !== 1 || sync.checkpoints[0].fuelGal !== 60)
+        report.errors.push({ label: `${width}px tracker checkpoint`, issues: ['observed fix and fuel were not persisted'] });
+      await page.locator('#trackerProjectionToggle').click();
+      await audit(page, `${width}px tracker projection flight:update`);
+      const conditions = await page.locator('#trackerConditions').textContent();
+      if (!/NÃO AVALIADO|UNASSESSED/.test(conditions))
+        report.errors.push({ label: `${width}px tracker weather`, issues: ['unconfirmed weather appeared assessed'] });
+      await captureTracker(page, width, 'projection');
+      if ([390, 1440].includes(width)) {
+        await page.locator('.tracker-events summary').click();
+        const eventsText = await page.locator('#trackerEvents').textContent();
+        if (!/TOC · OFP/.test(eventsText) || !/TOD · OFP/.test(eventsText) || !/MODELO/.test(eventsText))
+          report.errors.push({ label: `${width}px tracker TOC/TOD`, issues: ['OFP and model markers not shown independently'] });
+        await audit(page, `${width}px tracker events flight:update`);
+        await captureTracker(page, width, 'events');
+      }
+      await page.locator('#trackerProjectionClose').click();
+      await page.locator('#trackerPrimary').click();
+      if ((await page.locator('#trackerState').textContent())?.trim() !== 'PAUSADO')
+        report.errors.push({ label: `${width}px tracker pause`, issues: ['pause state missing'] });
+      await page.locator('#trackerPrimary').click();
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
+      await importPlan();
+      if (!await page.locator('#trackerAttention').isVisible())
+        report.errors.push({ label: `${width}px tracker recovery`, issues: ['recovered running session did not request resynchronization'] });
+      await audit(page, `${width}px tracker recovered flight:update`);
+      await captureTracker(page, width, 'running');
+      if ([390, 1440].includes(width)) {
+        for (const [marker, beforePhase, afterPhase] of [['tocSec', 'SUBIDA', 'CRUZEIRO'], ['todSec', 'CRUZEIRO', 'DESCIDA']]) {
+          await page.evaluate((name) => {
+            const saved = JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1'));
+            saved.status = 'RUNNING'; saved.factor = 8;
+            saved.accumulatedSec = saved.profile[name] - 20;
+            saved.anchorWallMs = Date.now(); saved.recoveredAttention = false;
+            saved.anchor = { simSec: 0, modelSec: 0, distanceNm: 0,
+              fuelGal: saved.profile.startFuelGal, fuelSource: 'PROJECTED', observedAltitudeFt: null };
+            saved.checkpoints = []; saved.confirmedPhase = null;
+            localStorage.setItem('velocityxl.virtualFlightTracker.v1', JSON.stringify(saved));
+          }, marker);
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
+          await importPlan();
+          const label = marker === 'tocSec' ? 'toc' : 'tod';
+          if (!(await page.locator('#trackerPhase').textContent()).includes(beforePhase))
+            report.errors.push({ label: `${width}px tracker ${label} before`, issues: [`expected ${beforePhase} before transition`] });
+          await audit(page, `${width}px tracker ${label} before flight:update`);
+          await captureTracker(page, width, `${label}-before`);
+          await page.waitForFunction(phase => document.querySelector('#trackerPhase').textContent.includes(phase), afterPhase, { timeout: 8000 });
+          await audit(page, `${width}px tracker ${label} after flight:update`);
+          await captureTracker(page, width, `${label}-after`);
+        }
+      }
+      await page.locator('[data-language="en-US"]').click();
+      await page.locator('[data-weight-unit="kg"]').click();
+      await page.locator('[data-fuel-unit="l"]').click();
+      await page.locator('[data-font-size="large"]').click();
+      await audit(page, `${width}px tracker EN-US KG/L A+ flight:update`);
+      if (width === 1440) {
+        await page.locator('#manualWaypoint').selectOption('0');
+        await page.locator('#manualAltitude').selectOption('18000');
+        await page.locator('#manualFuel').fill('200');
+        await page.locator('#submitFlightUpdate').click();
+        const unresolved = await page.evaluate(() => ({ phase: document.querySelector('#trackerPhase').textContent,
+          status: document.querySelector('#trackerState').textContent,
+          session: JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1') || 'null') }));
+        if (unresolved.phase !== '—' || unresolved.status !== 'PAUSED'
+          || !unresolved.session?.limitations?.includes('MANUAL_UPDATE_UNMODELED'))
+          report.errors.push({ label: '1440px tracker unmodeled FL', issues: ['invalid prospective FL was projected as known'] });
+        await audit(page, `${width}px tracker unmodeled FL flight:update`);
+      }
+      report.trackerStates.push({ width, startClock: start.clock, afterClock: after.clock,
+        checkpoint: sync?.checkpoints?.at(-1), weather: conditions });
+      await context.close();
+    }
+  }
 } finally {
   await browser.close();
   server.close();
 }
 
-await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
+await fs.writeFile(path.join(output, trackerOnly ? 'virtual-flight-tracker-v1/browser-audit.json' : baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
-if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;
+const failures = report.errors.filter(item => item.issues || item.pageError);
+if (failures.length) {
+  console.error(JSON.stringify(failures, null, 2));
+  process.exitCode = 1;
+}

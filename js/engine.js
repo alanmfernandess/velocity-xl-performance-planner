@@ -1155,6 +1155,7 @@ function climbProfile(altitudeFt, weightLb, weather, phaseName = "climb", startA
   const climbFt = Math.max(0, altitudeFt - fromFt);
   const sections = Math.max(1, Math.ceil(climbFt / 1000));
   let timeHr = 0, distanceNm = 0, fuelGal = 0, power = null, lastRate = 0;
+  const profileSections = [];
   const departureFix = plan?.waypoints?.[0] || plan?.origin;
   const track = plan?.origin && plan?.destination ? bearingDeg(plan.origin, plan.destination) : null;
   for (let index = 0; index < sections; index += 1) {
@@ -1172,14 +1173,18 @@ function climbProfile(altitudeFt, weightLb, weather, phaseName = "climb", startA
     lastRate = Math.max(550, baseRate * weightFactor * (.72 + .28 * powerRatio));
     const sectionHr = sectionFt / lastRate / 60;
     const windKt = track === null ? 0 : windComponentKt(track, localWeather.windDir, localWeather.windSpd);
+    const sectionDistanceNm = sectionHr * Math.max(90, PERFORMANCE.climbSpeedKt + windKt);
+    const sectionFuelGal = sectionHr * setting.fuelFlowGph * powerRatio;
+    profileSections.push({ timeHr: sectionHr, distanceNm: sectionDistanceNm, fuelGal: sectionFuelGal,
+      startAltitudeFt: fromFt + index * sectionFt, endAltitudeFt: fromFt + (index + 1) * sectionFt });
     timeHr += sectionHr;
-    distanceNm += sectionHr * Math.max(90, PERFORMANCE.climbSpeedKt + windKt);
-    fuelGal += sectionHr * setting.fuelFlowGph * powerRatio;
+    distanceNm += sectionDistanceNm;
+    fuelGal += sectionFuelGal;
   }
   power ||= powerAtAltitude({ altitudeFt: fromFt, oatC: weather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
   return { rateFpm: climbFt / Math.max(1e-9, timeHr * 60), timeHr, distanceNm,
     fuelGal, fuelFlowGph: timeHr ? fuelGal / timeHr : setting.fuelFlowGph, power,
-    startAltitudeFt: fromFt, endAltitudeFt: altitudeFt, finalRateFpm: lastRate };
+    startAltitudeFt: fromFt, endAltitudeFt: altitudeFt, finalRateFpm: lastRate, sections: profileSections };
 }
 
 export function calibrationForMode(calibration, mode, altitudeFt, powerSetting = {}) {
@@ -1238,20 +1243,27 @@ function descentProfile(altitudeFt, weather, destinationAltitudeFt = 0, plan = n
   const destinationFix = plan?.waypoints?.at(-1) || plan?.destination;
   const track = plan?.origin && plan?.destination ? bearingDeg(plan.origin, plan.destination) : null;
   let timeHr = 0, distanceNm = 0, fuelGal = 0, power = null;
+  const profileSections = [];
   for (let index = 0; index < sections; index += 1) {
     const midFt = altitudeFt - (index + .5) * descentFt / sections;
     const localWeather = destinationFix ? weatherAtAltitude(destinationFix, midFt) : weather;
     power = powerAtAltitude({ altitudeFt: midFt, oatC: localWeather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
     const sectionHr = (descentFt / sections) / PERFORMANCE.descentRateFpm / 60;
     const windKt = track === null ? 0 : windComponentKt(track, localWeather.windDir, localWeather.windSpd);
-    timeHr += sectionHr;
-    distanceNm += sectionHr * Math.max(90, PERFORMANCE.descentSpeedKt + windKt);
-    fuelGal += sectionHr * setting.fuelFlowGph
+    const sectionDistanceNm = sectionHr * Math.max(90, PERFORMANCE.descentSpeedKt + windKt);
+    const sectionFuelGal = sectionHr * setting.fuelFlowGph
       * clamp(power.estimatedHp / referencePower, .5, 1.2) ** PERFORMANCE.powerModel.fuelPowerExponent;
+    profileSections.push({ timeHr: sectionHr, distanceNm: sectionDistanceNm, fuelGal: sectionFuelGal,
+      startAltitudeFt: altitudeFt - index * descentFt / sections,
+      endAltitudeFt: altitudeFt - (index + 1) * descentFt / sections });
+    timeHr += sectionHr;
+    distanceNm += sectionDistanceNm;
+    fuelGal += sectionFuelGal;
   }
   power ||= powerAtAltitude({ altitudeFt, oatC: weather.oatC, mapInHg: setting.mapInHg, rpm: setting.rpm, source: setting.throttle });
   return { timeHr, distanceNm, fuelGal, fuelFlowGph: timeHr ? fuelGal / timeHr : setting.fuelFlowGph,
-    rateFpm: PERFORMANCE.descentRateFpm, power, startAltitudeFt: altitudeFt, endAltitudeFt: destinationAltitudeFt };
+    rateFpm: PERFORMANCE.descentRateFpm, power, startAltitudeFt: altitudeFt, endAltitudeFt: destinationAltitudeFt,
+    sections: profileSections };
 }
 
 function integrateCruise({ plan, altitudeFt, mode, payloadLb, fuelOnboardGal, oxygenWeightLb, calibration, powerSetting,
@@ -1413,6 +1425,7 @@ function diversionLeg({ from, to, result, fallbackDistanceNm = NaN }) {
 
 export function calculateRemainingFlightAssessment({
   plan, mode, payloadLb, fuelOnboardGal, oxygenWeightLb = 0, reserveMinutes, calibration = {}, powerSetting = {}, manual,
+  projectedRemainingTripFuelGal = null,
 }) {
   if (!manual?.active) return null;
   const positionNm = Number(manual.distanceNm);
@@ -1424,7 +1437,9 @@ export function calculateRemainingFlightAssessment({
   const result = calculateAtAltitude({ plan, altitudeFt: manual.altitudeFt, mode, payloadLb,
     fuelOnboardGal: remainingFuelGal, oxygenWeightLb, reserveMinutes, calibration, powerSetting });
   const remainingDistanceNm = Math.max(0, plan.distanceNm - positionNm);
-  const remainingTripFuelGal = Math.max(0, result.tripFuelGal - tripFuelUsedToDistance(result, positionNm));
+  const remainingTripFuelGal = Number.isFinite(projectedRemainingTripFuelGal)
+    ? Math.max(0, projectedRemainingTripFuelGal)
+    : Math.max(0, result.tripFuelGal - tripFuelUsedToDistance(result, positionNm));
   const contingencyFuelGal = remainingTripFuelGal * PERFORMANCE.contingencyPercent / 100;
   const alternate = plan.alternates?.[0] || (plan.alternate ? { icao: plan.alternate } : null);
   const alternateLeg = alternate ? diversionLeg({ from: plan.destination, to: alternate, result, fallbackDistanceNm: alternate.distanceNm }) : null;

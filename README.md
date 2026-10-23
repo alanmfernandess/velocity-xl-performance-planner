@@ -12,7 +12,7 @@ Planejador visual para o **Black Square Velocity XL** no Microsoft Flight Simula
 4. Em **Missão → Visão geral**, compare os três melhores FLs distintos. A recomendação automática fica separada da alternativa em análise.
 5. No card escolhido, alterne ECON/NORMAL/FAST ou informe MAP/RPM no modo manual. Compare score, combustível, tempo, ICE, RIDE e margens antes de **Aplicar configuração**. Alternativas marginais exigem confirmação adicional; estados desconhecidos ou incompatíveis não podem ser aplicados.
 
-A interface mantém quatro áreas: **Missão** (resultado e score), **Planejamento** (configuração, W&B, oxigênio e custos), **Rota & riscos** (ICE, RIDE, ETP/PNR, alternado/desvio, GLIDE e step climb) e **Em voo** (posição, combustível restante e calibração de cruzeiro). A atualização em voo não reclassifica retroativamente a missão planejada.
+A interface mantém quatro áreas: **Missão** (resultado e score), **Planejamento** (configuração, W&B, oxigênio e custos), **Rota & riscos** (ICE, RIDE, ETP/PNR, alternado/desvio, GLIDE e step climb) e **Em voo** (Tracker virtual, posição, combustível restante e calibração de cruzeiro). A atualização em voo não reclassifica retroativamente a missão planejada.
 
 ## Motor integrado
 
@@ -37,6 +37,16 @@ Em cruzeiro estabilizado, o usuário pode informar no formulário único de **Em
 
 Os fatores têm limites matemáticos em `js/config.js`, ficam salvos no `localStorage` e podem ser redefinidos. O contexto de referência guarda preset, FL, MAP, RPM, temperatura e peso estimado. A calibração só se aplica próxima desse regime; ela corrige o cruzeiro, sem alterar diretamente MAP/RPM nem calibrar subida ou descida. Calibrações antigas com K1/K2 válidos são preservadas, mas fatores legados sem referência suficiente ficam pendentes e não são aplicados em outro regime. A redefinição exige confirmação. Os registros antigos de Debrief não são apagados.
 
+## Virtual Flight Tracker
+
+Em **Em voo**, aplique uma configuração da missão e pressione **Iniciar voo** quando começar a decolagem no simulador. O Tracker projeta posição, fase, FL, combustível e ETE com o perfil calculado de subida, cruzeiro e descida. O relógio usa a hora de início informada pela ação do piloto, separada do horário programado no OFP. O piloto pode pausar, retomar e escolher 1×, 2×, 4× ou 8×; o fator não é detectado automaticamente no Xbox.
+
+**Sincronizar** registra um fixo observado. FL, combustível e correção de tempo são opcionais; uma leitura de combustível confirmada vira a nova referência somente dali para a frente. TOC/TOD e a fase podem ser confirmados no mesmo painel. O formulário técnico existente continua sendo o único lugar para TAS/Fuel Flow e calibração K1/K2. O Tracker não grava calibração a partir de um checkpoint simples.
+
+**Projeção restante** usa o consumo integrado a partir da última âncora e o cálculo existente de reserva e alternado. ICE/RIDE só mostram índices planejados do trecho restante quando a cobertura é suficiente e o piloto confirma que o UTC do simulador corresponde ao OFP. Caso contrário, ficam **NÃO AVALIADOS**. A seção TOC/TOD mantém as referências do SimBrief separadas dos marcos calculados pelo modelo. O Mission Score pré-voo não muda.
+
+A sessão fica no `localStorage` deste navegador, vinculada à identidade do OFP; outra missão não herda a progressão. Ao reabrir uma sessão em andamento, o tempo é reconstruído pelo relógio local e aparece um pedido de ressincronização. O aplicativo não sabe se o Xbox foi pausado ou acelerado durante o fechamento. O fim da rota projetada não encerra o voo automaticamente. **Somente para simulação; todos os valores dinâmicos sem confirmação são projeções, nunca observações do Xbox.**
+
 ## Limitações dos módulos
 
 - **ICE/RIDE:** índices heurísticos combinam evidência do OFP, previsão GFS e avisos AWC quando disponíveis. Dados ausentes permanecem desconhecidos. O índice de gelo não é probabilidade certificada; gradiente de vento não equivale a EDR observado. A unidade do campo `shear` do SimBrief não foi confirmada e ele não provoca bloqueio severo no motor 2.0.
@@ -44,7 +54,7 @@ Os fatores têm limites matemáticos em `js/config.js`, ficam salvos no `localSt
 - **GLIDE:** alcance e tempo teóricos. Altitude MSL não indica altura livre sobre o terreno; nenhum local de pouso é classificado como seguro.
 - **Alternado/desvio:** requer coordenadas ou distância utilizável; estima tempo, combustível e margem no pouso.
 - **Financeiro:** depende do preço por litro informado manualmente em BRL ou USD. Preço ausente produz custo indisponível, nunca custo zero.
-- **Persistência:** preferências e calibração são locais ao navegador/dispositivo. A configuração aplicada é restaurada somente para o mesmo OFP; escolhas antigas não passam para outra missão.
+- **Persistência:** preferências, calibração e sessão do Tracker são locais ao navegador/dispositivo. A configuração aplicada e o Tracker são restaurados somente para o mesmo OFP; escolhas antigas não passam para outra missão.
 
 ## Executar e verificar
 
@@ -60,11 +70,12 @@ npm test
 npm run lint:css
 npm run audit:browser
 npm run audit:browser:v2
+npm run audit:tracker
 npm run validate:missions
 npm run verify:weather-live
 ```
 
-A auditoria de navegador usa um OFP **sintético**, com números ilustrativos, em 320, 375, 390, 430, 768, 1024, 1440 e 1920 px. As capturas e o relatório ficam em `review/`. A verificação de rede é opcional e controlada: não consulta SimBrief sem `SIMBRIEF_PILOT_ID`, para evitar polling não autorizado. O relatório desta versão está em [`review/decision-engine-v3-report.md`](review/decision-engine-v3-report.md).
+A auditoria de navegador usa um OFP **sintético**, com números ilustrativos, em 320, 375, 390, 430, 768, 1024, 1440 e 1920 px. As capturas e o relatório ficam em `review/`. A verificação de rede é opcional e controlada: não consulta SimBrief sem `SIMBRIEF_PILOT_ID`, para evitar polling não autorizado. O relatório do Tracker está em [`review/virtual-flight-tracker-v1/report.md`](review/virtual-flight-tracker-v1/report.md).
 
 ## Fontes técnicas
 
