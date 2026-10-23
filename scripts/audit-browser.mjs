@@ -319,6 +319,7 @@ try {
         if (area === 'route' && module === 'ice') {
           const details = page.locator('#iceCoverageDetails');
           if (await details.evaluate(element => element.open)) report.errors.push({label: `${width}px ICE details`, issues: ['technical details must start collapsed']});
+          if (await details.locator('#iceEvidenceList').evaluate(element => element.getClientRects().length > 0)) report.errors.push({label: `${width}px ICE details`, issues: ['closed technical evidence must not occupy layout space']});
           await details.locator('summary').click();
           if (!(await details.evaluate(element => element.open))) report.errors.push({label: `${width}px ICE details`, issues: ['technical details must expand']});
           await details.locator('summary').click();
