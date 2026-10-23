@@ -3433,9 +3433,6 @@ select:focus-visible {
   /* Technical labels and long weather-source values remain readable at all widths. */
   grid-template-columns: minmax(0, 1fr);
 }
-.ice-technical-details .ice-evidence-list strong {
-  overflow-wrap: anywhere;
-}
 .ice-composition-track {
   height: 11px;
   overflow: hidden;
