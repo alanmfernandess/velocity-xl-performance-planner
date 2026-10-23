@@ -114,5 +114,5 @@ test("ICE evidence presents simple route coverage and on-demand technical facts 
   assert.match(app, /Cobertura dos dados não significa ausência de gelo/);
   assert.doesNotMatch(app, /PROTEÇÃO|NÃO INSTALADA|NOT INSTALLED/);
   assertDeclaration(css, ".ice-technical-details > summary", "min-height", "var(--control-height)");
-  assert.match(html, /js\/app\.js\?v=20261023-ice-simple/);
+  assert.match(html, /js\/app\.js\?v=20261023-07/);
 });
