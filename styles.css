@@ -3346,6 +3346,89 @@ select:focus-visible {
   margin-top: 4px;
   font-size: var(--ui-body);
 }
+.ice-weather-summary {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.ice-coverage-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+.ice-coverage-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--blue);
+}
+.ice-coverage-context,
+.ice-coverage-caveat {
+  margin: 0;
+  font-size: var(--ui-caption);
+  line-height: var(--ui-leading-label);
+  color: var(--muted);
+}
+.ice-coverage-notice {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+}
+.ice-coverage-notice > strong,
+.ice-coverage-alternate > strong {
+  font-size: var(--ui-body);
+  line-height: var(--ui-leading-value);
+  font-weight: 600;
+}
+.ice-coverage-notice > strong { color: var(--orange); }
+.ice-coverage-notice.is-incomplete > strong { color: var(--red); }
+.ice-coverage-notice > span,
+.ice-coverage-alternate > small {
+  font-size: var(--ui-caption);
+  color: var(--muted);
+  line-height: var(--ui-leading-label);
+}
+.ice-coverage-alternate {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+  border-block: 1px solid var(--line);
+}
+.ice-coverage-alternate > span {
+  font-size: var(--ui-caption);
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: var(--ui-tracking-label);
+}
+.ice-technical-details { min-width: 0; }
+.ice-technical-details > summary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--control-radius);
+  color: var(--blue);
+  background: var(--panel);
+  font-size: var(--ui-body);
+  font-weight: 600;
+  text-align: center;
+  list-style: none;
+}
+.ice-technical-details > summary::-webkit-details-marker { display: none; }
+.ice-technical-details > summary:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.ice-technical-details[open] > .ice-evidence-list {
+  margin-top: var(--space-3);
+}
 .ice-composition-track {
   height: 11px;
   overflow: hidden;
