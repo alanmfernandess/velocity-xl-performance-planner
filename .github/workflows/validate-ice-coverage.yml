@@ -39,5 +39,7 @@ jobs:
           path: |
             review/engine-v2-browser-audit.json
             review/engine-v2/
+            review/decision-engine-v3-browser-audit.json
+            review/decision-engine-v3/
           retention-days: 7
           if-no-files-found: ignore

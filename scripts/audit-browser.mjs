@@ -727,4 +727,8 @@ try {
 
 await fs.writeFile(path.join(output, trackerOnly ? 'virtual-flight-tracker-v1/browser-audit.json' : baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
-if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;
+const failures = report.errors.filter(item => item.issues || item.pageError);
+if (failures.length) {
+  console.error(JSON.stringify(failures, null, 2));
+  process.exitCode = 1;
+}
