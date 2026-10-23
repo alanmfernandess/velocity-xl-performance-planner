@@ -106,7 +106,7 @@ const audit = async (page, label) => {
       const box = element.getBoundingClientRect();
       const css = getComputedStyle(element);
       return { selector: element.id ? `#${element.id}` : element.className?.baseVal || element.className || element.tagName.toLowerCase(),
-        x: Math.round(box.x), y: Math.round(box.y), top: Math.round(box.top), right: Math.round(box.right), bottom: Math.round(box.bottom),
+        x: Math.round(box.x), xExact: box.x, y: Math.round(box.y), top: Math.round(box.top), right: Math.round(box.right), bottom: Math.round(box.bottom),
         width: Math.round(box.width), height: Math.round(box.height), borderWidth: css.borderTopWidth,
         borderRadius: css.borderRadius, fontSize: css.fontSize, fontWeight: css.fontWeight,
         lineHeight: css.lineHeight, padding: css.padding };
@@ -115,8 +115,9 @@ const audit = async (page, label) => {
       viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth,
       heading: dimensions('.area-heading h1'),
       headingContent: dimensions('.area-heading > div:first-child'),
+      headingEyebrow: dimensions('.area-heading > div:first-child > span'),
       ofpContent: dimensions('.plan-bar .plan-identity'),
-      ofpCard: dimensions('.plan-bar'),
+      ofpSourceBadge: dimensions('.plan-bar .route-source'),
       primaryButtons: dimensions('.primary-button'),
       textButtons: dimensions('.text-button'),
       inputs: dimensions('.ui-field > input, .ui-field > select, .ui-unit-input'),
@@ -136,11 +137,20 @@ const audit = async (page, label) => {
   issues.push(...probe.issues.map(issue => `${issue.code}: ${issue.target}${issue.detail ? ` (${issue.detail})` : ''}`));
   if (data.scrollWidth > data.viewport + 1) issues.push(`horizontal overflow ${data.scrollWidth - data.viewport}px`);
   if (data.legacyTriggerVisible) issues.push('retired manual update trigger is visible');
-  if (data.headingContent.length && data.ofpContent.length && data.ofpCard.length) {
-    // On mobile, match the OFP's padded content. On desktop, match card edges.
-    const target = data.viewport <= 760 ? data.ofpContent[0].x : data.ofpCard[0].x;
-    const delta = Math.abs(data.headingContent[0].x - target);
-    if (delta > 2) issues.push(`section heading horizontal alignment differs by ${delta}px from ${data.viewport <= 760 ? 'mobile OFP content' : 'desktop card edge'}`);
+  // Compare literal text-column coordinates rather than card outer borders.
+  // This must hold for all areas, languages, scales and viewport widths.
+  if (data.ofpSourceBadge.length) {
+    const target = data.ofpSourceBadge[0].xExact;
+    for (const [name, items] of [
+      ['section label', data.headingEyebrow],
+      ['section title', data.heading],
+      ['section heading group', data.headingContent],
+      ['OFP card content', data.ofpContent],
+    ]) {
+      if (!items.length) continue;
+      const delta = Math.abs(items[0].xExact - target);
+      if (delta > 0.25) issues.push(`${name} starts ${delta.toFixed(3)}px from SIMBRIEF badge left edge (expected exact alignment)`);
+    }
   }
   for (const item of [...data.primaryButtons, ...data.textButtons, ...data.inputs]) {
     if (item.height < 43) issues.push(`${item.selector} height ${item.height}px`);

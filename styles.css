@@ -362,7 +362,9 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  /* Desktop headings follow the card outer edge. Mobile headings follow its inset. */
+  /* The heading text starts exactly at the OFP card's text column:
+     1px card border + the shared horizontal card padding. */
+  padding-inline: calc(var(--space-6) + 1px);
 }
 .area-heading > div {
   min-width: 0;
@@ -3839,7 +3841,7 @@ select:focus-visible {
   }
   .area-heading {
     min-height: 74px;
-    padding-inline: var(--space-4);
+    padding-inline: calc(var(--space-4) + 1px);
   }
   .area-heading h1 {
     font-size: var(--ui-display);

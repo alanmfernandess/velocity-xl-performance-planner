@@ -67,7 +67,7 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261023-heading-responsive/);
+  assert.match(html, /styles\.css\?v=20261023-heading-exact/);
 });
 
 
@@ -95,8 +95,10 @@ test("alternate fuel metrics are balanced columns without dividing lines", () =>
 });
 
 
-test("section headings match card edges on desktop and OFP content on mobile", () => {
-  assert.doesNotMatch(cssRule(css, ".area-heading"), /padding-inline\s*:/);
-  assert.match(css, /@media \(max-width: 760px\) \{[\s\S]*?\.area-heading \{\s*min-height: 74px;\s*padding-inline: var\(--space-4\);/);
+test("section title and eyebrow share the OFP SIMBRIEF content x-coordinate at every width", () => {
+  assertDeclaration(css, ".area-heading", "padding-inline", "calc(var(--space-6) + 1px)");
+  assertDeclaration(css, ".plan-bar", "border", "1px solid var(--line)");
+  assertDeclaration(css, ".plan-bar", "padding", "var(--space-5) var(--space-6)");
+  assert.match(css, /@media \(max-width: 760px\) \{[\s\S]*?\.plan-bar \{[\s\S]*?padding: var\(--space-4\);[\s\S]*?\.area-heading \{\s*min-height: 74px;\s*padding-inline: calc\(var\(--space-4\) \+ 1px\);/);
   assert.match(layout, /heading\.className = 'area-heading'/);
 });
