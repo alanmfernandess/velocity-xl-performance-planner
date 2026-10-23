@@ -335,6 +335,48 @@ try {
           if (await trigger.count()) await trigger.click();
           if (await panel.count()) {
             await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:${tool}`);
+            if (tool === 'alternate') {
+              const metrics = await page.evaluate(() => {
+                const group = document.querySelector('[data-tool-panel="alternate"] .advisor-strip');
+                if (!group) return null;
+                const cells = [...group.children];
+                const groupBox = group.getBoundingClientRect();
+                return { group: { left: groupBox.left, right: groupBox.right },
+                  gap: getComputedStyle(group).columnGap,
+                  cells: cells.map(cell => {
+                    const box = cell.getBoundingClientRect();
+                    const label = cell.querySelector('b');
+                    const value = cell.querySelector('strong');
+                    const valueBox = value?.getBoundingClientRect();
+                    const labelBox = label?.getBoundingClientRect();
+                    const style = getComputedStyle(cell);
+                    return { x: box.x, right: box.right, width: box.width, y: box.y,
+                      labelScroll: label?.scrollWidth, labelWidth: label?.clientWidth,
+                      labelBottom: labelBox?.bottom, valueBottom: valueBox?.bottom,
+                      valueRight: valueBox?.right, valueLeft: valueBox?.left,
+                      borderTop: style.borderTopWidth, borderRight: style.borderRightWidth,
+                      borderBottom: style.borderBottomWidth, borderLeft: style.borderLeftWidth };
+                  }) };
+              });
+              const cells = metrics?.cells || [];
+              const metricIssues = [];
+              if (cells.length !== 3) metricIssues.push('expected three fuel metrics');
+              else {
+                if (cells.some(cell => Math.abs(cell.width - cells[0].width) > 1 || Math.abs(cell.y - cells[0].y) > 1))
+                  metricIssues.push('metric columns have unequal width or top alignment');
+                if (cells.some(cell => Math.abs(cell.valueBottom - cells[0].valueBottom) > 1))
+                  metricIssues.push('fuel values do not share a baseline');
+                if (cells.some(cell => cell.labelScroll > cell.labelWidth + 1))
+                  metricIssues.push('metric labels overflow their columns');
+                if (cells.some(cell => cell.right > metrics.group.right + 1 || cell.x < metrics.group.left - 1))
+                  metricIssues.push('metric columns exceed container');
+                if (cells.some(cell => cell.borderTop !== '0px' || cell.borderRight !== '0px'
+                    || cell.borderBottom !== '0px' || cell.borderLeft !== '0px'))
+                  metricIssues.push('unexpected metric divider');
+              }
+              if (metricIssues.length) report.errors.push({ label: `${width}px alternate fuel metrics`, issues: metricIssues, metrics });
+              if (captureWidths.has(width)) await screenshot(page, width, area, 'alternate');
+            }
             if (tool === 'cost') {
               if (captureWidths.has(width)) await screenshot(page, width, area, 'cost-unassessed');
               await page.locator('#fuelPricePerLiter').fill('7.25');
