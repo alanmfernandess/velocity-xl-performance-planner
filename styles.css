@@ -362,8 +362,7 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  /* Match the content inset of the OFP card; headings share its visual alignment. */
-  padding-inline: var(--space-6);
+  /* Desktop headings follow the card outer edge. Mobile headings follow its inset. */
 }
 .area-heading > div {
   min-width: 0;
