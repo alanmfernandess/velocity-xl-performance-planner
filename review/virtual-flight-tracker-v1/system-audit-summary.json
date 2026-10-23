@@ -1,0 +1,20 @@
+{
+  "source": "npm run audit:browser:v2",
+  "fixture": "Synthetic 18-waypoint OFP and synthetic clear GFS/AWC responses; all values illustrative; no live API call",
+  "widths": [
+    320,
+    375,
+    390,
+    430,
+    768,
+    1024,
+    1440,
+    1920
+  ],
+  "states": 386,
+  "failures": 0,
+  "screenshots": 92,
+  "trackerStates": 8,
+  "browser": "141.0.7390.37",
+  "generatedAt": "2026-10-23T02:23:27.899Z"
+}

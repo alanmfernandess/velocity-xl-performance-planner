@@ -3663,6 +3663,39 @@ select:focus-visible {
   text-align: right;
 }
 
+/* Virtual Flight Tracker: local geometry, shared card/field/button contracts. */
+.virtual-tracker { display: grid; gap: var(--space-4); min-width: 0; margin-bottom: var(--space-4); }
+.tracker-heading, .tracker-context-heading, .tracker-progress-line { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); min-width: 0; }
+.tracker-heading > div { display: grid; gap: var(--space-1); min-width: 0; }
+.tracker-heading span, .tracker-heading small, .tracker-metrics span, .tracker-progress small, .tracker-projection-grid span { color: var(--muted); font-size: var(--ui-caption); }
+.tracker-heading strong, .tracker-context-heading strong { font-size: var(--ui-title); }
+.tracker-heading > small { color: var(--blue); font-weight: 700; }
+.tracker-metrics, .tracker-projection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr)); gap: var(--space-2); }
+.tracker-metrics > div, .tracker-projection-grid > div { display: grid; align-content: start; gap: var(--space-1); min-width: 0; padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--panel-soft); }
+.tracker-metrics strong, .tracker-projection-grid strong, .tracker-progress strong { font-size: var(--ui-title); font-variant-numeric: tabular-nums; }
+#trackerClock { font-size: var(--ui-display); white-space: nowrap; }
+.tracker-progress { display: grid; gap: var(--space-2); min-width: 0; }
+.tracker-progress-line > * { min-width: 0; }
+.tracker-progress progress { display: block; width: 100%; height: var(--space-2); appearance: none; border: 0; border-radius: 999px; background: var(--panel-soft); }
+.tracker-progress progress::-webkit-progress-bar { border-radius: 999px; background: var(--panel-soft); }
+.tracker-progress progress::-webkit-progress-value { border-radius: 999px; background: var(--blue); }
+.tracker-progress progress::-moz-progress-bar { border-radius: 999px; background: var(--blue); }
+.tracker-actions, .tracker-phase-actions { display: flex; align-items: end; flex-wrap: wrap; gap: var(--space-2); }
+.tracker-actions > button, .tracker-phase-actions > button, .tracker-context-heading > button { min-height: var(--control-height); }
+.tracker-factor { width: 96px; margin-left: auto; }
+.tracker-context { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--card-radius); background: var(--panel-soft); }
+.tracker-sync-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.tracker-sync-grid > * { min-width: 0; }
+.tracker-conditions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tracker-weather-match { display: flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); font-size: var(--ui-body); }
+.tracker-weather-match input { width: 18px; height: 18px; accent-color: var(--blue); }
+.tracker-events { color: var(--muted); font-size: var(--ui-body); }
+.tracker-events summary { min-height: var(--control-height); display: flex; align-items: center; cursor: pointer; color: var(--blue); }
+.tracker-events > div { display: grid; gap: var(--space-2); }
+.tracker-events p { margin: 0; }
+.tracker-conditions > span, .tracker-attention { padding: var(--space-2) var(--space-3); border-radius: var(--control-radius); background: var(--blue-soft); color: var(--text); font-size: var(--ui-body); }
+.tracker-attention { background: #fff4e8; color: var(--orange); }
+.tracker-context > small { color: var(--muted); font-size: var(--ui-caption); }
 /* 6. RESPONSIVE — one grouped section per breakpoint */
 @media (max-width: 1100px) {
   /* Layout */
@@ -3701,6 +3734,8 @@ select:focus-visible {
 }
 
 @media (max-width: 900px) {
+  .tracker-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .tracker-metrics > div:nth-child(2) { grid-column: span 2; }
   /* Four decision indicators need at least 200 px each. */
   .ride-decision-grid,
   .ice-decision-grid {
@@ -3972,6 +4007,14 @@ select:focus-visible {
 }
 
 @media (max-width: 600px) {
+  .tracker-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tracker-projection-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tracker-metrics > div:first-child,
+  .tracker-metrics > div:nth-child(2),
+  .tracker-metrics > div:last-child { grid-column: 1 / -1; }
+  .tracker-sync-grid { grid-template-columns: minmax(0, 1fr); }
+  .tracker-actions > button { flex: 1 1 auto; }
+  .tracker-factor { margin-left: 0; }
   .pilot-decision-panel { padding: var(--space-4); }
   .top-level-cards, .marginal-levels > div { grid-template-columns: minmax(0,1fr); }
 
