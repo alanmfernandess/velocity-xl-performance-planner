@@ -362,6 +362,8 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
+  /* Match the content inset of the OFP card; headings share its visual alignment. */
+  padding-inline: var(--space-6);
 }
 .area-heading > div {
   min-width: 0;
@@ -3838,6 +3840,7 @@ select:focus-visible {
   }
   .area-heading {
     min-height: 74px;
+    padding-inline: var(--space-4);
   }
   .area-heading h1 {
     font-size: var(--ui-display);

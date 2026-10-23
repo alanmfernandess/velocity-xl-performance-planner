@@ -67,7 +67,7 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261022-06/);
+  assert.match(html, /styles\.css\?v=20261023-heading-align/);
 });
 
 
@@ -92,4 +92,11 @@ test("alternate fuel metrics are balanced columns without dividing lines", () =>
   assert.doesNotMatch(cssRule(css, ".advisor-strip > span"), /border(?:-\\w+)?\\s*:/);
   for (const id of ["fuelAtDestination", "alternateFuel", "alternateLandingFuel"])
     assert.match(html, new RegExp(`id="${id}"`));
+});
+
+
+test("section headings align with OFP card content at desktop and mobile widths", () => {
+  assertDeclaration(css, ".area-heading", "padding-inline", "var(--space-6)");
+  assert.match(css, /@media \(max-width: 760px\) \{[\s\S]*?\.area-heading \{\s*min-height: 74px;\s*padding-inline: var\(--space-4\);/);
+  assert.match(layout, /heading\.className = 'area-heading'/);
 });
