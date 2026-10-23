@@ -3426,6 +3426,9 @@ select:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
+.ice-technical-details:not([open]) > .ice-evidence-list {
+  display: none;
+}
 .ice-technical-details[open] > .ice-evidence-list {
   margin-top: var(--space-3);
 }
