@@ -114,6 +114,8 @@ const audit = async (page, label) => {
     return {
       viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth,
       heading: dimensions('.area-heading h1'),
+      headingContent: dimensions('.area-heading > div:first-child'),
+      ofpContent: dimensions('.plan-bar .plan-identity'),
       primaryButtons: dimensions('.primary-button'),
       textButtons: dimensions('.text-button'),
       inputs: dimensions('.ui-field > input, .ui-field > select, .ui-unit-input'),
@@ -133,6 +135,10 @@ const audit = async (page, label) => {
   issues.push(...probe.issues.map(issue => `${issue.code}: ${issue.target}${issue.detail ? ` (${issue.detail})` : ''}`));
   if (data.scrollWidth > data.viewport + 1) issues.push(`horizontal overflow ${data.scrollWidth - data.viewport}px`);
   if (data.legacyTriggerVisible) issues.push('retired manual update trigger is visible');
+  if (data.headingContent.length && data.ofpContent.length) {
+    const delta = Math.abs(data.headingContent[0].x - data.ofpContent[0].x);
+    if (delta > 2) issues.push(`section heading and OFP card content horizontal alignment differs by ${delta}px`);
+  }
   for (const item of [...data.primaryButtons, ...data.textButtons, ...data.inputs]) {
     if (item.height < 43) issues.push(`${item.selector} height ${item.height}px`);
     if (item.x < -1 || item.right > data.viewport + 1) issues.push(`${item.selector} outside viewport`);
