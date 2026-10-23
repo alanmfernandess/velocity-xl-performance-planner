@@ -116,6 +116,7 @@ const audit = async (page, label) => {
       heading: dimensions('.area-heading h1'),
       headingContent: dimensions('.area-heading > div:first-child'),
       ofpContent: dimensions('.plan-bar .plan-identity'),
+      ofpCard: dimensions('.plan-bar'),
       primaryButtons: dimensions('.primary-button'),
       textButtons: dimensions('.text-button'),
       inputs: dimensions('.ui-field > input, .ui-field > select, .ui-unit-input'),
@@ -135,9 +136,11 @@ const audit = async (page, label) => {
   issues.push(...probe.issues.map(issue => `${issue.code}: ${issue.target}${issue.detail ? ` (${issue.detail})` : ''}`));
   if (data.scrollWidth > data.viewport + 1) issues.push(`horizontal overflow ${data.scrollWidth - data.viewport}px`);
   if (data.legacyTriggerVisible) issues.push('retired manual update trigger is visible');
-  if (data.headingContent.length && data.ofpContent.length) {
-    const delta = Math.abs(data.headingContent[0].x - data.ofpContent[0].x);
-    if (delta > 2) issues.push(`section heading and OFP card content horizontal alignment differs by ${delta}px`);
+  if (data.headingContent.length && data.ofpContent.length && data.ofpCard.length) {
+    // On mobile, match the OFP's padded content. On desktop, match card edges.
+    const target = data.viewport <= 760 ? data.ofpContent[0].x : data.ofpCard[0].x;
+    const delta = Math.abs(data.headingContent[0].x - target);
+    if (delta > 2) issues.push(`section heading horizontal alignment differs by ${delta}px from ${data.viewport <= 760 ? 'mobile OFP content' : 'desktop card edge'}`);
   }
   for (const item of [...data.primaryButtons, ...data.textButtons, ...data.inputs]) {
     if (item.height < 43) issues.push(`${item.selector} height ${item.height}px`);
