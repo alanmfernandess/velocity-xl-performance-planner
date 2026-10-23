@@ -1904,30 +1904,38 @@ select:focus-visible {
   width: auto;
   max-width: 55%;
 }
+/* Alternate fuel metrics: three balanced columns, without ruling.
+   Natural heading wrap is allowed; flex alignment keeps the values on one baseline. */
 .advisor-strip {
   grid-column: 1/-1;
   display: grid;
-  grid-template-columns: repeat(3,1fr);
-  border-top: 1px solid var(--line);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--space-3);
 }
-.advisor-strip span {
+.advisor-strip > span {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
   min-width: 0;
-  padding: 12px 14px 0;
-  border-right: 1px solid var(--line);
-}
-.advisor-strip span:last-child {
-  border: 0;
+  padding: var(--space-2) 0;
+  text-align: center;
 }
 .advisor-strip b {
   display: block;
   color: var(--muted);
   font-size: var(--ui-caption);
   font-weight: 500;
+  line-height: 1.35;
 }
 .advisor-strip strong {
   display: block;
-  margin-top: 5px;
-  font-size: var(--ui-caption);
+  margin-top: auto;
+  font-size: var(--ui-body);
+  font-weight: 650;
+  white-space: nowrap;
 }
 .glide-kpis {
   display: grid;
@@ -4108,11 +4116,7 @@ select:focus-visible {
   }
   .advisor-strip {
     grid-column: auto;
-    grid-template-columns: 1fr;
-  }
-  .advisor-strip span {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .glide-kpis {
     grid-template-columns: repeat(2,minmax(0,1fr));
