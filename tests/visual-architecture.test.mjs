@@ -115,5 +115,6 @@ test("ICE evidence presents simple route coverage and on-demand technical facts 
   assert.doesNotMatch(app, /PROTEÇÃO|NÃO INSTALADA|NOT INSTALLED/);
   assertDeclaration(css, ".ice-technical-details > summary", "min-height", "var(--control-height)");
   assertDeclaration(css, ".ice-technical-details .ice-evidence-list", "grid-template-columns", "minmax(0, 1fr)");
+  assertDeclaration(css, ".ice-technical-details:not([open]) > .ice-evidence-list", "display", "none");
   assert.match(html, /js\/app\.js\?v=20261023-07/);
 });
