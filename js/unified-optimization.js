@@ -7,7 +7,7 @@ import {
 import { buildTrajectory } from "./trajectory.js";
 import { sampleGfs } from "./weather/open-meteo.js";
 import { createWeatherSnapshot } from "./weather/fusion.js";
-import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261022-01";
+import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261024-profile1";
 import { scoreMissionV2 } from "./mission-score-v2.js";
 
 const STATUS_RANK = { viable: 0, marginal: 1, unknown: 2, "not-viable": 3 };
@@ -187,7 +187,7 @@ function closestPreset(powerSetting) {
 }
 
 /** Evaluate a pilot-selected scenario against the same weather and score basis. */
-export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, mapInHg, rpm }) {
+export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, mapInHg, rpm }, scenario = null) {
   if (!mission?.plan || !ALTITUDES_FT.includes(altitudeFt)) throw new RangeError("INVALID_SCENARIO_ALTITUDE");
   if (mode !== "MANUAL" && !PRESETS.includes(mode)) throw new RangeError("INVALID_SCENARIO_MODE");
   let engineMode = mode, powerSetting = { type: "AUTO" };
@@ -198,10 +198,11 @@ export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, m
     engineMode = closestPreset(powerSetting);
   } else {
     const cached = mission.candidates.find((candidate) => candidate.altitudeFt === altitudeFt && candidate.mode === mode);
-    if (cached) return cached;
+    if (cached && !scenario) return cached;
   }
   const candidate = evaluateCandidate({ ...input, mode: engineMode, powerSetting }, altitudeFt,
-    mission.weatherSnapshot, mission.performancePlan || planWithForecast(input.plan, mission.weatherSnapshot));
+    scenario?.weatherSnapshot || mission.weatherSnapshot,
+    scenario?.performancePlan || mission.performancePlan || planWithForecast(input.plan, mission.weatherSnapshot));
   if (mode === "MANUAL") candidate.mode = "MANUAL";
   scoreCandidates([candidate], input, mission.candidates);
   return candidate;

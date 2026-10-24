@@ -1,10 +1,11 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261021-unified";
-import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261022-04";
+import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261024-profile1";
 import { fetchGfsSnapshot } from "./weather/open-meteo.js";
 import { fetchAwcSnapshot } from "./weather/awc.js";
 import { createWeatherSnapshot } from "./weather/fusion.js";
 import { calculateAtAltitude, calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261022-tracker1";
-import { fetchLatestOFP } from "./simbrief.js?v=20261022-tracker1";
+import { fetchLatestOFP } from "./simbrief.js?v=20261024-profile1";
+import { createMissionProfilePresenter } from "./mission-profile-view.js?v=20261024-profile1";
 import { TRACKER_STORAGE_KEY, buildVirtualFlightProfile, confirmVirtualCheckpoint, correctVirtualElapsed, finishVirtualFlight, newVirtualFlightSession, pauseVirtualFlight, projectVirtualFlight, recoverVirtualFlight, remainingExposure, resumeVirtualFlight, setVirtualTimeFactor, startVirtualFlight, virtualElapsedSeconds } from "./virtual-flight.js?v=20261022-tracker1";
 
 const $ = (selector) => document.querySelector(selector);
@@ -236,6 +237,7 @@ let trackerSession=null;
 let trackerPanelMode=null;
 let trackerPendingPhase=null;
 let trackerProjectionUpdatedAt=0;
+const missionProfilePresenter=createMissionProfilePresenter();
 const t = (key, ...args) => typeof COPY[state.language][key] === "function" ? COPY[state.language][key](...args) : COPY[state.language][key] || key;
 const number = (value, digits = 0) => Number(value).toLocaleString(state.language, { minimumFractionDigits:digits, maximumFractionDigits:digits });
 const signed = (value, suffix="") => `${value >= 0 ? "+" : "−"}${number(Math.abs(Math.round(value)))}${suffix}`;
@@ -482,10 +484,19 @@ function decisionCard(candidate,place,marginal=false){
     ${marginal?"":`<span class="trophy trophy-${place}">${trophySvg(place)}</span>`}<span class="top-level-identity"><strong>FL${candidate.altitudeFt/100}</strong><small>${candidate.mode}</small></span><span class="top-level-status ${candidate.status}">${label}</span>
     <span class="top-level-metrics"><span><b>Score</b><strong>${score}</strong></span><span><b>ICE</b><strong>${ice}</strong></span><span><b>RIDE</b><strong>${ride}</strong></span><span><b>${state.language==="pt-BR"?"Combustível":"Fuel"}</b><strong>${formatFuel(candidate.result.fuelRequiredGal,1)}</strong></span><span><b>${state.language==="pt-BR"?"Tempo":"Time"}</b><strong>${formatTime(candidate.result.tripTimeHr)}</strong></span></span></button>`;
 }
+function refreshMissionProfile(){
+  if(!state.plan||!latestOptimizedMission)return;
+  const reviewing=Boolean(analysisChoice&&!decisionStale);
+  const sameApplied=reviewing&&state.appliedChoice&&JSON.stringify(state.appliedChoice)===JSON.stringify(analysisChoice);
+  missionProfilePresenter.update({plan:state.plan,mission:latestOptimizedMission,input:decisionInput(),
+    candidate:reviewing?analysisCandidate:latestActiveCandidate,language:state.language,fuelUnit:state.fuelUnit,
+    selection:reviewing?analysisChoice:state.appliedChoice,
+    source:reviewing&&!sameApplied?"analyzing":state.appliedChoice?"applied":"automatic"});
+}
 function renderDecisionPanel(){
   const panel=$("#pilotDecisionPanel");
   panel.hidden=!decisionSnapshot;
-  if(!decisionSnapshot)return;
+  if(!decisionSnapshot){refreshMissionProfile();return;}
   const mission=decisionSnapshot,auto=mission.automaticRecommendation,pt=state.language==="pt-BR";
   $("#decisionAutoStatus").textContent=decisionStale?t("rankingStale"):auto?`FL${auto.altitudeFt/100} · ${auto.mode} · ${missionStatusLabel(auto.status)}`:t("noConfirmedRecommendation");
   $("#topLevelCards").innerHTML=mission.topLevels.map((candidate,index)=>decisionCard(candidate,index+1)).join("");
@@ -496,11 +507,12 @@ function renderDecisionPanel(){
   diagnostic.hidden=Boolean(mission.topLevels.length||marginal.length);
   diagnostic.textContent=mission.status==="unknown"?`${t("noConfirmedRecommendation")} · ${weatherDiagnosticText(mission)}`:t("noConfirmedRecommendation");
   const analysis=$("#pilotAnalysis");analysis.hidden=!analysisChoice;
-  if(!analysisChoice){analysisCandidate=null;refreshUiIcons();return;}
+  if(!analysisChoice){analysisCandidate=null;refreshMissionProfile();refreshUiIcons();return;}
   $("#analysisLevel").textContent=`FL${analysisChoice.altitudeFt/100} · ${analysisChoice.mode==="MANUAL"?t("manualPower"):analysisChoice.mode}`;
   $$('[data-analysis-mode]').forEach((button)=>{const active=button.dataset.analysisMode===analysisChoice.mode;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
   $("#analysisManualFields").hidden=analysisChoice.mode!=="MANUAL";
   try{analysisCandidate=decisionStale?null:evaluateMissionAlternative(mission,decisionInput(),analysisChoice);}catch{analysisCandidate=null;}
+  refreshMissionProfile();
   const candidate=analysisCandidate,status=$("#analysisStatus"),apply=$("#applyPilotAlternative");
   status.textContent=decisionStale?t("rankingStale"):candidate?missionStatusLabel(candidate.status):t("invalidManualPower");
   status.dataset.status=candidate?.status||"unknown";

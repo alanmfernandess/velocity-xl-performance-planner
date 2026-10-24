@@ -37,6 +37,18 @@ Em cruzeiro estabilizado, o usuário pode informar no formulário único de **Em
 
 Os fatores têm limites matemáticos em `js/config.js`, ficam salvos no `localStorage` e podem ser redefinidos. O contexto de referência guarda preset, FL, MAP, RPM, temperatura e peso estimado. A calibração só se aplica próxima desse regime; ela corrige o cruzeiro, sem alterar diretamente MAP/RPM nem calibrar subida ou descida. Calibrações antigas com K1/K2 válidos são preservadas, mas fatores legados sem referência suficiente ficam pendentes e não são aplicados em outro regime. A redefinição exige confirmação. Os registros antigos de Debrief não são apagados.
 
+## Weather & Decision / Mission Profile
+
+Em **Missão → Visão geral**, o perfil usa a trajetória e os segmentos integrados do candidato selecionado. As leituras de altitude, tempo e combustível são consultas ao modelo existente; o SVG não recalcula performance. A área azul usa Hermite monotônica com limite de desvio visual de 20 ft e controles lineares conservadores quando necessário. TOC/TOD usam as distâncias reais do resultado. O eixo é MSL, sem equivalência presumida com terreno.
+
+O navlog completo fica disponível na busca de **Waypoints**, inclusive registros sem coordenadas. Distâncias OFP e geométricas são reconciliadas explicitamente em **Dados & fontes**; um ponto sem posição confiável não recebe ETA nem combustível. O agrupamento de marcadores depende da largura em pixels e não remove registros. **Mission Events** referencia TOC/TOD, fixes, ETP/PNR, reserva e amostras de risco já avaliadas.
+
+As camadas METEO/ICE/RIDE/FUEL reutilizam o snapshot compartilhado e os índices existentes. As faixas mostram a resolução das amostras do modelo; não representam limites medidos de nuvens ou zonas meteorológicas. Cobertura ausente permanece desconhecida. Fontes, validade, resolução e limitações ficam recolhidas em **Dados & fontes**.
+
+**Mission Time Machine**, recolhido por padrão, reavalia Original/+1h/+2h/+3h com a mesma previsão baixada. A iteração reutiliza o avaliador de candidatos e o solver de combustível, atualizando ventos por fase/fixo e verificando a convergência dos horários ao longo dos segmentos. Os limites estão em `PERFORMANCE.missionTime`: até oito iterações, 2 s e 0,02 gal de tolerância. Falta de cobertura ou convergência produz cenário indisponível; nenhuma requisição é disparada pelo slider ou pelas comparações. O cenário reavaliado permanece em análise, sem aplicar horário, combustível ou configuração à missão.
+
+O **Mission Advisor** ocupa Ajuste principal e prioriza impedimentos físicos, dados desconhecidos, condições marginais, conflitos meteorológicos e oportunidades de eficiência. Ele usa justificativas determinísticas do motor. A prévia não inicia o Tracker, não grava checkpoints nem calibrações e não altera o ranking ou Mission Score aplicado. A reprodução visual percorre o voo em aproximadamente um minuto; o tempo exibido continua sendo o tempo previsto da missão.
+
 ## Virtual Flight Tracker
 
 Em **Em voo**, aplique uma configuração da missão e pressione **Iniciar voo** quando começar a decolagem no simulador. O Tracker projeta posição, fase, FL, combustível e ETE com o perfil calculado de subida, cruzeiro e descida. O relógio usa a hora de início informada pela ação do piloto, separada do horário programado no OFP. O piloto pode pausar, retomar e escolher 1×, 2×, 4× ou 8×; o fator não é detectado automaticamente no Xbox.
@@ -71,6 +83,7 @@ npm run lint:css
 npm run audit:browser
 npm run audit:browser:v2
 npm run audit:tracker
+npm run audit:profile
 npm run validate:missions
 npm run verify:weather-live
 ```
