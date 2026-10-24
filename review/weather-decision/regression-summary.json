@@ -1,0 +1,49 @@
+{
+  "commands": [
+    {
+      "command": "npm ci",
+      "status": "passed"
+    },
+    {
+      "command": "npm test",
+      "tests": 206,
+      "failures": 0
+    },
+    {
+      "command": "npm run validate:missions",
+      "scenarios": 11,
+      "withoutRecommendation": 6
+    },
+    {
+      "command": "npm run audit:browser",
+      "states": 322,
+      "failures": 0,
+      "screenshots": 49
+    },
+    {
+      "command": "npm run audit:browser:v2",
+      "states": 386,
+      "failures": 0,
+      "screenshots": 92
+    },
+    {
+      "command": "npm run audit:tracker",
+      "states": 59,
+      "failures": 0,
+      "screenshots": 38
+    },
+    {
+      "command": "npm run audit:profile",
+      "states": 140,
+      "failures": 0,
+      "screenshots": 10
+    },
+    {
+      "command": "npm run audit:profile -- --width=320",
+      "states": 17,
+      "failures": 0,
+      "screenshots": 1
+    }
+  ],
+  "generatedAt": "2026-10-24T22:49:29.925Z"
+}

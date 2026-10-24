@@ -65,9 +65,9 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assert.doesNotMatch(primaryRole, /#missionScoreAction/);
   assertDeclaration(css, '.app-module [data-ui-role="secondary"]', "font-size", "var(--ui-body)");
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
-  assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
+  assert.match(html, /js\/layout\.js\?v=20261024-profile1/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261023-ice-simple/);
+  assert.match(html, /styles\.css\?v=20261024-profile1/);
 });
 
 
@@ -116,5 +116,5 @@ test("ICE evidence presents simple route coverage and on-demand technical facts 
   assertDeclaration(css, ".ice-technical-details > summary", "min-height", "var(--control-height)");
   assertDeclaration(css, ".ice-technical-details .ice-evidence-list", "grid-template-columns", "minmax(0, 1fr)");
   assertDeclaration(css, ".ice-technical-details:not([open]) > .ice-evidence-list", "display", "none");
-  assert.match(html, /js\/app\.js\?v=20261023-07/);
+  assert.match(html, /js\/app\.js\?v=20261024-01/);
 });

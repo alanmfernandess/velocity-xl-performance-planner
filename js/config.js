@@ -86,6 +86,7 @@ export const PERFORMANCE = {
   weightTasPenaltyKtPer100Lb: 0.72,
   climbWeightFactorPer100Lb: 0.035,
   reserveDefaultMin: 45,
+  missionTime: { maxIterations: 8, timeToleranceSec: 2, fuelToleranceGal: .02 },
   contingencyPercent: 5,
   calibrationLimits: {
     tasFactor: [0.85, 1.15],

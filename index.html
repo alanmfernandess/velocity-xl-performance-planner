@@ -11,7 +11,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261023-ice-simple" />
+    <link rel="stylesheet" href="./styles.css?v=20261024-profile1" />
   </head>
   <body>
     <header class="topbar">
@@ -75,6 +75,24 @@
           <div class="analysis-comparison" id="analysisComparison"></div>
           <div class="analysis-actions"><button class="primary-button" id="applyPilotAlternative" type="button" disabled data-i18n="applyConfiguration">Aplicar configuração</button><button class="text-button" id="recalculateRanking" type="button" data-i18n="recalculateRanking">Recalcular ranking</button></div>
         </div>
+      </section>
+
+      <section class="panel ui-card ui-card--technical mission-profile" id="missionProfilePanel" aria-labelledby="missionProfileTitle">
+        <div class="mp-heading"><div><span data-ui-role="label">Weather &amp; Decision</span><h2 id="missionProfileTitle">Mission Profile</h2></div><div class="mp-context"><strong id="mpCandidate" data-ui-role="emphasis">—</strong><span class="ui-status" id="mpScenarioTag"></span></div></div>
+        <div class="mp-layers" role="group" aria-label="Weather layers"><button class="text-button ui-button" type="button" data-profile-layer="METEO" aria-pressed="true">METEO</button><button class="text-button ui-button" type="button" data-profile-layer="ICE" aria-pressed="false">ICE</button><button class="text-button ui-button" type="button" data-profile-layer="RIDE" aria-pressed="false">RIDE</button><button class="text-button ui-button" type="button" data-profile-layer="FUEL" aria-pressed="false">FUEL</button></div>
+        <p id="mpLayerStatus" class="mp-layer-status ui-status" role="status">—</p>
+        <div class="mp-empty" id="mpUnavailable" hidden></div>
+        <div id="mpProfileBody">
+          <div class="mp-chart-layout"><div class="mp-alt-axis" aria-hidden="true"><span id="mpAltitudeUpper"></span><span id="mpAltitudeLower"></span></div><div class="mp-plot" id="mpPlot"><svg id="mpSvg" role="img" aria-labelledby="mpSvgTitle" preserveAspectRatio="xMidYMid meet"><title id="mpSvgTitle">Mission Profile</title></svg><div class="mp-airports"><span id="mpOrigin" data-ui-role="label"></span><span id="mpDestination" data-ui-role="label"></span></div></div></div>
+          <div class="mp-playback"><button id="mpPlay" class="text-button ui-button" type="button" aria-label="Reproduzir prévia"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><label><span class="mp-progress-label"><span data-profile-text="preview">Prévia</span><strong id="mpElapsed" data-ui-role="secondary">—</strong></span><input id="mpProgress" type="range" min="0" max="1" value="0" step="1" /></label></div>
+          <div class="mp-point-heading"><div><span data-ui-role="label" id="mpPointKind">OFP</span><strong data-ui-role="emphasis" id="mpPointName">—</strong></div><div class="mp-point-actions"><button id="mpPreviousFix" class="text-button ui-button mp-icon-button" type="button" aria-label="Waypoint anterior">‹</button><button id="mpNextFix" class="text-button ui-button mp-icon-button" type="button" aria-label="Próximo waypoint">›</button><button id="mpWaypointsToggle" class="text-button ui-button" type="button" aria-expanded="false" aria-controls="mpWaypointsPanel">Waypoints</button></div></div>
+          <div class="mp-readings"><div class="ui-metric"><span data-ui-role="label" data-profile-text="distance">Distância</span><strong data-ui-role="emphasis" id="mpDistance">—</strong></div><div class="ui-metric"><span data-ui-role="label">ETA · UTC</span><strong data-ui-role="emphasis" id="mpEta">—</strong></div><div class="ui-metric"><span data-ui-role="label" data-profile-text="altitude">Altitude · MSL</span><strong data-ui-role="emphasis" id="mpAltitude">—</strong></div><div class="ui-metric"><span data-ui-role="label" data-profile-text="fuelRemaining">Combustível restante</span><strong data-ui-role="emphasis" id="mpFuel">—</strong></div></div>
+          <div class="mp-selected-weather" id="mpSelectedWeather"></div>
+          <div class="mp-waypoints" id="mpWaypointsPanel" hidden><div class="mp-list-heading"><label class="ui-field"><span data-profile-text="search">Buscar waypoint</span><input id="mpWaypointSearch" type="search" autocomplete="off" /></label><button id="mpWaypointsClose" class="text-button ui-button" type="button" data-profile-text="close">Fechar</button></div><div id="mpWaypointList" class="mp-waypoint-list" aria-label="Waypoints OFP"></div></div>
+          <div class="mp-events"><div class="mp-section-head"><strong data-ui-role="secondary">Mission Events</strong><span id="mpEventCount" data-ui-role="label"></span></div><div class="mp-event-navigation"><button id="mpPreviousEvent" class="text-button ui-button mp-icon-button" type="button" aria-label="Evento anterior">‹</button><button id="mpEventSelect" class="mp-event-select" type="button"><span id="mpEventUtc" data-ui-role="secondary">—</span><strong id="mpEventType" data-ui-role="emphasis">—</strong><span id="mpEventReference" data-ui-role="label">—</span></button><button id="mpNextEvent" class="text-button ui-button mp-icon-button" type="button" aria-label="Próximo evento">›</button></div></div>
+        </div>
+        <details class="mp-details" id="mpTimeMachine"><summary>Mission Time Machine</summary><div id="mpTimeBody" hidden><div class="mp-time-options" role="group" aria-label="Departure scenario"><button class="text-button ui-button" type="button" data-profile-offset="0" aria-pressed="true" data-profile-text="original">Original</button><button class="text-button ui-button" type="button" data-profile-offset="1" aria-pressed="false">+1 h</button><button class="text-button ui-button" type="button" data-profile-offset="2" aria-pressed="false">+2 h</button><button class="text-button ui-button" type="button" data-profile-offset="3" aria-pressed="false">+3 h</button></div><div id="mpTimeComparison" class="mp-time-comparison" aria-live="polite"></div></div></details>
+        <details class="mp-details" id="mpSources"><summary data-profile-text="sources">Dados &amp; fontes</summary><div id="mpSourcesBody" class="mp-sources" hidden></div></details>
       </section>
 
       <section class="panel flight-tools-panel" aria-label="Flight tools">
@@ -419,11 +437,11 @@
 
 
       </div>
-      <footer><span>Velocity XL Performance Planner</span><span class="footer-sources">Terreno e obstáculos não avaliados.</span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
+      <footer><span>Velocity XL Performance Planner · MSFS 2024</span><span class="footer-sources">Terreno e obstáculos não avaliados.</span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./js/layout.js?v=20261022-pde3"></script>
-    <script type="module" src="./js/app.js?v=20261023-07"></script>
+    <script src="./js/layout.js?v=20261024-profile1"></script>
+    <script type="module" src="./js/app.js?v=20261024-01"></script>
   </body>
 </html>

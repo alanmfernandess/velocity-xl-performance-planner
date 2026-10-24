@@ -108,6 +108,7 @@
   const missionOverview = moduleNodes.get('mission:overview');
   move('.kpi-grid', 'mission:overview');
   move('#pilotDecisionPanel', 'mission:overview');
+  move('#missionProfilePanel', 'mission:overview');
   const overviewGrid = item(); overviewGrid.className = 'summary-grid'; overviewGrid.dataset.uiCardPair = ''; overviewGrid.dataset.uiOverlapGroup = ''; missionOverview.append(overviewGrid);
   const score = $('.mission-score-panel'); if (score) overviewGrid.append(score);
   const recommendation = item(); recommendation.className = 'panel recommendation-card';

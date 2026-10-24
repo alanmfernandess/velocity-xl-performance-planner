@@ -30,6 +30,15 @@ function groupSegments(samples, assessments) {
   return [...groups.values()].map((segment) => ({ ...segment, riskScore: Math.round(segment.riskScore) }));
 }
 
+// Read-only projection of assessments already performed above. Consumers may
+// show their actual sampling resolution without reconstructing a risk index.
+function profileSamples(samples, assessments) {
+  return samples.map((point, index) => ({ distanceNm: point.distanceNm, timestampMs: point.timestampMs,
+    altitudeFt: point.altitudeFt, phase: point.phase, minutes: point.minutes, from: point.from, to: point.to,
+    evidenceAvailable: assessments[index].covered, riskScore: assessments[index].score,
+    evidenceIds: (assessments[index].evidence || []).map((item) => item.id).filter(Boolean) }));
+}
+
 /** Exposure estimates are conditional model indicators, not icing probability. */
 export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot }) {
   const baseline = calculateIcingRisk({ plan, result });
@@ -111,6 +120,7 @@ export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot 
     descentExposureMinutes: Math.max(baseline.descentExposureMinutes || 0, byPhase.descent),
     temperatureExposureMinutes: Math.max(baseline.temperatureExposureMinutes || 0, temperatureMinutes),
     segments: modelAvailable ? groupSegments(trajectory.samples, assessments) : baseline.segments,
+    profileSamples: profileSamples(trajectory.samples, assessments),
     alternate: alternateAirport ? { ...(baseline.alternate || {}), ident: alternateAirport.icao || baseline.alternate?.ident || "—",
       status: alternateBlocking ? "avoid" : alternateCoverageInsufficient ? "unknown"
         : alternateRisk >= PERFORMANCE.icing.cautionScore ? "caution" : alternateRisk >= PERFORMANCE.icing.watchScore ? "watch" : "low",
@@ -198,6 +208,7 @@ export function assessRideTrajectory({ plan, result, trajectory, weatherSnapshot
     segments: covered ? groupSegments(trajectory.samples, assessments).map((segment) => ({ ...segment,
       exposureMinutes: segment.riskScore >= PERFORMANCE.turbulence.lightScore ? segment.minutes : 0,
       status: segment.riskScore >= 75 ? "severe" : segment.riskScore >= 45 ? "moderate" : segment.riskScore >= 20 ? "light" : "smooth" })) : baseline.segments,
+    profileSamples: profileSamples(trajectory.samples, assessments),
     alternate: alternateAssessments.length ? { riskScore: Math.max(...alternateAssessments.map((item) => item.score)),
       coverage: alternateAssessments.filter((item) => item.covered).length / alternateAssessments.length,
       exposureMinutes: alternateAssessments.reduce((sum, item) => sum + (item.score >= PERFORMANCE.turbulence.lightScore ? item.minutes : 0), 0),
