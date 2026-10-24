@@ -47,6 +47,8 @@ O Time Machine amostra a previsão compartilhada nos horários previstos das fas
 
 Não foram introduzidos framework visual, quinta área, gráficos alternativos, nuvens volumétricas nem avisos narrativos permanentes. Detalhes de fontes e limites ficam recolhidos. A identificação global MSFS 2024 fica no rodapé.
 
+Em 320 px, as quatro camadas formam uma grade 2 × 2 para preservar o padding dos botões e a fonte A+ também no Chromium Linux.
+
 ## Testes e evidências
 
 - `npm ci`: concluído.
@@ -56,6 +58,7 @@ Não foram introduzidos framework visual, quinta área, gráficos alternativos, 
 - `npm run audit:browser:v2`: **386 estados, 0 falhas**, 92 capturas.
 - `npm run audit:tracker`: **59 estados, 0 falhas**, 38 capturas.
 - `npm run audit:profile`: **140 estados, 0 falhas**, 10 capturas específicas. [Relatório completo](browser-audit.json).
+- `npm run audit:profile -- --width=320`: **17 estados, 0 falhas**, incluindo EN/A+, com [captura da regressão](320-profile.png) e [relatório focado](320-browser-audit.json).
 - `npm run verify:weather-live`: GFS e os fluxos AWC verificados numa única execução; SimBrief não consultado por ausência de `SIMBRIEF_PILOT_ID`. [Resultado](live-weather.json).
 
 As auditorias cobrem 320, 375, 390, 430, 768, 1024, 1440 e 1920 px, PT/EN, LB/KG, GAL/L e A−/A/A+. Os testes matemáticos incluem navlogs de 0, 1, 8, 48, 84 e 150 registros, duplicatas, distâncias inconsistentes, coordenadas ausentes/inválidas, continuidade das fases, limites da curva, mudança de dia, falta de vento, cobertura espacial/vertical/temporal e ausência de convergência. As verificações de interface incluem reprodução, busca por teclado, eventos, cenário manual em EN/L, troca de OFP e preservação da sessão/calibração/ranking.

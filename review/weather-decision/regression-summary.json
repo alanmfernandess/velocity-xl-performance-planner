@@ -37,6 +37,12 @@
       "states": 140,
       "failures": 0,
       "screenshots": 10
+    },
+    {
+      "command": "npm run audit:profile -- --width=320",
+      "states": 17,
+      "failures": 0,
+      "screenshots": 1
     }
   ],
   "generatedAt": "2026-10-24T22:49:29.925Z"

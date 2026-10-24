@@ -9,6 +9,11 @@ const root = path.resolve(import.meta.dirname, "..");
 const output = path.join(root, "review/weather-decision");
 await fs.mkdir(output, { recursive: true });
 const report = { fixture: "Illustrative synthetic OFP and weather; real browser screenshots; no real flight import", widths: [320, 375, 390, 430, 768, 1024, 1440, 1920], states: [], screenshots: [], errors: [] };
+const focusedWidth = Number(process.argv.find((arg) => arg.startsWith("--width="))?.split("=")[1]);
+if (focusedWidth) {
+  assert.ok(report.widths.includes(focusedWidth), "width must be in the audited device matrix");
+  report.widths = [focusedWidth];
+}
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, "http://localhost"), file = path.resolve(root, `.${url.pathname === "/" ? "/index.html" : url.pathname}`);
@@ -130,6 +135,7 @@ try {
     if ([390, 768, 1440].includes(width)) {
       await screenshot(page, `${width}-profile`, true);
     }
+    if (focusedWidth === 320) await screenshot(page, "320-profile");
     await page.locator("#mpNextEvent").click();
     const eventTime = Number(await page.locator("#mpProgress").inputValue());
     assert.ok(eventTime >= 0);
@@ -201,6 +207,6 @@ try {
   await browser.close(); server.close();
 }
 report.generatedAt = new Date().toISOString();
-await fs.writeFile(path.join(output, "browser-audit.json"), JSON.stringify(report, null, 2) + "\n");
+await fs.writeFile(path.join(output, focusedWidth ? `${focusedWidth}-browser-audit.json` : "browser-audit.json"), JSON.stringify(report, null, 2) + "\n");
 console.log(`${report.states.length} Mission Profile states, ${report.errors.length} failures, ${report.screenshots.length} screenshots`);
 if (report.errors.length) { console.error(JSON.stringify(report.errors, null, 2)); process.exitCode = 1; }

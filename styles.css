@@ -4434,6 +4434,7 @@ select:focus-visible {
 }
 
 @media (max-width: 360px) {
+  .mp-layers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mp-readings { grid-template-columns: minmax(0, 1fr); }
   /* Layout */
   .app-area[data-area-panel="planning"] .module-nav,
