@@ -132,8 +132,8 @@ export function createResiliencePresenter({profilePresenter}) {
     if(target.dataset.rlAction==='reset'){perturbation={};axis='windKt';run('stress',{perturbation,axis});profilePresenter.clearPreview();}
     if(target.dataset.rlAction==='ensemble')loadEnsemble();
     if(target.dataset.rlAction==='original'){profileInPreview=false;profilePresenter.clearPreview();render();}
-    if(target.dataset.rlAction==='dynamic-preview'){const s=dynamicProfileScenario(results.dynamic,selectedProfile);if(s){profileInPreview=true;profilePresenter.previewScenario(s);render();document.querySelector('#missionProfilePanel').scrollIntoView({behavior:'smooth',block:'start'});}}
-    if(target.dataset.rlAction==='preview'&&results.stress?.scenario?.available){profileInPreview=true;profilePresenter.previewScenario(results.stress.scenario);render();document.querySelector('#missionProfilePanel').scrollIntoView({behavior:'smooth',block:'start'});}
+    if(target.dataset.rlAction==='dynamic-preview'){const s=dynamicProfileScenario(results.dynamic,selectedProfile);if(s){profileInPreview=true;profilePresenter.previewScenario(s);render();document.querySelector('#missionProfilePanel').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}}
+    if(target.dataset.rlAction==='preview'&&results.stress?.scenario?.available){profileInPreview=true;profilePresenter.previewScenario(results.stress.scenario);render();document.querySelector('#missionProfilePanel').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}
     if(target.dataset.rlFix!==undefined){selectedFix=Number(target.dataset.rlFix);render();}
     if(target.dataset.rlEffect!==undefined){selectedEffect=Number(target.dataset.rlEffect);render();}
     if(target.dataset.rlProfile!==undefined){selectedProfile=Number(target.dataset.rlProfile);render();}

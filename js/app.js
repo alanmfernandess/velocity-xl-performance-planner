@@ -662,7 +662,7 @@ let currentGlideCorridor=null;
 function centerGlideRoutePoint() {
   const route=$("#glideRoute"),active=route.querySelector('[aria-pressed="true"]');
   if(!route.clientWidth||!active) return;
-  route.scrollTo({left:Math.max(0,active.offsetLeft-(route.clientWidth-active.clientWidth)/2),behavior:"smooth"});
+  route.scrollTo({left:Math.max(0,active.offsetLeft-(route.clientWidth-active.clientWidth)/2),behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});
 }
 
 function renderGlideFocus(glide) {
@@ -1068,7 +1068,7 @@ $("#optimizeMission").addEventListener("click",async()=>{
     if(revision!==decisionRevision||plan!==state.plan)return;
     decisionSnapshot=snapshot;decisionStale=false;analysisChoice=null;analysisCandidate=null;
     renderDecisionPanel();window.VelocityLayout?.activate("mission","overview");
-    $("#pilotDecisionPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+    $("#pilotDecisionPanel").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth",block:"nearest"});
   }finally{optimizationBusy=false;button.disabled=false;button.removeAttribute("aria-busy");}
 });
 $("#pilotDecisionPanel").addEventListener("click",(event)=>{
@@ -1078,7 +1078,7 @@ $("#pilotDecisionPanel").addEventListener("click",(event)=>{
     analysisChoice={altitudeFt,mode};marginalApplyArmed=false;
     const preset=PERFORMANCE.modes[mode];
     if(preset){$("#analysisMap").value=String(preset.mapInHg);$("#analysisRpm").value=String(preset.rpm);}
-    renderDecisionPanel();$("#pilotAnalysis").scrollIntoView({behavior:"smooth",block:"nearest"});return;
+    renderDecisionPanel();$("#pilotAnalysis").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth",block:"nearest"});return;
   }
   const modeButton=event.target.closest("[data-analysis-mode]");
   if(modeButton&&analysisChoice){
