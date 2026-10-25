@@ -108,8 +108,6 @@
   const missionOverview = moduleNodes.get('mission:overview');
   move('.kpi-grid', 'mission:overview');
   move('#pilotDecisionPanel', 'mission:overview');
-  move('#missionProfilePanel', 'mission:overview');
-  move('#resilienceLab', 'mission:overview');
   const overviewGrid = item(); overviewGrid.className = 'summary-grid'; overviewGrid.dataset.uiCardPair = ''; overviewGrid.dataset.uiOverlapGroup = ''; missionOverview.append(overviewGrid);
   const score = $('.mission-score-panel'); if (score) overviewGrid.append(score);
   const recommendation = item(); recommendation.className = 'panel recommendation-card';
@@ -236,7 +234,6 @@
     for (const [key, node] of moduleNodes) node.hidden = key !== `${area}:${module}`;
     window.scrollTo({ top: 0, behavior: 'auto' });
     if (window.lucide?.createIcons) window.lucide.createIcons();
-    window.dispatchEvent(new CustomEvent('velocity:activity', { detail: { type: 'navigation', value: area + ':' + module } }));
   }
   document.addEventListener('click', event => {
     const areaButton = event.target.closest('[data-area-button]');

@@ -1,4 +1,4 @@
-import { PERFORMANCE } from "./config.js?v=20261024-03";
+import { PERFORMANCE } from "./config.js?v=20261021-unified";
 
 const cap = (value, weight) => Math.max(0, Math.min(weight, value));
 const valid = (value) => Number.isFinite(value) ? value : null;

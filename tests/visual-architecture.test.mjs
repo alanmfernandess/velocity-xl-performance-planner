@@ -65,56 +65,7 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assert.doesNotMatch(primaryRole, /#missionScoreAction/);
   assertDeclaration(css, '.app-module [data-ui-role="secondary"]', "font-size", "var(--ui-body)");
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
-  assert.match(html, /js\/layout\.js\?v=20261024-03/);
+  assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261024-03/);
-});
-
-
-test("pilot decision action buttons share a full-width column and button dimensions", () => {
-  assertDeclaration(css, ".analysis-actions", "display", "grid");
-  assertDeclaration(css, ".analysis-actions", "grid-template-columns", "minmax(0, 1fr)");
-  assertDeclaration(css, ".analysis-actions > button", "width", "100%");
-  assertDeclaration(css, ".analysis-actions > button", "min-height", "var(--control-height)");
-  assert.match(html, /id="applyPilotAlternative"/);
-  assert.match(html, /id="recalculateRanking"/);
-});
-
-
-test("alternate fuel metrics are balanced columns without dividing lines", () => {
-  assertDeclaration(css, ".advisor-strip", "grid-template-columns", "repeat(3, minmax(0, 1fr))");
-  assertDeclaration(css, ".advisor-strip", "gap", "var(--space-3)");
-  assertDeclaration(css, ".advisor-strip > span", "display", "flex");
-  assertDeclaration(css, ".advisor-strip > span", "flex-direction", "column");
-  assertDeclaration(css, ".advisor-strip > span", "align-items", "center");
-  assertDeclaration(css, ".advisor-strip strong", "font-size", "var(--ui-body)");
-  assert.doesNotMatch(cssRule(css, ".advisor-strip"), /border(?:-\\w+)?\\s*:/);
-  assert.doesNotMatch(cssRule(css, ".advisor-strip > span"), /border(?:-\\w+)?\\s*:/);
-  for (const id of ["fuelAtDestination", "alternateFuel", "alternateLandingFuel"])
-    assert.match(html, new RegExp(`id="${id}"`));
-});
-
-
-test("section title and eyebrow share the OFP SIMBRIEF content x-coordinate at every width", () => {
-  assertDeclaration(css, ".area-heading", "padding-inline", "calc(var(--space-6) + 1px)");
-  assertDeclaration(css, ".plan-bar", "border", "1px solid var(--line)");
-  assertDeclaration(css, ".plan-bar", "padding", "var(--space-5) var(--space-6)");
-  assert.match(css, /@media \(max-width: 760px\) \{[\s\S]*?\.plan-bar \{[\s\S]*?padding: var\(--space-4\);[\s\S]*?\.area-heading \{\s*min-height: 74px;\s*padding-inline: calc\(var\(--space-4\) \+ 1px\);/);
-  assert.match(layout, /heading\.className = 'area-heading'/);
-});
-
-test("ICE evidence presents simple route coverage and on-demand technical facts without protection alert", () => {
-  assert.match(html, /id="iceCoverageTrack"[^>]*role="meter"/);
-  assert.match(html, /id="iceCoverageContext"/);
-  assert.match(html, /id="iceCoverageNotice"[^>]*hidden/);
-  assert.match(html, /<details class="ice-technical-details" id="iceCoverageDetails">/);
-  assert.match(html, /<div class="ice-evidence-list" id="iceEvidenceList"><\/div>/);
-  assert.match(app, /iceCoverageNoticeTitle/);
-  assert.match(app, /awcStatus==="stale"/);
-  assert.match(app, /Cobertura dos dados não significa ausência de gelo/);
-  assert.doesNotMatch(app, /PROTEÇÃO|NÃO INSTALADA|NOT INSTALLED/);
-  assertDeclaration(css, ".ice-technical-details > summary", "min-height", "var(--control-height)");
-  assertDeclaration(css, ".ice-technical-details .ice-evidence-list", "grid-template-columns", "minmax(0, 1fr)");
-  assertDeclaration(css, ".ice-technical-details:not([open]) > .ice-evidence-list", "display", "none");
-  assert.match(html, /js\/app\.js\?v=20261024-03/);
+  assert.match(html, /styles\.css\?v=20261022-pde3/);
 });
