@@ -1,6 +1,7 @@
 // AWC prohibits browser CORS. The frontend reads a public JSON snapshot
 // published by the repository workflow; it never calls AWC from the browser.
 export const AWC_SNAPSHOT_URL = "https://raw.githubusercontent.com/alanmfernandess/velocity-xl-performance-planner/weather-snapshots/awc/latest.json";
+export const AWC_API_FALLBACK_URL = "https://api.github.com/repos/alanmfernandess/velocity-xl-performance-planner/contents/awc/latest.json?ref=weather-snapshots";
 const finite = (value) => value === null || value === undefined || value === "" ? null : Number.isFinite(Number(value)) ? Number(value) : null;
 const timestamp = (value) => Number.isFinite(Number(value)) ? Number(value) * 1000 : Date.parse(value);
 
@@ -44,15 +45,30 @@ export function parseAwcSnapshot(raw, nowMs = Date.now()) {
     pireps: (Array.isArray(raw.pireps) ? raw.pireps : []).map(normalizePirep).filter(Boolean) };
 }
 
+/** The raw CDN may be blocked in a mobile browser or briefly unavailable after
+ * a snapshot-branch refresh. GitHub's content API is an independent fallback.
+ * Never substitute missing data with an empty weather report. */
 export async function fetchAwcSnapshot({ fetcher = fetch, signal, nowMs = Date.now(), url = AWC_SNAPSHOT_URL } = {}) {
-  try {
-    const response = await fetcher(url, { signal, cache: "no-cache" });
-    if (!response.ok) return { provider: "AWC", status: "unavailable", reason: `HTTP_${response.status}`, sigmets: [], pireps: [] };
-    return parseAwcSnapshot(await response.json(), nowMs);
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    return { provider: "AWC", status: "unavailable", reason: error.message, sigmets: [], pireps: [] };
+  const alternatives = url === AWC_SNAPSHOT_URL ? [url, AWC_API_FALLBACK_URL] : [url];
+  const reasons = [];
+  for (const candidate of alternatives) {
+    try {
+      const response = await fetcher(candidate, { signal, cache: "no-cache", headers: { Accept: "application/json" } });
+      if (!response.ok) { reasons.push(`${candidate === url ? "RAW" : "API"}: HTTP_${response.status}`); continue; }
+      let data = await response.json();
+      if (candidate === AWC_API_FALLBACK_URL) {
+        if (data?.encoding !== "base64" || typeof data.content !== "string") throw new Error("AWC GitHub API payload malformed");
+        const bytes = Uint8Array.from(atob(data.content.replace(/\\s/g, "")), char => char.charCodeAt(0));
+        data = JSON.parse(new TextDecoder().decode(bytes));
+      }
+      return parseAwcSnapshot(data, nowMs);
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      reasons.push(`${candidate === url ? "RAW" : "API"}: ${error.message}`);
+    }
   }
+  return { provider: "AWC", status: "unavailable", reason: reasons.join(" | ") || "NO_SOURCE",
+    sigmets: [], pireps: [] };
 }
 
 function pointInPolygon(point, polygon) {
