@@ -4507,6 +4507,8 @@ select:focus-visible {
 }
 
 @media (max-width: 360px) {
+  .mp-ribbon-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mp-ribbon-metrics > .ui-metric:last-child { grid-column: 1 / -1; }
   .mp-layers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mp-readings { grid-template-columns: minmax(0, 1fr); }
   /* Layout */
