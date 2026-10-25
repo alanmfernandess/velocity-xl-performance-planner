@@ -11,7 +11,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261022-pde3" />
+    <link rel="stylesheet" href="./styles.css?v=20261025-01" />
   </head>
   <body>
     <header class="topbar">
@@ -44,22 +44,22 @@
     <main id="top" class="shell">
       <section class="plan-bar" aria-label="Flight plan">
         <div class="plan-identity">
-          <div class="plan-status-row"><span class="route-source" id="routeSource">SIMBRIEF</span><strong class="feasibility-badge viable" id="feasibilityBadge" hidden>VIÁVEL</strong><small id="feasibilityMeta" hidden></small></div>
+          <div class="plan-status-row"><span class="route-source" id="routeSource">SIMBRIEF</span><strong class="feasibility-badge viable" id="feasibilityBadge" hidden>—</strong><small id="feasibilityMeta" hidden>—</small></div>
           <h1 id="routeTitle">— <span>→</span> —</h1>
           <p id="planTimestamp">—</p>
         </div>
         <form class="plan-form" id="simbriefImportForm">
-          <label class="ui-field field id-field"><span data-i18n="pilotId">Pilot ID / Alias</span><input id="quickPilotId" autocomplete="off" placeholder="123456" /></label>
+          <label class="ui-field field id-field"><span data-i18n="pilotId">Pilot ID / Alias</span><input id="quickPilotId" autocomplete="off" placeholder="Pilot ID / Alias" /></label>
           <button class="primary-button" id="importLatest" type="submit" data-i18n="importLatest">Importar OFP</button>
         </form>
       </section>
 
       <div id="plannerContent" hidden>
       <section class="kpi-grid" aria-label="Performance summary">
-        <article class="kpi featured" id="kpiSelectedLevel"><span data-i18n="bestLevel">Nível selecionado</span><strong id="kpiAltitude">FL120</strong><small id="kpiLevelMeta" data-i18n="selectedLevel">Selecionado</small></article>
-        <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">+44 gal</small></article>
-        <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">01:02</strong><small id="kpiGs">256 kt GS</small></article>
-        <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">14,1 NM/gal</small></article>
+        <article class="kpi featured" id="kpiSelectedLevel"><span data-i18n="bestLevel">Nível selecionado</span><strong id="kpiAltitude">—</strong><small id="kpiLevelMeta" data-i18n="selectedLevel">—</small></article>
+        <article class="kpi"><span data-i18n="fuelRequired">Combustível requerido</span><strong id="kpiFuel">33,2 <small>GAL</small></strong><small id="kpiFuelDelta">—</small></article>
+        <article class="kpi"><span data-i18n="estimatedTime">Tempo estimado</span><strong id="kpiTime">—</strong><small id="kpiGs">—</small></article>
+        <article class="kpi"><span data-i18n="maximumRange">Alcance máximo</span><strong id="kpiRange">1.017 <small>NM</small></strong><small id="kpiSpecificRange">—</small></article>
       </section>
 
       <section class="pilot-decision-panel" id="pilotDecisionPanel" aria-label="Top 3 flight levels" hidden>
@@ -94,29 +94,29 @@
           <div class="navigation-grid">
             <div class="navigation-point etp-point">
               <span>ETP</span>
-              <strong id="etpDistance">123 NM</strong>
-              <small id="etpDetails">OPALA · 00:32 · 64 gal</small>
+              <strong id="etpDistance">—</strong>
+              <small id="etpDetails">—</small>
             </div>
             <div class="navigation-scale" aria-hidden="true"><i id="etpScaleMarker"></i><i id="pnrScaleMarker"></i></div>
             <div class="navigation-point pnr-point">
               <span>PNR</span>
-              <strong id="pnrDistance">DEST + 214 NM</strong>
-              <small id="pnrDetails">Além do destino</small>
+              <strong id="pnrDistance">—</strong>
+              <small id="pnrDetails">—</small>
             </div>
-            <div class="navigation-speeds"><span><b data-i18n="continueLabel">Continuar</b><strong id="outboundGs">256 kt</strong></span><span><b data-i18n="returnLabel">Retornar</b><strong id="returnGs">218 kt</strong></span></div>
+            <div class="navigation-speeds"><span><b data-i18n="continueLabel">Continuar</b><strong id="outboundGs">—</strong></span><span><b data-i18n="returnLabel">Retornar</b><strong id="returnGs">—</strong></span></div>
           </div>
         </div>
         <div class="tool-view" data-tool-panel="alternate">
           <div class="advisor-grid alternate-grid">
             <article class="advisor-card">
               <span data-i18n="destinationAlternate">Destino → alternado</span>
-              <strong id="alternateRoute">SBGL → SBRJ</strong>
+              <strong id="alternateRoute">—</strong>
               <small id="alternateLegMeta">—</small>
               <b class="status-pill" id="alternateStatus">—</b>
             </article>
             <article class="advisor-card">
               <label class="ui-field inline-select"><span data-i18n="diversionFrom">Desvio a partir de</span><select id="diversionWaypoint"></select></label>
-              <strong id="diversionRoute">SBSP → SBRJ</strong>
+              <strong id="diversionRoute">—</strong>
               <small id="diversionLegMeta">—</small>
               <b class="status-pill" id="diversionStatus">—</b>
             </article>
@@ -139,9 +139,9 @@
               <button class="text-button wb-randomize" id="randomizeWeightBalance" type="button" data-i18n="randomizeWeightBalance" data-i18n-title="randomizeWeightBalanceHint">Sortear passageiros e bagagem</button>
             </div>
             <div class="wb-chart-card">
-              <div class="wb-chart-head"><div><strong data-i18n="cgEnvelope">Envelope de CG</strong><small id="wbMargins">—</small></div><b class="status-pill" id="wbStatus">—</b></div>
+              <div class="wb-chart-head"><div><strong data-i18n="cgCorridor">CG Corridor</strong><small id="wbMargins">—</small></div><b class="status-pill" id="wbStatus">—</b></div>
               <div class="cg-chart" id="cgChart"></div>
-              <small class="cg-limits" id="wbEnvelopeLegend">127–134 in · 3,000 lb</small>
+              <small class="cg-limits" id="wbEnvelopeLegend">—</small>
             </div>
             <div class="wb-kpis">
               <span><b data-i18n="takeoff">Decolagem</b><strong id="wbTakeoffCg">—</strong></span>
@@ -158,8 +158,8 @@
         <div class="tool-view" data-tool-panel="glide">
           <div class="glide-layout">
             <div class="glide-kpis">
-              <span><b data-i18n="glideRatio">Razão de planeio</b><strong id="glideRatio">12,15:1</strong></span>
-              <span><b data-i18n="bestGlide">Melhor planeio</b><strong id="bestGlide">90 KIAS</strong></span>
+              <span><b data-i18n="glideRatio">Razão de planeio</b><strong id="glideRatio">—</strong></span>
+              <span><b data-i18n="bestGlide">Melhor planeio</b><strong id="bestGlide">—</strong></span>
               <span><b data-i18n="glideRange">Alcance sem vento</b><strong id="glideRange">—</strong></span>
               <span><b data-i18n="glideTime">Tempo estimado</b><strong id="glideTime">—</strong></span>
             </div>
@@ -209,7 +209,7 @@
             <div class="ride-index-track" id="rideIndexTrack" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="rideIndexFill"></span><i id="rideIndexMarker"></i></div>
 
             <div class="ride-preference">
-              <div><span id="ridePreferenceLabel">PREFERÊNCIA DE CONFORTO</span><small id="ridePreferenceNote">Equilibra conforto, combustível e tempo</small></div>
+              <div><span id="ridePreferenceLabel">PREFERÊNCIA DE CONFORTO</span><small id="ridePreferenceNote">—</small></div>
               <div role="group" aria-label="Preferência de conforto">
                 <button type="button" data-ride-preference="standard">Padrão</button>
                 <button type="button" data-ride-preference="comfort">Conforto</button>
@@ -226,13 +226,13 @@
               <div><span id="rideTropopauseLabel">TROPOPAUSA</span><strong id="rideTropopause">—</strong><small id="rideTropopauseMeta">—</small></div>
             </div>
             <div class="ride-route-window">
-              <div class="ride-section-heading"><div><span id="rideRouteLabel">EXPOSIÇÃO NA ROTA</span><strong id="rideRouteTitle">Fluxo por trecho</strong></div><b id="rideRouteExposure">—</b></div>
+              <div class="ride-section-heading"><div><span id="rideRouteLabel">EXPOSIÇÃO NA ROTA</span><strong id="rideRouteTitle">—</strong></div><b id="rideRouteExposure">—</b></div>
               <div class="ride-route-scroll"><div class="ride-route-labels" id="rideRouteLabels"></div><div class="ride-route-band" id="rideRouteBand"></div></div>
               <div class="ride-route-focus" id="rideRouteFocus" aria-live="polite"></div>
             </div>
             <div class="ride-module-grid">
               <section>
-                <div class="ride-section-heading"><div><span id="rideExposureLabel">EXPOSIÇÃO</span><strong id="ridePhasesLabel">Fases do voo</strong></div><b id="rideExposureTotal">—</b></div>
+                <div class="ride-section-heading"><div><span id="rideExposureLabel">EXPOSIÇÃO</span><strong id="ridePhasesLabel">—</strong></div><b id="rideExposureTotal">—</b></div>
                 <div class="ride-phase-list" id="ridePhaseList"></div>
               </section>
               <section>
@@ -283,7 +283,7 @@
             <div class="cost-price-row" data-ui-control-row="cost" data-ui-overlap-group>
               <div><span data-i18n="fuelPrice">Preço do combustível</span><strong id="costOrigin">—</strong></div>
               <label class="ui-field cost-currency"><span data-i18n="currency">Moeda</span><select id="fuelPriceCurrency"><option value="BRL">BRL</option><option value="USD">USD</option></select></label>
-              <label class="ui-field cost-price"><span data-i18n="pricePerLiter">Valor por litro</span><span class="ui-unit-input"><input id="fuelPricePerLiter" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" /><small id="fuelPriceSymbol">R$</small></span></label>
+              <label class="ui-field cost-price"><span data-i18n="pricePerLiter">Valor por litro</span><span class="ui-unit-input"><input id="fuelPricePerLiter" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" /><small id="fuelPriceSymbol">—</small></span></label>
             </div>
             <div class="cost-unassessed" id="costUnassessed" data-i18n="costUnassessed">Informe o valor por litro para avaliar o custo.</div>
             <div class="cost-content" id="costContent" hidden>
@@ -330,14 +330,14 @@
               <div class="flight-context-row" data-ui-control-row="manual-context">
               <label class="ui-field"><span data-i18n="position">Posição</span><select id="manualWaypoint"></select></label>
               <label class="ui-field"><span>FL</span><select id="manualAltitude"></select></label>
-              <label class="ui-field"><span data-i18n="fuelRemaining">Combustível restante</span><span class="ui-unit-input"><input id="manualFuel" type="number" min="0" step="0.1" required /><small id="manualFuelUnit">gal</small></span></label>
+              <label class="ui-field"><span data-i18n="fuelRemaining">Combustível restante</span><span class="ui-unit-input"><input id="manualFuel" type="number" min="0" step="0.1" required /><small id="manualFuelUnit">—</small></span></label>
               </div>
               <div class="flight-observation-row" data-ui-control-row="manual-observation">
               <label class="ui-field"><span data-i18n="observedTas">TAS observada</span><span class="ui-unit-input"><input id="observedTas" type="number" min="100" max="350" step="1" /><small>kt</small></span></label>
-              <label class="ui-field"><span data-i18n="observedFuelFlow">Fuel flow observado</span><span class="ui-unit-input"><input id="observedFuelFlow" type="number" min="1" step="0.1" /><small id="observedFuelFlowUnit">gal/h</small></span></label>
+              <label class="ui-field"><span data-i18n="observedFuelFlow">Fuel flow observado</span><span class="ui-unit-input"><input id="observedFuelFlow" type="number" min="1" step="0.1" /><small id="observedFuelFlowUnit">—</small></span></label>
               <button class="primary-button" id="submitFlightUpdate" type="submit" data-i18n="updateFlight">Atualizar voo</button>
               </div>
-              <small id="calibrationGate" class="calibration-gate" role="status"></small>
+              <small id="calibrationGate" class="calibration-gate" role="status">—</small>
             </form>
             <div class="remaining-assessment" id="remainingAssessment" hidden aria-live="polite">
               <div class="remaining-assessment-head"><span data-i18n="remainingFuelTitle">Combustível · trecho restante</span><strong id="remainingStatus">—</strong></div>
@@ -366,21 +366,21 @@
               <div class="power-heading">
                 <span data-i18n="power">Potência</span>
               </div>
-              <div class="power-auto-readout" id="powerAutoReadout"><strong id="powerSettingValue">24,0&quot; · 2.450 RPM</strong><small id="powerPercent">74%</small></div>
+              <div class="power-auto-readout" id="powerAutoReadout"><strong id="powerSettingValue">—</strong><small id="powerPercent">—</small></div>
             </div>
-            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">520 lb</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /></label>
-            <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">77 gal</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
+            <label class="range-control"><span><b data-i18n="payload">Payload</b><output id="payloadOutput">—</output></span><input id="payloadInput" type="range" min="0" max="1100" value="520" step="10" /></label>
+            <label class="range-control"><span><b data-i18n="fuelOnboard">Fuel onboard</b><output id="fuelOutput">—</output></span><input id="fuelInput" type="range" min="0" max="87" value="77" step="0.5" /></label>
             <label class="ui-field select-control"><span data-i18n="reserve">Reserva</span><select id="reserveInput"><option value="30">30 min</option><option value="45" selected>45 min</option><option value="60">60 min</option></select></label>
-            <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">2.882 lb</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote"></small></div>
+            <div class="weight-meter"><div><span data-i18n="takeoffWeight">Peso de decolagem</span><strong id="weightValue">—</strong></div><div class="meter"><span id="weightBar"></span></div><small id="weightNote">—</small></div>
             <button class="primary-button mission-optimize-button" id="optimizeMission" type="button" data-i18n="optimizeMission">Otimizar missão</button>
           </article>
           <article class="panel insight-panel mission-score-panel">
             <div class="mission-score-heading">
-              <div><span data-i18n="missionScore">Score da missão</span><strong id="missionScoreLevel">FL120</strong></div>
-              <small id="missionScoreMode">NORMAL</small>
+              <div><span data-i18n="missionScore">Score da missão</span><strong id="missionScoreLevel">—</strong></div>
+              <small id="missionScoreMode">—</small>
             </div>
             <div class="mission-score-summary">
-              <div class="mission-score-dial" id="missionScoreDial" role="img" aria-label="Score 0 de 100"><span><strong id="missionScoreValue">0</strong></span></div>
+              <div class="mission-score-dial" id="missionScoreDial" data-score-reading role="img" aria-label="Score 0 de 100"><span><strong id="missionScoreValue">—</strong></span></div>
               <div class="mission-score-copy"><strong id="missionScoreStatus">—</strong><p id="missionScoreSummary">—</p></div>
             </div>
             <div class="mission-score-scale" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -388,7 +388,7 @@
             <div class="mission-score-reasons" id="missionScoreReasons"></div>
             <p class="mission-score-action"><span data-i18n="mainAdjustment">Ajuste principal</span><strong id="missionScoreAction">—</strong></p>
           </article>
-          <article class="panel fuel-panel"><div class="compact-heading"><span data-i18n="fuel">Combustível</span><strong id="fuelRequiredSide">33,2 gal</strong></div><div class="fuel-bar" id="fuelBar"></div><div class="fuel-legend" id="fuelLegend"></div></article>
+          <article class="panel fuel-panel"><div class="compact-heading"><span data-i18n="fuel">Combustível</span><strong id="fuelRequiredSide">—</strong></div><div class="fuel-bar" id="fuelBar"></div><div class="fuel-legend" id="fuelLegend"></div></article>
         </aside>
       </section>
 
@@ -399,7 +399,7 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./js/layout.js?v=20261022-pde3"></script>
-    <script type="module" src="./js/app.js?v=20261022-04"></script>
+    <script src="./js/layout.js?v=20261025-01"></script>
+    <script type="module" src="./js/app.js?v=20261025-01"></script>
   </body>
 </html>

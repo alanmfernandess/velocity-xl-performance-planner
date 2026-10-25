@@ -1,533 +1,63 @@
-import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
-import http from 'node:http';
-import path from 'node:path';
-import { chromium } from 'playwright';
-import { PRESSURE_LEVELS } from '../js/weather/open-meteo.js';
-
-const projectRoot = path.resolve(import.meta.dirname, '..');
-const baselineIndex = process.argv.indexOf('--baseline');
-const baseline = baselineIndex >= 0;
-const engineV2 = process.argv.includes('--engine-v2');
-const afterFolder = engineV2 ? 'decision-engine-v3' : 'definitive-after';
-const root = baseline ? path.resolve(process.argv[baselineIndex + 1]) : projectRoot;
-const output = path.join(projectRoot, 'review');
-const widths = [320, 375, 390, 430, 768, 1024, 1440, 1920];
-const modules = {
-  mission: ['overview', 'score'],
-  planning: ['config', 'systems', 'analyses'],
-  route: ['overview', 'ice', 'ride', 'decisions'],
-  flight: ['update'],
-};
-const tools = {
-  'planning:systems': ['wb', 'oxygen'],
-  'planning:analyses': ['cost'],
-  'route:ice': ['ice'],
-  'route:ride': ['ride'],
-  'route:decisions': ['etp', 'alternate', 'glide', 'steps'],
-};
-const fixture = {
-  fetch: { status: 'Success' },
-  general: { initial_altitude: '18000', route_distance: '246', route: 'DCT WPT1 WPT2 DCT' },
-  times: { sched_out: '2026-10-21T12:00:00Z', sched_on: '2026-10-21T14:00:00Z' },
-  origin: { icao_code: 'SBSP', pos_lat: -23.6261, pos_long: -46.6566, elevation: '2631' },
-  destination: { icao_code: 'SBGL', pos_lat: -22.8099, pos_long: -43.2506, elevation: '28' },
-  alternate: { icao_code: 'SBRJ', pos_lat: -22.9105, pos_long: -43.1631 },
-  navlog: Array.from({ length: 18 }, (_, index) => ({
-    ident: index === 0 ? 'SBSP' : index === 17 ? 'SBGL' : `WPT${index}`,
-    pos_lat: -23.6261 + index * .048,
-    pos_long: -46.6566 + index * .200,
-    cum_distance: index * (246 / 17),
-    mora: '6500',
-    altitude_feet: '18000',
-    wind_data: [
-      { altitude: '10000', wind_dir: '235', wind_spd: '15', oat: '-5' },
-      { altitude: '18000', wind_dir: '245', wind_spd: '22', oat: '-20' },
-      { altitude: '25000', wind_dir: '255', wind_spd: '31', oat: '-34' },
-    ],
-  })),
-};
-function gfsFixture(url) {
-  const params = new URL(url).searchParams;
-  const latitudes = params.get('latitude').split(',').map(Number);
-  const longitudes = params.get('longitude').split(',').map(Number);
-  const times = Array.from({ length: 48 }, (_, index) => `2026-10-${index < 24 ? '21' : '22'}T${String(index % 24).padStart(2, '0')}:00`);
-  const hourlyUnits = { time: 'iso8601', cape: 'J/kg', freezing_level_height: 'm', precipitation: 'mm', cloud_cover: '%' };
-  const hourly = { time: times, cape: times.map(() => 0), freezing_level_height: times.map(() => 3000),
-    precipitation: times.map(() => 0), cloud_cover: times.map(() => 0) };
-  for (const level of PRESSURE_LEVELS) {
-    const metres = 44330 * (1 - (level / 1013.25) ** .1903);
-    const fields = { temperature: [15 - .0065 * metres, '°C'], relative_humidity: [25, '%'], cloud_cover: [0, '%'],
-      wind_speed: [20, 'kn'], wind_direction: [240, '°'], vertical_velocity: [0, 'm/s'], geopotential_height: [metres, 'm'] };
-    for (const [field, [value, unit]] of Object.entries(fields)) {
-      const name = `${field}_${level}hPa`;
-      hourlyUnits[name] = unit;
-      hourly[name] = times.map(() => value);
-    }
-  }
-  return latitudes.map((latitude, index) => ({ latitude, longitude: longitudes[index], hourly_units: hourlyUnits, hourly }));
+/* Real Chromium layout + interaction audit for the approved three-area architecture.
+ * All remote responses in this audit are illustrative fixtures, never live flights. */
+import assert from 'node:assert/strict';import fs from 'node:fs/promises';import path from 'node:path';import http from 'node:http';import {chromium} from 'playwright';
+import {fixture,gfsFixture} from '../tests/fixtures/quiet-browser.mjs';
+import {ensembleFixture} from '../tests/fixtures/resilience.mjs';
+const root=path.resolve(import.meta.dirname,'..'),out=process.env.VELOCITY_AUDIT_OUTPUT||path.join(root,'review/quiet-cockpit');await fs.mkdir(out,{recursive:true});
+const server=http.createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname),file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return;}res.setHeader('Content-Type',({'.html':'text/html','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'})[path.extname(file)]||'application/octet-stream');res.end(await fs.readFile(file));}catch{res.writeHead(404).end();}});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const browser=await chromium.launch({headless:true}),base=`http://127.0.0.1:${server.address().port}`;
+const widths=[320,375,390,430,768,1024,1440,1920],modules={plan:['overview','score','compare','config','fuel','wb','oxygen','cost','resilience'],route:['overview','meteo','ice','ride','etp','alternate','glide','steps'],flight:['overview','update','calibration','history']};
+const report={fixture:'ILLUSTRATIVE OFP/GFS/AWC/ensemble, intercepted only in Chromium; no real-flight claims',browser:browser.version(),widths,states:[],screenshots:[],errors:[],functional:[]};
+let page;
+async function open(area,module){await page.evaluate(([a,m])=>window.VelocityLayout.activate(a,m),[area,module]);await page.waitForTimeout(15);}
+async function capture(name){const file=path.join(out,name+'.png');await page.screenshot({path:file,fullPage:true});report.screenshots.push(file);if(name.includes('overview')||name.includes('flight-update'))await page.screenshot({path:path.join(out,name+'-viewport.png')});}
+async function audit(label){
+ const state=await page.evaluate(()=>{const visible=el=>el.checkVisibility()&&el.getBoundingClientRect().width>0;const elements=[...document.querySelectorAll('button,input:not([type="checkbox"]),select,summary')].filter(visible);const r=el=>({id:el.id||el.dataset.openModule||el.dataset.areaButton||el.tagName,inScrollable:Boolean(el.closest('.ice-route-band,.ride-route-band,.glide-route,.rl-corridor')),height:el.getBoundingClientRect().height,left:el.getBoundingClientRect().left,right:el.getBoundingClientRect().right});return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,module:document.body.dataset.activeModule,controls:elements.map(r),nav:[...document.querySelectorAll('#areaNav button')].map(b=>b.dataset.areaButton),fonts:[...document.querySelectorAll('.essential-metrics strong')].filter(visible).map(e=>getComputedStyle(e).fontFamily),primary:[...document.querySelectorAll('.primary-button')].filter(visible).map(e=>({id:e.id,color:getComputedStyle(e).backgroundColor})),svg:[...document.querySelectorAll('svg:not(.lucide)')].filter(visible).map(e=>({invalid:/NaN|Infinity/.test(e.innerHTML),viewBox:e.getAttribute('viewBox')}))};});
+ const issues=[];if(state.scrollWidth>state.width+1)issues.push(`overflow ${state.scrollWidth-state.width}`);assert.deepEqual(state.nav,['plan','route','flight']);
+ for(const c of state.controls){if(c.height<43)issues.push(`${c.id} touch height ${c.height}`);if((c.left<-.5||c.right>state.width+.5)&&!c.inScrollable)issues.push(`${c.id} outside viewport`);}
+ for(const p of state.primary)if(p.color!=='rgb(23, 119, 210)')issues.push(`${p.id} primary ${p.color}`);
+ if(state.svg.some(s=>s.invalid))issues.push('invalid SVG geometry');if(issues.length)report.errors.push({label,issues});report.states.push({label,...state,issues});
 }
-const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
-const server = http.createServer(async (request, response) => {
-  const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-  const file = path.resolve(root, `.${pathname === '/' ? '/index.html' : pathname}`);
-  if (!file.startsWith(`${root}${path.sep}`)) { response.writeHead(403).end(); return; }
-  try {
-    const content = await fs.readFile(file);
-    response.writeHead(200, { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream' }).end(content);
-  } catch { response.writeHead(404).end(); }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const base = `http://127.0.0.1:${server.address().port}`;
-const browser = await chromium.launch({ headless: true });
-const report = {
-  generatedAt: new Date().toISOString(),
-  browser: await browser.version(),
-  fixture: 'Synthetic 18-waypoint OFP and synthetic clear GFS/AWC responses; all values illustrative; no live API call',
-  widths, modules, states: [], screenshots: [], errors: [], selectorCoverage: {},
-  typography: [], negativeChecks: [],
-};
-const captureWidths = new Map([[390, 'mobile'], [768, 'tablet'], [1440, 'desktop']]);
-const audit = async (page, label) => {
-  const probe = await page.evaluate(() => window.VelocityVisualProbe());
-  const data = await page.evaluate(() => {
-    const visible = element => {
-      const box = element.getBoundingClientRect();
-      const css = getComputedStyle(element);
-      return css.display !== 'none' && css.visibility !== 'hidden' && box.width > 0 && box.height > 0;
-    };
-    const dimensions = selector => [...document.querySelectorAll(selector)].filter(visible).map(element => {
-      const box = element.getBoundingClientRect();
-      const css = getComputedStyle(element);
-      return { selector: element.id ? `#${element.id}` : element.className?.baseVal || element.className || element.tagName.toLowerCase(),
-        x: Math.round(box.x), y: Math.round(box.y), top: Math.round(box.top), right: Math.round(box.right), bottom: Math.round(box.bottom),
-        width: Math.round(box.width), height: Math.round(box.height), borderWidth: css.borderTopWidth,
-        borderRadius: css.borderRadius, fontSize: css.fontSize, fontWeight: css.fontWeight,
-        lineHeight: css.lineHeight, padding: css.padding };
-    });
-    return {
-      viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth,
-      heading: dimensions('.area-heading h1'),
-      primaryButtons: dimensions('.primary-button'),
-      textButtons: dimensions('.text-button'),
-      inputs: dimensions('.ui-field > input, .ui-field > select, .ui-unit-input'),
-      costControls: dimensions('#fuelPriceCurrency, .cost-price .ui-unit-input'),
-      calibrationControls: dimensions('#manualWaypoint, #manualAltitude, #manualUpdateForm .ui-unit-input, #manualUpdateForm > button'),
-      kpis: dimensions('.kpi-grid .kpi'),
-      summaryPanels: dimensions('.summary-grid > .panel'),
-      missionAdjustment: dimensions('#missionScoreAction'),
-      activeArea: document.querySelector('.app-area:not([hidden])')?.dataset.areaPanel,
-      activeModule: document.querySelector('.app-module:not([hidden])')?.dataset.modulePanel,
-      fontFamily: getComputedStyle(document.body).fontFamily,
-      rootScale: getComputedStyle(document.documentElement).getPropertyValue('--ui-scale').trim(),
-      legacyTriggerVisible: (() => { const el=document.querySelector('#tool-card-update'); return el ? visible(el) : false; })(),
-    };
-  });
-  const issues = [];
-  issues.push(...probe.issues.map(issue => `${issue.code}: ${issue.target}${issue.detail ? ` (${issue.detail})` : ''}`));
-  if (data.scrollWidth > data.viewport + 1) issues.push(`horizontal overflow ${data.scrollWidth - data.viewport}px`);
-  if (data.legacyTriggerVisible) issues.push('retired manual update trigger is visible');
-  for (const item of [...data.primaryButtons, ...data.textButtons, ...data.inputs]) {
-    if (item.height < 43) issues.push(`${item.selector} height ${item.height}px`);
-    if (item.x < -1 || item.right > data.viewport + 1) issues.push(`${item.selector} outside viewport`);
+try{
+ page=await browser.newPage({viewport:{width:390,height:844}});page.on('pageerror',e=>report.errors.push({javascript:e.message}));
+ let weather='clear',ofp=structuredClone(fixture);
+ await page.route('**/xml.fetcher.php?**',r=>r.fulfill({json:ofp}));
+ await page.route('**/api.open-meteo.com/**',r=>weather==='offline'?r.abort():r.fulfill({json:gfsFixture(r.request().url())}));
+ await page.route('**/awc/latest.json*',r=>r.fulfill({json:{generatedAt:'2026-10-21T12:00:00Z',sigmets:[],pireps:[]}}));await page.route('**/aviationweather.gov/**',r=>r.fulfill({json:[]}));
+ await page.route('**/ensemble-api.open-meteo.com/**',r=>r.fulfill({json:ensembleFixture().rawEnsemble}));
+ await page.goto(base);await page.waitForFunction(()=>Boolean(window.VelocityLayout));await audit('no OFP · 390');assert.equal(await page.locator('#plannerContent').isVisible(),false);
+ await page.locator('#quickPilotId').fill('ILLUSTRATIVE');await page.locator('#importLatest').click();await page.waitForFunction(()=>document.querySelector('#essentialScore').textContent!=='—'&&document.querySelector('#essentialScore').textContent!=='NÃO AVALIADO');await page.waitForTimeout(150);
+ assert.equal(await page.locator('#pilotDecisionPanel').count(),1);await open('plan','oxygen');await page.locator('#oxygenBottleCount').selectOption('2');await open('plan','compare');assert.ok(await page.locator('[data-decision-fl]').count()>=3);report.functional.push('OFP import automatically evaluates candidates; explicit application still required');
+ await open('plan','overview');await page.locator('#essentialApply').click();assert.match(await page.locator('#kpiLevelMeta').innerText(),/aplicada/);report.functional.push('Recommended configuration explicitly applied');
+ await open('flight','update');await page.locator('#essentialPosition').fill('131.23456789');await page.locator('#manualFuel').fill('22');await page.locator('#submitFlightUpdate').click();assert.match(await page.locator('#toast').innerText(),/registrado/);assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1')).checkpoints.at(-1).distanceNm),131.23456789);report.functional.push('Fractional NM checkpoint persisted without whole-percent rounding');
+ await page.locator('#essentialNext').click();const exact=await page.locator('#essentialDistance').innerText();assert.ok(exact.endsWith('NM'));report.functional.push('Exact next waypoint selection');
+ await open('flight','calibration');await page.locator('#observedTas').fill('210');assert.equal(await page.locator('#essentialCalibrate').isDisabled(),true);await page.locator('#observedFuelFlow').fill('14');assert.equal(await page.locator('#essentialCalibrate').isDisabled(),false);report.functional.push('Incomplete calibration pair blocked');
+ const readings=await page.evaluate(async raw=>{const e=await import('./js/engine.js?v=20261025-01'),sb=await import('./js/simbrief.js?v=20261025-01');const applied=JSON.parse(localStorage.getItem('velocityxl.appliedMission')),oxygen=JSON.parse(localStorage.getItem('velocityxl.oxygen')),plan=sb.parseSimBrief(raw),point=plan.waypoints.findLast(p=>p.distanceNm<=131.23456789),baseline=e.cruiseSnapshot({plan,altitudeFt:applied.choice.altitudeFt,mode:applied.engineMode,payloadLb:520,fuelOnboardGal:22,oxygenWeightLb:e.oxygenSystemWeightLb(oxygen),calibration:{},powerSetting:applied.powerSetting}),local=e.weatherAtAltitude(point,applied.choice.altitudeFt);return {tas:baseline.tasKt+(local.oatC-e.isaTemperatureC(applied.choice.altitudeFt)-baseline.weather.isaDeviationC)*.12,flow:baseline.fuelFlowGph};},ofp);
+ await page.locator('#observedTas').fill(String(Math.round(readings.tas)));await page.locator('#observedFuelFlow').fill(String(Math.round(readings.flow*10)/10));await page.locator('#essentialCalibrate').click();assert.ok(await page.evaluate(()=>JSON.parse(localStorage.getItem('velocityxl.calibration'))?.reference));report.functional.push('K1/K2 calibration saved with original engine validation and context');
+ await open('plan','compare');await page.locator('[data-decision-fl]').first().click();await page.locator('[data-analysis-mode="MANUAL"]').click();assert.equal(await page.locator('#analysisMap').isVisible(),true);report.functional.push('MANUAL MAP/RPM retained');
+ for(const width of widths){
+  await page.setViewportSize({width,height:width<600?844:1000});
+  for(const lang of ['pt-BR','en-US']){
+   await page.locator('.app-preferences summary').click();await page.locator(`[data-language="${lang}"]`).click();await page.locator('.app-preferences summary').click();
+   for(const [area,items]of Object.entries(modules))for(const module of items){await open(area,module);if(module==='resilience')await page.waitForFunction(()=>document.querySelector('#resilienceLab').getAttribute('aria-busy')==='false',{timeout:45000});await audit(`${width} ${lang} ${area}:${module}`);if(lang==='pt-BR'&&[390,768,1440].includes(width)&&['plan:overview','plan:wb','route:overview','route:ice','flight:update'].includes(`${area}:${module}`))await capture(`${width}-${area}-${module}`);}
   }
-  if (data.kpis.length === 4) {
-    const heights = data.kpis.map(item => item.height);
-    if (Math.max(...heights) - Math.min(...heights) > 2) issues.push(`KPI heights differ: ${heights.join(',')}`);
+  for(const size of ['small','normal','large']){
+   await page.locator('.app-preferences summary').click();await page.locator(`[data-font-size="${size}"]`).click();await page.locator('[data-weight-unit="kg"]').click();await page.locator('[data-fuel-unit="l"]').click();await page.locator('.app-preferences summary').click();
+   for(const [a,m]of [['plan','overview'],['plan','wb'],['flight','update'],['plan','compare']]){await open(a,m);await audit(`${width} A:${size} KG/L ${a}:${m}`);}
   }
-  if (data.summaryPanels.length === 2 && data.viewport >= 768 && Math.abs(data.summaryPanels[0].y - data.summaryPanels[1].y) > 2) issues.push('summary cards do not align at the top');
-  const expectedModule = label.match(/(?:mission|planning|route|flight):(?:overview|score|config|systems|analyses|ice|ride|decisions|update)/)?.[0];
-  if (expectedModule && data.activeModule !== expectedModule) issues.push(`navigation opened ${data.activeModule || 'nothing'}`);
-  if (data.heading.length && data.rootScale === '1' && data.heading[0].fontSize !== '24px') issues.push(`screen title ${data.heading[0].fontSize}`);
-  if (data.activeModule === 'mission:overview' && data.missionAdjustment.length) {
-    const actualPx = Number.parseFloat(data.missionAdjustment[0].fontSize);
-    const expectedPx = 14 * Number(data.rootScale);
-    if (!Number.isFinite(actualPx) || !Number.isFinite(expectedPx) || Math.abs(actualPx - expectedPx) > 0.25)
-      issues.push(`mission adjustment font ${data.missionAdjustment[0].fontSize}, expected ${expectedPx}px body text`);
-  }
-  report.states.push({ label, ...data, issues });
-  if (/planning:config|planning:systems|planning:analyses|flight:update|route:ice|route:ride|mission:overview/.test(label))
-    report.typography.push({ label, values: probe.typography });
-  if (issues.length) report.errors.push({ label, issues });
-};
-const activate = async (page, area, module) => {
-  await page.locator(`[data-area-button="${area}"]:visible`).first().click();
-  const tab=page.locator(`[data-module-button="${area}:${module}"]:visible`);
-  if(await tab.count())await tab.click();
-  await assert.doesNotReject(page.locator(`[data-module-panel="${area}:${module}"]:visible`).waitFor());
-};
-const screenshot = async (page, width, area, module) => {
-  const device = captureWidths.get(width);
-  if (!device) return;
-  const folder = baseline ? 'definitive-before' : afterFolder;
-  const name = `${device}-${area}-${module}.png`;
-  const file = path.join(output, folder, name);
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await page.screenshot({ path: file, fullPage: false, animations: 'disabled' });
-  report.screenshots.push(`${folder}/${name}`);
-  if (width === 390 && (area !== 'mission' || module === 'analysis')) {
-    const fullName = `${device}-${area}-${module}-full.png`;
-    await page.screenshot({ path: path.join(output, folder, fullName), fullPage: true, animations: 'disabled' });
-    report.screenshots.push(`${folder}/${fullName}`);
-  }
-};
-
-try {
-  for (const width of widths) {
-    let awcMode = 'clear';
-    const context = await browser.newContext({ viewport: { width, height: width <= 430 ? 844 : width === 768 ? 1024 : 900 }, deviceScaleFactor: 1 });
-    const page = await context.newPage();
-    page.on('pageerror', error => report.errors.push({ label: `${width}px`, pageError: error.message }));
-    await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
-    await page.route('**/v1/gfs?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gfsFixture(route.request().url())) }));
-    await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify({ generatedAt: new Date().toISOString(), sigmets: awcMode === 'ice' ? [{ hazard: 'ICE',
-        validTimeFrom: Date.parse('2026-10-21T11:00:00Z') / 1000, validTimeTo: Date.parse('2026-10-21T16:00:00Z') / 1000,
-        base: 5000, top: 12000, coords: [{ lat: -24, lon: -47 }, { lat: -24, lon: -42 }, { lat: -22, lon: -42 }, { lat: -22, lon: -47 }] }] : [], pireps: [] }) }));
-    await page.goto(base, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => !!window.VelocityLayout);
-    await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
-    if (width === 390 && !baseline) {
-      const cases = {
-        '38px select beside 44px input': ['control-row-drift', '<div data-ui-control-row="cost" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="ui-field"><span>A</span><select style="min-height:38px;height:38px"><option>A</option></select></label><label class="ui-field"><span>B</span><input value="4"></label></div>'],
-        '38px grid track around 44px control': ['field-row-underflow', '<label class="ui-field" style="display:grid;grid-template-rows:auto 38px"><span>Price</span><span class="ui-unit-input"><input value="7"><small>R$</small></span></label>'],
-        'money unit over next panel': ['unit-panel-collision', '<span class="ui-unit-input" style="position:relative"><input value="7"><small id="fuelPriceSymbol" style="position:absolute;right:6px;bottom:-40px">R$</small></span><div id="costUnassessed" style="height:44px;background:#eee">Next panel</div>'],
-        'icon over label': ['icon-text-collision', '<span class="ui-icon-inline" style="position:relative;display:inline-block"><svg class="ui-icon" style="position:absolute;left:0;top:0"></svg>Collision</span>'],
-        'number separated from unit': ['split-number-unit', '<div data-ui-role="secondary" style="width:22px">163 kg</div>'],
-        'truncated operational text': ['clipped-text', '<div data-ui-role="secondary" style="width:28px;white-space:nowrap;overflow:hidden">123 gal</div>'],
-        'unequal paired cards': ['card-pair-drift', '<div data-ui-card-pair style="display:grid;grid-template-columns:1fr 1fr"><div class="panel" style="height:44px"></div><div class="panel" style="height:70px"></div></div>'],
-        'different secondary typography': ['secondary-value-mismatch', '<strong id="payloadOutput" data-ui-role="secondary">2 kg</strong><strong id="layoutFuelMargin" data-ui-role="secondary" style="font-size:13px">3 gal</strong>'],
-        'button text outside border': ['button-text-outside', '<button style="width:38px;white-space:nowrap;overflow:visible"><span>Record flight now</span></button>'],
-        'narrow-screen overflow': ['viewport-overflow', '<div class="panel" style="width:600px;height:44px"></div>'],
-      };
-      for (const [name, [expected, html]] of Object.entries(cases)) {
-        const codes = await page.evaluate(markup => {
-          const fixture = document.createElement('section');
-          fixture.className = 'app-module';
-          fixture.style.cssText = 'position:absolute;left:0;top:0;width:390px;z-index:-1';
-          fixture.innerHTML = markup;
-          document.body.append(fixture);
-          const found = window.VelocityVisualProbe(fixture).issues.map(issue => issue.code);
-          fixture.remove();
-          return found;
-        }, html);
-        report.negativeChecks.push({ name, expected, detected: codes.includes(expected), codes });
-        if (!codes.includes(expected)) report.errors.push({ label: `negative detector: ${name}`, issues: [`failed to detect ${expected}`] });
-      }
-    }
-    await page.locator('#quickPilotId').focus();
-    const focusShadow = await page.locator('#quickPilotId').evaluate(element => getComputedStyle(element).boxShadow);
-    if (focusShadow === 'none') report.errors.push({ label: `${width}px focus`, issues: ['Pilot ID focus indication is missing'] });
-    if (!baseline) await audit(page, `${width}px no OFP`);
-    if (width === 1440 && !baseline) {
-      await fs.mkdir(path.join(output, afterFolder), { recursive: true });
-      await page.screenshot({ path: path.join(output, afterFolder, 'desktop-no-ofp.png'), animations: 'disabled' });
-      report.screenshots.push(`${afterFolder}/desktop-no-ofp.png`);
-    }
-    await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-    await page.locator('#importLatest').click();
-    await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
-    await page.waitForFunction(() => document.querySelector('#missionRiskValue')?.textContent !== '—', { timeout: 10000 });
-    if (width === 390 && !baseline) {
-      await activate(page, 'flight', 'update');
-      await page.locator('#observedTas').focus();
-      const fieldFocus = await page.locator('#observedTas').evaluate(element => getComputedStyle(element.closest('.ui-unit-input')).boxShadow);
-      if (fieldFocus === 'none') report.errors.push({ label: '390px calibration focus', issues: ['unit field has no focus indicator'] });
-    }
-    if (baseline) {
-      if (captureWidths.has(width)) {
-        for (const [area, module] of [['mission', 'overview'], ['planning', 'config'], ['route', 'ice'], ['flight', 'update']]) {
-          await activate(page, area, module);
-          await screenshot(page, width, area, module);
-        }
-        await activate(page, 'planning', 'analyses');
-        await screenshot(page, width, 'planning', 'cost-unassessed');
-      }
-      await context.close();
-      continue;
-    }
-    await activate(page, 'planning', 'config');
-    for (const mode of ['ECON', 'NORMAL', 'FAST']) {
-      await page.locator(`[data-mode="${mode}"]`).click();
-      await audit(page, `${width}px PT-BR LB/GAL A planning:config ${mode}`);
-    }
-    await page.locator('[data-mode="NORMAL"]').click();
-    if ([390, 1440].includes(width)) {
-      await activate(page, 'mission', 'overview');
-      const original = await page.evaluate(() => {
-        const badge = document.querySelector('#feasibilityBadge');
-        const score = document.querySelector('#missionScoreStatus');
-        const level = document.querySelector('#kpiSelectedLevel');
-        return { badge: badge.className, badgeText: badge.textContent, badgeHidden: badge.hidden,
-          score: score.dataset.status, scoreText: score.textContent, level: level.dataset.status };
-      });
-      for (const [tone, badgeClass, caption] of [['marginal', 'marginal', 'MARGINAL'], ['not-viable', 'unavailable', 'INVIÁVEL']]) {
-        await page.evaluate(({ tone, badgeClass, caption }) => {
-          const badge = document.querySelector('#feasibilityBadge');
-          badge.className = `feasibility-badge ${badgeClass}`;
-          badge.hidden = false;
-          badge.textContent = caption;
-          const score = document.querySelector('#missionScoreStatus');
-          score.dataset.status = tone;
-          score.textContent = caption;
-          document.querySelector('#kpiSelectedLevel').dataset.status = tone;
-        }, { tone, badgeClass, caption });
-        await audit(page, `${width}px synthetic ${tone} status`);
-      }
-      await page.evaluate(saved => {
-        const badge = document.querySelector('#feasibilityBadge');
-        badge.className = saved.badge;
-        badge.hidden = saved.badgeHidden;
-        badge.textContent = saved.badgeText;
-        const score = document.querySelector('#missionScoreStatus');
-        if (saved.score === undefined) delete score.dataset.status; else score.dataset.status = saved.score;
-        score.textContent = saved.scoreText;
-        const level = document.querySelector('#kpiSelectedLevel');
-        if (saved.level === undefined) delete level.dataset.status; else level.dataset.status = saved.level;
-      }, original);
-    }
-    for (const [area, keys] of Object.entries(modules)) {
-      for (const module of keys) {
-        await activate(page, area, module);
-        await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}`);
-        if (captureWidths.has(width) && ['mission:overview', 'mission:score', 'planning:config', 'planning:systems', 'route:ice', 'route:ride', 'flight:update'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
-        if (area === 'planning' && module === 'config') {
-          await page.locator('#optimizeMission').click();
-          await page.locator('#pilotDecisionPanel:visible').waitFor();
-          await audit(page, `${width}px optimized mission:overview`);
-          const decision = await page.evaluate(() => ({
-            top: document.querySelectorAll('#topLevelCards .top-level-card').length,
-            unique: new Set([...document.querySelectorAll('#topLevelCards .top-level-card')].map(el => el.dataset.decisionFl)).size,
-            applied: localStorage.getItem('velocityxl.appliedMission'),
-          }));
-          if (decision.top !== decision.unique || decision.top > 3 || decision.applied)
-            report.errors.push({ label: `${width}px ranking contract`, issues: [JSON.stringify(decision)] });
-          if(captureWidths.has(width))await screenshot(page,width,'mission','decision');
-          if(captureWidths.has(width) && await page.locator('#topLevelCards .top-level-card').count()){
-            await page.locator('#topLevelCards .top-level-card').first().click();
-            await audit(page, `${width}px pilot analysis mission:overview`);
-            await page.locator('#pilotAnalysis').scrollIntoViewIfNeeded();
-            await screenshot(page,width,'mission','analysis');
-            if(width===390){
-              await page.locator('#applyPilotAlternative').scrollIntoViewIfNeeded();
-              const actionPath=path.join(output,afterFolder,'mobile-mission-analysis-action.png');
-              await page.screenshot({path:actionPath,animations:'disabled'});
-              report.screenshots.push(`${afterFolder}/mobile-mission-analysis-action.png`);
-            }
-            await page.locator('#cancelPilotAnalysis').click();
-          }
-          await activate(page,'planning','config');
-        }
-        for (const tool of tools[`${area}:${module}`] || []) {
-          const trigger = page.locator(`[data-tool-view="${tool}"]:visible`);
-          const panel = page.locator(`[data-tool-panel="${tool}"]:visible`);
-          if (await trigger.count()) await trigger.click();
-          if (await panel.count()) {
-            await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:${tool}`);
-            if (tool === 'cost') {
-              if (captureWidths.has(width)) await screenshot(page, width, area, 'cost-unassessed');
-              await page.locator('#fuelPricePerLiter').fill('7.25');
-              await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:cost priced`);
-              if (captureWidths.has(width)) await screenshot(page, width, area, 'cost');
-              await page.locator('#fuelPriceCurrency').selectOption('USD');
-              await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:cost USD`);
-              await page.locator('#fuelPriceCurrency').selectOption('BRL');
-            }
-          }
-        }
-      }
-    }
-    if (width === 1440) {
-      await activate(page, 'planning', 'config');
-      await page.locator('#optimizeMission').click();
-      await page.locator('#pilotDecisionPanel:visible').waitFor();
-      const cards=page.locator('#topLevelCards .top-level-card');
-      if(await cards.count()){
-        await cards.first().click();
-        await page.locator('#pilotAnalysis:visible').waitFor();
-        const before=await page.evaluate(()=>localStorage.getItem('velocityxl.appliedMission'));
-        if(before)report.errors.push({label:'1440px selection',issues:['analysis applied without confirmation']});
-        const auto=await page.locator('#decisionAutoStatus').textContent();
-        const originalFuel=await page.locator('#analysisComparison').textContent();
-        await page.locator('[data-analysis-mode="FAST"]').click();
-        const fasterFuel=await page.locator('#analysisComparison').textContent();
-        if(originalFuel===fasterFuel || await page.locator('#decisionAutoStatus').textContent()!==auto)
-          report.errors.push({label:'1440px scenario switch',issues:['preset analysis did not recalculate or changed automatic recommendation']});
-        await page.locator('[data-analysis-mode="MANUAL"]').click();
-        await page.locator('#analysisMap').fill('99');
-        if(await page.locator('#applyPilotAlternative').isEnabled())
-          report.errors.push({label:'1440px invalid manual',issues:['out-of-range MAP may be applied']});
-        await page.locator('#analysisMap').fill('25.5');
-        await page.locator('#analysisRpm').fill('2475');
-        await audit(page,'1440px manual scenario mission:overview');
-        await page.locator('#cancelPilotAnalysis').click();
-        if(await page.locator('#pilotAnalysis').isVisible() || await page.evaluate(()=>localStorage.getItem('velocityxl.appliedMission')))
-          report.errors.push({label:'1440px cancel',issues:['cancel changed applied configuration']});
-        await cards.first().click();
-        const apply=page.locator('#applyPilotAlternative');
-        if(await apply.isEnabled()){
-          await apply.click();
-          if((await apply.textContent())?.includes('marginal'))await apply.click();
-          const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('velocityxl.appliedMission')||'null'));
-          if(!stored?.choice)report.errors.push({label:'1440px explicit apply',issues:['confirmed choice was not persisted']});
-          else {
-            const expectedFuel=stored.fuelOnboardGal;
-            await page.reload({waitUntil:'domcontentloaded'});
-            await page.addScriptTag({path:path.join(projectRoot,'scripts/visual-probe.js')});
-            await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-            await page.locator('#importLatest').click();
-            await page.locator('#routeTitle').getByText('SBSP',{exact:false}).waitFor();
-            const restored=await page.evaluate(()=>({fuel:Number(document.querySelector('#fuelInput').value),level:document.querySelector('#kpiLevelMeta').textContent}));
-            if(restored.fuel!==expectedFuel || !/aplicada|applied/i.test(restored.level))
-              report.errors.push({label:'1440px applied restore',issues:[JSON.stringify(restored)]});
-            const otherOFP=route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({...fixture,destination:{...fixture.destination,icao_code:'SBNF'}})});
-            await page.route('**/api/xml.fetcher.php?**',otherOFP);
-            await page.locator('#importLatest').click();
-            await page.locator('#routeTitle').getByText('SBNF',{exact:false}).waitFor();
-            const otherLevel=await page.locator('#kpiLevelMeta').textContent();
-            if(/aplicada|applied/i.test(otherLevel))
-              report.errors.push({label:'1440px other OFP',issues:['configuration from previous OFP was restored']});
-            await page.unroute('**/api/xml.fetcher.php?**',otherOFP);
-            await page.locator('#importLatest').click();
-            await page.locator('#routeTitle').getByText('SBGL',{exact:false}).waitFor();
-          }
-        }
-      }
-    }
-    await page.locator('[data-language="en-US"]').click();
-    await page.locator('[data-weight-unit="kg"]').click();
-    await page.locator('[data-fuel-unit="l"]').click();
-    await page.locator('[data-font-size="large"]').click();
-    for (const [area, keys] of Object.entries(modules)) {
-      for (const module of keys) {
-        await activate(page, area, module);
-        await audit(page, `${width}px EN-US KG/L A+ ${area}:${module}`);
-      }
-    }
-    await page.locator('[data-font-size="small"]').click();
-    await activate(page, 'mission', 'overview');
-    await audit(page, `${width}px EN-US KG/L A- mission:overview`);
-    await page.locator('[data-font-size="normal"]').click();
-    await audit(page, `${width}px EN-US KG/L A mission:overview`);
-    if ([390, 1440].includes(width)) {
-      await activate(page, 'planning', 'config');
-      const setRange = async (selector, value) => page.locator(selector).evaluate((element, next) => {
-        element.value = String(next);
-        element.dispatchEvent(new Event('input', { bubbles: true }));
-      }, value);
-      await setRange('#payloadInput', 1100);
-      await setRange('#fuelInput', 87);
-      await audit(page, `${width}px EN-US KG/L A planning:config maximum load`);
-      await setRange('#payloadInput', 0);
-      await setRange('#fuelInput', 0);
-      await audit(page, `${width}px EN-US KG/L A planning:config minimum load`);
-      await setRange('#payloadInput', 520);
-      await setRange('#fuelInput', 77);
-      await page.locator('[data-weight-unit="lb"]').click();
-      await audit(page, `${width}px EN-US LB/L A planning:config`);
-      await page.locator('[data-weight-unit="kg"]').click();
-      await page.locator('[data-fuel-unit="gal"]').click();
-      await audit(page, `${width}px EN-US KG/GAL A planning:config`);
-      await page.locator('[data-fuel-unit="l"]').click();
-    }
-    if (width === 390) {
-      await page.locator('#toast').evaluate(element => { element.textContent = 'A very long alert about weather, available oxygen and fuel margin across the route, used solely to check line wrapping in the visual audit.'; element.classList.add('show'); });
-      await audit(page, `${width}px long alert`);
-      await page.screenshot({ path: path.join(output, afterFolder, 'mobile-long-alert.png'), animations: 'disabled' });
-      report.screenshots.push(`${afterFolder}/mobile-long-alert.png`);
-      await activate(page, 'flight', 'update');
-      const bottomClearance = await page.evaluate(() => {
-        document.documentElement.style.scrollBehavior = 'auto';
-        window.scrollTo(0, document.body.scrollHeight);
-        const footer = document.querySelector('footer').getBoundingClientRect();
-        const nav = document.querySelector('.mobile-area-nav').getBoundingClientRect();
-        return { footerBottom: footer.bottom, navTop: nav.top };
-      });
-      if (bottomClearance.footerBottom > bottomClearance.navTop + 1)
-        report.errors.push({ label: '390px bottom navigation', issues: [`footer ends at ${bottomClearance.footerBottom}px behind navigation at ${bottomClearance.navTop}px`] });
-      await page.locator('#toast').evaluate(element => element.classList.remove('show'));
-      await page.locator('[data-language="pt-BR"]').click();
-      await page.locator('[data-fuel-unit="gal"]').click();
-      await page.locator('#resetCalibration').scrollIntoViewIfNeeded();
-      await page.screenshot({ path: path.join(output, afterFolder, 'mobile-flight-calibration-bottom.png'), animations: 'disabled' });
-      report.screenshots.push(`${afterFolder}/mobile-flight-calibration-bottom.png`);
-    }
-    if (width === 1440) {
-      const coverage = await page.evaluate(() => {
-        const rows = [];
-        const split = value => { let parts = [], start = 0, depth = 0; for (let i = 0; i < value.length; i++) { if ('(['.includes(value[i])) depth++; else if (')]'.includes(value[i])) depth--; else if (value[i] === ',' && !depth) { parts.push(value.slice(start, i)); start = i + 1; } } parts.push(value.slice(start)); return parts; };
-        const walk = rules => { for (const rule of rules) { if (rule.selectorText) { const parts = split(rule.selectorText); let match = false; let stateOnly = false; for (const part of parts) { try { if (document.querySelector(part.replace(/::[\\w-]+(?:\\([^)]*\\))?/g, ''))) match = true; } catch { stateOnly = true; } } rows.push({ selector: rule.selectorText, matched: match, stateOnly }); } else if (rule.cssRules) walk(rule.cssRules); } };
-        walk(document.styleSheets[0].cssRules);
-        return { total: rows.length, unmatched: rows.filter(row => !row.matched) };
-      });
-      report.selectorCoverage = coverage;
-      await page.setViewportSize({ width: 720, height: 900 });
-      await activate(page, 'planning', 'config');
-      await audit(page, '1440px at 200% equivalent viewport planning:config');
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await activate(page, 'flight', 'update');
-      await page.locator('[data-fuel-unit="gal"]').click();
-      await page.locator('#manualWaypoint').selectOption({ index: 2 });
-      await page.locator('#manualAltitude').selectOption('18000');
-      await page.locator('#manualFuel').fill('60');
-      await page.locator('#observedTas').fill('245');
-      if(await page.locator('#submitFlightUpdate').isEnabled())
-        report.errors.push({label:'1440px incomplete calibration',issues:['one optional reading enabled submission']});
-      await page.locator('#observedFuelFlow').fill('17.5');
-      await page.locator('#submitFlightUpdate').click();
-      const calibration=await page.evaluate(()=>JSON.parse(localStorage.getItem('velocityxl.calibration')||'null'));
-      if(!calibration?.reference)report.errors.push({label:'calibration regression',issues:['complete in-flight observation was not stored']});
-    }
-    if (engineV2 && [390, 1440].includes(width)) {
-      awcMode = 'ice';
-      await page.locator('#importLatest').click();
-      await page.waitForFunction(() => document.querySelector('#kpiAltitude')?.textContent === '—');
-      await activate(page, 'planning', 'config');
-      await audit(page, `${width}px EN-US KG/L A planning:config no feasible FL`);
-      if (await page.locator('#topLevelCards .top-level-card').count())
-        report.errors.push({ label: `${width}px no solution`, issues: ['an incompatible mission can still be applied'] });
-      const file = `${width === 390 ? 'mobile' : 'desktop'}-icing-no-solution.png`;
-      await page.screenshot({ path: path.join(output, afterFolder, file), animations: 'disabled' });
-      report.screenshots.push(`${afterFolder}/${file}`);
-    }
-    await context.close();
-  }
-  if (engineV2) {
-    for (const [width, mode] of [[390, 'partial'], [390, 'offline'], [1440, 'offline']]) {
-      const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 } });
-      const page = await context.newPage();
-      page.on('pageerror', error => report.errors.push({ label: `${width}px ${mode}`, pageError: error.message }));
-      await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
-      await page.route('**/v1/gfs?**', route => mode === 'offline' ? route.fulfill({ status: 503, body: 'unavailable' })
-        : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gfsFixture(route.request().url())) }));
-      await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status: 404, body: 'unavailable' }));
-      await page.goto(base, { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction(() => !!window.VelocityLayout);
-      await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
-      await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-      await page.locator('#importLatest').click();
-      await page.waitForTimeout(mode === 'offline' ? 1800 : 500);
-      await activate(page, 'planning', 'config');
-      await page.locator('#optimizeMission').click();
-      await page.locator('#pilotDecisionPanel:visible').waitFor();
-      await audit(page, `${width}px ${mode} weather mission:overview`);
-      if (mode === 'offline' && (await page.locator('#kpiAltitude').textContent())?.trim() !== '—')
-        report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather appears as a recommended FL'] });
-      if (mode === 'offline' && (await page.locator('#missionRiskValue').textContent())?.trim() !== '—')
-        report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather appears as a numeric mission score'] });
-      if (mode === 'offline' && await page.locator('#topLevelCards .top-level-card').count())
-        report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather proposal can be applied'] });
-      const name = `${width === 390 ? 'mobile' : 'desktop'}-${mode}-weather.png`;
-      await page.screenshot({ path: path.join(output, afterFolder, name), animations: 'disabled' });
-      report.screenshots.push(`${afterFolder}/${name}`);
-      await context.close();
-    }
-  }
-} finally {
-  await browser.close();
-  server.close();
-}
-
-await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
-console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
-if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;
+  await page.locator('.app-preferences summary').click();await page.locator('[data-font-size="normal"]').click();await page.locator('[data-weight-unit="lb"]').click();await page.locator('[data-fuel-unit="gal"]').click();await page.locator('.app-preferences summary').click();
+ }
+ await page.setViewportSize({width:390,height:844});await open('flight','update');await page.locator('#manualFuel').focus();await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'submitFlightUpdate');
+ const fixed=await page.locator('#submitFlightUpdate').boundingBox(),nav=await page.locator('.mobile-area-nav').boundingBox();assert.ok(fixed.y+fixed.height<=nav.y+1);assert.ok(fixed.y>=0);report.functional.push('Mobile checkpoint action visible immediately above bottom navigation; keyboard focus reachable');
+ await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));assert.ok(await page.locator('#submitFlightUpdate').isVisible());
+ for(const width of [320,375,390,430]){
+  await page.setViewportSize({width,height:844});await open('plan','resilience');await page.locator('[data-rl-tab="corridor"]').click();await page.waitForFunction(()=>document.querySelector('#resilienceLab').getAttribute('aria-busy')==='false',{timeout:45000});await audit(`${width} corridor`);
+  const svg=page.locator('.rl-corridor-plot svg');if(await svg.count()){const bounds=await svg.evaluate(e=>({view:e.viewBox.baseVal.width,items:[...e.querySelectorAll('circle')].map(c=>({x:+c.getAttribute('cx'),r:+c.getAttribute('r')}))}));assert.ok(bounds.items.every(c=>c.x-c.r>=0&&c.x+c.r<=bounds.view));if(width===390)await capture('390-resilience-corridor');}
+ }
+ for(const tab of ['stress','causal','dynamic','ensemble']){await page.locator(`[data-rl-tab="${tab}"]`).click();if(tab==='ensemble')await page.locator('[data-rl-action="ensemble"]').click();await page.waitForFunction(()=>document.querySelector('#resilienceLab').getAttribute('aria-busy')==='false',{timeout:45000});await audit(`resilience ${tab}`);}
+ // Changes must invalidate the saved application and refresh recommendation, not silently apply it.
+ await open('plan','fuel');await page.locator('#reserveInput').selectOption('60');assert.equal(await page.evaluate(()=>localStorage.getItem('velocityxl.appliedMission')),null);report.functional.push('Reserve change invalidates applied profile');
+ weather='offline';ofp=structuredClone(fixture);ofp.general.route='NO WX';ofp.times={sched_out:'2020-01-01T12:00:00Z',sched_on:'2020-01-01T14:00:00Z'};ofp.navlog.forEach(p=>{delete p.mora;delete p.wind_data;});await open('plan','overview');await page.locator('#importLatest').click();await page.waitForTimeout(200);await open('plan','overview');assert.match(await page.locator('#essentialStatus').innerText(),/NÃO AVALIADO|UNASSESSED|INVIÁVEL|NOT VIABLE/);assert.equal(await page.locator('#essentialApply').isDisabled(),true);await audit('unknown weather and terrain, apply blocked');await capture('390-unassessed');
+ await open('flight','update');ofp.navlog[3].cum_distance='';await open('plan','overview');await page.locator('#importLatest').click();await open('flight','update');await page.waitForTimeout(150);assert.equal(await page.locator('#essentialPosition').isDisabled(),true);assert.equal(await page.locator('#submitFlightUpdate').isDisabled(),true);report.functional.push('Incomplete raw navlog cannot masquerade as precise OFP position');
+ await fs.writeFile(path.join(out,'audit.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({states:report.states.length,errors:report.errors.slice(0,35),errorCount:report.errors.length,screenshots:report.screenshots.length,functional:report.functional},null,2));assert.equal(report.errors.length,0);
+}catch(error){report.failure=error.stack;await fs.writeFile(path.join(out,'audit.json'),JSON.stringify(report,null,2));console.error(error);process.exitCode=1;}finally{await browser.close();await new Promise(r=>server.close(r));}
