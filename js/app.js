@@ -1,12 +1,13 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261021-unified";
-import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261024-profile1";
-import { fetchGfsSnapshot } from "./weather/open-meteo.js";
-import { fetchAwcSnapshot } from "./weather/awc.js";
-import { createWeatherSnapshot } from "./weather/fusion.js";
-import { calculateAtAltitude, calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261022-tracker1";
-import { fetchLatestOFP } from "./simbrief.js?v=20261024-profile1";
-import { createMissionProfilePresenter } from "./mission-profile-view.js?v=20261024-profile1";
-import { TRACKER_STORAGE_KEY, buildVirtualFlightProfile, confirmVirtualCheckpoint, correctVirtualElapsed, finishVirtualFlight, newVirtualFlightSession, pauseVirtualFlight, projectVirtualFlight, recoverVirtualFlight, remainingExposure, resumeVirtualFlight, setVirtualTimeFactor, startVirtualFlight, virtualElapsedSeconds } from "./virtual-flight.js?v=20261022-tracker1";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261024-02";
+import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261024-02";
+import { fetchGfsSnapshot } from "./weather/open-meteo.js?v=20261024-02";
+import { fetchAwcSnapshot } from "./weather/awc.js?v=20261024-02";
+import { createWeatherSnapshot } from "./weather/fusion.js?v=20261024-02";
+import { calculateAtAltitude, calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261024-02";
+import { fetchLatestOFP } from "./simbrief.js?v=20261024-02";
+import { createResiliencePresenter } from "./resilience-view.js?v=20261024-02";
+import { createMissionProfilePresenter } from "./mission-profile-view.js?v=20261024-02";
+import { TRACKER_STORAGE_KEY, buildVirtualFlightProfile, confirmVirtualCheckpoint, correctVirtualElapsed, finishVirtualFlight, newVirtualFlightSession, pauseVirtualFlight, projectVirtualFlight, recoverVirtualFlight, remainingExposure, resumeVirtualFlight, setVirtualTimeFactor, startVirtualFlight, virtualElapsedSeconds } from "./virtual-flight.js?v=20261024-02";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -238,6 +239,7 @@ let trackerPanelMode=null;
 let trackerPendingPhase=null;
 let trackerProjectionUpdatedAt=0;
 const missionProfilePresenter=createMissionProfilePresenter();
+const resiliencePresenter=createResiliencePresenter({profilePresenter:missionProfilePresenter});
 const t = (key, ...args) => typeof COPY[state.language][key] === "function" ? COPY[state.language][key](...args) : COPY[state.language][key] || key;
 const number = (value, digits = 0) => Number(value).toLocaleString(state.language, { minimumFractionDigits:digits, maximumFractionDigits:digits });
 const signed = (value, suffix="") => `${value >= 0 ? "+" : "−"}${number(Math.abs(Math.round(value)))}${suffix}`;
@@ -488,10 +490,12 @@ function refreshMissionProfile(){
   if(!state.plan||!latestOptimizedMission)return;
   const reviewing=Boolean(analysisChoice&&!decisionStale);
   const sameApplied=reviewing&&state.appliedChoice&&JSON.stringify(state.appliedChoice)===JSON.stringify(analysisChoice);
-  missionProfilePresenter.update({plan:state.plan,mission:latestOptimizedMission,input:decisionInput(),
+  const profileContext={plan:state.plan,mission:latestOptimizedMission,input:decisionInput(),
     candidate:reviewing?analysisCandidate:latestActiveCandidate,language:state.language,fuelUnit:state.fuelUnit,
     selection:reviewing?analysisChoice:state.appliedChoice,
-    source:reviewing&&!sameApplied?"analyzing":state.appliedChoice?"applied":"automatic"});
+    source:reviewing&&!sameApplied?"analyzing":state.appliedChoice?"applied":"automatic",weightUnit:state.weightUnit};
+  missionProfilePresenter.update(profileContext);
+  resiliencePresenter.update(profileContext);
 }
 function renderDecisionPanel(){
   const panel=$("#pilotDecisionPanel");

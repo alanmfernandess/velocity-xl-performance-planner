@@ -1,6 +1,6 @@
-import { buildVirtualFlightProfile, sampleVirtualProfile, virtualTimeAtDistance } from "./virtual-flight.js?v=20261022-tracker1";
-import { greatCircleNm } from "./engine.js?v=20261021-unified";
-import { sampleGfs, gfsSampleStatus } from "./weather/open-meteo.js";
+import { buildVirtualFlightProfile, sampleVirtualProfile, virtualTimeAtDistance } from "./virtual-flight.js?v=20261024-02";
+import { greatCircleNm } from "./engine.js?v=20261024-02";
+import { sampleGfs, gfsSampleStatus } from "./weather/open-meteo.js?v=20261024-02";
 
 const finite = Number.isFinite;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

@@ -137,7 +137,7 @@ function windFromVector(u, v) {
   return { windDir: (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360, windSpd: Math.hypot(u, v) };
 }
 function sampleHour(location, index, altitudeFt) {
-  const levels = PRESSURE_LEVELS.map((level) => {
+  const levels = (location.pressureLevels || PRESSURE_LEVELS).map((level) => {
     const read = (field) => finite(location.hourly[`${field}_${level}hPa`]?.[index]);
     const wind = vector(read("wind_direction"), read("wind_speed"));
     return { altitudeFt: read("geopotential_height") === null ? null : read("geopotential_height") * 3.280839895,
@@ -196,7 +196,7 @@ export function gfsSampleStatus(snapshot, point, alreadySampled = undefined) {
   if (!location.times?.length) return "MISSING_FORECAST_TIMES";
   if (point.timestampMs < location.times[0] || point.timestampMs > location.times.at(-1)) return "OUTSIDE_FORECAST_WINDOW";
   const hour = Math.max(0, location.times.findIndex((time) => time >= point.timestampMs));
-  const heights = PRESSURE_LEVELS.map((level) => finite(location.hourly?.[`geopotential_height_${level}hPa`]?.[hour]))
+  const heights = (location.pressureLevels || PRESSURE_LEVELS).map((level) => finite(location.hourly?.[`geopotential_height_${level}hPa`]?.[hour]))
     .filter((height) => height !== null).map((height) => height * 3.280839895);
   if (heights.length < 2) return "HEIGHT_LEVELS_MISSING";
   if (point.altitudeFt < Math.min(...heights) || point.altitudeFt > Math.max(...heights)) return "OUTSIDE_VERTICAL_COVERAGE";
@@ -204,7 +204,7 @@ export function gfsSampleStatus(snapshot, point, alreadySampled = undefined) {
 }
 
 /** Atmospheric model value at a 4D position, or null outside its actual coverage. */
-export function sampleGfs(snapshot, { lat, lon, altitudeFt, timestampMs }) {
+function sampleNativeGfs(snapshot, { lat, lon, altitudeFt, timestampMs }) {
   if (snapshot?.status !== "available" || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   const nearby = snapshot.locations.map((location) => ({ location,
     distance: Math.hypot((location.lat - lat) * 60, (location.lon - lon) * 60 * Math.cos(lat * Math.PI / 180)) }))
@@ -223,4 +223,18 @@ export function sampleGfs(snapshot, { lat, lon, altitudeFt, timestampMs }) {
     freezingLevelFt: between(a.freezingLevelFt, b.freezingLevelFt, w),
     ...windFromVector(between(av?.u ?? null, bv?.u ?? null, w), between(av?.v ?? null, bv?.v ?? null, w)),
     coverage: "two-point spatial interpolation", distanceNm: nearby[0].distance };
+}
+
+/** Counterfactual vector additions apply coherently at the queried location.
+ * Original snapshots and model fields are never overwritten. */
+export function sampleGfs(snapshot, point) {
+  const value = sampleNativeGfs(snapshot, point);
+  if (!value || !snapshot.counterfactual) return value;
+  const { windKt = 0, temperatureC = 0, legs = [] } = snapshot.counterfactual;
+  const leg = (Number.isFinite(point.distanceNm) ? legs.find(l => point.distanceNm >= l.startNm && point.distanceNm <= l.endNm) : null) || [...legs].sort((a,b) => Math.hypot(a.lat-point.lat,a.lon-point.lon)-Math.hypot(b.lat-point.lat,b.lon-point.lon))[0];
+  if (!leg) return null;
+  const radians = leg.courseDeg * Math.PI / 180;
+  const original = vector(value.windDir, value.windSpd);
+  return { ...value, ...windFromVector(original.u - windKt * Math.sin(radians), original.v - windKt * Math.cos(radians)),
+    oatC: value.oatC === null ? null : value.oatC + temperatureC, counterfactual: true };
 }
