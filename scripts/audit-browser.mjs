@@ -532,6 +532,14 @@ try {
       await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status:200, contentType:'application/json', body:JSON.stringify(fixture) }));
       await page.route('**/v1/gfs?**', route => route.fulfill({ status:200, contentType:'application/json', body:JSON.stringify(gfsFixture(route.request().url())) }));
       await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status:200, contentType:'application/json', body:JSON.stringify({generatedAt:new Date().toISOString(),sigmets:[],pireps:[]}) }));
+      // Exercise the async GFS/AWC sequence: weather must finish before Zen
+      // calculates a ranking. Count native optimizer invocations.
+      await page.addInitScript(() => {
+        window.__zenOptimizerRuns = 0;
+        document.addEventListener('click', event => {
+          if(event.target.closest('#optimizeMission')) window.__zenOptimizerRuns += 1;
+        }, true);
+      });
       await page.goto(base, { waitUntil:'domcontentloaded' });
       await page.locator('#zenImport:visible').waitFor();
       if (!await page.locator('body').evaluate(el=>el.classList.contains('zen-overview'))) report.errors.push({label:'Zen '+width,issues:['Zen view not displayed']});
@@ -553,8 +561,23 @@ try {
       await page.locator('#zenPilotId').fill('VISUAL-FIXTURE');
       await page.locator('#zenImportButton').click();
       await page.locator('#zenHasPlan:visible').waitFor();
-      await page.evaluate(()=>document.querySelector('#optimizeMission').click());
-      await page.waitForFunction(()=>!document.querySelector('#pilotDecisionPanel').hidden);
+      await page.waitForFunction(() => {
+        const w=window.VelocityWeather?.getStatus?.();
+        return w && !w.loading && w.gfs==='available' && w.awc==='available';
+      });
+      await page.waitForFunction(() => {
+        const status=document.querySelector('#decisionAutoStatus')?.textContent || '';
+        return window.__zenOptimizerRuns > 0 &&
+          !document.querySelector('#pilotDecisionPanel').hidden &&
+          !/recalcule o ranking|recalculate ranking/i.test(status);
+      });
+      const firstOptimizationRuns=await page.evaluate(()=>window.__zenOptimizerRuns);
+      if(firstOptimizationRuns!==1) report.errors.push({label:'Zen '+width,issues:['Expected one automatic ranking after weather, got '+firstOptimizationRuns]});
+      // Re-fetch weather for the same OFP: a fresh snapshot must trigger a
+      // new native optimization even though the route title has not changed.
+      await page.evaluate(()=>window.VelocityWeather.retry());
+      await page.waitForFunction(prev => window.__zenOptimizerRuns>prev,firstOptimizationRuns);
+      await page.waitForFunction(() => !/recalcule o ranking|recalculate ranking/i.test(document.querySelector('#decisionAutoStatus')?.textContent||''));
       const name=(width===390?'mobile':'desktop')+'-zen-overview.png';
       await page.screenshot({path:path.join(output,afterFolder,name),animations:'disabled'});
       report.screenshots.push(afterFolder+'/'+name);
