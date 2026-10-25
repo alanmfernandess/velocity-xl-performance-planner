@@ -30,7 +30,7 @@ try{
   await page.locator("#helpLaunch").click();
   await page.locator("#helpDrawer").waitFor({state:"visible"});
   assert.match(await page.locator("#helpDrawerTitle").innerText(),/Central de ajuda/);
-  await page.locator('[data-help-page="catalog"]').click();
+  await page.locator('.help-tabs [data-help-page="catalog"]').click();
   await page.locator("#helpSearch").fill("Calibração");
   await page.locator('[data-help-topic="calibration"]').waitFor();
   const rows=await page.locator("#helpResults .help-result").count();
@@ -38,7 +38,7 @@ try{
   await page.locator('[data-help-topic="calibration"]').click();
   assert.match(await page.locator("#helpDrawerBody").innerText(),/K1/);
   await page.locator('[data-help-action="all-topics"]').click();
-  await page.locator('[data-help-page="guides"]').click();
+  await page.locator('.help-tabs [data-help-page="guides"]').click();
   await page.locator('[data-help-action="start-tour"]').click();
   await page.locator("#helpTourOverlay").waitFor({state:"visible"});
   const first=await page.locator("#helpTipMeta").innerText();
