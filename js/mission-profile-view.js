@@ -150,7 +150,7 @@ export function createMissionProfilePresenter() {
    }).join("");
    const currentPoint=sampleMissionTime(model,elapsedSec);
    $("mpSvg").setAttribute("viewBox",`0 0 ${width} 55`);
-   $("mpSvg").innerHTML=`<title id="mpSvgTitle">${esc($("mpSvg").getAttribute("aria-label"))}</title><line class="mp-rail-baseline" x1="10" y1="34" x2="${width-10}" y2="34"/>${bands}${markerHtml}${currentPoint?`<circle class="mp-rail-progress" id="mpRailProgress" cx="${x(currentPoint.distanceNm)}" cy="34" r="5"/>`:""}`;
+   $("mpSvg").innerHTML=`<title id="mpSvgTitle">${esc($("mpSvg").getAttribute("aria-label"))}</title><line class="mp-rail-baseline" x1="10" y1="34" x2="${width-10}" y2="34"/>${bands}${markerHtml}${currentPoint?`<circle class="mp-rail-progress" id="mpRailProgress" data-distance="${currentPoint.distanceNm}" cx="${x(currentPoint.distanceNm)}" cy="34" r="5"/>`:""}`;
    $("mpOrigin").textContent=context.plan.origin.icao;
    $("mpDestination").textContent=context.plan.destination.icao;
    showRibbonPosition(currentPoint);
@@ -160,7 +160,7 @@ export function createMissionProfilePresenter() {
    const point=sampleMissionTime(model,elapsedSec);
    if(!point||!graph)return;
    const dot=$("mpRailProgress");
-   if(dot)dot.setAttribute("cx",graph.x(point.distanceNm));
+   if(dot){dot.setAttribute("cx",graph.x(point.distanceNm));dot.dataset.distance=point.distanceNm;}
    showRibbonPosition(point);
   }
 
@@ -348,8 +348,6 @@ export function createMissionProfilePresenter() {
     if (target.dataset.profileLayer) { layer = target.dataset.profileLayer; render(); }
     if (target.dataset.profileOffset !== undefined) { pause(); externalScenario = null; offset = Number(target.dataset.profileOffset); elapsedSec = 0; focus = "waypoint"; selectedFixId = null; render(); computeComparisons(); }
     if (target.dataset.selectProfileFix) selectFix(target.dataset.selectProfileFix);
-    const railFix = target.closest("[data-profile-fix]");
-    if (railFix) selectFix(railFix.dataset.profileFix);
     if (["mpPreviousFix", "mpNextFix"].includes(target.id)) {
       const index = model.waypoints.findIndex((p) => p.id === selectedFixId);
       selectFix(model.waypoints[index + (target.id === "mpNextFix" ? 1 : -1)]?.id);
@@ -378,6 +376,10 @@ export function createMissionProfilePresenter() {
         frame = requestAnimationFrame(tick);
       }
     }
+  });
+  $("mpSvg").addEventListener("click", (event) => {
+    const railFix = event.target.closest("[data-profile-fix]");
+    if (railFix) selectFix(railFix.dataset.profileFix);
   });
   $("mpSvg").addEventListener("keydown", (event) => {
     const railFix = event.target.closest("[data-profile-fix]");
