@@ -578,6 +578,34 @@ try {
       await page.evaluate(()=>window.VelocityWeather.retry());
       await page.waitForFunction(prev => window.__zenOptimizerRuns>prev,firstOptimizationRuns);
       await page.waitForFunction(() => !/recalcule o ranking|recalculate ranking/i.test(document.querySelector('#decisionAutoStatus')?.textContent||''));
+      if(width===1440) {
+        for(const height of [900,720,600]) {
+          await page.setViewportSize({width,height});
+          const measured=await page.evaluate(() => {
+            const app=document.querySelector('#zenShell .zen-app');
+            const content=document.querySelector('#zenShell .zen-content');
+            const review=document.querySelector('#zenReview');
+            const notice=document.querySelector('#zenShell .zen-notice');
+            return {
+              height:innerHeight,
+              appBottom:app.getBoundingClientRect().bottom,
+              contentHeight:content.clientHeight,
+              contentScrollHeight:content.scrollHeight,
+              reviewBottom:review.getBoundingClientRect().bottom,
+              noticeBottom:notice.getBoundingClientRect().bottom,
+              outerScrollHeight:document.documentElement.scrollHeight
+            };
+          });
+          if(measured.appBottom>height+2 || measured.outerScrollHeight>height+2)
+            report.errors.push({label:'Zen desktop viewport '+height,issues:['Outer shell extends beyond viewport: '+JSON.stringify(measured)]});
+          if(measured.reviewBottom>height+2 || measured.noticeBottom>height+2)
+            report.errors.push({label:'Zen desktop content '+height,issues:['Main action or safety notice not initially visible: '+JSON.stringify(measured)]});
+          const screen='desktop-zen-'+height+'h.png';
+          await page.screenshot({path:path.join(output,afterFolder,screen),animations:'disabled'});
+          report.screenshots.push(afterFolder+'/'+screen);
+        }
+        await page.setViewportSize({width,height:900});
+      }
       const name=(width===390?'mobile':'desktop')+'-zen-overview.png';
       await page.screenshot({path:path.join(output,afterFolder,name),animations:'disabled'});
       report.screenshots.push(afterFolder+'/'+name);
