@@ -184,7 +184,7 @@ try {
       body: JSON.stringify({ generatedAt: new Date().toISOString(), sigmets: awcMode === 'ice' ? [{ hazard: 'ICE',
         validTimeFrom: Date.parse('2026-10-21T11:00:00Z') / 1000, validTimeTo: Date.parse('2026-10-21T16:00:00Z') / 1000,
         base: 5000, top: 12000, coords: [{ lat: -24, lon: -47 }, { lat: -24, lon: -42 }, { lat: -22, lon: -42 }, { lat: -22, lon: -47 }] }] : [], pireps: [] }) }));
-    await page.goto(base, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${base}?auditLegacyUi=1`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!window.VelocityLayout);
     await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
     if (width === 390 && !baseline) {
@@ -501,7 +501,7 @@ try {
       await page.route('**/v1/gfs?**', route => mode === 'offline' ? route.fulfill({ status: 503, body: 'unavailable' })
         : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gfsFixture(route.request().url())) }));
       await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status: 404, body: 'unavailable' }));
-      await page.goto(base, { waitUntil: 'domcontentloaded' });
+      await page.goto(`${base}?auditLegacyUi=1`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => !!window.VelocityLayout);
       await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
       await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
@@ -520,6 +520,49 @@ try {
       const name = `${width === 390 ? 'mobile' : 'desktop'}-${mode}-weather.png`;
       await page.screenshot({ path: path.join(output, afterFolder, name), animations: 'disabled' });
       report.screenshots.push(`${afterFolder}/${name}`);
+      await context.close();
+    }
+  }
+
+  if (engineV2 && !baseline) {
+    for (const width of [390, 1440]) {
+      const context = await browser.newContext({ viewport: { width, height: width===390?844:900 } });
+      const page = await context.newPage();
+      page.on('pageerror', error => report.errors.push({ label: 'Zen '+width, pageError: error.message }));
+      await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status:200, contentType:'application/json', body:JSON.stringify(fixture) }));
+      await page.route('**/v1/gfs?**', route => route.fulfill({ status:200, contentType:'application/json', body:JSON.stringify(gfsFixture(route.request().url())) }));
+      await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status:200, contentType:'application/json', body:JSON.stringify({generatedAt:new Date().toISOString(),sigmets:[],pireps:[]}) }));
+      await page.goto(base, { waitUntil:'domcontentloaded' });
+      await page.locator('#zenImport:visible').waitFor();
+      if (!await page.locator('body').evaluate(el=>el.classList.contains('zen-overview'))) report.errors.push({label:'Zen '+width,issues:['Zen view not displayed']});
+      await page.locator('#zenPilotId').fill('VISUAL-FIXTURE');
+      await page.locator('#zenImportButton').click();
+      await page.locator('#zenHasPlan:visible').waitFor();
+      await page.evaluate(()=>document.querySelector('#optimizeMission').click());
+      await page.waitForFunction(()=>!document.querySelector('#pilotDecisionPanel').hidden);
+      const name=(width===390?'mobile':'desktop')+'-zen-overview.png';
+      await page.screenshot({path:path.join(output,afterFolder,name),animations:'disabled'});
+      report.screenshots.push(afterFolder+'/'+name);
+      await page.locator('#zenReview').click();
+      await page.locator('#zenDrawer:visible').waitFor();
+      const candidates=page.locator('#zenDrawer .zen-choice');
+      if(await candidates.count()){
+        await candidates.first().click();
+        const apply=page.locator('#zenDrawerFooter [data-zen="request-apply"]');
+        if(await apply.isEnabled()){
+          await apply.click();
+          await page.locator('#zenModalShade:visible').waitFor();
+          const name2=(width===390?'mobile':'desktop')+'-zen-popup.png';
+          await page.screenshot({path:path.join(output,afterFolder,name2),animations:'disabled'});
+          report.screenshots.push(afterFolder+'/'+name2);
+          if(await page.evaluate(()=>localStorage.getItem('velocityxl.appliedMission'))) report.errors.push({label:'Zen '+width,issues:['Applied before modal confirmation']});
+          await page.locator('[data-zen="cancel"]').click();
+          if(await page.locator('#zenModalShade:visible').count()) report.errors.push({label:'Zen '+width,issues:['Cancel did not dismiss modal']});
+          await apply.click();
+          await page.locator('[data-zen="confirm"]').click();
+          if(!await page.evaluate(()=>JSON.parse(localStorage.getItem('velocityxl.appliedMission')||'null')?.choice))report.errors.push({label:'Zen '+width,issues:['Native engine did not persist selected choice']});
+        }
+      }
       await context.close();
     }
   }
