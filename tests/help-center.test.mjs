@@ -53,6 +53,8 @@ test("real UI integration keeps the four areas and requires actual successful op
  assert.match(help,/missingPrerequisites\(s,applicableFacts\(\)\)/);
  assert.match(read("js/help-registry.js"),/event:"ack"/);
  assert.match(help,/window\.VelocityLayout\.activate/);
+ assert.ok(help.indexOf('quick=t;mode="quick";active=true;tracking=false;')<help.indexOf('navigateTo(t);',help.indexOf('function locate(t)')), "contextual mode must be set before navigating to nested tools");
+ assert.match(help,/t\.id==="oxygen-review"/);
  assert.doesNotMatch(help,/state\.plan\s*=|trackerSession\s*=|state\.appliedChoice\s*=/);
  assert.match(html,/id="areaNav"/);
 });
