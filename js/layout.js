@@ -1,292 +1,91 @@
-/* Presentation only: the existing calculator keeps ownership of every result and input. */
+/* Quiet Cockpit: presentation owns placement; app.js owns the operational state. */
 (() => {
-  const $ = (selector) => document.querySelector(selector);
-  const content = $('#plannerContent');
-  const nav = $('#areaNav');
-  if (!content || !nav) return;
-
-  const translations = {
-    'pt-BR': {
-      mission: 'Missão', planning: 'Planejamento', route: 'Rota & riscos', flight: 'Em voo',
-      overview: 'Visão geral', score: 'Avaliação', config: 'Configuração',
-      systems: 'Peso & sistemas', analyses: 'Custo',
-      ice: 'ICE', ride: 'RIDE', decisions: 'Decisões', update: 'Atualização', calibration: 'Calibração',
-      completed: 'Voo concluído', history: 'Histórico', noPlan: 'Importe um OFP para começar.',
-      missionTitle: 'Decisão operacional', planningTitle: 'Preparar e otimizar',
-      routeTitle: 'Leitura operacional da rota', flightTitle: 'Acompanhar e calibrar',
-      routeOverview: 'Resumo da rota', routeIce: 'Gelo', routeRide: 'Conforto',
-      routeDecisions: 'ETP, alternado e desvio', missionAdjustment: 'Ajuste principal', openPlanning: 'Ajustar missão',
-      openRoute: 'Analisar rota', loadOptimizer: 'LOAD Optimizer', flightTools: 'Ferramentas',
-      reviewScore: 'Mission Score', riskAssessment: 'Riscos e restrições',
-      planningShort: 'Planejar', routeShort: 'Rota',
-      takeoffWeight: 'Peso de decolagem', oxygen: 'Oxigênio', fuelMargin: 'Margem de combustível',
-      remainingLeg: 'Trecho restante', awaitingUpdate: 'Aguardando atualização manual', routeLegs: 'Trechos da rota',
-    },
-    'en-US': {
-      mission: 'Mission', planning: 'Planning', route: 'Route & risks', flight: 'In flight',
-      overview: 'Overview', score: 'Assessment', config: 'Configuration',
-      systems: 'Weight & systems', analyses: 'Cost',
-      ice: 'ICE', ride: 'RIDE', decisions: 'Decisions', update: 'Update', calibration: 'Calibration',
-      completed: 'Completed flight', history: 'History', noPlan: 'Import an OFP to begin.',
-      missionTitle: 'Operational decision', planningTitle: 'Prepare and optimize',
-      routeTitle: 'Operational route review', flightTitle: 'Monitor and calibrate',
-      routeOverview: 'Route overview', routeIce: 'Icing', routeRide: 'Ride',
-      routeDecisions: 'ETP, alternate and diversion', missionAdjustment: 'Main adjustment', openPlanning: 'Adjust mission',
-      openRoute: 'Review route', loadOptimizer: 'LOAD Optimizer', flightTools: 'Tools',
-      reviewScore: 'Mission Score', riskAssessment: 'Risks and constraints',
-      planningShort: 'Plan', routeShort: 'Route',
-      takeoffWeight: 'Takeoff weight', oxygen: 'Oxygen', fuelMargin: 'Fuel margin',
-      remainingLeg: 'Remaining leg', awaitingUpdate: 'Awaiting manual update', routeLegs: 'Route legs',
-    }
+  const $=s=>document.querySelector(s), content=$('#plannerContent'), nav=$('#areaNav');
+  if(!content||!nav)return;
+  const copy={
+    'pt-BR':{plan:'Plano',route:'Rota',flight:'Em voo',back:'Voltar',overview:'Missão',score:'Mission Score',compare:'Comparar níveis',config:'Cruzeiro',fuel:'Combustível',wb:'Weight & Balance',oxygen:'Oxigênio',cost:'Custo',resilience:'Resilience Lab',meteo:'METEO',ice:'ICE',ride:'RIDE',etp:'ETP / PNR',alternate:'Alternado / Desvio',glide:'GLIDE',steps:'Step Climb',tracker:'Virtual Tracker',update:'Atualização manual',calibration:'Calibração K1 / K2',history:'Histórico',noPlan:'Importe um OFP para começar.',apply:'Aplicar perfil',trip:'Trip Fuel',margin:'Margem',range:'Alcance',details:'Detalhes',position:'Posição no OFP',from:'Desde',to:'Até',save:'Salvar checkpoint',observedFuel:'Fuel observado',selected:'Perfil da missão',settings:'Preferências',routeUnavailable:'Posição não avaliada'},
+    'en-US':{plan:'Plan',route:'Route',flight:'In flight',back:'Back',overview:'Mission',score:'Mission Score',compare:'Compare levels',config:'Cruise',fuel:'Fuel',wb:'Weight & Balance',oxygen:'Oxygen',cost:'Cost',resilience:'Resilience Lab',meteo:'METEO',ice:'ICE',ride:'RIDE',etp:'ETP / PNR',alternate:'Alternate / Diversion',glide:'GLIDE',steps:'Step Climb',tracker:'Virtual Tracker',update:'Manual update',calibration:'Calibration K1 / K2',history:'History',noPlan:'Import an OFP to begin.',apply:'Apply profile',trip:'Trip Fuel',margin:'Margin',range:'Range',details:'Details',position:'OFP position',from:'From',to:'To',save:'Save checkpoint',observedFuel:'Observed fuel',selected:'Mission profile',settings:'Preferences',routeUnavailable:'Position unassessed'}
   };
-  const areas = [
-    ['mission', 'gauge', 'missionTitle', [['overview', 'overview'], ['score', 'score']]],
-    ['planning', 'sliders-horizontal', 'planningTitle', [['config', 'config'], ['systems', 'systems'], ['analyses', 'analyses']]],
-    ['route', 'route', 'routeTitle', [['overview', 'overview'], ['ice', 'ice'], ['ride', 'ride'], ['decisions', 'decisions']]],
-    ['flight', 'radio-tower', 'flightTitle', [['update', 'update']]],
-  ];
-  const areaNodes = new Map();
-  const moduleNodes = new Map();
-  const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
-  const text = (key) => (translations[document.documentElement.lang === 'en-US' ? 'en-US' : 'pt-BR'][key] || key);
-  const item = (key) => document.createElement('div');
-
-  const noPlan = document.createElement('div');
-  noPlan.className = 'no-plan-state';
-  noPlan.textContent = text('noPlan');
-  content.before(noPlan);
-
-  const mobileNav = document.createElement('nav');
-  mobileNav.className = 'mobile-area-nav';
-  mobileNav.setAttribute('aria-label', 'Áreas principais');
-  document.body.append(mobileNav);
-
-  for (const [area, glyph, titleKey, modules] of areas) {
-    for (const target of [nav, mobileNav]) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.areaButton = area;
-      const label = target === mobileNav && ['planning', 'route'].includes(area) ? `${area}Short` : area;
-      button.innerHTML = `${icon(glyph)}<span data-layout-text="${label}">${text(label)}</span>`;
-      target.append(button);
-    }
-    const section = document.createElement('section');
-    section.className = 'app-area';
-    section.dataset.areaPanel = area;
-    const heading = document.createElement('div');
-    heading.className = 'area-heading';
-    heading.innerHTML = `<div><span data-layout-text="${area}">${text(area)}</span><h1 data-layout-text="${titleKey}">${text(titleKey)}</h1></div><span class="area-context" data-area-context="${area}"></span>`;
-    section.append(heading);
-    const tabs = document.createElement('nav');
-    tabs.className = 'module-nav';
-    tabs.setAttribute('aria-label', text(area));
-    for (const [module, label] of modules) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.moduleButton = `${area}:${module}`;
-      button.dataset.layoutText = label;
-      button.textContent = text(label);
-      tabs.append(button);
-    }
-    if (modules.length > 1) section.append(tabs);
-    for (const [module] of modules) {
-      const panel = document.createElement('div');
-      panel.className = 'app-module';
-      panel.dataset.modulePanel = `${area}:${module}`;
-      section.append(panel);
-      moduleNodes.set(`${area}:${module}`, panel);
-    }
-    content.append(section);
-    areaNodes.set(area, section);
+  const text=k=>(copy[document.documentElement.lang]||copy['pt-BR'])[k]||k;
+  const label=k=>`<span data-layout-text="${k}">${text(k)}</span>`;
+  const icon=k=>`<i data-lucide="${k}" aria-hidden="true"></i>`;
+  const preferences=document.createElement('details');preferences.className='app-preferences';preferences.innerHTML=`<summary>${icon('settings-2')}${label('settings')}</summary>`;const toolbar=$('.app-toolbar');toolbar.before(preferences);preferences.append(toolbar);
+  const panelMap=new Map(), areaMap=new Map();
+  const areas=[['plan','sliders-horizontal',['overview','score','compare','config','fuel','wb','oxygen','cost','resilience']],['route','route',['overview','meteo','ice','ride','etp','alternate','glide','steps']],['flight','radio-tower',['overview','update','calibration','history']]];
+  const noPlan=document.createElement('p');noPlan.className='no-plan-state';noPlan.dataset.layoutText='noPlan';noPlan.textContent=text('noPlan');content.before(noPlan);
+  const mobileNav=document.createElement('nav');mobileNav.className='mobile-area-nav';mobileNav.setAttribute('aria-label','Áreas principais');document.body.append(mobileNav);
+  for(const [area,glyph,modules] of areas){
+    for(const host of [nav,mobileNav])host.insertAdjacentHTML('beforeend',`<button type="button" data-area-button="${area}">${icon(glyph)}${label(area)}</button>`);
+    const section=document.createElement('section');section.className='app-area';section.dataset.areaPanel=area;
+    section.innerHTML=`<header class="area-heading"><button class="text-button context-back" type="button" data-back>${icon('arrow-left')}${label('back')}</button><h1 data-area-title>${text(area)}</h1></header>`;
+    content.append(section);areaMap.set(area,section);
+    for(const key of modules){const panel=document.createElement('section');panel.className='app-module';panel.dataset.modulePanel=`${area}:${key}`;section.append(panel);panelMap.set(`${area}:${key}`,panel);}
   }
-
-  function move(selector, destination) {
-    const node = $(selector);
-    if (node) moduleNodes.get(destination).append(node);
-    return node;
+  const get=k=>panelMap.get(k);
+  function move(s,key){const el=$(s);if(el)get(key).append(el);return el;}
+  function moduleList(key,items){const list=document.createElement('div');list.className='module-list';for(const [module,glyph] of items)list.insertAdjacentHTML('beforeend',`<button type="button" data-open-module="${key.split(':')[0]}:${module}" class="module-link">${icon(glyph)}${label(module)}<strong data-module-summary="${module}"></strong>${icon('chevron-right')}</button>`);get(key).append(list);}
+  get('plan:overview').innerHTML=`<article class="panel essential-mission" id="essentialMission"><div class="essential-identity"><div id="essentialLevelHost"></div><button class="score-reading" type="button" data-open-module="plan:score"><span>SCORE</span><strong id="essentialScore">—</strong></button></div><div class="essential-state"><strong id="essentialStatus" role="status">—</strong><span id="essentialMode">—</span></div><p id="essentialBlocker"></p><div class="essential-metrics"><div><span>ETE</span><strong id="essentialTime">—</strong></div><div>${label('trip')}<strong id="essentialTrip">—</strong></div><div>${label('margin')}<strong id="essentialMargin">—</strong></div></div><button id="essentialApply" class="primary-button" type="button" disabled>${label('apply')}</button><div class="essential-secondary"><button class="text-button" type="button" data-open-module="plan:compare">${label('compare')}</button><button class="text-button" type="button" data-open-module="plan:config">${label('config')}</button></div></article>`;
+  $('#essentialLevelHost').append($('#kpiSelectedLevel'));
+  const scorePanel=move('.mission-score-panel','plan:score');
+  move('.mission-strip','plan:score');
+  move('#pilotDecisionPanel','plan:compare');
+  const controls=move('.controls-panel','plan:config');
+  // Payload remains individual W&B stations; the legacy aggregate control stays in technical details.
+  const payload=controls.querySelector('#payloadInput').closest('label');
+  const detail=document.createElement('details');detail.className='technical-details';detail.innerHTML=`<summary>${text('details')}</summary>`;detail.append(payload);controls.append(detail);
+  const fuelDetails=document.createElement('details');fuelDetails.className='technical-details';fuelDetails.innerHTML=`<summary>${text('details')}</summary>`;get('plan:fuel').append(fuelDetails);fuelDetails.append($('.fuel-panel'));
+  $('.mode-control').insertAdjacentHTML('beforeend','<button type="button" id="quietManualPower">MANUAL</button>');
+  for(const id of ['fuelInput','reserveInput']){const field=$('#'+id)?.closest('label');if(field)get('plan:fuel').prepend(field);}
+  const reserveSummary=document.createElement('div');reserveSummary.id='essentialFuelMetrics';reserveSummary.className='essential-metrics';get('plan:fuel').append(reserveSummary);
+  const toolAreas={wb:'plan',oxygen:'plan',cost:'plan',ice:'route',ride:'route',etp:'route',alternate:'route',glide:'route',steps:'route'};
+  for(const [key,area] of Object.entries(toolAreas)){const panel=move(`[data-tool-panel="${key}"]`,`${area}:${key}`);if(panel){panel.hidden=false;panel.classList.add('active');panel.setAttribute('aria-label',text(key));}}
+  // Keep the full station table under explicit disclosure.
+  const stations=$('.wb-stations');if(stations){const d=document.createElement('details');d.className='technical-details';d.innerHTML=`<summary>${text('details')}</summary>`;stations.before(d);d.append(stations,$('.wb-kpis'),$('#randomizeWeightBalance'));}
+  const wbFuel=document.createElement('label');wbFuel.className='ui-field';wbFuel.innerHTML=`${label('fuel')}<span class="ui-unit-input"><input id="wbFuelOnboard" type="number" min="0" step="0.1"/><small data-essential-fuel-unit>gal</small></span>`;$('.wb-inputs').append(wbFuel);
+  moduleList('plan:overview',[['fuel','fuel'],['wb','scale'],['oxygen','heart-pulse'],['cost','dollar-sign'],['resilience','layers']]);
+  get('plan:resilience').innerHTML='<section class="panel" id="resilienceLab"></section>';
+  get('route:overview').innerHTML='<article class="panel" id="missionProfilePanel"></article>';
+  // IDs remain for existing route renderers; the meaningful ribbon is generated from the solved trajectory.
+  get('route:meteo').innerHTML='<article class="panel"><h2>METEO</h2><div id="essentialWeather"></div><div id="layoutRouteMeta"></div><div id="layoutRouteRail" class="route-rail"></div></article>';
+  moduleList('route:overview',[['meteo','cloud-sun'],['ice','snowflake'],['ride','waves'],['etp','route'],['alternate','map-pin'],['glide','wind'],['steps','trending-up']]);
+  get('flight:overview').innerHTML='<article class="panel" id="essentialTracker"></article>';
+  moduleList('flight:overview',[['update','map-pin'],['calibration','sliders-horizontal'],['history','history']]);
+  // Split position observation and the paired TAS/FF capture, keeping one operational submission contract.
+  const flight=move('#manualFlightPanel','flight:update');
+  const form=$('#manualUpdateForm');
+  const calibration=document.createElement('form');calibration.id='essentialCalibrationForm';calibration.className='panel calibration-fields';
+  calibration.innerHTML='<h2 data-layout-text="calibration">Calibração K1 / K2</h2><p id="essentialCalibrationGate" role="status"></p>';
+  for(const id of ['observedTas','observedFuelFlow'])calibration.append($('#'+id).closest('label'));
+  calibration.insertAdjacentHTML('beforeend','<button class="primary-button" id="essentialCalibrate" type="submit">Calibration</button>');
+  get('flight:calibration').append(calibration,$('.calibration-state'));
+  // Original hidden selects retain the precise operational calibration context.
+  const selectors=document.createElement('div');selectors.hidden=true;for(const id of ['manualWaypoint','manualAltitude'])selectors.append($('#'+id).closest('label'));form.prepend(selectors);
+  const position=document.createElement('section');position.className='position-editor';position.innerHTML=`<div class="shared-card-head">${label('position')}<strong id="essentialPercent">—</strong></div><label class="position-slider"><span class="sr-only" data-layout-text="position">${text('position')}</span><input id="essentialPosition" type="range" min="0" max="0" step="any" disabled/></label><div class="position-distance" id="essentialDistance">—</div><div class="position-waypoints"><button class="text-button" type="button" id="essentialPrevious">—</button><span>→</span><button class="text-button" type="button" id="essentialNext">—</button></div><div class="essential-metrics"><div>${label('from')}<strong id="essentialFrom">—</strong></div><div>${label('to')}<strong id="essentialTo">—</strong></div><div><span>ETE</span><strong id="essentialEte">—</strong></div></div><p id="essentialPositionStatus" role="status"></p>`;form.prepend(position);
+  $('#manualFuel').closest('label').querySelector('span:first-child').removeAttribute('data-i18n');$('#manualFuel').closest('label').querySelector('span:first-child').dataset.layoutText='observedFuel';
+  const submit=$('#submitFlightUpdate');submit.removeAttribute('data-i18n');const actions=document.createElement('div');actions.className='checkpoint-action';actions.append(submit);form.append(actions);
+  get('flight:history').innerHTML='<article class="panel"><h2 data-layout-text="history">Histórico</h2><div id="essentialHistory"></div></article>';
+  const vault=document.createElement('div');vault.hidden=true;vault.id='presentationVault';content.append(vault);
+  fuelDetails.append($('.kpi-grid'));vault.append($('#optimizeMission'));
+  // Source wrappers are now empty; their controls/results have moved, never cloned.
+  $('.flight-tools-panel')?.remove();$('.dashboard-grid')?.remove();
+  const componentKinds=[['.primary-button', 'ui-button ui-button--primary'],['.text-button', 'ui-button ui-button--outline'],['.panel','ui-card ui-card--summary'],['.tool-view','ui-card ui-card--technical']];
+  for(const [selector,names]of componentKinds)document.querySelectorAll(selector).forEach(el=>el.classList.add(...names.split(' ')));
+  const state={area:'plan',module:{plan:'overview',route:'overview',flight:'overview'}};
+  function activate(area,module=state.module[area]){
+    // Compatibility for engine-owned navigation, without exposing a fourth area.
+    if(area==='mission'){area='plan';module=module==='overview'?'overview':'score';}
+    if(area==='planning'){area='plan';module=({config:'config',systems:'wb',analyses:'cost'})[module]||module;}
+    if(!areaMap.has(area))return;
+    if(!panelMap.has(`${area}:${module}`))module='overview';
+    state.area=area;state.module[area]=module;document.body.dataset.activeModule=`${area}:${module}`;
+    for(const [key,node]of areaMap)node.hidden=key!==area;
+    for(const [key,node]of panelMap)node.hidden=key!==`${area}:${module}`;
+    document.querySelectorAll('[data-area-button]').forEach(b=>{const active=b.dataset.areaButton===area;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+    const section=areaMap.get(area);section.querySelector('[data-area-title]').textContent=text(module==='overview'?area:module);section.querySelector('[data-back]').hidden=module==='overview';
+    window.scrollTo({top:0,behavior:'instant'});window.lucide?.createIcons();
+    document.dispatchEvent(new CustomEvent('velocity:navigate',{detail:{area,module}}));
   }
-  const missionOverview = moduleNodes.get('mission:overview');
-  move('.kpi-grid', 'mission:overview');
-  move('#pilotDecisionPanel', 'mission:overview');
-  const overviewGrid = item(); overviewGrid.className = 'summary-grid'; overviewGrid.dataset.uiCardPair = ''; overviewGrid.dataset.uiOverlapGroup = ''; missionOverview.append(overviewGrid);
-  const score = $('.mission-score-panel'); if (score) overviewGrid.append(score);
-  const recommendation = item(); recommendation.className = 'panel recommendation-card';
-  recommendation.innerHTML = `<div class="shared-card-head"><span data-layout-text="missionAdjustment">${text('missionAdjustment')}</span>${icon('wind')}</div><div class="recommendation-actions"><button type="button" class="primary-button" data-open-module="planning:config" data-layout-text="openPlanning">${text('openPlanning')}</button><button type="button" class="text-button" data-open-module="route:overview" data-layout-text="openRoute">${text('openRoute')}</button></div>`;
-  const scoreAction = $('#missionScoreAction')?.closest('.mission-score-action');
-  if (scoreAction) {
-    scoreAction.querySelector('span')?.remove();
-    recommendation.insertBefore(scoreAction, recommendation.querySelector('.recommendation-actions'));
-  }
-  overviewGrid.append(recommendation);
-  const fuel = $('.fuel-panel'); if (fuel) missionOverview.append(fuel);
-  move('.mission-strip', 'mission:score');
-  const detailedScore = item(); detailedScore.className = 'panel score-detail-card';
-  detailedScore.innerHTML = `<h2 data-layout-text="riskAssessment">${text('riskAssessment')}</h2>`;
-  const reasons = $('#missionScoreReasons'); if (reasons) detailedScore.append(reasons);
-  moduleNodes.get('mission:score').append(detailedScore);
-
-  const controls = move('.controls-panel', 'planning:config');
-  if (controls) {
-    const config = moduleNodes.get('planning:config');
-    const grid = item(); grid.className = 'planning-config-grid';
-    config.append(grid); grid.append(controls);
-    const aside = item(); aside.className = 'panel planning-live-summary';
-    aside.innerHTML = `<div class="shared-card-head"><span data-layout-text="takeoffWeight">${text('takeoffWeight')}</span>${icon('scale')}</div><div class="planning-live-metrics"><div><span data-layout-text="oxygen">${text('oxygen')}</span><strong id="layoutOxygenSummary">—</strong></div><div><span data-layout-text="fuelMargin">${text('fuelMargin')}</span><strong id="layoutFuelMargin">—</strong></div></div>`;
-    const weight = controls.querySelector('.weight-meter');
-    if (weight) aside.insertBefore(weight, aside.querySelector('.planning-live-metrics'));
-    const right = item(); right.className = 'planning-config-right';
-    grid.append(right); right.append(aside);
-    const optimize = $('#optimizeMission'); if (optimize) right.append(optimize);
-  }
-
-  const routeOverview = moduleNodes.get('route:overview');
-  routeOverview.innerHTML = `<div class="route-rail-card"><div class="shared-card-head"><span data-layout-text="routeLegs">${text('routeLegs')}</span><strong id="layoutRouteMeta">—</strong></div><div class="route-rail" id="layoutRouteRail" aria-label="Trechos da rota"></div></div><div class="route-overview-grid">
-    <button class="route-overview-card" type="button" data-open-module="route:ice">${icon('snowflake')}<span><strong data-layout-text="routeIce">${text('routeIce')}</strong><small id="layoutIceStatus">—</small></span>${icon('chevron-right')}</button>
-    <button class="route-overview-card" type="button" data-open-module="route:ride">${icon('waves')}<span><strong data-layout-text="routeRide">${text('routeRide')}</strong><small id="layoutRideStatus">—</small></span>${icon('chevron-right')}</button>
-    <button class="route-overview-card" type="button" data-open-module="route:decisions">${icon('route')}<span><strong data-layout-text="routeDecisions">${text('routeDecisions')}</strong><small id="layoutDecisionStatus">ETP · PNR · ALT · GLIDE · STEP</small></span>${icon('chevron-right')}</button>
-  </div>`;
-
-  const toolGroups = {
-    'planning:systems': ['wb', 'oxygen'],
-    'planning:analyses': ['cost'],
-    'route:ice': ['ice'],
-    'route:ride': ['ride'],
-    'route:decisions': ['etp', 'alternate', 'glide', 'steps'],
-  };
-  for (const [destination, keys] of Object.entries(toolGroups)) {
-    const module = moduleNodes.get(destination);
-    const choices = item(); choices.className = 'tool-choice';
-    const host = item(); host.className = 'tool-host';
-    module.append(choices, host);
-    for (const key of keys) {
-      const button = key === 'update' ? $('#tool-card-update') : $(`[data-tool-view="${key}"]`);
-      const panel = $(`[data-tool-panel="${key}"]`);
-      if (button) choices.append(button);
-      if (panel) host.append(panel);
-    }
-    if (keys.length === 1) choices.classList.add('single-choice');
-  }
-
-  const updatePanel = $('[data-tool-panel="update"]');
-  const flightPanel = $('#manualFlightPanel');
-  const confidence = $('#calibrationReference');
-  if (flightPanel && updatePanel) moduleNodes.get('flight:update').append(flightPanel);
-  const oldModeTop = $('.manual-mode-top'); if (oldModeTop) oldModeTop.remove();
-
-  const oldTools = $('.flight-tools-panel'); if (oldTools) oldTools.remove();
-  const oldDashboard = $('.dashboard-grid'); if (oldDashboard) oldDashboard.remove();
-
-  // Structural UI primitives are attached to both moved and generated nodes.
-  // Module classes retain only their own layout and aviation-specific treatments.
-  const componentKinds = [
-    ['.panel', 'ui-card ui-card--summary'],
-    ['.tool-view', 'ui-card ui-card--technical'],
-    ['.kpi', 'ui-card ui-card--compact ui-metric'],
-    ['.mission-strip > div, .planning-live-metrics > div, .cost-kpis > span, .wb-kpis > div', 'ui-metric'],
-    ['.primary-button', 'ui-button ui-button--primary'],
-    ['.text-button', 'ui-button ui-button--outline'],
-    ['.status-pill, .feasibility-badge, .area-context, #iceModuleStatus, #rideModuleStatus', 'ui-status'],
-  ];
-  const adoptComponents = () => {
-    for (const [selector, names] of componentKinds) {
-      const classes = names.split(' ');
-      document.querySelectorAll(selector).forEach(element => {
-        if (classes.some(name => !element.classList.contains(name))) element.classList.add(...classes);
-      });
-    }
-  };
-  adoptComponents();
-
-  // Presentation roles are assigned after the existing controls move into their areas.
-  // The observer below also covers result rows generated after an OFP is imported.
-  const visualRoles = {
-    label: '.app-module label > span:first-child:not(.ui-unit-input), .range-control b, .planning-live-metrics span, .calibration-head > span, .shared-card-head > span, .kpi > span:first-of-type, .mission-strip span, .navigation-point > span, .advisor-card > span, .glide-kpis b, .wb-kpis b, .cost-kpis b, .cost-summary span, .cost-alternate-grid b, .cost-price-row > div > span, .ice-module-summary > div:first-child > span, .ride-module-summary > div:first-child > span, .ice-decision-grid span, .ride-decision-grid span',
-    secondary: '#payloadOutput, #fuelOutput, #layoutFuelMargin, #layoutOxygenSummary, #powerSettingValue, .navigation-speeds strong, #calibrationMode, #calibrationFactors, #fuelRequiredSide, #costAlternateIncrement, .cost-alternate-grid strong, .cost-kpis strong, #costBreakdownTotal, #missionScoreAction',
-    emphasis: '.advisor-card > strong, .glide-kpis strong, .wb-kpis strong, .cost-kpis strong, .ice-decision-grid strong, .ride-decision-grid strong',
-    primary: '.kpi > strong, .planning-live-summary .weight-meter strong, .mission-strip strong, .ride-module-summary > div:first-child > strong, .ice-module-summary > div:first-child > strong, #etpDistance, #pnrDistance, #estimatedFlightCost, #financialEfficiency, #costOrigin',
-  };
-  const applyVisualRoles = () => {
-    for (const [role, selector] of Object.entries(visualRoles)) {
-      document.querySelectorAll(selector).forEach(element => {
-        if (element.dataset.uiRole !== role) element.dataset.uiRole = role;
-      });
-    }
-  };
-  applyVisualRoles();
-
-  const state = { area: 'mission', module: { mission: 'overview', planning: 'config', route: 'overview', flight: 'update' } };
-  function activate(area, module = state.module[area]) {
-    if (!areaNodes.has(area)) return;
-    if (!moduleNodes.has(`${area}:${module}`)) module = areas.find(([name]) => name === area)[3][0][0];
-    state.area = area;
-    state.module[area] = module;
-    for (const [key, node] of areaNodes) node.hidden = key !== area;
-    document.querySelectorAll('[data-area-button]').forEach(button => {
-      const active = button.dataset.areaButton === area;
-      button.classList.toggle('active', active);
-      if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
-    });
-    document.querySelectorAll('[data-module-button]').forEach(button => {
-      const active = button.dataset.moduleButton === `${area}:${module}`;
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-selected', String(active));
-    });
-    for (const [key, node] of moduleNodes) node.hidden = key !== `${area}:${module}`;
-    window.scrollTo({ top: 0, behavior: 'auto' });
-    if (window.lucide?.createIcons) window.lucide.createIcons();
-  }
-  document.addEventListener('click', event => {
-    const areaButton = event.target.closest('[data-area-button]');
-    if (areaButton) { activate(areaButton.dataset.areaButton); return; }
-    const moduleButton = event.target.closest('[data-module-button]');
-    if (moduleButton) { const [area, module] = moduleButton.dataset.moduleButton.split(':'); activate(area, module); return; }
-    const link = event.target.closest('[data-open-module]');
-    if (link) { const [area, module] = link.dataset.openModule.split(':'); activate(area, module); return; }
-    const forward = event.target.closest('[data-forward-click]');
-    if (forward) document.getElementById(forward.dataset.forwardClick)?.click();
-  });
-  const observer = new MutationObserver(() => {
-    adoptComponents();
-    applyVisualRoles();
-    const pairs = [
-      ['#cruiseIcingValue', '#layoutIceStatus'],
-      ['#rideValue', '#layoutRideStatus'], ['#oxygenValue', '#layoutOxygenSummary'],
-      ['#kpiFuelDelta', '#layoutFuelMargin'],
-    ];
-    for (const [source, target] of pairs) {
-      const origin = $(source), display = $(target);
-      if (origin && display && display.textContent !== origin.textContent) display.textContent = origin.textContent;
-    }
-    const context = $('[data-area-context="mission"]');
-    const badge = $('#feasibilityBadge');
-    if (context && badge) {
-      const value = badge.hidden ? '' : badge.textContent;
-      const tone = badge.classList.contains('viable') ? 'viable' : badge.classList.contains('marginal') ? 'marginal' : badge.classList.contains('unknown') ? 'unknown' : 'not-viable';
-      const className = `area-context ui-status ${tone}`;
-      if (context.textContent !== value) context.textContent = value;
-      if (context.className !== className) context.className = className;
-    }
-  });
-  observer.observe(content, { subtree: true, childList: true, characterData: true });
-  function translateLayout() {
-    document.querySelectorAll('[data-layout-text]').forEach(element => { element.textContent = text(element.dataset.layoutText); });
-    noPlan.textContent = text('noPlan');
-    const compact = matchMedia('(max-width: 760px)').matches;
-    const labels = document.documentElement.lang === 'en-US'
-      ? [['Recommended level', 'Level'], ['Required fuel', 'Fuel'], ['Estimated time', 'Time'], ['Maximum range', 'Range']]
-      : [['Nível recomendado', 'Nível'], ['Combustível requerido', 'Combustível'], ['Tempo estimado', 'Tempo'], ['Alcance máximo', 'Alcance']];
-    document.querySelectorAll('.kpi-grid .kpi > span:first-of-type').forEach((element, index) => {
-      const pair = labels[index];
-      if (!pair) return;
-      element.textContent = compact ? pair[1] : pair[0];
-      element.title = pair[0];
-    });
-    document.querySelectorAll('.module-nav').forEach(element => { element.setAttribute('aria-label', text(element.closest('[data-area-panel]').dataset.areaPanel)); });
-    nav.setAttribute('aria-label', document.documentElement.lang === 'en-US' ? 'Main areas' : 'Áreas principais');
-    mobileNav.setAttribute('aria-label', nav.getAttribute('aria-label'));
-  }
-  document.querySelectorAll('[data-language]').forEach(button => button.addEventListener('click', () => setTimeout(translateLayout, 0)));
-  window.addEventListener('resize', translateLayout);
-  window.VelocityLayout = { activate, translate: translateLayout, state };
-  activate('mission', 'overview');
+  function translate(){document.querySelectorAll('[data-layout-text]').forEach(el=>el.textContent=text(el.dataset.layoutText));for(const [area,section]of areaMap)section.querySelector('[data-area-title]').textContent=text(state.module[area]==='overview'?area:state.module[area]);nav.setAttribute('aria-label',text('overview'));mobileNav.setAttribute('aria-label',text('overview'));}
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-area-button],[data-open-module],[data-back]');if(!b)return;if(b.hasAttribute('data-back'))activate(state.area,'overview');else if(b.dataset.areaButton)activate(b.dataset.areaButton);else{const [a,m]=b.dataset.openModule.split(':');activate(a,m);}});
+  window.VelocityLayout={activate,translate,state,text};activate('plan');
 })();

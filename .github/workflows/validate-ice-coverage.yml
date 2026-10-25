@@ -37,7 +37,7 @@ jobs:
         with:
           name: ice-weather-coverage-validation
           path: |
-            review/engine-v2-browser-audit.json
-            review/engine-v2/
+            review/quiet-cockpit/audit.json
+            review/quiet-cockpit/
           retention-days: 7
           if-no-files-found: ignore
