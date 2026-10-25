@@ -146,12 +146,18 @@
     renderQueued=true;
     requestAnimationFrame(()=>{renderQueued=false;paintMain();if(drawer)renderDrawer();if(modal)paintModal();});
   }
+  // GFS/AWC load after the OFP. Never optimize against the provisional
+  // SIMBRIEF_ONLY snapshot, or leave that ranking displayed after arrival.
   function scheduleOptimization(){
     if(!hasPlan()||optimizationPending)return;
+    const weather=window.VelocityWeather?.getStatus?.();
+    if(weather?.loading)return;
     const plan=rawText("#routeTitle")+"|"+rawText("#planTimestamp");
     if(plan!==previousPlan){previousPlan=plan;autoOptimizationKey=null;}
     const status=rawText("#decisionAutoStatus");
-    const stale=/desatualiz|stale/i.test(status);
+    // Match the actual native pt-BR/en-US stale labels, not an invented
+    // "stale" translation. The native engine remains the source of truth.
+    const stale=/desatualiz|stale|recalcule o ranking|recalculate ranking/i.test(status);
     const ready=$("#pilotDecisionPanel")&&!$("#pilotDecisionPanel").hidden;
     const key=plan+":"+(stale?"stale":"new");
     if(!ready||stale){
@@ -159,7 +165,10 @@
       autoOptimizationKey=key;
       clearTimeout(optimizationTimer);
       optimizationTimer=setTimeout(()=>{
-        if(!hasPlan())return;
+        if(!hasPlan()||window.VelocityWeather?.getStatus?.()?.loading){
+          autoOptimizationKey=null;
+          return;
+        }
         const btn=$("#optimizeMission");
         if(!btn||btn.disabled){autoOptimizationKey=null;return;}
         optimizationPending=true;
@@ -395,6 +404,9 @@
   const target=$("#top");
   if(target)new MutationObserver(scheduleRender).observe(target,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["hidden","disabled","class","aria-busy"]});
   window.addEventListener("velocityxl:weather-status",()=>{
+    // A newer weather snapshot invalidates the old recommendation even
+    // when the same route and OFP remain loaded.
+    if(!window.VelocityWeather?.getStatus?.()?.loading)autoOptimizationKey=null;
     if(drawer)renderDrawer();
     scheduleRender();
   });
