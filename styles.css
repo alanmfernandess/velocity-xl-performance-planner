@@ -4395,7 +4395,7 @@ body.zen-overview > main.shell { display:none!important; }
   /* Safari standalone and browser: exactly one visual viewport, no phantom
      space from the hidden bottom bar. Panels scroll internally if necessary. */
   body.zen-overview {padding:0}
-  #zenShell {height:100svh;height:100dvh;overflow:hidden}
+  #zenShell {height:100dvh;overflow:hidden}
   #zenShell .zen-outer {padding:0;height:100%;overflow:hidden}
   #zenShell .zen-app {display:flex;flex-direction:column;width:100%;max-width:none;height:100%;min-height:0;border:0;border-radius:0;overflow:hidden}
   #zenShell .zen-header {flex:0 0 auto;height:auto;min-height:65px;padding:env(safe-area-inset-top) 18px 0}
@@ -4411,10 +4411,9 @@ body.zen-overview > main.shell { display:none!important; }
 }
 @media (max-width:360px) {
   #zenShell .zen-content {padding:18px 16px 25px}
-  #zenShell .zen-route {gap:14px}
+  #zenShell .zen-route {gap:14px;margin:20px 0 27px}
   #zenShell .zen-level {font-size:var(--zen-font-82)}
   #zenShell .zen-metrics {gap:16px}
-  #zenShell .zen-route {margin:20px 0 27px}
   #zenShell .zen-metric strong {font-size:var(--zen-font-27)}
   #zenShell .zen-modal {padding:22px 17px}
 }
