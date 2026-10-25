@@ -43,8 +43,8 @@ test("responsive rules are grouped and iOS zoom remains available", () => {
 });
 
 test("Zen mobile fills the visual viewport without hidden navigation padding", () => {
-  assertDeclaration(css, "body.zen-overview", "padding", "0");
-  assertDeclaration(css, "html.zen-locked", "overflow", "hidden");
+  assert.match(cssRule(css, "body.zen-overview"), /(?:^|;)padding:0(?:;|$)/);
+  assert.match(cssRule(css, "html.zen-locked"), /(?:^|;)overflow:hidden(?:;|$)/);
   assert.match(css, /#zenShell \.zen-app\s*\{[^}]*height:100%/);
   assert.match(css, /#zenShell \.zen-content\s*\{[^}]*overflow-y:auto/);
   assert.match(html, /viewport-fit=cover/);
