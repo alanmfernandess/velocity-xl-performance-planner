@@ -3208,15 +3208,19 @@ body[data-active-module]:not([data-active-module$=":overview"]) .ofp-reimport { 
 body[data-active-module]:not([data-active-module$=":overview"]) .plan-bar { padding-top: 0; margin-bottom: var(--space-3); }
 
 /* Quiet Cockpit Essential — approved information hierarchy; existing calculation widgets are unchanged. */
-body:has(#plannerContent:not([hidden])) .plan-bar { border-bottom: 0; padding-block: var(--space-3); margin-bottom: var(--space-4); }
+body:has(#plannerContent:not([hidden])) .plan-bar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--space-2); align-items: center; border-bottom: 0; padding-block: var(--space-3); margin-bottom: var(--space-4); }
 body[data-active-module$=":overview"] .area-heading { display: none; }
+body:has(#plannerContent:not([hidden])) .route-source { display: none; }
+body:has(#plannerContent:not([hidden])) footer { padding-block: var(--space-2); border-top: 0; }
+body:has(#plannerContent:not([hidden])) footer > span:first-child,
+body:has(#plannerContent:not([hidden])) footer > span:last-child { display: none; }
 body:not(:has(#plannerContent:not([hidden]))) .ofp-reimport > summary { display: none; }
 .ofp-reimport { min-width: 0; margin-left: auto; }
 .ofp-reimport > summary { display: flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); color: var(--muted); font-size: var(--ui-caption); cursor: pointer; list-style: none; }
 .ofp-reimport > summary::-webkit-details-marker { display: none; }
 .ofp-reimport > summary svg { width: 17px; height: 17px; }
 .ofp-reimport .plan-form { padding-block: var(--space-3); }
-.ofp-reimport.ofp-loaded[open] { flex-basis: 100%; }
+.ofp-reimport.ofp-loaded[open] { grid-column: 1/-1; }
 .essential-identity .kpi > small { display: none; }
 #essentialMission #kpiAltitude { color: var(--text); }
 .essential-mission .essential-state { align-items: center; }
@@ -3239,7 +3243,7 @@ body:not(:has(#plannerContent:not([hidden]))) .ofp-reimport > summary { display:
 #resilienceLab .rl-heading { gap: var(--space-2); }
 #resilienceLab .rl-analysis { gap: var(--space-3); }
 .rl-4d-snapshot { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-2); }
-.rl-4d-details { display: grid; gap: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.rl-4d-details { border-top: 1px solid var(--line); padding-top: var(--space-3); }
 .rl-4d-details > summary { color: var(--blue); font-size: var(--ui-caption); min-height: var(--control-height); cursor: pointer; display: flex; align-items: center; }
 .rl-4d-details[open] > :not(summary) { margin-top: var(--space-3); }
 .rl-tabs > button { border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--panel); }
