@@ -4,6 +4,20 @@
 
 /* 1. TOKENS */
 :root {
+  --zen-font-10: 10px;
+  --zen-font-11: 11px;
+  --zen-font-12: 12px;
+  --zen-font-13: 13px;
+  --zen-font-14: 14px;
+  --zen-font-16: 16px;
+  --zen-font-17: 17px;
+  --zen-font-20: 20px;
+  --zen-font-27: 27px;
+  --zen-font-29: 29px;
+  --zen-font-35: 35px;
+  --zen-font-82: 82px;
+  --zen-font-95: 95px;
+  --zen-font-106: 106px;
   --bg: #eef2f6;
   --panel: #ffffff;
   --panel-soft: #f5f7fa;
@@ -4285,22 +4299,6 @@ select:focus-visible {
   /* Modules */
 }
 
-:root {
-  --zen-font-10: 10px;
-  --zen-font-11: 11px;
-  --zen-font-12: 12px;
-  --zen-font-13: 13px;
-  --zen-font-14: 14px;
-  --zen-font-16: 16px;
-  --zen-font-17: 17px;
-  --zen-font-20: 20px;
-  --zen-font-27: 27px;
-  --zen-font-29: 29px;
-  --zen-font-35: 35px;
-  --zen-font-82: 82px;
-  --zen-font-95: 95px;
-  --zen-font-106: 106px;
-}
 /* Zen — Missão / Visão geral. Scoped to the approved visual surface.
    Flight calculations and other modules retain their existing styles. */
 body.zen-overview { background:var(--bg); }
