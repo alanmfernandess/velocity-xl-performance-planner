@@ -235,13 +235,19 @@
     z("#zenDrawer").hidden=!drawer;
     if(!drawer)return;
     const list=choices();
+    const weather=window.VelocityWeather?.getStatus?.() || {};
+    const missingWeather=weather.gfs!=="available"||weather.awc!=="available";
+    const refreshLabel=weather.loading?tr("Atualizando meteorologia…","Updating weather…"):
+      tr("Atualizar meteorologia","Refresh weather");
+    const refreshAction='<button class="zen-textbtn" type="button" data-zen="retry-weather" '+(weather.loading?"disabled":"")+'>'+refreshLabel+'</button>';
     let title="",content="",footer="";
     if(drawer==="review"){
       title=tr("Revisar voo","Review flight");
       if(!list.length){
         const diag=rawText("#decisionDiagnostic");
         content='<div class="zen-smallhead">'+tr("RECOMENDAÇÃO","RECOMMENDATION")+'</div><p class="zen-hint">'+safe(diag||tr("Nenhuma recomendação confirmada. Ajuste a missão ou verifique os dados.","No confirmed recommendation. Adjust the mission or check the data."))+'</p>';
-        footer='<button class="zen-primary" data-zen="go-planning">'+tr("Ajustar missão","Adjust mission")+'</button>';
+        footer='<button class="zen-primary" type="button" data-zen="retry-weather" '+(weather.loading?"disabled":"")+'>'+refreshLabel+'</button>'+
+          '<button class="zen-textbtn" type="button" data-zen="go-planning">'+tr("Ajustar missão","Adjust mission")+'</button>';
       }else{
         if(!list.some(c=>c.key===selectedKey))selectedKey=list[0].key;
         const sel=list.find(c=>c.key===selectedKey);
@@ -254,6 +260,7 @@
         const btn=$("#applyPilotAlternative"), canApply=btn&&!btn.disabled;
         footer='<button class="zen-primary" type="button" data-zen="request-apply" '+(canApply?"":"disabled")+'>'+tr("Aplicar ","Apply ")+safe(sel.fl)+' '+icon("arrow","small")+'</button>';
         if(!canApply)footer+='<p class="zen-hint">'+tr("Configuração bloqueada, não avaliada ou desatualizada.","Configuration blocked, unassessed or stale.")+'</p>';
+        if(missingWeather)footer+=refreshAction;
       }
     }else if(drawer==="settings"){
       title=tr("Configurações","Settings");
@@ -274,7 +281,13 @@
         row(tr("Terreno e obstáculos","Terrain and obstacles"),tr("Não avaliados","Not assessed"));
       const reasons=rawText("#missionScoreReasons");
       if(reasons)content+='<p class="zen-hint">'+safe(reasons.slice(0,1000))+'</p>';
-      footer='<button class="zen-primary" type="button" data-zen="go-assessment">'+tr("Avaliação completa","Full assessment")+' '+icon("arrow","small")+'</button>';
+      content+='<div class="zen-smallhead" style="margin-top:24px">'+tr("FONTES METEOROLÓGICAS","WEATHER SOURCES")+'</div>';
+      content+=row("GFS",weather.loading?tr("Atualizando…","Updating…"):weather.gfs||"—");
+      content+=row("AWC",weather.loading?tr("Atualizando…","Updating…"):weather.awc||"—");
+      if(weather.gfsReason)content+='<p class="zen-hint">GFS: '+safe(weather.gfsReason)+'</p>';
+      if(weather.awcReason)content+='<p class="zen-hint">AWC: '+safe(weather.awcReason)+'</p>';
+      footer='<button class="zen-primary" type="button" data-zen="retry-weather" '+(weather.loading?"disabled":"")+'>'+refreshLabel+'</button>'+
+        '<button class="zen-textbtn" type="button" data-zen="go-assessment">'+tr("Avaliação completa","Full assessment")+' '+icon("arrow","small")+'</button>';
     }
     z("#zenDrawerTitle").textContent=title;
     z("#zenDrawerContent").innerHTML=content;
@@ -354,6 +367,12 @@
     else if(act==="request-apply")openModal();
     else if(act==="confirm")confirmApply();
     else if(act==="cancel")closeModal();
+    else if(act==="retry-weather"){
+      if(window.VelocityWeather?.retry?.()){
+        showToast(tr("Atualizando meteorologia…","Updating weather…"));
+        renderDrawer();
+      }else showToast(tr("Importe um voo primeiro.","Import a flight first."));
+    }
     else if(act==="go-planning")activateOther("planning","config");
     else if(act==="go-assessment")activateOther("mission","score");
     else if(act==="navigate"){const [area,module]=btn.dataset.view.split(":");activateOther(area,module);}
@@ -375,6 +394,10 @@
   // Original app owns data; observe only its existing nodes, never the Zen mirror.
   const target=$("#top");
   if(target)new MutationObserver(scheduleRender).observe(target,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:["hidden","disabled","class","aria-busy"]});
+  window.addEventListener("velocityxl:weather-status",()=>{
+    if(drawer)renderDrawer();
+    scheduleRender();
+  });
   window.addEventListener("load",scheduleRender);
   paintMain();
 })();
