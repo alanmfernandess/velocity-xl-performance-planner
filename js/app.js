@@ -1233,16 +1233,46 @@ function activatePlan(plan) {
   state.preflightSnapshot=null;lastRenderedMissionScore=null;lastRenderedFinancial=null;
   state.manual={active:false,waypointIndex:0,distanceNm:0,fuelRemainingGal:state.fuelOnboardGal,altitudeFt:null};
   render();
+  reloadWeatherSources(plan);
+}
+
+/** The weather controls never override or relax the engine's evidence checks. */
+let weatherLoading=false;
+function reloadWeatherSources(plan=state.plan) {
+  if(!plan)return false;
+  weatherRequest?.abort();
   const request=new AbortController();weatherRequest=request;
+  weatherLoading=true;
   Promise.allSettled([fetchGfsSnapshot(plan,{signal:request.signal}),fetchAwcSnapshot({signal:request.signal})]).then((outcomes)=>{
     if(request.signal.aborted||state.plan!==plan)return;
     const [gfs,awc]=outcomes.map((outcome)=>outcome.status==="fulfilled"?outcome.value:null);
-    const errors=outcomes.map((outcome,index)=>outcome.status==="rejected"?`${index===0?"OPEN_METEO":"AWC"}: ${outcome.reason?.message||"unavailable"}`:null).filter(Boolean);
+    const errors=outcomes.map((outcome,index)=>outcome.status==="rejected"?
+      `${index===0?"OPEN_METEO":"AWC"}: ${outcome.reason?.message||"unavailable"}`:null).filter(Boolean);
     state.weatherSnapshot=createWeatherSnapshot(plan,{gfs,awc,errors});
     invalidateDecision(false);
     render();
+  }).finally(()=>{
+    if(weatherRequest!==request)return;
+    weatherLoading=false;
+    window.dispatchEvent(new Event("velocityxl:weather-status"));
   });
+  window.dispatchEvent(new Event("velocityxl:weather-status"));
+  return true;
 }
+window.VelocityWeather=Object.freeze({
+  retry:()=>reloadWeatherSources(),
+  getStatus:()=>({
+    loading:weatherLoading,
+    gfs:state.weatherSnapshot?.sources?.OPEN_METEO?.status||"unavailable",
+    awc:state.weatherSnapshot?.sources?.AWC?.status||"unavailable",
+    gfsReason:state.weatherSnapshot?.gfs?.reason ||
+      state.weatherSnapshot?.errors?.find(message=>message.startsWith("OPEN_METEO:")) || "",
+    awcReason:state.weatherSnapshot?.awc?.reason ||
+      state.weatherSnapshot?.errors?.find(message=>message.startsWith("AWC:")) || "",
+    awcAgeMinutes:Number.isFinite(state.weatherSnapshot?.awc?.ageMs)?
+      Math.round(state.weatherSnapshot.awc.ageMs/60000):null
+  })
+});
 
 $("#simbriefImportForm").addEventListener("submit",async(event)=>{
   event.preventDefault();
