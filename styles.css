@@ -3058,7 +3058,7 @@ select:focus-visible {
 .module-link strong { color: var(--muted); font-size: var(--ui-caption); font-weight: 500; }
 .essential-mission { display: grid; gap: var(--space-5); border: 0; padding: var(--space-5); box-shadow: 0 7px 28px #1823310b; }
 .essential-identity { display: flex; justify-content: space-between; align-items: start; gap: var(--space-4); }
-.essential-identity .kpi { display: grid; gap: var(--space-1); }
+.essential-identity .kpi { display: grid; gap: var(--space-1); padding: 0; min-height: 0; border: 0; box-shadow: none; background: transparent; }
 .essential-identity .kpi > span { font-size: var(--ui-caption); color: var(--muted); text-transform: uppercase; }
 .essential-identity .kpi > strong { font-size: calc(var(--ui-display) * 1.75); font-weight: 650; color: var(--text); }
 .score-reading { display: grid; gap: var(--space-1); padding: 0; min-height: var(--control-height); min-width: 74px; text-align: right; background: transparent; border: 0; border-radius: 0; }
@@ -3075,7 +3075,6 @@ select:focus-visible {
 .essential-metrics > div { display: grid; gap: var(--space-1); min-width: 0; }
 .essential-metrics span { color: var(--muted); font-size: var(--ui-caption); }
 .essential-metrics strong { font-size: var(--ui-title); font-weight: 600; font-variant-numeric: tabular-nums; }
-.essential-secondary { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 #essentialApply { justify-self: stretch; width: 100%; min-width: 0; }
 .shared-card-head { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
 .shared-card-head > span { color: var(--muted); font-size: var(--ui-caption); }
@@ -3218,7 +3217,6 @@ body:not(:has(#plannerContent:not([hidden]))) .ofp-reimport > summary { display:
 .ofp-reimport > summary svg { width: 17px; height: 17px; }
 .ofp-reimport .plan-form { padding-block: var(--space-3); }
 .ofp-reimport.ofp-loaded[open] { flex-basis: 100%; }
-.essential-identity .kpi { padding: 0; min-height: 0; border: 0; box-shadow: none; background: transparent; }
 .essential-identity .kpi > small { display: none; }
 .essential-mission .essential-state { align-items: center; }
 .essential-mission #essentialStatus { font-size: var(--ui-caption); font-weight: 650; }
@@ -3398,7 +3396,6 @@ body:not(:has(#plannerContent:not([hidden]))) .ofp-reimport > summary { display:
 #manualFlightPanel { padding: var(--space-4); }
  .essential-metrics { gap: var(--space-3); }
  .essential-metrics strong { font-size: var(--ui-body); }
- .essential-secondary { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
  #essentialApply { justify-self: stretch; min-width: 0; }
  .calibration-fields { grid-template-columns: minmax(0,1fr); }
  body[data-active-module="flight:update"] .checkpoint-action { position: fixed; bottom: calc(64px + env(safe-area-inset-bottom) + var(--keyboard-lift)); left: 0; right: 0; z-index: 39; padding: var(--space-3) var(--space-4); background: #fffffff5; border-top: 1px solid var(--line); }
