@@ -43,7 +43,7 @@ async function audit(page, label) {
     const point = document.querySelector("#mpRailProgress");
     const ribbonCursor = document.querySelector("#mpRibbonCursor");
     const cursorVisible = ribbonCursor && Number.parseFloat(ribbonCursor.style.left) >= 1 && Number.parseFloat(ribbonCursor.style.left) <= 99;
-    const phaseTimesAvailable = [...document.querySelectorAll(".mp-ribbon-phase span")].every(node => /^\\d{2}:\\d{2}$/.test(node.textContent));
+    const phaseTimesAvailable = [...document.querySelectorAll(".mp-ribbon-phase span")].every(node => /^\d{2}:\d{2}$/.test(node.textContent));
     return { viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth, issues: probe.issues,
       controls, markers: svg.querySelectorAll("[data-profile-fix]").length, plotLeft: box.left, ribbonContained, metricClipping, phaseCount, cursorVisible, phaseTimesAvailable, railProgress: point?.dataset.distance,
       badSvg: /NaN|Infinity/.test(svg.innerHTML), source: document.querySelector("#mpScenarioTag").textContent,
