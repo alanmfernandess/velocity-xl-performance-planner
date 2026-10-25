@@ -87,7 +87,7 @@ export function createQuietCockpit(actions){
     const candidate=next.candidate,result=candidate.result,score=next.score;
     $('#essentialScore').textContent=score.partial||score.status==='unknown'?w('NÃO AVALIADO','UNASSESSED'):String(score.score);
     $('#essentialStatus').textContent=actions.statusLabel(score.status);$('#essentialMission').dataset.status=score.status;
-    $('#kpiSelectedLevel > span').textContent=next.input.appliedChoice?w('FL SELECIONADO','SELECTED FL'):w('FL RECOMENDADO','RECOMMENDED FL');
+    $('#kpiSelectedLevel > span').textContent=w('PERFIL','PROFILE');
     $('#essentialMode').textContent=candidate.mode;$('#essentialTime').textContent=time(result.tripTimeHr*3600);$('#essentialTrip').textContent=fuel(result.tripFuelGal);$('#essentialMargin').textContent=fuel(result.feasibility.fuelMarginGal);
     const blocker=$('#missionScoreSummary').textContent;$('#essentialBlocker').textContent=blocker;$('#essentialBlocker').hidden=!blocker;
     const rec=next.mission.automaticRecommendation,apply=$('#essentialApply');apply.disabled=!rec||!['viable','marginal'].includes(rec.status);apply.textContent=next.input.appliedChoice?w('Perfil aplicado','Profile applied'):w('Aplicar perfil','Apply profile');if(next.input.appliedChoice)apply.disabled=true;
