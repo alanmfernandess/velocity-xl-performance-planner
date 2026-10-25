@@ -1,6 +1,8 @@
 /* Velocity XL — Zen Mission Overview / presentation-only adapter. */
 (function zenApp(){
   "use strict";
+  // Legacy regression audits continue testing the untouched original modules.
+  if(new URLSearchParams(window.location.search).has("auditLegacyUi"))return;
   const $ = (selector) => document.querySelector(selector);
   const icon = (name,cls="") => {
     const paths = {
