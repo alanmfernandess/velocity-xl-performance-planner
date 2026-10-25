@@ -6,7 +6,7 @@ import { createWeatherSnapshot } from "./weather/fusion.js?v=20261024-02";
 import { calculateAtAltitude, calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261024-02";
 import { fetchLatestOFP } from "./simbrief.js?v=20261024-02";
 import { createResiliencePresenter } from "./resilience-view.js?v=20261024-02";
-import { createMissionProfilePresenter } from "./mission-profile-view.js?v=20261024-02";
+import { createMissionProfilePresenter } from "./mission-profile-view.js?v=20261024-ribbon";
 import { TRACKER_STORAGE_KEY, buildVirtualFlightProfile, confirmVirtualCheckpoint, correctVirtualElapsed, finishVirtualFlight, newVirtualFlightSession, pauseVirtualFlight, projectVirtualFlight, recoverVirtualFlight, remainingExposure, resumeVirtualFlight, setVirtualTimeFactor, startVirtualFlight, virtualElapsedSeconds } from "./virtual-flight.js?v=20261024-02";
 
 const $ = (selector) => document.querySelector(selector);
