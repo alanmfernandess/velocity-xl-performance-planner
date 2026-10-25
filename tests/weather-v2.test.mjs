@@ -60,6 +60,8 @@ test("GFS deduplicates simultaneous requests and retries a rate limit", async ()
   assert.equal(requests, 2);
   await fetchGfsSnapshot(samplePlan, { fetcher });
   assert.equal(requests, 2);
+  await fetchGfsSnapshot(samplePlan, { fetcher, force: true });
+  assert.equal(requests, 3);
 });
 
 test("AWC recovers raw snapshot failure through GitHub content API", async () => {
