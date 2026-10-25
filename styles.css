@@ -3218,6 +3218,7 @@ body:not(:has(#plannerContent:not([hidden]))) .ofp-reimport > summary { display:
 .ofp-reimport .plan-form { padding-block: var(--space-3); }
 .ofp-reimport.ofp-loaded[open] { flex-basis: 100%; }
 .essential-identity .kpi > small { display: none; }
+#essentialMission #kpiAltitude { color: var(--text); }
 .essential-mission .essential-state { align-items: center; }
 .essential-mission #essentialStatus { font-size: var(--ui-caption); font-weight: 650; }
 .essential-mission .essential-reveal { width: 100%; border: 0; padding-block: var(--space-2); color: var(--muted); }
