@@ -3834,7 +3834,6 @@ select:focus-visible {
 .mp-band.unassessed { fill: var(--panel-soft); stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 2 3; }
 .mp-fuel-line { fill: none; stroke: var(--blue); stroke-width: 2; }
 .mp-airports { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--muted); }
-.mp-waypoint-list { scrollbar-width: none; -ms-overflow-style: none; }
 .mp-waypoint-list::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .mp-playback { display: grid; grid-template-columns: var(--control-height) minmax(0, 1fr); gap: var(--space-3); align-items: center; margin-block: var(--space-4); }
 .mp-playback > button, .mp-icon-button { width: var(--control-height); padding-inline: 0; }
@@ -3851,7 +3850,7 @@ select:focus-visible {
 .mp-selected-weather strong { color: var(--text); }
 .mp-waypoints { border-top: 1px solid var(--line); padding-top: var(--space-4); }
 .mp-list-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); align-items: end; }
-.mp-waypoint-list { max-height: 280px; overflow-y: auto; margin-top: var(--space-2); overscroll-behavior: contain; }
+.mp-waypoint-list { max-height: 280px; overflow-y: auto; margin-top: var(--space-2); overscroll-behavior: contain; scrollbar-width: none; -ms-overflow-style: none; }
 .mp-waypoint-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2); width: 100%; min-height: var(--control-height); padding: var(--space-2) var(--space-3); background: var(--panel); border: 1px solid transparent; border-bottom-color: var(--line); border-radius: var(--control-radius); }
 .mp-waypoint-row > span { color: var(--muted); }
 .mp-events { display: grid; gap: var(--space-2); border-top: 1px solid var(--line); padding-top: var(--space-4); }
