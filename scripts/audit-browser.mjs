@@ -14,6 +14,7 @@ async function importAgain(){
  const button=page.locator('#importLatest');
  if(!await button.isVisible())await page.locator('.ofp-reimport > summary').click();
  await button.click();
+ await page.waitForFunction(()=>!document.querySelector('#importLatest')?.hasAttribute('aria-busy'),{timeout:15000});
 }
 async function capture(name){const file=path.join(out,name+'.png');await page.screenshot({path:file,fullPage:true});report.screenshots.push(file);if(name.includes('overview')||name.includes('flight-update'))await page.screenshot({path:path.join(out,name+'-viewport.png')});}
 async function audit(label){
@@ -67,9 +68,17 @@ try{
  await page.setViewportSize({width:390,height:844});await open('flight','update');await page.locator('#manualFuel').focus();await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'submitFlightUpdate');
  const fixed=await page.locator('#submitFlightUpdate').boundingBox(),nav=await page.locator('.mobile-area-nav').boundingBox();assert.ok(fixed.y+fixed.height<=nav.y+1);assert.ok(fixed.y>=0);report.functional.push('Mobile checkpoint action visible immediately above bottom navigation; keyboard focus reachable');
  await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));assert.ok(await page.locator('#submitFlightUpdate').isVisible());
+ await page.locator('.app-preferences summary').click();
+ await page.locator('[data-language="pt-BR"]').click();
+ await page.locator('.app-preferences summary').click();
  for(const width of [320,375,390,430]){
   await page.setViewportSize({width,height:844});await open('plan','resilience');await page.locator('[data-rl-tab="corridor"]').click();await page.waitForFunction(()=>document.querySelector('#resilienceLab').getAttribute('aria-busy')==='false',{timeout:45000});await audit(`${width} corridor`);
   const svg=page.locator('.rl-corridor-plot svg');if(await svg.count()){const bounds=await svg.evaluate(e=>({view:e.viewBox.baseVal.width,items:[...e.querySelectorAll('circle')].map(c=>({x:+c.getAttribute('cx'),r:+c.getAttribute('r')}))}));assert.ok(bounds.items.every(c=>c.x-c.r>=0&&c.x+c.r<=bounds.view));if(width===390)await capture('390-resilience-corridor');}
+  const more=page.locator('.rl-4d-details');
+  await more.locator('summary').click();
+  await page.locator('[data-rl-fix]').first().click();
+  assert.equal(await more.getAttribute('open'),'');
+  report.functional.push('4D waypoint details preserve disclosure state and interaction');
  }
  for(const tab of ['stress','causal','dynamic','ensemble']){await page.locator(`[data-rl-tab="${tab}"]`).click();if(tab==='ensemble')await page.locator('[data-rl-action="ensemble"]').click();await page.waitForFunction(()=>document.querySelector('#resilienceLab').getAttribute('aria-busy')==='false',{timeout:45000});await audit(`resilience ${tab}`);}
  // Changes must invalidate the saved application and refresh recommendation, not silently apply it.
