@@ -73,7 +73,7 @@ try{
  await page.locator('.app-preferences summary').click();
  for(const width of [320,375,390,430]){
   await page.setViewportSize({width,height:844});await open('plan','resilience');await page.locator('[data-rl-tab="corridor"]').click();await page.waitForFunction(()=>document.querySelector('#resilienceLab').getAttribute('aria-busy')==='false',{timeout:45000});await audit(`${width} corridor`);
-  const svg=page.locator('.rl-corridor-plot svg');if(await svg.count()){const bounds=await svg.evaluate(e=>({view:e.viewBox.baseVal.width,items:[...e.querySelectorAll('circle')].map(c=>({x:+c.getAttribute('cx'),r:+c.getAttribute('r')}))}));assert.ok(bounds.items.every(c=>c.x-c.r>=0&&c.x+c.r<=bounds.view));if(width===390)await capture('390-resilience-corridor');}
+  const svg=page.locator('.rl-corridor-plot svg');if(await svg.count()){const bounds=await svg.evaluate(e=>({view:e.viewBox.baseVal.width,items:[...e.querySelectorAll('circle')].map(c=>({x:+c.getAttribute('cx'),r:+c.getAttribute('r')}))}));assert.ok(bounds.items.every(c=>c.x-c.r>=0&&c.x+c.r<=bounds.view));if(width===390){await page.locator('.rl-4d-details').evaluate(el=>{el.open=false;});await capture('390-resilience-corridor');}}
   const more=page.locator('.rl-4d-details');
   if(!await more.evaluate(el=>el.open))await more.locator('summary').click();
   assert.equal(await more.evaluate(el=>el.open),true);
