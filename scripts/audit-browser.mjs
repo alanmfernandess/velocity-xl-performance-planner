@@ -535,6 +535,21 @@ try {
       await page.goto(base, { waitUntil:'domcontentloaded' });
       await page.locator('#zenImport:visible').waitFor();
       if (!await page.locator('body').evaluate(el=>el.classList.contains('zen-overview'))) report.errors.push({label:'Zen '+width,issues:['Zen view not displayed']});
+      if(width===390) {
+        const check=await page.evaluate(()=>{
+          const html=document.documentElement,body=document.body;
+          const gesture=new Event('gesturestart',{bubbles:true,cancelable:true});
+          document.dispatchEvent(gesture);
+          return {scrollHeight:html.scrollHeight,viewportHeight:innerHeight,
+            bodyPadding:getComputedStyle(body).paddingBottom,
+            pageOverflow:getComputedStyle(html).overflow,
+            appHeight:document.querySelector('#zenShell .zen-app').getBoundingClientRect().height,
+            gesturePrevented:gesture.defaultPrevented};
+        });
+        if(check.scrollHeight>check.viewportHeight+2||check.bodyPadding!=='0px'||check.pageOverflow!=='hidden'||Math.abs(check.appHeight-check.viewportHeight)>2)
+          report.errors.push({label:'Zen mobile viewport',issues:[JSON.stringify(check)]});
+        if(!check.gesturePrevented)report.errors.push({label:'Zen mobile gesture',issues:['Pinch gesture was not prevented']});
+      }
       await page.locator('#zenPilotId').fill('VISUAL-FIXTURE');
       await page.locator('#zenImportButton').click();
       await page.locator('#zenHasPlan:visible').waitFor();

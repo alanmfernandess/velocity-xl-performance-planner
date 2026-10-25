@@ -1,6 +1,13 @@
 /* Velocity XL — Zen Mission Overview / presentation-only adapter. */
 (function zenApp(){
   "use strict";
+  // Prevent browser pinch zoom while preserving ordinary one-finger scrolling.
+  const preventPinch=(event)=>{if(event.cancelable)event.preventDefault();};
+  document.addEventListener("gesturestart",preventPinch,{passive:false});
+  document.addEventListener("gesturechange",preventPinch,{passive:false});
+  document.addEventListener("touchmove",(event)=>{
+    if(event.touches.length>1&&event.cancelable)event.preventDefault();
+  },{passive:false});
   // Legacy regression audits continue testing the untouched original modules.
   if(new URLSearchParams(window.location.search).has("auditLegacyUi"))return;
   const $ = (selector) => document.querySelector(selector);
@@ -130,6 +137,7 @@
     const active=window.VelocityLayout?.state;
     const zenActive=!active||(active.area==="mission"&&active.module?.mission==="overview");
     document.body.classList.toggle("zen-overview",zenActive);
+    document.documentElement.classList.toggle("zen-locked",zenActive);
     root.hidden=!zenActive;
     if(!zenActive){closeModal();drawer=null;renderDrawer();}
   }
@@ -181,14 +189,16 @@
     const confirmed=autoConfirmed();
     const altitude=rawText("#kpiAltitude");
     z("#zenKicker").textContent=applied?tr("FL APLICADO","APPLIED FL"):confirmed?tr("FL RECOMENDADO","RECOMMENDED FL"):tr("FL EM ANÁLISE","FL UNDER REVIEW");
-    z("#zenAltitude").textContent=(altitude.match(/FL\s?(\d+)/i)||[])[1]||"—";
+    // Never present a provisional/marginal FL as a confirmed recommendation.
+    z("#zenAltitude").textContent=(applied||confirmed)?
+      ((altitude.match(/FL\\s?(\\d+)/i)||[])[1]||confirmed?.[1]||"—"):"—";
     let mode=applied?rawText("#analysisLevel").match(/(?:ECON|NORMAL|FAST|MANUAL)/)?.[0]:confirmed?.[2];
     if(!mode){mode=rawText("#decisionAutoStatus").match(/\b(ECON|NORMAL|FAST)\b/)?.[0];}
     z("#zenMode").textContent=mode||tr("AGUARDANDO","PENDING");
     const fuel=parsedFuel(rawText("#kpiFuel"));
-    z("#zenFuel").textContent=fuel.value;
+    z("#zenFuel").textContent=(applied||confirmed)?fuel.value:"—";
     z("#zenFuelUnit").textContent=fuel.unit;
-    z("#zenTime").textContent=presentTime(rawText("#kpiTime"));
+    z("#zenTime").textContent=(applied||confirmed)?presentTime(rawText("#kpiTime")):"—";
     const badge=$("#feasibilityBadge");
     const tone=badge?.classList.contains("unknown")?"unknown":badge?.classList.contains("unavailable")?"danger":badge?.classList.contains("marginal")?"caution":"";
     z("#zenMode").className="zen-mode "+tone;
