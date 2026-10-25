@@ -3138,8 +3138,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .rl-heading h2,
 .rl-analysis h3,
 .rl-analysis h4 { margin: 0; }
-.rl-tabs { display: block; min-width: 0; }
-.rl-tabs .ui-button { white-space: normal; height: auto; }
+.rl-tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: var(--space-2); min-width: 0; scrollbar-width: thin; }
+.rl-tabs .ui-button { white-space: nowrap; flex: 0 0 auto; min-height: var(--control-height); height: auto; font-size: var(--ui-caption); padding-inline: var(--space-3); }
 .rl-tabs [aria-pressed="true"],
 .rl-corridor [aria-pressed="true"],
 .rl-effects [aria-pressed="true"],
@@ -3239,7 +3239,7 @@ body:not(:has(#plannerContent:not([hidden]))) .ofp-reimport > summary { display:
 #resilienceLab > .rl-heading > :is(h2,[data-ui-role="label"]) { display: none; }
 #resilienceLab .rl-heading { gap: var(--space-2); }
 #resilienceLab .rl-analysis { gap: var(--space-3); }
-.rl-tabs .rl-select { width: 100%; min-height: var(--control-height); border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--panel-soft); color: var(--blue); font-size: var(--ui-body); padding: var(--space-2) var(--space-3); font-weight: 600; }
+.rl-tabs > button { border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--panel); }
 .module-link:last-child { border-bottom: 0; }
 
 @media (max-width: 1100px) {
