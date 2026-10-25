@@ -61,7 +61,7 @@ test("Zen desktop remains contained and scrollable at short viewport heights", (
   assert.match(cssRule(css, "#zenShell .zen-app"), /height:100%/);
   assert.match(cssRule(css, "#zenShell .zen-app"), /min-height:0/);
   assert.match(cssRule(css, "#zenShell .zen-content"), /overflow-y:auto/);
-  assert.match(css, /@media \\(min-width:761px\\) and \\(max-height:650px\\)/);
+  assert.ok(css.includes("@media (min-width:761px) and (max-height:650px)"));
   assert.doesNotMatch(cssRule(css, "#zenShell .zen-app"), /min-height:675px/);
 });
 
