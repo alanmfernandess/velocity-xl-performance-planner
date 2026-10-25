@@ -10,6 +10,16 @@
   const label=k=>`<span data-layout-text="${k}">${text(k)}</span>`;
   const icon=k=>`<i data-lucide="${k}" aria-hidden="true"></i>`;
   const preferences=document.createElement('details');preferences.className='app-preferences';preferences.innerHTML=`<summary>${icon('settings-2')}${label('settings')}</summary>`;const toolbar=$('.app-toolbar');toolbar.before(preferences);preferences.append(toolbar);
+  // Retain SimBrief import on the first visit; collapse it to one unobtrusive action after import.
+  const importDisclosure=document.createElement('details');
+  importDisclosure.className='ofp-reimport';
+  importDisclosure.innerHTML=`<summary>${icon('refresh-cw')}${label('importLatest')}</summary>`;
+  const importForm=$('#simbriefImportForm');
+  importForm.before(importDisclosure);
+  importDisclosure.append(importForm);
+  const syncImport=()=>{importDisclosure.open=content.hidden;importDisclosure.classList.toggle('ofp-loaded',!content.hidden);};
+  new MutationObserver(syncImport).observe(content,{attributes:true,attributeFilter:['hidden']});
+  syncImport();
   const panelMap=new Map(), areaMap=new Map();
   const areas=[['plan','sliders-horizontal',['overview','score','compare','config','fuel','wb','oxygen','cost','resilience']],['route','route',['overview','meteo','ice','ride','etp','alternate','glide','steps']],['flight','radio-tower',['overview','update','calibration','history']]];
   const noPlan=document.createElement('p');noPlan.className='no-plan-state';noPlan.dataset.layoutText='noPlan';noPlan.textContent=text('noPlan');content.before(noPlan);
@@ -24,9 +34,12 @@
   const get=k=>panelMap.get(k);
   function move(s,key){const el=$(s);if(el)get(key).append(el);return el;}
   function moduleList(key,items){const list=document.createElement('div');list.className='module-list';for(const [module,glyph] of items)list.insertAdjacentHTML('beforeend',`<button type="button" data-open-module="${key.split(':')[0]}:${module}" class="module-link">${icon(glyph)}${label(module)}<strong data-module-summary="${module}"></strong>${icon('chevron-right')}</button>`);get(key).append(list);}
-  get('plan:overview').innerHTML=`<article class="panel essential-mission" id="essentialMission"><div class="essential-identity"><div id="essentialLevelHost"></div><button class="score-reading" type="button" data-open-module="plan:score"><span>SCORE</span><strong id="essentialScore">—</strong></button></div><div class="essential-state"><strong id="essentialStatus" role="status">—</strong><span id="essentialMode">—</span></div><p id="essentialBlocker"></p><div class="essential-metrics"><div><span>ETE</span><strong id="essentialTime">—</strong></div><div>${label('trip')}<strong id="essentialTrip">—</strong></div><div>${label('margin')}<strong id="essentialMargin">—</strong></div></div><button id="essentialApply" class="primary-button" type="button" disabled>${label('apply')}</button><div class="essential-secondary"><button class="text-button" type="button" data-open-module="plan:compare">${label('compare')}</button><button class="text-button" type="button" data-open-module="plan:config">${label('config')}</button></div></article>`;
+  get('plan:overview').innerHTML=`<article class="panel essential-mission" id="essentialMission"><div class="essential-identity"><div id="essentialLevelHost"></div><button class="score-reading" type="button" data-open-module="plan:score" aria-label="Mission Score"><span>SCORE</span><strong id="essentialScore">—</strong></button></div><div class="essential-metrics"><div><span>ETE</span><strong id="essentialTime">—</strong></div><div>${label('trip')}<strong id="essentialTrip">—</strong></div><div>${label('margin')}<strong id="essentialMargin">—</strong></div></div><div class="essential-state"><strong id="essentialStatus" role="status">—</strong><span id="essentialMode">—</span></div><p id="essentialBlocker"></p><button id="essentialApply" class="primary-button" type="button" disabled>${label('apply')}</button><button class="text-button essential-reveal" type="button" data-open-module="plan:compare">${label('compare')} · ${label('config')}${icon('chevron-down')}</button></article>`;
   $('#essentialLevelHost').append($('#kpiSelectedLevel'));
   const scorePanel=move('.mission-score-panel','plan:score');
+  // Comparison and configuration share one destination without duplicating controls.
+  const compareModule=get('plan:compare');
+  compareModule.insertAdjacentHTML('beforeend',`<button class="text-button essential-compare-config" type="button" data-open-module="plan:config">${icon('sliders-horizontal')}${label('config')}${icon('chevron-right')}</button>`);
   move('.mission-strip','plan:score');
   move('#pilotDecisionPanel','plan:compare');
   const controls=move('.controls-panel','plan:config');
@@ -41,6 +54,25 @@
   for(const [key,area] of Object.entries(toolAreas)){const panel=move(`[data-tool-panel="${key}"]`,`${area}:${key}`);if(panel){panel.hidden=false;panel.classList.add('active');panel.setAttribute('aria-label',text(key));}}
   // Keep the full station table under explicit disclosure.
   const stations=$('.wb-stations');if(stations){const d=document.createElement('details');d.className='technical-details';d.innerHTML=`<summary>${text('details')}</summary>`;stations.before(d);d.append(stations,$('.wb-kpis'),$('#randomizeWeightBalance'));}
+  const wbLayout=$('.wb-layout');
+  const wbCorridor=wbLayout?.querySelector('.wb-chart-card');
+  if(wbLayout&&wbCorridor)wbLayout.prepend(wbCorridor);
+  // Primary risk signal stays visible; technical evidence stays accessible without dominating the page.
+  for(const risk of ['ice','ride']){
+    const node=$('.'+risk+'-module');
+    const decisions=node?.querySelector('.'+risk+'-decision-grid');
+    const focus=decisions?.querySelector(':scope > div:first-child');
+    if(node&&decisions&&focus){
+      focus.classList.add('qc-risk-focus');
+      node.querySelector('.'+risk+'-index-track')?.after(focus);
+      const more=document.createElement('details');
+      more.className='technical-details qc-advanced';
+      more.innerHTML=`<summary>${text('details')}</summary>`;
+      const selectors=risk==='ice'?['.ice-decision-grid','.ice-route-window','.ice-module-grid','.ice-composition']:['.ride-preference','.ride-decision-grid','.ride-route-window','.ride-module-grid'];
+      for(const selector of selectors){const element=node.querySelector(selector);if(element)more.append(element);}
+      node.append(more);
+    }
+  }
   const wbFuel=document.createElement('label');wbFuel.className='ui-field';wbFuel.innerHTML=`${label('fuel')}<span class="ui-unit-input"><input id="wbFuelOnboard" type="number" min="0" step="0.1"/><small data-essential-fuel-unit>gal</small></span>`;$('.wb-inputs').append(wbFuel);
   moduleList('plan:overview',[['fuel','fuel'],['wb','scale'],['oxygen','heart-pulse'],['cost','dollar-sign'],['resilience','layers']]);
   get('plan:resilience').innerHTML='<section class="panel" id="resilienceLab"></section>';
