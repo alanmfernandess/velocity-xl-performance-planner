@@ -76,7 +76,14 @@ try{
   const svg=page.locator('.rl-corridor-plot svg');if(await svg.count()){const bounds=await svg.evaluate(e=>({view:e.viewBox.baseVal.width,items:[...e.querySelectorAll('circle')].map(c=>({x:+c.getAttribute('cx'),r:+c.getAttribute('r')}))}));assert.ok(bounds.items.every(c=>c.x-c.r>=0&&c.x+c.r<=bounds.view));if(width===390)await capture('390-resilience-corridor');}
   const more=page.locator('.rl-4d-details');
   await more.locator('summary').click();
-  await page.locator('[data-rl-fix]').first().click();
+  const disclosure=await page.evaluate(()=>{
+   const d=document.querySelector('.rl-4d-details'),b=d?.querySelector('[data-rl-fix]');
+   return {open:d?.open,html:d?.outerHTML.slice(0,600),display:d?getComputedStyle(d).display:null,buttonDisplay:b?getComputedStyle(b).display:null,
+    buttonRect:b?{w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height}:null,visible:b?.checkVisibility(),busy:document.querySelector('#resilienceLab')?.getAttribute('aria-busy')};
+  });
+  console.log('4D_DETAIL_DIAGNOSTIC',JSON.stringify(disclosure));
+  assert.equal(disclosure.open,true);
+  await page.locator('[data-rl-fix]').first().click({timeout:5000});
   assert.equal(await more.getAttribute('open'),'');
   report.functional.push('4D waypoint details preserve disclosure state and interaction');
  }
