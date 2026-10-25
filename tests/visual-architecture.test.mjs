@@ -55,6 +55,16 @@ test("Zen mobile fills the visual viewport without hidden navigation padding", (
   assert.match(zen, /\(applied\|\|confirmed\)\?/);
 });
 
+test("Zen desktop remains contained and scrollable at short viewport heights", () => {
+  assert.match(cssRule(css, "#zenShell"), /height:100dvh/);
+  assert.match(cssRule(css, "#zenShell .zen-outer"), /height:100%/);
+  assert.match(cssRule(css, "#zenShell .zen-app"), /height:100%/);
+  assert.match(cssRule(css, "#zenShell .zen-app"), /min-height:0/);
+  assert.match(cssRule(css, "#zenShell .zen-content"), /overflow-y:auto/);
+  assert.ok(css.includes("@media (min-width:761px) and (max-height:650px)"));
+  assert.doesNotMatch(cssRule(css, "#zenShell .zen-app"), /min-height:675px/);
+});
+
 test("removed visual variables have no JavaScript writer", () => {
   assert.doesNotMatch(app, /--(?:ice-status|topbar-height)/);
   assert.match(app, /setProperty\("--score"/);
@@ -80,5 +90,5 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261025-mobile02/);
+  assert.match(html, /styles\.css\?v=20261025-05/);
 });
