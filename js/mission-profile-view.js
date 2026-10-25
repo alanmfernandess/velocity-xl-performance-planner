@@ -1,13 +1,15 @@
 import { buildMissionProfile, sampleMissionTime, sampleMissionDistance, clusterProfileWaypoints,
-  searchProfileWaypoints, smoothProfileGeometry, profileWeatherLayers, profilePositionAtDistance } from "./mission-profile.js?v=20261024-02";
+  searchProfileWaypoints, profileWeatherLayers, profilePositionAtDistance } from "./mission-profile.js?v=20261024-02";
 import { buildMissionEvents, missionAdvisor } from "./mission-events.js?v=20261024-02";
 import { evaluateDepartureScenario } from "./mission-time.js?v=20261024-02";
 import { weatherAt } from "./weather/fusion.js?v=20261024-02";
 import { sampleGfs } from "./weather/open-meteo.js?v=20261024-02";
 import { terminalWeatherAtTime } from "./engine.js?v=20261024-02";
 
+import { createFlightRibbonData, flightRibbonPosition } from "./flight-ribbon.js?v=20261024-ribbon";
+
 const words = {
-  "pt-BR": { preview: "Prévia", distance: "Distância", altitude: "Altitude · MSL", fuelRemaining: "Combustível restante",
+  "pt-BR": { schematic: "FASES · ESQUEMÁTICO", preview: "Prévia", distance: "Distância", altitude: "Altitude · MSL", fuelRemaining: "Combustível restante",
     search: "Buscar waypoint", close: "Fechar", sources: "Dados & fontes", original: "Original", noData: "NÃO AVALIADO",
     noCoverage: "SEM COBERTURA", planned: "PREVISTO", analyzing: "EM ANÁLISE", applied: "APLICADO", automatic: "AUTOMÁTICO",
     noProfile: "PERFIL INDISPONÍVEL", noLocation: "POSIÇÃO NÃO DETERMINADA", noMatches: "Nenhum waypoint", play: "Reproduzir prévia", pause: "Pausar prévia",
@@ -25,7 +27,7 @@ const words = {
     icing: "ICE · ATENÇÃO", turbulence: "RIDE · ATENÇÃO", oxygen: "O₂ · MARGEM REDUZIDA", fuel: "FUEL · MARGEM REDUZIDA",
     alternate: "ALTERNADO · MARGEM REDUZIDA", "weight-balance": "W&B · ATENÇÃO", performance: "PERFORMANCE · ATENÇÃO", efficiency: "FUEL · EFICIÊNCIA",
   },
-  "en-US": { preview: "Preview", distance: "Distance", altitude: "Altitude · MSL", fuelRemaining: "Fuel remaining",
+  "en-US": { schematic: "PHASES · SCHEMATIC", preview: "Preview", distance: "Distance", altitude: "Altitude · MSL", fuelRemaining: "Fuel remaining",
     search: "Find waypoint", close: "Close", sources: "Data & sources", original: "Original", noData: "UNASSESSED",
     noCoverage: "NO COVERAGE", planned: "FORECAST", analyzing: "UNDER REVIEW", applied: "APPLIED", automatic: "AUTOMATIC",
     noProfile: "PROFILE UNAVAILABLE", noLocation: "POSITION UNDETERMINED", noMatches: "No waypoints", play: "Play preview", pause: "Pause preview",
@@ -104,40 +106,62 @@ export function createMissionProfilePresenter() {
     selectedEvent = Math.min(selectedEvent, Math.max(0, events.length - 1));
   }
 
-  function drawChart() {
-    if (!model?.valid || !host.getClientRects().length) return;
-    const width = Math.max(120, $("mpPlot").clientWidth);
-    const geometry = smoothProfileGeometry(model, { left: 10, right: width - 10, top: 40, bottom: 220 });
-    if (!geometry) return;
-    graph = geometry;
-    const x = geometry.x, y = geometry.y;
-    const focusFix = model.waypoints.find((p) => p.id === selectedFixId);
-    const prediction = focus === "waypoint" && focusFix && !focusFix.located ? null : sampleMissionTime(model, elapsedSec);
-    const groups = clusterProfileWaypoints(model.waypoints, model.totalNm, width - 20, selectedFixId);
-    const spans = layers[layer] || [];
-    const maxRate = Math.max(1, ...spans.map((s) => Number(s.value) || 0));
-    const bands = layer === "FUEL" ? (() => {
-      const values = model.nodes.map((point) => model.profile.startFuelGal - point.fuelUsedGal);
-      const lo = Math.min(...values), hi = Math.max(...values);
-      return `<path class="mp-fuel-line" d="${model.nodes.map((point, i) => `${i ? "L" : "M"}${x(point.distanceNm)},${246 - (values[i] - lo) / Math.max(1, hi - lo) * 18}`).join(" ")}"/>`;
-    })() : spans.map((span) => `<rect class="mp-band ${span.known ? "known" : "unassessed"} ${layer.toLowerCase()}" x="${x(span.startNm)}" y="234" width="${Math.max(.5, x(span.endNm) - x(span.startNm))}" height="8" ${span.known ? `opacity="${layer === "METEO" ? .7 : .25 + .75 * Math.min(1, span.value / maxRate)}"` : ""}><title>${esc(layer)} · ${esc(span.known ? span.value : w("noData"))}</title></rect>`).join("");
-    const closeMarkers = Math.abs(x(model.profile.todNm) - x(model.profile.tocNm)) < 65;
-    const phaseMarkers = [["TOC", model.profile.tocNm], ...(model.profile.todNm > model.profile.tocNm + .01 ? [["TOD", model.profile.todNm]] : [])].map(([name, distance], i) => `<g data-profile-marker="${name}" data-distance="${distance}"><line class="mp-phase-line" x1="${x(distance)}" x2="${x(distance)}" y1="32" y2="220"/><text class="mp-marker-label" x="${Math.max(22, Math.min(width - 22, x(distance)))}" y="${closeMarkers && i ? 28 : 14}" text-anchor="middle">${name}</text><circle class="mp-phase-dot" cx="${x(distance)}" cy="${y(sampleMissionDistance(model, distance).altitudeFt)}" r="3"/></g>`).join("");
-    $("mpSvg").setAttribute("viewBox", `0 0 ${width} 284`);
-    $("mpSvg").innerHTML = `<title id="mpSvgTitle">${esc($("mpSvg").getAttribute("aria-label"))}</title><defs><linearGradient id="mpAreaGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--blue)" stop-opacity=".18"/><stop offset="100%" stop-color="var(--blue)" stop-opacity=".015"/></linearGradient></defs>${[40, 130, 220].map((yy) => `<line class="mp-grid-line" x1="10" x2="${width - 10}" y1="${yy}" y2="${yy}"/>`).join("")}<path class="mp-area" d="${geometry.area}"/><path class="mp-curve" data-profile-curve d="${geometry.path}"/>${phaseMarkers}${bands}${groups.map((group) => `<g data-profile-fix="${esc(group.points[0].id)}" class="mp-fix-marker ${group.points.some((p) => p.id === selectedFixId) ? "selected" : ""}"><circle cx="${10 + group.x}" cy="266" r="${group.points.length > 1 ? 5 : 3}"/><title>${esc(group.points.length > 1 ? `${group.points.length} waypoints` : group.points[0].ident || "—")}</title></g>`).join("")}${prediction ? `<line class="mp-progress-line" x1="${x(prediction.distanceNm)}" x2="${x(prediction.distanceNm)}" y1="${y(prediction.altitudeFt)}" y2="220"/><circle class="mp-progress-dot" data-profile-indicator data-distance="${prediction.distanceNm}" cx="${x(prediction.distanceNm)}" cy="${y(prediction.altitudeFt)}" r="6"/>` : ""}`;
-    $("mpAltitudeUpper").textContent = `FL${model.candidate.altitudeFt / 100}`;
-    $("mpAltitudeLower").textContent = `${n(model.minFt)}\u00a0ft MSL`;
-    $("mpOrigin").textContent = context.plan.origin.icao;
-    $("mpDestination").textContent = context.plan.destination.icao;
+  function showRibbonPosition(point){
+   if(!graph?.ribbon)return;
+   const percent=flightRibbonPosition(graph.ribbon,point?.elapsedSec??elapsedSec);
+   if(percent===null)return;
+   $("mpRibbonCursor").style.left=`${Math.max(1,Math.min(99,percent))}%`;
+   $("mpRibbonCursor").setAttribute("aria-label",`${duration(point?.elapsedSec??elapsedSec)} · ${n(point?.distanceNm)} NM`);
+   $("mpRibbonAltitude").textContent=point?`${n(point.altitudeFt)}\u00a0ft`:"—";
+   $("mpRibbonFuel").textContent=point?fuel(point.fuelRemainingGal):"—";
+   host.querySelectorAll(".mp-ribbon-strip").forEach(el=>el.classList.toggle("current",el.dataset.phase===point?.phase));
   }
 
-  function drawProgress() {
-    const point = sampleMissionTime(model, elapsedSec), circle = host.querySelector("[data-profile-indicator]");
-    if (!point || !circle || !graph) return;
-    const x = graph.x(point.distanceNm), y = graph.y(point.altitudeFt);
-    circle.setAttribute("cx", x); circle.setAttribute("cy", y); circle.dataset.distance = point.distanceNm;
-    const line = host.querySelector(".mp-progress-line");
-    line.setAttribute("x1", x); line.setAttribute("x2", x); line.setAttribute("y1", y);
+  function drawChart(){
+   if(!model?.valid||!host.getClientRects().length)return;
+   const width=Math.max(120,$("mpPlot").clientWidth);
+   const ribbon=createFlightRibbonData(model.profile);
+   if(!ribbon)return;
+   const x=distance=>10+Math.max(0,Math.min(model.totalNm,distance))/model.totalNm*(width-20);
+   graph={x,ribbon};
+   const fractions=ribbon.phases.map(phase=>`${phase.weight}fr`).join(" ");
+   const short={CLIMB:"CLB",CRUISE:"CRZ",DESCENT:"DSC"};
+   const translated={CLIMB:w("climb"),CRUISE:w("cruise"),DESCENT:w("descent")};
+   $("mpRibbonPhases").style.gridTemplateColumns=fractions;
+   $("mpRibbonStrips").style.gridTemplateColumns=fractions;
+   $("mpRibbonPhases").innerHTML=ribbon.phases.map(phase=>`<div class="mp-ribbon-phase" title="${esc(translated[phase.phase])}"><strong data-ui-role="label">${short[phase.phase]}</strong><span data-ui-role="label">${duration(phase.seconds,true)}</span></div>`).join("");
+   $("mpRibbonStrips").innerHTML=ribbon.phases.map(phase=>`<span class="mp-ribbon-strip ${phase.phase.toLowerCase()}" data-phase="${phase.phase}"></span>`).join("");
+   $("mpRibbonBoundaries").innerHTML=ribbon.boundaries.map(b=>`<span style="left:${b.percent}%" data-ui-role="label">${b.label}</span>`).join("");
+   $("mpRibbonFlightLevel").textContent=`FL${n(model.candidate.altitudeFt/100)}`;
+   $("mpRibbonEte").textContent=duration(model.totalSec,true);
+   $("mpRibbonRailCount").textContent=`${model.waypoints.length} WPT`;
+   const groups=clusterProfileWaypoints(model.waypoints,model.totalNm,width-20,selectedFixId);
+   const spans=layers?.[layer]||[];
+   const maxRate=Math.max(1,...spans.map(s=>Number(s.value)||0));
+   const bands=layer==="FUEL"?(()=>{
+    const values=model.nodes.map(node=>model.profile.startFuelGal-node.fuelUsedGal);
+    const lo=Math.min(...values),hi=Math.max(...values);
+    return `<path class="mp-fuel-line" d="${model.nodes.map((node,i)=>`${i?"L":"M"}${x(node.distanceNm)},${19-(values[i]-lo)/Math.max(1,hi-lo)*12}`).join(" ")}"/>`;
+   })():spans.map(span=>`<rect class="mp-band ${span.known?"known":"unassessed"} ${layer.toLowerCase()}" x="${x(span.startNm)}" y="5" width="${Math.max(.5,x(span.endNm)-x(span.startNm))}" height="8" ${span.known?`opacity="${layer==="METEO"?.7:.25+.75*Math.min(1,span.value/maxRate)}"`:""}><title>${esc(layer)} · ${esc(span.known?span.value:w("noData"))}</title></rect>`).join("");
+   const markerHtml=groups.map(group=>{
+    const lead=group.points[0],selected=group.points.some(p=>p.id===selectedFixId);
+    const name=group.points.length>1?`${group.points.length} waypoints`:lead.ident||"—";
+    return `<g role="button" tabindex="0" aria-label="${esc(name)}" data-profile-fix="${esc(lead.id)}" class="mp-fix-marker ${selected?"selected":""}"><circle cx="${10+group.x}" cy="34" r="${group.points.length>1?5:3.5}"/><title>${esc(name)}</title></g>`;
+   }).join("");
+   const currentPoint=sampleMissionTime(model,elapsedSec);
+   $("mpSvg").setAttribute("viewBox",`0 0 ${width} 55`);
+   $("mpSvg").innerHTML=`<title id="mpSvgTitle">${esc($("mpSvg").getAttribute("aria-label"))}</title><line class="mp-rail-baseline" x1="10" y1="34" x2="${width-10}" y2="34"/>${bands}${markerHtml}${currentPoint?`<circle class="mp-rail-progress" id="mpRailProgress" cx="${x(currentPoint.distanceNm)}" cy="34" r="5"/>`:""}`;
+   $("mpOrigin").textContent=context.plan.origin.icao;
+   $("mpDestination").textContent=context.plan.destination.icao;
+   showRibbonPosition(currentPoint);
+  }
+
+  function drawProgress(){
+   const point=sampleMissionTime(model,elapsedSec);
+   if(!point||!graph)return;
+   const dot=$("mpRailProgress");
+   if(dot)dot.setAttribute("cx",graph.x(point.distanceNm));
+   showRibbonPosition(point);
   }
 
   function renderReadings() {
@@ -324,6 +348,8 @@ export function createMissionProfilePresenter() {
     if (target.dataset.profileLayer) { layer = target.dataset.profileLayer; render(); }
     if (target.dataset.profileOffset !== undefined) { pause(); externalScenario = null; offset = Number(target.dataset.profileOffset); elapsedSec = 0; focus = "waypoint"; selectedFixId = null; render(); computeComparisons(); }
     if (target.dataset.selectProfileFix) selectFix(target.dataset.selectProfileFix);
+    const railFix = target.closest("[data-profile-fix]");
+    if (railFix) selectFix(railFix.dataset.profileFix);
     if (["mpPreviousFix", "mpNextFix"].includes(target.id)) {
       const index = model.waypoints.findIndex((p) => p.id === selectedFixId);
       selectFix(model.waypoints[index + (target.id === "mpNextFix" ? 1 : -1)]?.id);
@@ -351,6 +377,12 @@ export function createMissionProfilePresenter() {
         };
         frame = requestAnimationFrame(tick);
       }
+    }
+  });
+  $("mpSvg").addEventListener("keydown", (event) => {
+    const railFix = event.target.closest("[data-profile-fix]");
+    if (railFix && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault(); selectFix(railFix.dataset.profileFix);
     }
   });
   $("mpProgress").addEventListener("input", () => { pause(); focus = "preview"; elapsedSec = Math.min(model.totalSec, Number($("mpProgress").value)); drawChart(); renderReadings(); });
