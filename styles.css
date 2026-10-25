@@ -3063,7 +3063,7 @@ select:focus-visible {
 .essential-identity .kpi > strong { font-size: calc(var(--ui-display) * 1.75); font-weight: 650; color: var(--text); }
 .score-reading { display: grid; gap: var(--space-1); padding: 0; min-height: var(--control-height); min-width: 74px; text-align: right; background: transparent; border: 0; border-radius: 0; }
 .score-reading > span { font-size: var(--ui-caption); color: var(--muted); }
-.score-reading > strong { font-size: calc(var(--ui-display) * 1.25); color: var(--blue); font-weight: 650; overflow-wrap: break-word; }
+.score-reading > strong { font-size: var(--ui-display); color: var(--blue); font-weight: 650; overflow-wrap: break-word; }
 .essential-state { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); }
 .essential-state > span { color: var(--muted); font-size: var(--ui-caption); }
 .essential-mission[data-status="viable"] #essentialStatus { color: var(--green); }
