@@ -1,7 +1,7 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261021-unified";
 import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261022-04";
-import { fetchGfsSnapshot } from "./weather/open-meteo.js";
-import { fetchAwcSnapshot } from "./weather/awc.js";
+import { fetchGfsSnapshot } from "./weather/open-meteo.js?v=20261025-weather03";
+import { fetchAwcSnapshot } from "./weather/awc.js?v=20261025-weather03";
 import { createWeatherSnapshot } from "./weather/fusion.js";
 import { calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261022-04";
 import { fetchLatestOFP } from "./simbrief.js?v=20261018-08";
@@ -1238,12 +1238,12 @@ function activatePlan(plan) {
 
 /** The weather controls never override or relax the engine's evidence checks. */
 let weatherLoading=false;
-function reloadWeatherSources(plan=state.plan) {
+function reloadWeatherSources(plan=state.plan,{force=false}={}) {
   if(!plan)return false;
   weatherRequest?.abort();
   const request=new AbortController();weatherRequest=request;
   weatherLoading=true;
-  Promise.allSettled([fetchGfsSnapshot(plan,{signal:request.signal}),fetchAwcSnapshot({signal:request.signal})]).then((outcomes)=>{
+  Promise.allSettled([fetchGfsSnapshot(plan,{signal:request.signal,force}),fetchAwcSnapshot({signal:request.signal})]).then((outcomes)=>{
     if(request.signal.aborted||state.plan!==plan)return;
     const [gfs,awc]=outcomes.map((outcome)=>outcome.status==="fulfilled"?outcome.value:null);
     const errors=outcomes.map((outcome,index)=>outcome.status==="rejected"?
@@ -1260,7 +1260,7 @@ function reloadWeatherSources(plan=state.plan) {
   return true;
 }
 window.VelocityWeather=Object.freeze({
-  retry:()=>reloadWeatherSources(),
+  retry:()=>reloadWeatherSources(state.plan,{force:true}),
   getStatus:()=>({
     loading:weatherLoading,
     gfs:state.weatherSnapshot?.sources?.OPEN_METEO?.status||"unavailable",
