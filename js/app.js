@@ -1,13 +1,10 @@
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261024-03";
-import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261024-03";
-import { fetchGfsSnapshot } from "./weather/open-meteo.js?v=20261024-03";
-import { fetchAwcSnapshot } from "./weather/awc.js?v=20261024-03";
-import { createWeatherSnapshot } from "./weather/fusion.js?v=20261024-03";
-import { calculateAtAltitude, calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261024-03";
-import { fetchLatestOFP } from "./simbrief.js?v=20261024-03";
-import { createResiliencePresenter } from "./resilience-view.js?v=20261024-03";
-import { createMissionProfilePresenter } from "./mission-profile-view.js?v=20261024-03";
-import { TRACKER_STORAGE_KEY, buildVirtualFlightProfile, confirmVirtualCheckpoint, correctVirtualElapsed, finishVirtualFlight, newVirtualFlightSession, pauseVirtualFlight, projectVirtualFlight, recoverVirtualFlight, remainingExposure, resumeVirtualFlight, setVirtualTimeFactor, startVirtualFlight, virtualElapsedSeconds } from "./virtual-flight.js?v=20261024-03";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261021-unified";
+import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261022-04";
+import { fetchGfsSnapshot } from "./weather/open-meteo.js";
+import { fetchAwcSnapshot } from "./weather/awc.js";
+import { createWeatherSnapshot } from "./weather/fusion.js";
+import { calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261022-04";
+import { fetchLatestOFP } from "./simbrief.js?v=20261018-08";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -228,23 +225,12 @@ let latestActiveCandidate=null;
 let renderOptimizationCache=null;
 let decisionSnapshot=null;
 let analysisChoice=null;
-function helpSignal(type){
-  window.VelocityHelpFacts={plan:Boolean(state.plan),optimized:Boolean(decisionSnapshot),selected:Boolean(analysisChoice),applied:Boolean(state.appliedChoice)};
-  window.dispatchEvent(new CustomEvent("velocity:activity",{detail:{type}}));
-}
-
 let analysisCandidate=null;
 let decisionStale=false;
 let marginalApplyArmed=false;
 let optimizationBusy=false;
 let decisionRevision=0;
 let weatherRequest=null;
-let trackerSession=null;
-let trackerPanelMode=null;
-let trackerPendingPhase=null;
-let trackerProjectionUpdatedAt=0;
-const missionProfilePresenter=createMissionProfilePresenter();
-const resiliencePresenter=createResiliencePresenter({profilePresenter:missionProfilePresenter});
 const t = (key, ...args) => typeof COPY[state.language][key] === "function" ? COPY[state.language][key](...args) : COPY[state.language][key] || key;
 const number = (value, digits = 0) => Number(value).toLocaleString(state.language, { minimumFractionDigits:digits, maximumFractionDigits:digits });
 const signed = (value, suffix="") => `${value >= 0 ? "+" : "−"}${number(Math.abs(Math.round(value)))}${suffix}`;
@@ -330,130 +316,6 @@ function legacyMissionPlanKey(plan) {
   return [plan.source,plan.generatedAt,plan.origin?.icao,plan.destination?.icao,plan.route,plan.distanceNm].join("|");
 }
 
-const trackerWords={
-  "pt-BR":{notStarted:"NÃO INICIADO",running:"EM ANDAMENTO",paused:"PAUSADO",finished:"ENCERRADO",estimated:"ESTIMADO",confirmed:"CONFIRMADO PELO PILOTO",phase:"Fase",clock:"Tempo de simulação",fl:"FL estimado",fuel:"Combustível estimado",ete:"ETE restante",start:"Iniciar voo",pause:"Pausar",resume:"Retomar",sync:"Sincronizar",projection:"Projeção restante",finish:"Encerrar",time:"Tempo",projected:"PROJETADO · SEM TELEMETRIA",recovered:"Sessão reconstruída. Confirme posição ou tempo; o estado do Xbox não é detectado.",applied:"Aplique uma configuração da missão antes de iniciar.",invalid:"Perfil desta configuração não pode ser projetado.",fix:"Fixo",observedFl:"FL observado · opcional",observedFuel:"Combustível observado · opcional",elapsed:"Tempo simulado · min",toc:"Confirmar TOC",tod:"Confirmar TOD",climb:"Subida",confirmFix:"Confirmar fixo",cancel:"Cancelar",close:"Fechar",remaining:"PROJEÇÃO RESTANTE",distance:"Distância",destinationFuel:"No destino",alternateFuel:"No alternado",reserve:"Reserva",margin:"Margem",alternate:"Alternado",next:"Próximo fixo",unknown:"NÃO AVALIADO",planned:"PLANEJADO",condition:"OFP · confirme horário e cobertura",weatherMatch:"UTC do simulador corresponde ao OFP",noWeather:"Sem alinhamento/cobertura temporal suficiente",climbPhase:"SUBIDA",cruisePhase:"CRUZEIRO",descentPhase:"DESCIDA",profileLimit:"Perfil restante não avaliado após correção de fase.",syncDone:"Fixo confirmado. Projeção realinhada.",timeCorrected:"Tempo corrigido pelo piloto.",flUnavailable:"Novo FL sem perfil modelado válido.",earlyDescent:"Confirme a descida antecipada.",newMission:"Outra missão possui uma sessão salva. Substituir essa sessão?",finishConfirm:"Encerrar o Tracker desta missão?",routeEnd:"Fim da rota projetada. Encerre o voo quando confirmar o pouso."},
-  "en-US":{notStarted:"NOT STARTED",running:"RUNNING",paused:"PAUSED",finished:"FINISHED",estimated:"ESTIMATED",confirmed:"PILOT CONFIRMED",phase:"Phase",clock:"Simulation time",fl:"Estimated FL",fuel:"Estimated fuel",ete:"Remaining ETE",start:"Start flight",pause:"Pause",resume:"Resume",sync:"Sync",projection:"Remaining projection",finish:"Finish",time:"Time",projected:"PROJECTED · NO TELEMETRY",recovered:"Session reconstructed. Confirm position or time; Xbox state cannot be detected.",applied:"Apply a mission configuration before starting.",invalid:"This configuration has no valid projected profile.",fix:"Fix",observedFl:"Observed FL · optional",observedFuel:"Observed fuel · optional",elapsed:"Simulated time · min",toc:"Confirm TOC",tod:"Confirm TOD",climb:"Climb",confirmFix:"Confirm fix",cancel:"Cancel",close:"Close",remaining:"REMAINING PROJECTION",distance:"Distance",destinationFuel:"At destination",alternateFuel:"At alternate",reserve:"Reserve",margin:"Margin",alternate:"Alternate",next:"Next fix",unknown:"UNASSESSED",planned:"PLANNED",condition:"OFP · confirm time and coverage",weatherMatch:"Simulator UTC matches OFP",noWeather:"Insufficient temporal alignment/coverage",climbPhase:"CLIMB",cruisePhase:"CRUISE",descentPhase:"DESCENT",profileLimit:"Remaining profile unavailable after phase correction.",syncDone:"Fix confirmed. Projection realigned.",timeCorrected:"Pilot corrected simulation time.",flUnavailable:"No valid modeled profile for observed FL.",earlyDescent:"Confirm early descent.",newMission:"A different mission has a saved session. Replace it?",finishConfirm:"Finish this mission Tracker?",routeEnd:"Projected route end reached. Finish after confirming landing."}
-};
-const tw=(key)=>trackerWords[state.language]?.[key]||trackerWords["en-US"][key]||key;
-const trackerTime=(seconds)=>Number.isFinite(seconds)?`${String(Math.floor(seconds/3600)).padStart(2,"0")}:${String(Math.floor(seconds%3600/60)).padStart(2,"0")}:${String(Math.floor(seconds%60)).padStart(2,"0")}`:"—";
-const trackerUtc=(value)=>Number.isFinite(value)?new Date(value).toLocaleString(state.language,{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hour12:false}).replace(",","")+"Z":"—";
-function persistTracker(){
-  try { if(trackerSession)localStorage.setItem(TRACKER_STORAGE_KEY,JSON.stringify(trackerSession)); }
-  catch { showToast(state.language==="pt-BR"?"Não foi possível salvar o Tracker neste navegador.":"Tracker could not be saved in this browser.",true); }
-}
-function trackerConfig(){return {altitudeFt:state.appliedChoice.altitudeFt,mode:state.mode,payloadLb:state.payloadLb,
-  fuelOnboardGal:state.fuelOnboardGal,oxygenWeightLb:currentOxygenWeightLb(),reserveMinutes:state.reserveMinutes,
-  calibration:structuredClone(state.calibration),powerSetting:structuredClone(state.powerSetting)};}
-function trackerProfileForFl(altitudeFt,calibration=trackerSession.config.calibration){
-  const config={...trackerSession.config,altitudeFt,calibration};
-  const result=calculateAtAltitude({plan:latestOptimizedMission?.performancePlan||state.plan,...config});
-  return buildVirtualFlightProfile(state.plan,result,config.fuelOnboardGal);
-}
-function trackerWeatherAligned(){
-  return Boolean(trackerSession?.weatherTimeAligned && state.weatherSnapshot?.status!=="SIMBRIEF_ONLY"
-    && state.weatherSnapshot?.ofpKey===latestOptimizedMission?.weatherSnapshot?.ofpKey);
-}
-function renderTrackerProjection(nowMs=Date.now()){
-  if(!trackerSession||trackerPanelMode!=="projection")return;
-  if(trackerSession.limitations?.includes("MANUAL_UPDATE_UNMODELED")){
-    $("#trackerProjectionGrid").innerHTML=`<div><span>${escapeHtml(tw("remaining"))}</span><strong>—</strong></div>`;
-    $("#trackerConditions").innerHTML=`<span>ICE · ${tw("unknown")}</span><span>RIDE · ${tw("unknown")}</span><span>${escapeHtml(tw("alternate"))} · ${tw("unknown")}</span>`;
-    $("#trackerEvents").textContent="—";$("#trackerProjectionNote").textContent=tw("flUnavailable");return;
-  }
-  const p=projectVirtualFlight(trackerSession,state.plan,nowMs);
-  if(!p)return;
-  const manual={active:true,distanceNm:p.distanceNm,altitudeFt:trackerSession.config.altitudeFt,fuelRemainingGal:p.fuelGal};
-  const assessment=p.remainingTripFuelGal===null?{status:"unknown"}:calculateRemainingFlightAssessment({plan:state.plan,...trackerSession.config,manual,projectedRemainingTripFuelGal:p.remainingTripFuelGal});
-  const hasFuel=Number.isFinite(p.destinationFuelGal),alternateFuel=hasFuel&&Number.isFinite(assessment?.alternateFuelGal)?p.destinationFuelGal-assessment.alternateFuelGal:null;
-  const entries=[[tw("distance"),`${number(p.remainingDistanceNm,0)} NM`],["ETE",trackerTime(p.remainingSec)],
-    [state.language==="pt-BR"?"ETA local":"Local ETA",p.etaWallMs?new Date(p.etaWallMs).toLocaleTimeString(state.language,{hour:"2-digit",minute:"2-digit"}):"—"],
-    [tw("destinationFuel"),hasFuel?formatFuel(p.destinationFuelGal,1):"—"],
-    [tw("alternateFuel"),Number.isFinite(alternateFuel)?formatFuel(alternateFuel,1):"—"],
-    [tw("reserve"),Number.isFinite(assessment?.reserveFuelGal)?formatFuel(assessment.reserveFuelGal,1):"—"],
-    [tw("margin"),Number.isFinite(assessment?.marginGal)?formatFuel(assessment.marginGal,1):"—"],
-    [tw("next"),p.nextFix]];
-  $("#trackerProjectionGrid").innerHTML=entries.map(([label,value])=>`<div><span>${escapeHtml(label)}</span><strong${/\d\s(?:NM|gal|L)$/.test(value)?' class="tracker-unit-value"':''}>${escapeHtml(value)}</strong></div>`).join("");
-  const matching=trackerWeatherAligned();
-  const ice=remainingExposure(latestActiveCandidate?.result?.icing,p.distanceNm,matching);
-  const ride=remainingExposure(latestActiveCandidate?.result?.turbulence,p.distanceNm,matching,"RIDE");
-  $("#trackerConditions").innerHTML=`<span>ICE · ${ice.status==="UNKNOWN"?tw("unknown"):`${ice.score}/100 · ${tw("planned")}`}</span><span>RIDE · ${ride.status==="UNKNOWN"?tw("unknown"):`${ride.score}/100 · ${tw("planned")}`}</span><span>${escapeHtml(tw("alternate"))} · ${assessment?.status==="unknown"?tw("unknown"):assessment?.status==="not-viable"?t("remainingFuelUnavailable"):assessment?.status==="marginal"?t("remainingFuelMarginal"):t("remainingFuelViable")}</span>`;
-  const eventValue=(event)=>event?`${Number.isFinite(event.distanceNm)?number(event.distanceNm,0):"—"} NM · ${trackerTime(event.timeSec)}${event.quality?` · ${state.language==="pt-BR"?({COMPLETE:"COMPLETO",PARTIAL:"PARCIAL",UNKNOWN:"DESCONHECIDO"}[event.quality]||event.quality):event.quality}`:""}`:tw("unknown");
-  const ofp=state.plan.ofpTocTod||{},model=trackerSession.profile;
-  $("#trackerEvents").innerHTML=`<p>TOC · OFP ${escapeHtml(eventValue(ofp.toc))} · ${state.language==="pt-BR"?"MODELO":"MODEL"} ${escapeHtml(eventValue({distanceNm:model.tocNm,timeSec:model.tocSec}))}</p><p>TOD · OFP ${escapeHtml(eventValue(ofp.tod))} · ${state.language==="pt-BR"?"MODELO":"MODEL"} ${escapeHtml(model.todNm>model.tocNm?eventValue({distanceNm:model.todNm,timeSec:model.todSec}):tw("unknown"))}</p>`;
-  $("#trackerProjectionNote").textContent=p.profileExhausted?tw("profileLimit"):!matching?tw("noWeather"):tw("condition");
-  trackerProjectionUpdatedAt=nowMs;
-}
-function tickTracker(nowMs=Date.now()){
-  if(!trackerSession||!state.plan||trackerSession.missionKey!==missionPlanKey(state.plan))return;
-  const p=projectVirtualFlight(trackerSession,state.plan,nowMs);
-  $("#trackerClock").textContent=trackerTime(virtualElapsedSeconds(trackerSession,nowMs));
-  if(trackerSession.limitations?.includes("MANUAL_UPDATE_UNMODELED")){
-    for(const id of ["trackerPhase","trackerFl","trackerFuel","trackerEte","trackerNextDistance"])$("#"+id).textContent="—";
-    $("#trackerFixes").textContent="— → —";$("#trackerProgress").value=0;
-    $("#trackerProvenance").textContent=tw("unknown");
-    $("#trackerAttention").hidden=false;
-    $("#trackerAttention").textContent=state.language==="pt-BR"?"FL sem perfil válido. Tracker pausado; sincronize novamente.":"No valid FL profile. Tracker paused; sync again.";
-    return;
-  }
-  if(!p)return;
-  $("#trackerPhase").textContent=`${tw(p.phase.toLowerCase()+"Phase")} · ${p.phaseSource==="PILOT_CONFIRMED"?tw("confirmed"):tw("estimated")}`;
-  $("#trackerFl").textContent=`FL${Math.round(p.altitudeFt/100)}`;
-  $("#trackerFuel").textContent=formatFuel(p.fuelGal,1);
-  $("#trackerEte").textContent=trackerTime(p.remainingSec);
-  $("#trackerFixes").textContent=`${p.previousFix} → ${p.nextFix}`;
-  $("#trackerNextDistance").textContent=`${number(p.distanceToNextNm,0)} NM`;
-  $("#trackerProgress").value=p.percent;
-  const lastCheckpoint=trackerSession.checkpoints.at(-1);
-  const provenance=[tw("projected")];
-  if(lastCheckpoint){provenance.push(`${lastCheckpoint.ident} · ${state.language==="pt-BR"?"FIXO CONFIRMADO":"FIX CONFIRMED"}`);
-    if(lastCheckpoint.direction!=="ON_TRACK")provenance.push(state.language==="pt-BR"?"RESSINCRONIZADO":"RESYNCED");}
-  if(p.lastConfirmedFuelGal!==null)provenance.push(`${tw("confirmed")} ${number(fuelValue(p.lastConfirmedFuelGal),1)}\u00a0${fuelLabel()} · ${trackerTime(p.lastSyncAgeSec)}`);
-  $("#trackerProvenance").textContent=provenance.join(" · ");
-  const attention=$("#trackerAttention");attention.hidden=!trackerSession.recoveredAttention&&!p.profileExhausted;
-  if(!attention.hidden)attention.textContent=trackerSession.limitations?.includes("MANUAL_UPDATE_UNMODELED")
-    ? (state.language==="pt-BR"?"FL sem perfil válido. Tracker pausado; sincronize novamente.":"No valid FL profile. Tracker paused; sync again.")
-    : trackerSession.recoveredAttention?tw("recovered"):tw("routeEnd");
-  if(trackerPanelMode==="projection"&&nowMs-trackerProjectionUpdatedAt>60000)renderTrackerProjection(nowMs);
-}
-function renderTracker(){
-  const hasPlan=Boolean(state.plan),status=trackerSession?.missionKey===missionPlanKey(state.plan||{})?trackerSession.status:"NOT_STARTED";
-  $("#trackerTitle").textContent="VIRTUAL FLIGHT TRACKER";
-  $("#trackerState").textContent=tw(status==="NOT_STARTED"?"notStarted":status.toLowerCase());
-  $("#trackerOrigin").textContent=tw("estimated");
-  $("#trackerTiming").textContent=`OFP ${trackerUtc(state.plan?.scheduledOffMs)} · ${state.language==="pt-BR"?"Início Tracker":"Tracker start"} ${trackerUtc(trackerSession?.startedWallMs)}`;
-  for(const [id,key] of [["trackerPhaseLabel","phase"],["trackerClockLabel","clock"],["trackerFlLabel","fl"],["trackerFuelLabel","fuel"],["trackerEteLabel","ete"],["trackerSyncToggle","sync"],["trackerProjectionToggle","projection"],["trackerFinish","finish"],["trackerFactorLabel","time"],["trackerSyncTitle","sync"],["trackerFixLabel","fix"],["trackerObservedFlLabel","observedFl"],["trackerObservedFuelLabel","observedFuel"],["trackerElapsedLabel","elapsed"],["trackerConfirmFix","confirmFix"],["trackerSyncCancel","cancel"],["trackerProjectionTitle","remaining"],["trackerProjectionClose","close"],["trackerWeatherMatchLabel","weatherMatch"]])$("#"+id).textContent=tw(key);
-  $$('[data-tracker-phase]').forEach((button)=>{button.textContent=tw(button.dataset.trackerPhase==="CRUISE"?"toc":button.dataset.trackerPhase==="DESCENT"?"tod":"climb");button.classList.toggle("active",button.dataset.trackerPhase===trackerPendingPhase);});
-  const primary=$("#trackerPrimary");primary.textContent=tw(status==="RUNNING"?"pause":status==="PAUSED"?"resume":"start");primary.hidden=status==="FINISHED";
-  primary.disabled=!hasPlan||status==="NOT_STARTED"&&!state.appliedChoice
-    ||status==="PAUSED"&&trackerSession?.limitations?.includes("MANUAL_UPDATE_UNMODELED");
-  $("#trackerSyncToggle").hidden=status==="NOT_STARTED"||status==="FINISHED";
-  $("#trackerProjectionToggle").hidden=status==="NOT_STARTED";
-  $("#trackerFinish").hidden=status==="NOT_STARTED"||status==="FINISHED";
-  $("#trackerFactor").value=String(trackerSession?.factor||1);
-  $("#trackerFactor").disabled=status==="FINISHED"||status==="NOT_STARTED";
-  $("#trackerSyncPanel").hidden=trackerPanelMode!=="sync";
-  $("#trackerProjectionPanel").hidden=trackerPanelMode!=="projection";
-  $("#trackerFuelUnit").textContent=fuelLabel();
-  $("#trackerWeatherAligned").checked=Boolean(trackerSession?.weatherTimeAligned);
-  if(hasPlan){
-    const fix=$("#trackerFix"),old=fix.value;
-    fix.innerHTML=state.plan.waypoints.map((item,index)=>`<option value="${index}">${escapeHtml(item.ident)} · ${number(item.distanceNm,0)} NM</option>`).join("");
-    fix.value=old&&[...fix.options].some((option)=>option.value===old)?old:"0";
-    const fl=$("#trackerObservedFl"),oldFl=fl.value;
-    fl.innerHTML=`<option value="">—</option>${ALTITUDES_FT.map((altitude)=>`<option value="${altitude}">FL${altitude/100}</option>`).join("")}`;
-    fl.value=oldFl||"";
-  }
-  if(status==="NOT_STARTED"){
-    $("#trackerPhase").textContent="—";$("#trackerClock").textContent="00:00:00";
-    $("#trackerFl").textContent=state.appliedChoice?`FL${state.appliedChoice.altitudeFt/100}`:"—";
-    $("#trackerFuel").textContent="—";$("#trackerEte").textContent="—";
-    $("#trackerFixes").textContent="— → —";$("#trackerNextDistance").textContent="—";
-    $("#trackerProgress").value=0;$("#trackerProvenance").textContent=tw("projected");
-    $("#trackerAttention").hidden=Boolean(state.appliedChoice);
-    if(!state.appliedChoice)$("#trackerAttention").textContent=tw("applied");
-  } else {tickTracker();renderTrackerProjection();}
-}
-
 const decisionInput=()=>({...state,pricePerLiter:fuelPricePerLiter(),currency:state.financial.currency});
 function optimizedMissionForRender(){
   const input=decisionInput();
@@ -491,21 +353,10 @@ function decisionCard(candidate,place,marginal=false){
     ${marginal?"":`<span class="trophy trophy-${place}">${trophySvg(place)}</span>`}<span class="top-level-identity"><strong>FL${candidate.altitudeFt/100}</strong><small>${candidate.mode}</small></span><span class="top-level-status ${candidate.status}">${label}</span>
     <span class="top-level-metrics"><span><b>Score</b><strong>${score}</strong></span><span><b>ICE</b><strong>${ice}</strong></span><span><b>RIDE</b><strong>${ride}</strong></span><span><b>${state.language==="pt-BR"?"Combustível":"Fuel"}</b><strong>${formatFuel(candidate.result.fuelRequiredGal,1)}</strong></span><span><b>${state.language==="pt-BR"?"Tempo":"Time"}</b><strong>${formatTime(candidate.result.tripTimeHr)}</strong></span></span></button>`;
 }
-function refreshMissionProfile(){
-  if(!state.plan||!latestOptimizedMission)return;
-  const reviewing=Boolean(analysisChoice&&!decisionStale);
-  const sameApplied=reviewing&&state.appliedChoice&&JSON.stringify(state.appliedChoice)===JSON.stringify(analysisChoice);
-  const profileContext={plan:state.plan,mission:latestOptimizedMission,input:decisionInput(),
-    candidate:reviewing?analysisCandidate:latestActiveCandidate,language:state.language,fuelUnit:state.fuelUnit,
-    selection:reviewing?analysisChoice:state.appliedChoice,
-    source:reviewing&&!sameApplied?"analyzing":state.appliedChoice?"applied":"automatic",weightUnit:state.weightUnit};
-  missionProfilePresenter.update(profileContext);
-  resiliencePresenter.update(profileContext);
-}
 function renderDecisionPanel(){
   const panel=$("#pilotDecisionPanel");
   panel.hidden=!decisionSnapshot;
-  if(!decisionSnapshot){refreshMissionProfile();return;}
+  if(!decisionSnapshot)return;
   const mission=decisionSnapshot,auto=mission.automaticRecommendation,pt=state.language==="pt-BR";
   $("#decisionAutoStatus").textContent=decisionStale?t("rankingStale"):auto?`FL${auto.altitudeFt/100} · ${auto.mode} · ${missionStatusLabel(auto.status)}`:t("noConfirmedRecommendation");
   $("#topLevelCards").innerHTML=mission.topLevels.map((candidate,index)=>decisionCard(candidate,index+1)).join("");
@@ -516,12 +367,11 @@ function renderDecisionPanel(){
   diagnostic.hidden=Boolean(mission.topLevels.length||marginal.length);
   diagnostic.textContent=mission.status==="unknown"?`${t("noConfirmedRecommendation")} · ${weatherDiagnosticText(mission)}`:t("noConfirmedRecommendation");
   const analysis=$("#pilotAnalysis");analysis.hidden=!analysisChoice;
-  if(!analysisChoice){analysisCandidate=null;refreshMissionProfile();refreshUiIcons();return;}
+  if(!analysisChoice){analysisCandidate=null;refreshUiIcons();return;}
   $("#analysisLevel").textContent=`FL${analysisChoice.altitudeFt/100} · ${analysisChoice.mode==="MANUAL"?t("manualPower"):analysisChoice.mode}`;
   $$('[data-analysis-mode]').forEach((button)=>{const active=button.dataset.analysisMode===analysisChoice.mode;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
   $("#analysisManualFields").hidden=analysisChoice.mode!=="MANUAL";
   try{analysisCandidate=decisionStale?null:evaluateMissionAlternative(mission,decisionInput(),analysisChoice);}catch{analysisCandidate=null;}
-  refreshMissionProfile();
   const candidate=analysisCandidate,status=$("#analysisStatus"),apply=$("#applyPilotAlternative");
   status.textContent=decisionStale?t("rankingStale"):candidate?missionStatusLabel(candidate.status):t("invalidManualPower");
   status.dataset.status=candidate?.status||"unknown";
@@ -683,56 +533,8 @@ function renderIceModule(plan,analysis,selected) {
   const freshest=ages.length?Math.min(...ages):NaN;
   const tafKinds=[...new Set(weatherPoints.flatMap((weather)=>weather.sources||[]).map((item)=>item.kind).filter((kind)=>!["metar","legacy"].includes(kind)))];
   const tafModes=tafKinds.length?tafKinds.map((kind)=>kind.replace("prob","PROB").replace("temporary",pt?"TEMPO":"TEMPO").replace("becoming","BECMG").replace("prevailing",pt?"PREDOMINANTE":"PREVAILING").toUpperCase()).join(" · "):"—";
-
   $("#iceEvidenceCoverage").textContent=`${coverage}%`;
-  $("#iceCoverageFill").style.width=`${coverage}%`;
-  $("#iceCoverageTrack").setAttribute("aria-valuenow",String(coverage));
-  $("#iceCoverageTrack").setAttribute("aria-label",pt?"Cobertura meteorológica":"Weather coverage");
-  $("#iceCoverageContext").textContent=pt
-    ? `Há dados meteorológicos aplicáveis em ${evidenceCount} de ${segments.length} trechos da rota principal.`
-    : `Applicable weather data for ${evidenceCount} of ${segments.length} main-route legs.`;
-  const awcNote=awcStatus==="stale"
-    ? (pt?"Os avisos oficiais do AWC estão vencidos. A análise não conta com avisos atualizados dessa fonte.":"Official AWC advisories are outdated. This assessment does not include current advisories from that source.")
-    : awcStatus!=="available"
-      ? (pt?"Avisos oficiais do AWC indisponíveis nesta avaliação.":"Official AWC advisories are unavailable for this assessment.")
-      : "";
-  const incomplete=!assessed||coverage<100||evidenceCount<segments.length;
-  const notice=$("#iceCoverageNotice");
-  notice.hidden=!incomplete&&!awcNote;
-  notice.classList.toggle("is-incomplete",incomplete);
-  if(incomplete){
-    $("#iceCoverageNoticeTitle").textContent=pt?"Cobertura meteorológica incompleta":"Incomplete weather coverage";
-    const gap=missingCount?weatherMissingLabel(missingReason,pt):pt?"Faltam dados aplicáveis para parte da análise de gelo.":"Some icing evidence is missing.";
-    $("#iceCoverageNoticeText").textContent=awcNote?`${gap} ${awcNote}`:gap;
-  } else if(awcNote){
-    $("#iceCoverageNoticeTitle").textContent=awcStatus==="stale"
-      ? (pt?"Avisos meteorológicos desatualizados":"Weather advisories are outdated")
-      : (pt?"Avisos meteorológicos indisponíveis":"Weather advisories unavailable");
-    $("#iceCoverageNoticeText").textContent=awcNote;
-  }
-  $("#iceCoverageAlternateLabel").textContent=pt?"ROTA DO ALTERNADO":"ALTERNATE ROUTE";
-  $("#iceCoverageAlternateValue").textContent=alternateCoverage?.total
-    ? (pt?`${alternateCoverage.assessed} de ${alternateCoverage.total}`:`${alternateCoverage.assessed} of ${alternateCoverage.total}`)
-    : "—";
-  $("#iceCoverageAlternateNote").textContent=pt?"Trechos com dados disponíveis":"Legs with available data";
-  $("#iceCoverageCaveat").textContent=pt
-    ? "Cobertura dos dados não significa ausência de gelo. Consulte o índice ICE para avaliar o risco."
-    : "Weather coverage does not mean icing-free conditions. Check the ICE index to assess risk.";
-  $("#iceCoverageDetailsLabel").textContent=pt?"Ver detalhes técnicos":"Show technical details";
-  const evidenceDetails=[
-    [pt?"TEMPERATURA":"TEMPERATURE",oatRange],
-    [pt?"COBERTURA COMBINADA":"COMBINED COVERAGE",`${coverage}%`],
-    [pt?"EVIDÊNCIA APLICÁVEL":"APPLICABLE EVIDENCE",`${evidenceCount}/${segments.length||0} ${pt?"trechos":"legs"}`],
-    [pt?"FASES · SUBIDA / CRUZEIRO / DESCIDA":"PHASES · CLIMB / CRUISE / DESCENT",phaseCounts],
-    [pt?"LACUNA PRINCIPAL":"MAIN GAP",`${weatherMissingLabel(missingReason,pt)}${missingCount?` (${missingCount})`:""}`],
-    [pt?"ALTERNADO · ROTA":"ALTERNATE ROUTE",`${alternateCounts}${alternateCoverage?.terminalEvidence?` · ${pt?"TAF/METAR terminal":"terminal TAF/METAR"}`:""}`],
-    [pt?"VALIDADE TERMINAL":"TERMINAL VALIDITY",`${validForecasts}/${weatherPoints.length||0}`],
-    [pt?"METAR MAIS RECENTE":"MOST RECENT METAR",Number.isFinite(freshest)?`${number(freshest,0)} min`:"—"],
-    [pt?"GRUPOS TAF":"TAF GROUPS",tafModes],
-    [pt?"FONTES":"SOURCES",weatherSources],
-    [pt?"OFP / GFS UTC":"OFP / GFS UTC",timeWindow],
-  ];
-  $("#iceEvidenceList").innerHTML=evidenceDetails.map(([label,value])=>`<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`).join("");
+  $("#iceEvidenceList").innerHTML=`<div><span>${pt?"TEMPERATURA":"TEMPERATURE"}</span><strong>${oatRange}</strong></div><div><span>${pt?"COBERTURA COMBINADA":"COMBINED COVERAGE"}</span><strong>${coverage}%</strong></div><div><span>${pt?"EVIDÊNCIA APLICÁVEL":"APPLICABLE EVIDENCE"}</span><strong>${evidenceCount}/${segments.length||0} ${pt?"trechos":"legs"}</strong></div><div><span>${pt?"FASES · S / C / D":"PHASES · C / C / D"}</span><strong>${phaseCounts}</strong></div><div><span>${pt?"LACUNA PRINCIPAL":"MAIN GAP"}</span><strong>${weatherMissingLabel(missingReason,pt)}${missingCount?` (${missingCount})`:""}</strong></div><div><span>${pt?"ALTERNADO · ROTA":"ALTERNATE · ROUTE"}</span><strong>${alternateCounts}${alternateCoverage?.terminalEvidence?` · ${pt?"TAF/METAR terminal":"terminal TAF/METAR"}`:""}</strong></div><div><span>${pt?"VALIDADE TERMINAL":"TERMINAL VALIDITY"}</span><strong>${validForecasts}/${weatherPoints.length||0}</strong></div><div><span>${pt?"METAR MAIS PRÓXIMO":"NEAREST METAR"}</span><strong>${Number.isFinite(freshest)?`${number(freshest,0)} min`:"—"}</strong></div><div><span>${pt?"GRUPOS TAF":"TAF GROUPS"}</span><strong>${tafModes}</strong></div><div><span>${pt?"PROTEÇÃO":"PROTECTION"}</span><strong>${pt?"NÃO INSTALADA":"NOT INSTALLED"}</strong></div><div><span>${pt?"FONTE":"SOURCE"}</span><strong>${weatherSources}</strong></div><div><span>${pt?"OFP / GFS UTC":"OFP / GFS UTC"}</span><strong>${timeWindow}</strong></div>`;
   $(".ice-module-grid").classList.toggle("unassessed",!assessed);
 
   const reading=score>=PERFORMANCE.icing.cautionScore?(pt?"ÍNDICE ELEVADO":"HIGH INDEX"):score>=PERFORMANCE.icing.watchScore?(pt?"ÍNDICE MODERADO":"MODERATE INDEX"):(pt?"ÍNDICE BAIXO":"LOW INDEX");
@@ -1229,14 +1031,13 @@ function render() {
   $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1);
   $("#payloadOutput").textContent=formatWeight(state.payloadLb); $("#fuelOutput").textContent=formatFuel(state.fuelOnboardGal,0);
   const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight,currentWb=optimizedMission.currentWeightBalance; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(currentWb.takeoff.cgIn,2)}→${number(currentWb.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||currentWb.status==="unavailable"?"var(--red)":"";
-  renderTracker();
   refreshUiIcons();
 }
 
 $$('[data-language]').forEach((button)=>button.addEventListener("click",()=>{state.language=button.dataset.language;localStorage.setItem("velocityxl.language",state.language);render();}));
 $$('.font-switch button[data-font-size]').forEach((button)=>button.addEventListener("click",()=>{state.fontSize=button.dataset.fontSize;localStorage.setItem("velocityxl.fontSize",state.fontSize);applyTranslations();}));
 $$('[data-weight-unit]').forEach((button)=>button.addEventListener("click",()=>{state.weightUnit=button.dataset.weightUnit;localStorage.setItem("velocityxl.weightUnit",state.weightUnit);render();}));
-$$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit;for(const selector of ["#observedFuelFlow","#trackerObservedFuel"]){const input=$(selector),value=Number(input.value);if(input.value&&Number.isFinite(value)&&value>=0&&previous!==next)input.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);}state.fuelUnit=next;localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
+$$('[data-fuel-unit]').forEach((button)=>button.addEventListener("click",()=>{const previous=state.fuelUnit,next=button.dataset.fuelUnit,observed=$("#observedFuelFlow"),value=Number(observed.value);state.fuelUnit=next;if(Number.isFinite(value)&&value>0&&previous!==next)observed.value=(next==="l"?value*3.785411784:value/3.785411784).toFixed(1);localStorage.setItem("velocityxl.fuelUnit",state.fuelUnit);render();}));
 $$('[data-mode]').forEach((button)=>button.addEventListener("click",()=>{invalidateDecision(true);state.mode=button.dataset.mode;state.selectedAltitudeFt=null;$$('[data-mode]').forEach((item)=>item.classList.toggle("active",item===button));render();}));
 const toolCardButtons=$$('[data-tool-view]');
 const toolCardPanels=$$('[data-tool-panel]');
@@ -1295,7 +1096,6 @@ $("#optimizeMission").addEventListener("click",async()=>{
     if(revision!==decisionRevision||plan!==state.plan)return;
     decisionSnapshot=snapshot;decisionStale=false;analysisChoice=null;analysisCandidate=null;
     renderDecisionPanel();window.VelocityLayout?.activate("mission","overview");
-    if($("#topLevelCards [data-decision-fl]"))helpSignal("mission-optimized");
     $("#pilotDecisionPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
   }finally{optimizationBusy=false;button.disabled=false;button.removeAttribute("aria-busy");}
 });
@@ -1306,7 +1106,7 @@ $("#pilotDecisionPanel").addEventListener("click",(event)=>{
     analysisChoice={altitudeFt,mode};marginalApplyArmed=false;
     const preset=PERFORMANCE.modes[mode];
     if(preset){$("#analysisMap").value=String(preset.mapInHg);$("#analysisRpm").value=String(preset.rpm);}
-    renderDecisionPanel();helpSignal("candidate-selected");$("#pilotAnalysis").scrollIntoView({behavior:"smooth",block:"nearest"});return;
+    renderDecisionPanel();$("#pilotAnalysis").scrollIntoView({behavior:"smooth",block:"nearest"});return;
   }
   const modeButton=event.target.closest("[data-analysis-mode]");
   if(modeButton&&analysisChoice){
@@ -1336,7 +1136,7 @@ $("#pilotDecisionPanel").addEventListener("click",(event)=>{
   $("#fuelInput").value=String(state.fuelOnboardGal);
   localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));
   localStorage.setItem("velocityxl.appliedMission",JSON.stringify({planKey:missionPlanKey(state.plan),choice:state.appliedChoice,engineMode:state.mode,powerSetting:state.powerSetting,fuelOnboardGal:state.fuelOnboardGal}));
-  marginalApplyArmed=false;render();helpSignal("configuration-applied");showToast(state.language==="pt-BR"?"Configuração aplicada.":"Configuration applied.");
+  marginalApplyArmed=false;render();showToast(state.language==="pt-BR"?"Configuração aplicada.":"Configuration applied.");
 });
 for(const selector of ["#analysisMap","#analysisRpm"]){$(selector).addEventListener("input",()=>{
   if(!analysisChoice||analysisChoice.mode!=="MANUAL")return;
@@ -1373,84 +1173,6 @@ function updateCalibrationGate(){
   $("#submitFlightUpdate").disabled=tas!==flow;
 }
 
-$("#trackerPrimary").addEventListener("click",()=>{
-  if(!state.plan)return;
-  if(trackerSession?.limitations?.includes("MANUAL_UPDATE_UNMODELED")){showToast(tw("flUnavailable"),true);return;}
-  try{
-    const now=Date.now();
-    if(!trackerSession||trackerSession.missionKey!==missionPlanKey(state.plan)){
-      if(!state.appliedChoice){showToast(tw("applied"),true);return;}
-      const saved=storedJson(TRACKER_STORAGE_KEY,null);
-      if(saved?.missionKey&&saved.missionKey!==missionPlanKey(state.plan)&&!["FINISHED","NOT_STARTED"].includes(saved.status)
-        && !window.confirm(tw("newMission")))return;
-      const profile=buildVirtualFlightProfile(state.plan,latestActiveCandidate?.result,state.fuelOnboardGal);
-      if(!profile.valid){showToast(tw("invalid"),true);return;}
-      trackerSession=newVirtualFlightSession(missionPlanKey(state.plan),trackerConfig(),profile);
-    }
-    trackerSession=trackerSession.status==="NOT_STARTED"?startVirtualFlight(trackerSession,now)
-      :trackerSession.status==="RUNNING"?pauseVirtualFlight(trackerSession,now)
-      :resumeVirtualFlight(trackerSession,now);
-    persistTracker();renderTracker();
-  }catch(error){showToast(error.message,true);}
-});
-$("#trackerFactor").addEventListener("change",(event)=>{
-  if(!trackerSession||trackerSession.status==="FINISHED")return;
-  try{trackerSession=setVirtualTimeFactor(trackerSession,Number(event.target.value),Date.now());persistTracker();renderTracker();}
-  catch(error){showToast(error.message,true);}
-});
-$("#trackerFinish").addEventListener("click",()=>{
-  if(!trackerSession||!window.confirm(tw("finishConfirm")))return;
-  trackerSession=finishVirtualFlight(trackerSession,Date.now());persistTracker();trackerPanelMode=null;renderTracker();
-});
-$("#trackerSyncToggle").addEventListener("click",()=>{
-  trackerPanelMode=trackerPanelMode==="sync"?null:"sync";trackerPendingPhase=null;
-  const p=trackerSession&&projectVirtualFlight(trackerSession,state.plan,Date.now());
-  if(p){const index=state.plan.waypoints.findIndex((fix)=>fix.distanceNm>=p.distanceNm-.01);$("#trackerFix").value=String(Math.max(0,index));}
-  $("#trackerObservedFuel").value="";$("#trackerObservedFl").value="";$("#trackerElapsed").value="";
-  $("#trackerSyncMessage").textContent="";renderTracker();
-});
-$("#trackerSyncCancel").addEventListener("click",()=>{trackerPanelMode=null;trackerPendingPhase=null;renderTracker();});
-$("#trackerProjectionToggle").addEventListener("click",()=>{trackerPanelMode=trackerPanelMode==="projection"?null:"projection";renderTracker();});
-$("#trackerProjectionClose").addEventListener("click",()=>{trackerPanelMode=null;renderTracker();});
-$$('[data-tracker-phase]').forEach((button)=>button.addEventListener("click",()=>{
-  trackerPendingPhase=trackerPendingPhase===button.dataset.trackerPhase?null:button.dataset.trackerPhase;
-  renderTracker();
-}));
-$("#trackerWeatherAligned").addEventListener("change",(event)=>{
-  if(!trackerSession)return;
-  trackerSession={...trackerSession,weatherTimeAligned:event.target.checked};
-  persistTracker();renderTrackerProjection();
-});
-$("#trackerSyncPanel").addEventListener("submit",(event)=>{
-  event.preventDefault();
-  if(!trackerSession||!state.plan)return;
-  const now=Date.now(),index=Number($("#trackerFix").value),flText=$("#trackerObservedFl").value,
-    fuelText=$("#trackerObservedFuel").value.trim(),elapsedText=$("#trackerElapsed").value.trim();
-  const fl=flText?Number(flText):null,fuelGal=fuelText?fuelFromDisplay(Number(fuelText)):null;
-  if(!Number.isInteger(index)||!state.plan.waypoints[index]||fl!==null&&!ALTITUDES_FT.includes(fl)
-    ||fuelGal!==null&&(!Number.isFinite(fuelGal)||fuelGal<0||fuelGal>AIRCRAFT.usableFuelGal)
-    ||elapsedText&&(!$("#trackerElapsed").validity.valid||!Number.isFinite(Number(elapsedText)))){
-    $("#trackerSyncMessage").textContent=tw("invalid");return;
-  }
-  try{
-    const corrected=elapsedText?correctVirtualElapsed(trackerSession,Number(elapsedText)*60,now):trackerSession;
-    const profile=fl!==null&&fl!==corrected.config.altitudeFt?trackerProfileForFl(fl):corrected.profile;
-    if(!profile.valid)throw new RangeError("TRACKER_FL_PROFILE_UNAVAILABLE");
-    let allowEarlyDescent=false;
-    const current=projectVirtualFlight(corrected,state.plan,now);
-    if(trackerPendingPhase==="DESCENT"&&(current.phase==="CLIMB"||state.plan.waypoints[index].distanceNm<profile.tocNm)){
-      allowEarlyDescent=window.confirm(tw("earlyDescent"));
-      if(!allowEarlyDescent)return;
-    }
-    const next=confirmVirtualCheckpoint(corrected,state.plan,{waypointIndex:index,altitudeFt:fl,fuelGal,
-      phase:trackerPendingPhase,allowEarlyDescent},now,profile);
-    trackerSession=next;persistTracker();trackerPanelMode=null;trackerPendingPhase=null;
-    renderTracker();showToast(tw("syncDone"));
-  }catch(error){$("#trackerSyncMessage").textContent=error.message==="TRACKER_FL_PROFILE_UNAVAILABLE"?tw("flUnavailable"):error.message;}
-});
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)tickTracker();});
-window.setInterval(()=>{if(!document.hidden&&trackerSession?.status==="RUNNING")tickTracker();},1000);
-
 $("#manualUpdateForm").addEventListener("input",updateCalibrationGate);
 $("#manualUpdateForm").addEventListener("change",updateCalibrationGate);
 
@@ -1469,27 +1191,10 @@ $("#manualUpdateForm").addEventListener("submit",(event)=>{
     showToast(error.message==="CALIBRATION_ATMOSPHERE_UNAVAILABLE"?(state.language==="pt-BR"?"OFP sem temperatura neste ponto.":"No OFP temperature at this fix."):(state.language==="pt-BR"?"Leitura fora do intervalo de calibração.":"Calibration reading outside valid range."),true);
     return;
   }
-  let nextTracker=null;
-  if(trackerSession?.missionKey===missionPlanKey(state.plan)&&["RUNNING","PAUSED"].includes(trackerSession.status)){
-    try{
-      const profile=altitudeFt!==trackerSession.config.altitudeFt||nextCalibration
-        ?trackerProfileForFl(altitudeFt,nextCalibration||trackerSession.config.calibration):trackerSession.profile;
-      if(!profile.valid)throw new RangeError("TRACKER_FL_PROFILE_UNAVAILABLE");
-      nextTracker=confirmVirtualCheckpoint(trackerSession,state.plan,{waypointIndex,altitudeFt,fuelGal:fuelRemainingGal},Date.now(),profile);
-      if(nextCalibration)nextTracker.config={...nextTracker.config,calibration:structuredClone(nextCalibration)};
-    }catch(error){
-      if(error.message!=="TRACKER_FL_PROFILE_UNAVAILABLE"){showToast(error.message,true);return;}
-      trackerSession=trackerSession.status==="RUNNING"?pauseVirtualFlight(trackerSession,Date.now()):trackerSession;
-      trackerSession={...trackerSession,recoveredAttention:true,
-        limitations:[...new Set([...trackerSession.limitations,"MANUAL_UPDATE_UNMODELED"])]};
-      persistTracker();showToast(tw("flUnavailable"),true);
-    }
-  }
   if(!state.manual.active&&lastRenderedMissionScore)state.preflightSnapshot={missionScore:structuredClone(lastRenderedMissionScore),financial:structuredClone(lastRenderedFinancial)};
   state.manual={active:true,waypointIndex,distanceNm:Number(waypoint.distanceNm)||0,fuelRemainingGal,altitudeFt};
   state.diversionWaypointIndex=waypointIndex;
   if(nextCalibration){state.calibration=nextCalibration;localStorage.setItem("velocityxl.calibration",JSON.stringify(nextCalibration));}
-  if(nextTracker){trackerSession=nextTracker;persistTracker();}
   render();
 });
 
@@ -1527,9 +1232,7 @@ function activatePlan(plan) {
   } catch { /* Ignore malformed saved proposals while preserving other preferences. */ }
   state.preflightSnapshot=null;lastRenderedMissionScore=null;lastRenderedFinancial=null;
   state.manual={active:false,waypointIndex:0,distanceNm:0,fuelRemainingGal:state.fuelOnboardGal,altitudeFt:null};
-  trackerPanelMode=null;trackerPendingPhase=null;
-  trackerSession=recoverVirtualFlight(storedJson(TRACKER_STORAGE_KEY,null),missionPlanKey(plan),Date.now());
-  render();helpSignal("plan-imported");
+  render();
   const request=new AbortController();weatherRequest=request;
   Promise.allSettled([fetchGfsSnapshot(plan,{signal:request.signal}),fetchAwcSnapshot({signal:request.signal})]).then((outcomes)=>{
     if(request.signal.aborted||state.plan!==plan)return;
@@ -1558,4 +1261,4 @@ $("#simbriefImportForm").addEventListener("submit",async(event)=>{
 
 const savedIdentifier=localStorage.getItem("velocityxl.simbriefIdentifier"); if(savedIdentifier)$("#quickPilotId").value=savedIdentifier;
 window.addEventListener("load",refreshUiIcons,{once:true});
-render();helpSignal("initial-state");
+render();

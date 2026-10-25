@@ -11,7 +11,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261024-03-help1" />
+    <link rel="stylesheet" href="./styles.css?v=20261022-pde3" />
   </head>
   <body>
     <header class="topbar">
@@ -76,45 +76,6 @@
           <div class="analysis-actions"><button class="primary-button" id="applyPilotAlternative" type="button" disabled data-i18n="applyConfiguration">Aplicar configuração</button><button class="text-button" id="recalculateRanking" type="button" data-i18n="recalculateRanking">Recalcular ranking</button></div>
         </div>
       </section>
-
-      <section class="panel ui-card ui-card--technical mission-profile" id="missionProfilePanel" aria-labelledby="missionProfileTitle">
-        <div class="mp-heading"><div><span data-ui-role="label">Weather &amp; Decision</span><h2 id="missionProfileTitle">Mission Profile</h2></div><div class="mp-context"><strong id="mpCandidate" data-ui-role="emphasis">—</strong><span class="ui-status" id="mpScenarioTag"></span></div></div>
-        <div class="mp-layers" role="group" aria-label="Weather layers"><button class="text-button ui-button" type="button" data-profile-layer="METEO" aria-pressed="true">METEO</button><button class="text-button ui-button" type="button" data-profile-layer="ICE" aria-pressed="false">ICE</button><button class="text-button ui-button" type="button" data-profile-layer="RIDE" aria-pressed="false">RIDE</button><button class="text-button ui-button" type="button" data-profile-layer="FUEL" aria-pressed="false">FUEL</button></div>
-        <p id="mpLayerStatus" class="mp-layer-status ui-status" role="status">—</p>
-        <div class="mp-empty" id="mpUnavailable" hidden></div>
-        <div id="mpProfileBody">
-          <div class="mp-ribbon" id="mpRibbonPanel">
-            <div class="mp-ribbon-heading"><span data-ui-role="label" data-profile-text="schematic">FASES · ESQUEMÁTICO</span><strong data-ui-role="secondary" id="mpRibbonFlightLevel">—</strong></div>
-            <div class="mp-ribbon-phases" id="mpRibbonPhases"></div>
-            <div class="mp-ribbon-visual">
-              <div class="mp-ribbon-strips" id="mpRibbonStrips"></div>
-              <span class="mp-ribbon-cursor" id="mpRibbonCursor" aria-hidden="true"></span>
-              <div class="mp-ribbon-boundaries" id="mpRibbonBoundaries"></div>
-            </div>
-            <div class="mp-ribbon-metrics">
-              <div class="ui-metric"><span data-ui-role="label">ALT · MSL</span><strong data-ui-role="secondary" id="mpRibbonAltitude">—</strong></div>
-              <div class="ui-metric"><span data-ui-role="label">ETE</span><strong data-ui-role="secondary" id="mpRibbonEte">—</strong></div>
-              <div class="ui-metric"><span data-ui-role="label">FUEL</span><strong data-ui-role="secondary" id="mpRibbonFuel">—</strong></div>
-            </div>
-            <div class="mp-route-rail">
-              <div class="mp-ribbon-heading"><span data-ui-role="label">OFP · WAYPOINTS</span><span data-ui-role="label" id="mpRibbonRailCount">—</span></div>
-              <div class="mp-plot" id="mpPlot"><svg id="mpSvg" role="group" aria-labelledby="mpSvgTitle" preserveAspectRatio="none"><title id="mpSvgTitle">Waypoints · OFP</title></svg>
-                <div class="mp-airports"><span id="mpOrigin" data-ui-role="label"></span><span id="mpDestination" data-ui-role="label"></span></div>
-              </div>
-            </div>
-          </div>
-          <div class="mp-playback"><button id="mpPlay" class="text-button ui-button" type="button" aria-label="Reproduzir prévia"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><label><span class="mp-progress-label"><span data-profile-text="preview">Prévia</span><strong id="mpElapsed" data-ui-role="secondary">—</strong></span><input id="mpProgress" type="range" min="0" max="1" value="0" step="1" /></label></div>
-          <div class="mp-point-heading"><div><span data-ui-role="label" id="mpPointKind">OFP</span><strong data-ui-role="emphasis" id="mpPointName">—</strong></div><div class="mp-point-actions"><button id="mpPreviousFix" class="text-button ui-button mp-icon-button" type="button" aria-label="Waypoint anterior">‹</button><button id="mpNextFix" class="text-button ui-button mp-icon-button" type="button" aria-label="Próximo waypoint">›</button><button id="mpWaypointsToggle" class="text-button ui-button" type="button" aria-expanded="false" aria-controls="mpWaypointsPanel">Waypoints</button></div></div>
-          <div class="mp-readings"><div class="ui-metric"><span data-ui-role="label" data-profile-text="distance">Distância</span><strong data-ui-role="emphasis" id="mpDistance">—</strong></div><div class="ui-metric"><span data-ui-role="label">ETA · UTC</span><strong data-ui-role="emphasis" id="mpEta">—</strong></div><div class="ui-metric"><span data-ui-role="label" data-profile-text="altitude">Altitude · MSL</span><strong data-ui-role="emphasis" id="mpAltitude">—</strong></div><div class="ui-metric"><span data-ui-role="label" data-profile-text="fuelRemaining">Combustível restante</span><strong data-ui-role="emphasis" id="mpFuel">—</strong></div></div>
-          <div class="mp-selected-weather" id="mpSelectedWeather"></div>
-          <div class="mp-waypoints" id="mpWaypointsPanel" hidden><div class="mp-list-heading"><label class="ui-field"><span data-profile-text="search">Buscar waypoint</span><input id="mpWaypointSearch" type="search" autocomplete="off" /></label><button id="mpWaypointsClose" class="text-button ui-button" type="button" data-profile-text="close">Fechar</button></div><div id="mpWaypointList" class="mp-waypoint-list" aria-label="Waypoints OFP"></div></div>
-          <div class="mp-events"><div class="mp-section-head"><strong data-ui-role="secondary">Mission Events</strong><span id="mpEventCount" data-ui-role="label"></span></div><div class="mp-event-navigation"><button id="mpPreviousEvent" class="text-button ui-button mp-icon-button" type="button" aria-label="Evento anterior">‹</button><button id="mpEventSelect" class="mp-event-select" type="button"><span id="mpEventUtc" data-ui-role="secondary">—</span><strong id="mpEventType" data-ui-role="emphasis">—</strong><span id="mpEventReference" data-ui-role="label">—</span></button><button id="mpNextEvent" class="text-button ui-button mp-icon-button" type="button" aria-label="Próximo evento">›</button></div></div>
-        </div>
-        <details class="mp-details" id="mpTimeMachine"><summary>Mission Time Machine</summary><div id="mpTimeBody" hidden><div class="mp-time-options" role="group" aria-label="Departure scenario"><button class="text-button ui-button" type="button" data-profile-offset="0" aria-pressed="true" data-profile-text="original">Original</button><button class="text-button ui-button" type="button" data-profile-offset="1" aria-pressed="false">+1 h</button><button class="text-button ui-button" type="button" data-profile-offset="2" aria-pressed="false">+2 h</button><button class="text-button ui-button" type="button" data-profile-offset="3" aria-pressed="false">+3 h</button></div><div id="mpTimeComparison" class="mp-time-comparison" aria-live="polite"></div></div></details>
-        <details class="mp-details" id="mpSources"><summary data-profile-text="sources">Dados &amp; fontes</summary><div id="mpSourcesBody" class="mp-sources" hidden></div></details>
-      </section>
-
-      <section class="panel ui-card ui-card--technical resilience-lab" id="resilienceLab" aria-label="Resilience Lab" hidden></section>
 
       <section class="panel flight-tools-panel" aria-label="Flight tools">
         <div class="tool-cards-heading"><h2 data-i18n="flightTools">Ferramentas de voo</h2><small data-i18n="chooseTool">Escolha um módulo</small></div>
@@ -307,17 +268,7 @@
               </section>
               <section>
                 <div class="ice-section-heading"><div><span data-i18n="weatherEvidence">Cobertura meteorológica</span><strong id="iceEvidenceCoverage">—</strong></div></div>
-                <div class="ice-weather-summary">
-                  <div class="ice-coverage-track" id="iceCoverageTrack" role="meter" aria-label="Cobertura meteorológica" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="iceCoverageFill"></span></div>
-                  <p class="ice-coverage-context" id="iceCoverageContext">—</p>
-                  <div class="ice-coverage-notice" id="iceCoverageNotice" role="status" hidden><strong id="iceCoverageNoticeTitle">—</strong><span id="iceCoverageNoticeText">—</span></div>
-                  <div class="ice-coverage-alternate"><span id="iceCoverageAlternateLabel">ROTA DO ALTERNADO</span><strong id="iceCoverageAlternateValue">—</strong><small id="iceCoverageAlternateNote">—</small></div>
-                  <p class="ice-coverage-caveat" id="iceCoverageCaveat">—</p>
-                  <details class="ice-technical-details" id="iceCoverageDetails">
-                    <summary id="iceCoverageDetailsLabel">Ver detalhes técnicos</summary>
-                    <div class="ice-evidence-list" id="iceEvidenceList"></div>
-                  </details>
-                </div>
+                <div class="ice-evidence-list" id="iceEvidenceList"></div>
               </section>
             </div>
             <div class="ice-composition">
@@ -374,20 +325,6 @@
         </div>
         <div class="tool-view" data-tool-panel="update">
           <div id="manualFlightPanel" class="manual-mode-panel">
-          <section id="virtualTracker" class="virtual-tracker ui-card ui-card--technical" aria-labelledby="trackerTitle">
-            <div class="tracker-heading"><div><span id="trackerTitle">VIRTUAL FLIGHT TRACKER</span><strong id="trackerState">NÃO INICIADO</strong><small id="trackerTiming">—</small></div><small id="trackerOrigin">ESTIMADO</small></div>
-            <div class="tracker-metrics"><div><span id="trackerPhaseLabel">Fase</span><strong id="trackerPhase">—</strong></div><div><span id="trackerClockLabel">Tempo de simulação</span><strong id="trackerClock">00:00:00</strong></div><div><span id="trackerFlLabel">FL estimado</span><strong id="trackerFl">—</strong></div><div><span id="trackerFuelLabel">Combustível estimado</span><strong id="trackerFuel">—</strong></div><div><span id="trackerEteLabel">ETE restante</span><strong id="trackerEte">—</strong></div></div>
-            <div class="tracker-progress"><div class="tracker-progress-line"><span id="trackerFixes">— → —</span><strong id="trackerNextDistance">—</strong></div><progress id="trackerProgress" max="100" value="0"></progress><small id="trackerProvenance">PROJETADO · SEM TELEMETRIA</small></div>
-            <div class="tracker-actions"><button id="trackerPrimary" class="primary-button" type="button">Iniciar voo</button><button id="trackerSyncToggle" class="text-button" type="button" hidden>Sincronizar</button><button id="trackerProjectionToggle" class="text-button" type="button" hidden>Projeção restante</button><label class="ui-field tracker-factor"><span id="trackerFactorLabel">Tempo</span><select id="trackerFactor"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label><button id="trackerFinish" class="text-button" type="button" hidden>Encerrar</button></div>
-            <div id="trackerAttention" class="tracker-attention" role="status" hidden></div>
-            <form id="trackerSyncPanel" class="tracker-context" hidden>
-              <div class="tracker-context-heading"><strong id="trackerSyncTitle">Sincronizar</strong><button class="text-button" id="trackerSyncCancel" type="button">Cancelar</button></div>
-              <div class="tracker-sync-grid"><label class="ui-field"><span id="trackerFixLabel">Fixo</span><select id="trackerFix" required></select></label><label class="ui-field"><span id="trackerObservedFlLabel">FL observado · opcional</span><select id="trackerObservedFl"><option value="">—</option></select></label><label class="ui-field"><span id="trackerObservedFuelLabel">Combustível observado · opcional</span><span class="ui-unit-input"><input id="trackerObservedFuel" type="number" min="0" step="0.1" /><small id="trackerFuelUnit">gal</small></span></label><label class="ui-field"><span id="trackerElapsedLabel">Tempo simulado · min</span><input id="trackerElapsed" type="number" min="0" step="1" /></label></div>
-              <div class="tracker-phase-actions"><button class="text-button" data-tracker-phase="CRUISE" type="button">Confirmar TOC</button><button class="text-button" data-tracker-phase="DESCENT" type="button">Confirmar TOD</button><button class="text-button" data-tracker-phase="CLIMB" type="button">Subida</button></div>
-              <small id="trackerSyncMessage" role="status"></small><button id="trackerConfirmFix" class="primary-button" type="submit">Confirmar fixo</button>
-            </form>
-            <section id="trackerProjectionPanel" class="tracker-context" aria-labelledby="trackerProjectionTitle" hidden><div class="tracker-context-heading"><strong id="trackerProjectionTitle">PROJEÇÃO RESTANTE</strong><button id="trackerProjectionClose" class="text-button" type="button">Fechar</button></div><div class="tracker-projection-grid" id="trackerProjectionGrid"></div><label class="tracker-weather-match"><input id="trackerWeatherAligned" type="checkbox" /><span id="trackerWeatherMatchLabel">UTC do simulador corresponde ao OFP</span></label><div class="tracker-conditions" id="trackerConditions"></div><details class="tracker-events"><summary>TOC / TOD</summary><div id="trackerEvents"></div></details><small id="trackerProjectionNote"></small></section>
-          </section>
           <div class="update-grid">
             <form id="manualUpdateForm" class="flight-update-form" data-ui-overlap-group>
               <div class="flight-context-row" data-ui-control-row="manual-context">
@@ -458,12 +395,11 @@
 
 
       </div>
-      <footer><span>Velocity XL Performance Planner · MSFS 2024</span><span class="footer-sources">Terreno e obstáculos não avaliados.</span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
+      <footer><span>Velocity XL Performance Planner</span><span class="footer-sources">Terreno e obstáculos não avaliados.</span><span data-i18n="disclaimer">Alan Fernandes - 2026</span></footer>
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./js/layout.js?v=20261024-03-help1"></script>
-    <script type="module" src="./js/app.js?v=20261024-03-help1"></script>
-    <script type="module" src="./js/help.js?v=20261024-03-help1"></script>
+    <script src="./js/layout.js?v=20261022-pde3"></script>
+    <script type="module" src="./js/app.js?v=20261022-04"></script>
   </body>
 </html>

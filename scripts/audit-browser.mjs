@@ -4,13 +4,11 @@ import http from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { PRESSURE_LEVELS } from '../js/weather/open-meteo.js';
-import { parseSimBrief } from '../js/simbrief.js';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const baselineIndex = process.argv.indexOf('--baseline');
 const baseline = baselineIndex >= 0;
 const engineV2 = process.argv.includes('--engine-v2');
-const trackerOnly = process.argv.includes('--tracker-only');
 const afterFolder = engineV2 ? 'decision-engine-v3' : 'definitive-after';
 const root = baseline ? path.resolve(process.argv[baselineIndex + 1]) : projectRoot;
 const output = path.join(projectRoot, 'review');
@@ -49,10 +47,6 @@ const fixture = {
     ],
   })),
 };
-const trackerPlan = parseSimBrief(fixture);
-const trackerPlanKey = [trackerPlan.source,trackerPlan.ofpId,trackerPlan.generatedAt,trackerPlan.generatedAtMs,
-  trackerPlan.scheduledOffMs,trackerPlan.scheduledOnMs,trackerPlan.origin?.icao,trackerPlan.destination?.icao,
-  trackerPlan.alternate,trackerPlan.route,trackerPlan.distanceNm].join('|');
 function gfsFixture(url) {
   const params = new URL(url).searchParams;
   const latitudes = params.get('latitude').split(',').map(Number);
@@ -91,7 +85,7 @@ const report = {
   browser: await browser.version(),
   fixture: 'Synthetic 18-waypoint OFP and synthetic clear GFS/AWC responses; all values illustrative; no live API call',
   widths, modules, states: [], screenshots: [], errors: [], selectorCoverage: {},
-  typography: [], negativeChecks: [], trackerStates: [],
+  typography: [], negativeChecks: [],
 };
 const captureWidths = new Map([[390, 'mobile'], [768, 'tablet'], [1440, 'desktop']]);
 const audit = async (page, label) => {
@@ -106,7 +100,7 @@ const audit = async (page, label) => {
       const box = element.getBoundingClientRect();
       const css = getComputedStyle(element);
       return { selector: element.id ? `#${element.id}` : element.className?.baseVal || element.className || element.tagName.toLowerCase(),
-        x: Math.round(box.x), xExact: box.x, y: Math.round(box.y), top: Math.round(box.top), right: Math.round(box.right), bottom: Math.round(box.bottom),
+        x: Math.round(box.x), y: Math.round(box.y), top: Math.round(box.top), right: Math.round(box.right), bottom: Math.round(box.bottom),
         width: Math.round(box.width), height: Math.round(box.height), borderWidth: css.borderTopWidth,
         borderRadius: css.borderRadius, fontSize: css.fontSize, fontWeight: css.fontWeight,
         lineHeight: css.lineHeight, padding: css.padding };
@@ -114,10 +108,6 @@ const audit = async (page, label) => {
     return {
       viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth,
       heading: dimensions('.area-heading h1'),
-      headingContent: dimensions('.area-heading > div:first-child'),
-      headingEyebrow: dimensions('.area-heading > div:first-child > span'),
-      ofpContent: dimensions('.plan-bar .plan-identity'),
-      ofpSourceBadge: dimensions('.plan-bar .route-source'),
       primaryButtons: dimensions('.primary-button'),
       textButtons: dimensions('.text-button'),
       inputs: dimensions('.ui-field > input, .ui-field > select, .ui-unit-input'),
@@ -137,21 +127,6 @@ const audit = async (page, label) => {
   issues.push(...probe.issues.map(issue => `${issue.code}: ${issue.target}${issue.detail ? ` (${issue.detail})` : ''}`));
   if (data.scrollWidth > data.viewport + 1) issues.push(`horizontal overflow ${data.scrollWidth - data.viewport}px`);
   if (data.legacyTriggerVisible) issues.push('retired manual update trigger is visible');
-  // Compare literal text-column coordinates rather than card outer borders.
-  // This must hold for all areas, languages, scales and viewport widths.
-  if (data.ofpSourceBadge.length) {
-    const target = data.ofpSourceBadge[0].xExact;
-    for (const [name, items] of [
-      ['section label', data.headingEyebrow],
-      ['section title', data.heading],
-      ['section heading group', data.headingContent],
-      ['OFP card content', data.ofpContent],
-    ]) {
-      if (!items.length) continue;
-      const delta = Math.abs(items[0].xExact - target);
-      if (delta > 0.25) issues.push(`${name} starts ${delta.toFixed(3)}px from SIMBRIEF badge left edge (expected exact alignment)`);
-    }
-  }
   for (const item of [...data.primaryButtons, ...data.textButtons, ...data.inputs]) {
     if (item.height < 43) issues.push(`${item.selector} height ${item.height}px`);
     if (item.x < -1 || item.right > data.viewport + 1) issues.push(`${item.selector} outside viewport`);
@@ -198,7 +173,6 @@ const screenshot = async (page, width, area, module) => {
 };
 
 try {
-  if (!trackerOnly) {
   for (const width of widths) {
     let awcMode = 'clear';
     const context = await browser.newContext({ viewport: { width, height: width <= 430 ? 844 : width === 768 ? 1024 : 900 }, deviceScaleFactor: 1 });
@@ -316,14 +290,6 @@ try {
       for (const module of keys) {
         await activate(page, area, module);
         await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}`);
-        if (area === 'route' && module === 'ice') {
-          const details = page.locator('#iceCoverageDetails');
-          if (await details.evaluate(element => element.open)) report.errors.push({label: `${width}px ICE details`, issues: ['technical details must start collapsed']});
-          if (await details.locator('#iceEvidenceList').evaluate(element => element.getClientRects().length > 0)) report.errors.push({label: `${width}px ICE details`, issues: ['closed technical evidence must not occupy layout space']});
-          await details.locator('summary').click();
-          if (!(await details.evaluate(element => element.open))) report.errors.push({label: `${width}px ICE details`, issues: ['technical details must expand']});
-          await details.locator('summary').click();
-        }
         if (captureWidths.has(width) && ['mission:overview', 'mission:score', 'planning:config', 'planning:systems', 'route:ice', 'route:ride', 'flight:update'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
         if (area === 'planning' && module === 'config') {
           await page.locator('#optimizeMission').click();
@@ -340,17 +306,6 @@ try {
           if(captureWidths.has(width) && await page.locator('#topLevelCards .top-level-card').count()){
             await page.locator('#topLevelCards .top-level-card').first().click();
             await audit(page, `${width}px pilot analysis mission:overview`);
-            const actionGeometry = await page.evaluate(() => {
-              const apply = document.querySelector('#applyPilotAlternative')?.getBoundingClientRect();
-              const rerank = document.querySelector('#recalculateRanking')?.getBoundingClientRect();
-              return apply && rerank ? { apply: { x: apply.x, width: apply.width, height: apply.height },
-                rerank: { x: rerank.x, width: rerank.width, height: rerank.height } } : null;
-            });
-            if (!actionGeometry || Math.abs(actionGeometry.apply.width - actionGeometry.rerank.width) > 1
-              || Math.abs(actionGeometry.apply.height - actionGeometry.rerank.height) > 1
-              || Math.abs(actionGeometry.apply.x - actionGeometry.rerank.x) > 1)
-              report.errors.push({ label: `${width}px pilot decision button geometry`,
-                issues: [JSON.stringify(actionGeometry) || 'missing action buttons'] });
             await page.locator('#pilotAnalysis').scrollIntoViewIfNeeded();
             await screenshot(page,width,'mission','analysis');
             if(width===390){
@@ -369,48 +324,6 @@ try {
           if (await trigger.count()) await trigger.click();
           if (await panel.count()) {
             await audit(page, `${width}px PT-BR LB/GAL A ${area}:${module}:${tool}`);
-            if (tool === 'alternate') {
-              const metrics = await page.evaluate(() => {
-                const group = document.querySelector('[data-tool-panel="alternate"] .advisor-strip');
-                if (!group) return null;
-                const cells = [...group.children];
-                const groupBox = group.getBoundingClientRect();
-                return { group: { left: groupBox.left, right: groupBox.right },
-                  gap: getComputedStyle(group).columnGap,
-                  cells: cells.map(cell => {
-                    const box = cell.getBoundingClientRect();
-                    const label = cell.querySelector('b');
-                    const value = cell.querySelector('strong');
-                    const valueBox = value?.getBoundingClientRect();
-                    const labelBox = label?.getBoundingClientRect();
-                    const style = getComputedStyle(cell);
-                    return { x: box.x, right: box.right, width: box.width, y: box.y,
-                      labelScroll: label?.scrollWidth, labelWidth: label?.clientWidth,
-                      labelBottom: labelBox?.bottom, valueBottom: valueBox?.bottom,
-                      valueRight: valueBox?.right, valueLeft: valueBox?.left,
-                      borderTop: style.borderTopWidth, borderRight: style.borderRightWidth,
-                      borderBottom: style.borderBottomWidth, borderLeft: style.borderLeftWidth };
-                  }) };
-              });
-              const cells = metrics?.cells || [];
-              const metricIssues = [];
-              if (cells.length !== 3) metricIssues.push('expected three fuel metrics');
-              else {
-                if (cells.some(cell => Math.abs(cell.width - cells[0].width) > 1 || Math.abs(cell.y - cells[0].y) > 1))
-                  metricIssues.push('metric columns have unequal width or top alignment');
-                if (cells.some(cell => Math.abs(cell.valueBottom - cells[0].valueBottom) > 1))
-                  metricIssues.push('fuel values do not share a baseline');
-                if (cells.some(cell => cell.labelScroll > cell.labelWidth + 1))
-                  metricIssues.push('metric labels overflow their columns');
-                if (cells.some(cell => cell.right > metrics.group.right + 1 || cell.x < metrics.group.left - 1))
-                  metricIssues.push('metric columns exceed container');
-                if (cells.some(cell => cell.borderTop !== '0px' || cell.borderRight !== '0px'
-                    || cell.borderBottom !== '0px' || cell.borderLeft !== '0px'))
-                  metricIssues.push('unexpected metric divider');
-              }
-              if (metricIssues.length) report.errors.push({ label: `${width}px alternate fuel metrics`, issues: metricIssues, metrics });
-              if (captureWidths.has(width)) await screenshot(page, width, area, 'alternate');
-            }
             if (tool === 'cost') {
               if (captureWidths.has(width)) await screenshot(page, width, area, 'cost-unassessed');
               await page.locator('#fuelPricePerLiter').fill('7.25');
@@ -610,152 +523,11 @@ try {
       await context.close();
     }
   }
-  }
-  if (engineV2 && !baseline) {
-    const trackerFolder = path.join(output, 'virtual-flight-tracker-v1');
-    await fs.mkdir(trackerFolder, { recursive: true });
-    const captureTracker = async (page, width, state) => {
-      if (!captureWidths.has(width)) return;
-      const device = captureWidths.get(width);
-      await page.locator('#toast').evaluate(element => element.classList.remove('show'));
-      for (const [suffix, target] of [['', page], ['-card', page.locator('#virtualTracker')]]) {
-        const name = `${device}-${state}${suffix}.png`;
-        await target.screenshot({ path: path.join(trackerFolder, name), animations: 'disabled',
-          ...(suffix ? { style: '.mobile-area-nav { visibility: hidden !important; }' } : {}) });
-        report.screenshots.push(`virtual-flight-tracker-v1/${name}`);
-      }
-    };
-    for (const width of widths) {
-      const context = await browser.newContext({ viewport: { width, height: width <= 430 ? 844 : width === 768 ? 1024 : 900 } });
-      const page = await context.newPage();
-      page.on('pageerror', error => report.errors.push({ label: `${width}px tracker`, pageError: error.message }));
-      await page.addInitScript((applied) => {
-        localStorage.setItem('velocityxl.appliedMission', JSON.stringify(applied));
-      }, { planKey: trackerPlanKey, choice: { altitudeFt: 18000, mode: 'NORMAL' },
-        engineMode: 'NORMAL', powerSetting: { type: 'AUTO' }, fuelOnboardGal: 77 });
-      await page.route('**/api/xml.fetcher.php?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
-      await page.route('**/v1/gfs?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gfsFixture(route.request().url())) }));
-      await page.route('**/weather-snapshots/awc/latest.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ generatedAt: new Date().toISOString(), sigmets: [], pireps: [] }) }));
-      const importPlan = async () => {
-        await page.locator('#quickPilotId').fill('TRACKER-FIXTURE');
-        await page.locator('#importLatest').click();
-        await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
-        await activate(page, 'flight', 'update');
-      };
-      await page.goto(base, { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction(() => !!window.VelocityLayout);
-      await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
-      await importPlan();
-      if (!await page.locator('#trackerPrimary').isEnabled()) report.errors.push({ label: `${width}px tracker`, issues: ['applied configuration did not enable start'] });
-      await audit(page, `${width}px tracker not started flight:update`);
-      await page.locator('#trackerPrimary').click();
-      const start = await page.evaluate(() => ({ width: document.querySelector('#virtualTracker').getBoundingClientRect().width,
-        metrics: [...document.querySelectorAll('.tracker-metrics > div')].map(item => { const r=item.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; }),
-        clock: document.querySelector('#trackerClock').textContent,
-        stored: JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1') || 'null') }));
-      if (start.stored?.status !== 'RUNNING') report.errors.push({ label: `${width}px tracker start`, issues: ['clock state was not persisted'] });
-      await audit(page, `${width}px tracker running flight:update`);
-      await page.waitForFunction((clock) => document.querySelector('#trackerClock').textContent !== clock,
-        start.clock, { timeout: 3500 });
-      const after = await page.evaluate(() => ({ width: document.querySelector('#virtualTracker').getBoundingClientRect().width,
-        metrics: [...document.querySelectorAll('.tracker-metrics > div')].map(item => { const r=item.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; }),
-        clock: document.querySelector('#trackerClock').textContent }));
-      if (start.width !== after.width || start.metrics.some((item,index) => Math.abs(item.x-after.metrics[index].x)>1 || Math.abs(item.y-after.metrics[index].y)>1 || Math.abs(item.height-after.metrics[index].height)>1))
-        report.errors.push({ label: `${width}px tracker stability`, issues: ['metric geometry shifted during clock tick'] });
-      if (start.clock === after.clock) report.errors.push({ label: `${width}px tracker clock`, issues: ['simulation clock did not advance'] });
-      await page.locator('#trackerFactor').selectOption('8');
-      await page.locator('#trackerSyncToggle').click();
-      await audit(page, `${width}px tracker sync flight:update`);
-      await captureTracker(page, width, 'checkpoint');
-      await page.locator('#trackerFix').selectOption('5');
-      await page.locator('#trackerObservedFuel').fill('60');
-      await page.locator('#trackerConfirmFix').click();
-      const sync = await page.evaluate(() => JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1') || 'null'));
-      if (sync?.checkpoints?.length !== 1 || sync.checkpoints[0].fuelGal !== 60)
-        report.errors.push({ label: `${width}px tracker checkpoint`, issues: ['observed fix and fuel were not persisted'] });
-      await page.locator('#trackerProjectionToggle').click();
-      await audit(page, `${width}px tracker projection flight:update`);
-      const conditions = await page.locator('#trackerConditions').textContent();
-      if (!/NÃO AVALIADO|UNASSESSED/.test(conditions))
-        report.errors.push({ label: `${width}px tracker weather`, issues: ['unconfirmed weather appeared assessed'] });
-      await captureTracker(page, width, 'projection');
-      if ([390, 1440].includes(width)) {
-        await page.locator('.tracker-events summary').click();
-        const eventsText = await page.locator('#trackerEvents').textContent();
-        if (!/TOC · OFP/.test(eventsText) || !/TOD · OFP/.test(eventsText) || !/MODELO/.test(eventsText))
-          report.errors.push({ label: `${width}px tracker TOC/TOD`, issues: ['OFP and model markers not shown independently'] });
-        await audit(page, `${width}px tracker events flight:update`);
-        await captureTracker(page, width, 'events');
-      }
-      await page.locator('#trackerProjectionClose').click();
-      await page.locator('#trackerPrimary').click();
-      if ((await page.locator('#trackerState').textContent())?.trim() !== 'PAUSADO')
-        report.errors.push({ label: `${width}px tracker pause`, issues: ['pause state missing'] });
-      await page.locator('#trackerPrimary').click();
-      await page.reload({ waitUntil: 'domcontentloaded' });
-      await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
-      await importPlan();
-      if (!await page.locator('#trackerAttention').isVisible())
-        report.errors.push({ label: `${width}px tracker recovery`, issues: ['recovered running session did not request resynchronization'] });
-      await audit(page, `${width}px tracker recovered flight:update`);
-      await captureTracker(page, width, 'running');
-      if ([390, 1440].includes(width)) {
-        for (const [marker, beforePhase, afterPhase] of [['tocSec', 'SUBIDA', 'CRUZEIRO'], ['todSec', 'CRUZEIRO', 'DESCIDA']]) {
-          await page.evaluate((name) => {
-            const saved = JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1'));
-            saved.status = 'RUNNING'; saved.factor = 8;
-            saved.accumulatedSec = saved.profile[name] - 20;
-            saved.anchorWallMs = Date.now(); saved.recoveredAttention = false;
-            saved.anchor = { simSec: 0, modelSec: 0, distanceNm: 0,
-              fuelGal: saved.profile.startFuelGal, fuelSource: 'PROJECTED', observedAltitudeFt: null };
-            saved.checkpoints = []; saved.confirmedPhase = null;
-            localStorage.setItem('velocityxl.virtualFlightTracker.v1', JSON.stringify(saved));
-          }, marker);
-          await page.reload({ waitUntil: 'domcontentloaded' });
-          await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
-          await importPlan();
-          const label = marker === 'tocSec' ? 'toc' : 'tod';
-          if (!(await page.locator('#trackerPhase').textContent()).includes(beforePhase))
-            report.errors.push({ label: `${width}px tracker ${label} before`, issues: [`expected ${beforePhase} before transition`] });
-          await audit(page, `${width}px tracker ${label} before flight:update`);
-          await captureTracker(page, width, `${label}-before`);
-          await page.waitForFunction(phase => document.querySelector('#trackerPhase').textContent.includes(phase), afterPhase, { timeout: 8000 });
-          await audit(page, `${width}px tracker ${label} after flight:update`);
-          await captureTracker(page, width, `${label}-after`);
-        }
-      }
-      await page.locator('[data-language="en-US"]').click();
-      await page.locator('[data-weight-unit="kg"]').click();
-      await page.locator('[data-fuel-unit="l"]').click();
-      await page.locator('[data-font-size="large"]').click();
-      await audit(page, `${width}px tracker EN-US KG/L A+ flight:update`);
-      if (width === 1440) {
-        await page.locator('#manualWaypoint').selectOption('0');
-        await page.locator('#manualAltitude').selectOption('18000');
-        await page.locator('#manualFuel').fill('200');
-        await page.locator('#submitFlightUpdate').click();
-        const unresolved = await page.evaluate(() => ({ phase: document.querySelector('#trackerPhase').textContent,
-          status: document.querySelector('#trackerState').textContent,
-          session: JSON.parse(localStorage.getItem('velocityxl.virtualFlightTracker.v1') || 'null') }));
-        if (unresolved.phase !== '—' || unresolved.status !== 'PAUSED'
-          || !unresolved.session?.limitations?.includes('MANUAL_UPDATE_UNMODELED'))
-          report.errors.push({ label: '1440px tracker unmodeled FL', issues: ['invalid prospective FL was projected as known'] });
-        await audit(page, `${width}px tracker unmodeled FL flight:update`);
-      }
-      report.trackerStates.push({ width, startClock: start.clock, afterClock: after.clock,
-        checkpoint: sync?.checkpoints?.at(-1), weather: conditions });
-      await context.close();
-    }
-  }
 } finally {
   await browser.close();
   server.close();
 }
 
-await fs.writeFile(path.join(output, trackerOnly ? 'virtual-flight-tracker-v1/browser-audit.json' : baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
+await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
-const failures = report.errors.filter(item => item.issues || item.pageError);
-if (failures.length) {
-  console.error(JSON.stringify(failures, null, 2));
-  process.exitCode = 1;
-}
+if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;

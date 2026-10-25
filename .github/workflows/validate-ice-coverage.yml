@@ -31,10 +31,6 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Browser audit 2.0
         run: npm run audit:browser:v2
-      - name: Mission Profile browser audit
-        run: npm run audit:profile
-      - name: Help Center browser audit
-        run: npm run audit:help
       - name: Save browser audit evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -43,9 +39,5 @@ jobs:
           path: |
             review/engine-v2-browser-audit.json
             review/engine-v2/
-            review/decision-engine-v3-browser-audit.json
-            review/decision-engine-v3/
-            review/weather-decision/
-            review/help-center/
           retention-days: 7
           if-no-files-found: ignore

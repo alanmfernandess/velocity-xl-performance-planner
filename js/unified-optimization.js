@@ -1,15 +1,14 @@
-import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "./config.js?v=20261024-03";
+import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "./config.js?v=20261021-unified";
 import {
   assessFeasibility, calculateAlternateDiversion, calculateAtAltitude,
   calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor,
   calculateOxygenPlan, calculateWeightBalance, clamp, oxygenSystemWeightLb,
-} from "./engine.js?v=20261024-03";
-import { buildTrajectory } from "./trajectory.js?v=20261024-03";
-import { buildVirtualFlightProfile, virtualTimeAtDistance } from "./virtual-flight.js?v=20261024-03";
-import { sampleGfs } from "./weather/open-meteo.js?v=20261024-03";
-import { createWeatherSnapshot } from "./weather/fusion.js?v=20261024-03";
-import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261024-03";
-import { scoreMissionV2 } from "./mission-score-v2.js?v=20261024-03";
+} from "./engine.js?v=20261021-unified";
+import { buildTrajectory } from "./trajectory.js";
+import { sampleGfs } from "./weather/open-meteo.js";
+import { createWeatherSnapshot } from "./weather/fusion.js";
+import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261022-01";
+import { scoreMissionV2 } from "./mission-score-v2.js";
 
 const STATUS_RANK = { viable: 0, marginal: 1, unknown: 2, "not-viable": 3 };
 const PRESETS = ["ECON", "NORMAL", "FAST"];
@@ -24,17 +23,13 @@ const norm = (values, value, inverse = false) => {
   return inverse ? (max - value) / (max - min) : (value - min) / (max - min);
 };
 
-function planWithForecast(plan, weatherSnapshot, input = null) {
+function planWithForecast(plan, weatherSnapshot) {
   if (weatherSnapshot?.gfs?.status !== "available" || !Number.isFinite(plan.scheduledOffMs)) return plan;
-  // Seed forecast times with integrated phase durations, never OFP distance/ETA ratios.
-  const reference = input ? calculateAtAltitude({ ...input, plan, altitudeFt: ALTITUDES_FT.includes(plan.plannedAltitudeFt) ? plan.plannedAltitudeFt : 18000, oxygenWeightLb: oxygenSystemWeightLb(input.oxygen) }) : null;
-  const profile = reference ? buildVirtualFlightProfile(plan, reference, input.fuelOnboardGal) : null;
-  if (!profile?.valid) return plan;
   const altitudes = [1000, 3000, 5000, 7000, 10000, 12000, 14000, 16000, 18000, 20000, 22000, 24000, 25000];
   const waypoints = plan.waypoints.map((fix) => {
-    const seconds = virtualTimeAtDistance(profile, clamp(fix.distanceNm, 0, profile.totalNm));
-    if (!Number.isFinite(seconds)) return fix;
-    const timestampMs = plan.scheduledOffMs + seconds * 1000;
+    const spanMs = Number.isFinite(plan.scheduledOnMs) ? Math.max(1, plan.scheduledOnMs - plan.scheduledOffMs) : null;
+    if (spanMs === null) return fix;
+    const timestampMs = plan.scheduledOffMs + (fix.distanceNm / Math.max(1, plan.distanceNm)) * spanMs;
     const levels = altitudes.map((altitudeFt) => {
       const forecast = sampleGfs(weatherSnapshot.gfs, { lat: fix.lat, lon: fix.lon, altitudeFt, timestampMs });
       return forecast && Number.isFinite(forecast.windSpd) && Number.isFinite(forecast.oatC)
@@ -46,15 +41,15 @@ function planWithForecast(plan, weatherSnapshot, input = null) {
   return { ...plan, waypoints };
 }
 
-function evaluateCandidate(input, altitudeFt, weatherSnapshot, performancePlan, scenario = null) {
+function evaluateCandidate(input, altitudeFt, weatherSnapshot, performancePlan) {
   const { plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting, oxygen, weightBalance } = input;
   const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
   const parameters = { plan: performancePlan, altitudeFt, mode, payloadLb, oxygenWeightLb, reserveMinutes, calibration, powerSetting };
   // Solve fuel and weight together. Occupants and baggage stay exactly as entered.
   let recommendedFuelGal = clamp(fuelOnboardGal, 0, AIRCRAFT.usableFuelGal);
   let rawFuelGal = recommendedFuelGal;
-  let converged = scenario?.fuelPolicy === "FIXED";
-  for (let iteration = 0; !scenario?.fuelPolicy && iteration < 24; iteration += 1) {
+  let converged = false;
+  for (let iteration = 0; iteration < 24; iteration += 1) {
     const result = calculateAtAltitude({ ...parameters, fuelOnboardGal: recommendedFuelGal });
     const alternate = calculateAlternateDiversion({ ...parameters, fuelOnboardGal: recommendedFuelGal, result });
     const alternateShortfall = alternate.destination
@@ -192,7 +187,7 @@ function closestPreset(powerSetting) {
 }
 
 /** Evaluate a pilot-selected scenario against the same weather and score basis. */
-export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, mapInHg, rpm }, scenario = null) {
+export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, mapInHg, rpm }) {
   if (!mission?.plan || !ALTITUDES_FT.includes(altitudeFt)) throw new RangeError("INVALID_SCENARIO_ALTITUDE");
   if (mode !== "MANUAL" && !PRESETS.includes(mode)) throw new RangeError("INVALID_SCENARIO_MODE");
   let engineMode = mode, powerSetting = { type: "AUTO" };
@@ -203,11 +198,10 @@ export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, m
     engineMode = closestPreset(powerSetting);
   } else {
     const cached = mission.candidates.find((candidate) => candidate.altitudeFt === altitudeFt && candidate.mode === mode);
-    if (cached && !scenario) return cached;
+    if (cached) return cached;
   }
   const candidate = evaluateCandidate({ ...input, mode: engineMode, powerSetting }, altitudeFt,
-    scenario?.weatherSnapshot || mission.weatherSnapshot,
-    scenario?.performancePlan || mission.performancePlan || planWithForecast(input.plan, mission.weatherSnapshot, input), scenario);
+    mission.weatherSnapshot, mission.performancePlan || planWithForecast(input.plan, mission.weatherSnapshot));
   if (mode === "MANUAL") candidate.mode = "MANUAL";
   scoreCandidates([candidate], input, mission.candidates);
   return candidate;
@@ -220,7 +214,7 @@ export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, m
 export function optimizeMission(input) {
   if (!input?.plan || !PERFORMANCE.modes[input.mode]) return null;
   const weatherSnapshot = input.weatherSnapshot || createWeatherSnapshot(input.plan);
-  const performancePlan = planWithForecast(input.plan, weatherSnapshot, input);
+  const performancePlan = planWithForecast(input.plan, weatherSnapshot);
   const candidates = PRESETS.flatMap((mode) => ALTITUDES_FT.map((altitudeFt) =>
     evaluateCandidate({ ...input, mode, powerSetting: { type: "AUTO" } }, altitudeFt, weatherSnapshot, performancePlan)));
   scoreCandidates(candidates, input);

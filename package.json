@@ -8,13 +8,9 @@
     "lint:css": "node scripts/audit-css.mjs",
     "audit:browser": "node scripts/audit-browser.mjs",
     "audit:browser:v2": "node scripts/audit-browser.mjs --engine-v2",
-    "audit:tracker": "node scripts/audit-browser.mjs --engine-v2 --tracker-only",
-    "audit:profile": "node scripts/audit-mission-profile.mjs",
     "verify:weather-live": "node scripts/verify-weather-live.mjs",
     "validate:missions": "node scripts/validate-missions.mjs",
-    "serve": "python3 -m http.server 4173",
-    "audit:resilience": "node scripts/audit-resilience.mjs",
-    "audit:help": "node scripts/audit-help.mjs"
+    "serve": "python3 -m http.server 4173"
   },
   "devDependencies": {
     "playwright": "^1.56.1",

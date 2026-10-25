@@ -86,8 +86,6 @@ export const PERFORMANCE = {
   weightTasPenaltyKtPer100Lb: 0.72,
   climbWeightFactorPer100Lb: 0.035,
   reserveDefaultMin: 45,
-  resilience: { version: "4D-1", cacheEntries: 64, frontierSamples: 9, frontierIterations: 9, graphBeam: 8, graphStages: 6, ensembleBatch: 4, ensembleTtlMs: 3600000 },
-  missionTime: { maxIterations: 8, timeToleranceSec: 2, fuelToleranceGal: .02 },
   contingencyPercent: 5,
   calibrationLimits: {
     tasFactor: [0.85, 1.15],
