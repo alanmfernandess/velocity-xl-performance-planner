@@ -25,6 +25,12 @@ await probe("GFS_2_POINTS",buildGfsUrl(brazil),raw=>{
   const parsed=parseGfsResponse(raw,2);
   return {locations:parsed.length,firstTime:new Date(parsed[0].times[0]).toISOString(),units:raw[0]?.hourly_units?.geopotential_height_500hPa}
 });
+const northAtlantic=Array.from({length:15},(_,i)=>({lat:64.18+(66.06-64.18)*i/14,lon:-51.72+(-23.13+51.72)*i/14}));
+northAtlantic.push({lat:65.7,lon:-18.1});
+await probe("GFS_16_N_ATLANTIC",buildGfsUrl(northAtlantic),raw=>{
+  const parsed=parseGfsResponse(raw,northAtlantic.length);
+  return {locations:parsed.length,firstTime:new Date(parsed[0].times[0]).toISOString()};
+});
 await probe("AWC_RAW",AWC_SNAPSHOT_URL,raw=>{
   const parsed=parseAwcSnapshot(raw);
   return {providerStatus:parsed.status,ageMinutes:Math.round(parsed.ageMs/60000),sigmets:parsed.sigmets.length,pireps:parsed.pireps.length};
