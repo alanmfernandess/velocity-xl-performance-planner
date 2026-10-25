@@ -39,9 +39,9 @@
   const scorePanel=move('.mission-score-panel','plan:score');
   // Comparison and configuration share one destination without duplicating controls.
   const compareModule=get('plan:compare');
-  compareModule.insertAdjacentHTML('beforeend',`<button class="text-button essential-compare-config" type="button" data-open-module="plan:config">${icon('sliders-horizontal')}${label('config')}${icon('chevron-right')}</button>`);
   move('.mission-strip','plan:score');
   move('#pilotDecisionPanel','plan:compare');
+  compareModule.insertAdjacentHTML('beforeend',`<button class="text-button essential-compare-config" type="button" data-open-module="plan:config">${icon('sliders-horizontal')}${label('config')}${icon('chevron-right')}</button>`);
   const controls=move('.controls-panel','plan:config');
   // Payload remains individual W&B stations; the legacy aggregate control stays in technical details.
   const payload=controls.querySelector('#payloadInput').closest('label');
