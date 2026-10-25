@@ -1,12 +1,12 @@
 import { buildMissionProfile, sampleMissionTime, sampleMissionDistance, clusterProfileWaypoints,
-  searchProfileWaypoints, profileWeatherLayers, profilePositionAtDistance } from "./mission-profile.js?v=20261024-02";
-import { buildMissionEvents, missionAdvisor } from "./mission-events.js?v=20261024-02";
-import { evaluateDepartureScenario } from "./mission-time.js?v=20261024-02";
-import { weatherAt } from "./weather/fusion.js?v=20261024-02";
-import { sampleGfs } from "./weather/open-meteo.js?v=20261024-02";
-import { terminalWeatherAtTime } from "./engine.js?v=20261024-02";
+  searchProfileWaypoints, profileWeatherLayers, profilePositionAtDistance } from "./mission-profile.js?v=20261024-03";
+import { buildMissionEvents, missionAdvisor } from "./mission-events.js?v=20261024-03";
+import { evaluateDepartureScenario } from "./mission-time.js?v=20261024-03";
+import { weatherAt } from "./weather/fusion.js?v=20261024-03";
+import { sampleGfs } from "./weather/open-meteo.js?v=20261024-03";
+import { terminalWeatherAtTime } from "./engine.js?v=20261024-03";
 
-import { createFlightRibbonData, flightRibbonPosition } from "./flight-ribbon.js?v=20261024-ribbon";
+import { createFlightRibbonData, flightRibbonPosition } from "./flight-ribbon.js?v=20261024-03";
 
 const words = {
   "pt-BR": { schematic: "FASES · ESQUEMÁTICO", preview: "Prévia", distance: "Distância", altitude: "Altitude · MSL", fuelRemaining: "Combustível restante",

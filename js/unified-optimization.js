@@ -1,15 +1,15 @@
-import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "./config.js?v=20261024-02";
+import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "./config.js?v=20261024-03";
 import {
   assessFeasibility, calculateAlternateDiversion, calculateAtAltitude,
   calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor,
   calculateOxygenPlan, calculateWeightBalance, clamp, oxygenSystemWeightLb,
-} from "./engine.js?v=20261024-02";
-import { buildTrajectory } from "./trajectory.js?v=20261024-02";
-import { buildVirtualFlightProfile, virtualTimeAtDistance } from "./virtual-flight.js?v=20261024-02";
-import { sampleGfs } from "./weather/open-meteo.js?v=20261024-02";
-import { createWeatherSnapshot } from "./weather/fusion.js?v=20261024-02";
-import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261024-02";
-import { scoreMissionV2 } from "./mission-score-v2.js?v=20261024-02";
+} from "./engine.js?v=20261024-03";
+import { buildTrajectory } from "./trajectory.js?v=20261024-03";
+import { buildVirtualFlightProfile, virtualTimeAtDistance } from "./virtual-flight.js?v=20261024-03";
+import { sampleGfs } from "./weather/open-meteo.js?v=20261024-03";
+import { createWeatherSnapshot } from "./weather/fusion.js?v=20261024-03";
+import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261024-03";
+import { scoreMissionV2 } from "./mission-score-v2.js?v=20261024-03";
 
 const STATUS_RANK = { viable: 0, marginal: 1, unknown: 2, "not-viable": 3 };
 const PRESETS = ["ECON", "NORMAL", "FAST"];

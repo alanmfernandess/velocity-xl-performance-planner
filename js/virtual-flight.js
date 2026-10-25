@@ -1,4 +1,4 @@
-import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "./config.js?v=20261024-02";
+import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "./config.js?v=20261024-03";
 
 export const TRACKER_VERSION = 1;
 export const TRACKER_STORAGE_KEY = "velocityxl.virtualFlightTracker.v1";

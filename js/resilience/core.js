@@ -1,10 +1,10 @@
-import { AIRCRAFT, PERFORMANCE } from "../config.js?v=20261024-02";
-import { bearingDeg } from "../engine.js?v=20261024-02";
-import { evaluateMissionAlternative } from "../unified-optimization.js?v=20261024-02";
-import { temporalPerformancePlan } from "../mission-time.js?v=20261024-02";
-import { buildMissionProfile, sampleMissionDistance, sampleMissionTime, profilePositionAtDistance } from "../mission-profile.js?v=20261024-02";
-import { retimeSimBriefPlan } from "../simbrief.js?v=20261024-02";
-import { sampleGfs, gfsSampleStatus } from "../weather/open-meteo.js?v=20261024-02";
+import { AIRCRAFT, PERFORMANCE } from "../config.js?v=20261024-03";
+import { bearingDeg } from "../engine.js?v=20261024-03";
+import { evaluateMissionAlternative } from "../unified-optimization.js?v=20261024-03";
+import { temporalPerformancePlan } from "../mission-time.js?v=20261024-03";
+import { buildMissionProfile, sampleMissionDistance, sampleMissionTime, profilePositionAtDistance } from "../mission-profile.js?v=20261024-03";
+import { retimeSimBriefPlan } from "../simbrief.js?v=20261024-03";
+import { sampleGfs, gfsSampleStatus } from "../weather/open-meteo.js?v=20261024-03";
 
 export const SOLVER_VERSION = PERFORMANCE.resilience.version;
 const cache = new Map();

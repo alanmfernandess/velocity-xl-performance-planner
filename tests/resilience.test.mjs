@@ -229,7 +229,7 @@ test('Production module graph uses one cache version so new exports cannot load 
     if(entry.isDirectory())await inspect(path);
     else if(entry.name.endsWith('.js')){
       const source=await readFile(path,'utf8');
-      for(const match of source.matchAll(/["'](\.{1,2}\/[^"'\n]+\.js(?:\?v=[^"'\n]+)?)["']/g))assert.ok(match[1].endsWith('?v=20261024-02'),`${path}: ${match[1]}`);
+      for(const match of source.matchAll(/["'](\.{1,2}\/[^"'\n]+\.js(?:\?v=[^"'\n]+)?)["']/g))assert.ok(match[1].endsWith('?v=20261024-03'),`${path}: ${match[1]}`);
     }
   }}
   await inspect(new URL('../js',import.meta.url).pathname);
