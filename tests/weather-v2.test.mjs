@@ -6,7 +6,7 @@ import { calculateAtAltitude, calculateEtpPnr } from "../js/engine.js";
 import { optimizeMission } from "../js/unified-optimization.js";
 import { buildTrajectory } from "../js/trajectory.js";
 import { buildGfsUrl, fetchGfsSnapshot, parseGfsResponse, representativePoints, sampleGfs, gfsSampleStatus } from "../js/weather/open-meteo.js";
-import { awcEvidenceAt, normalizeSigmet, parseAwcSnapshot } from "../js/weather/awc.js";
+import { awcEvidenceAt, normalizeSigmet, parseAwcSnapshot, fetchAwcSnapshot, AWC_API_FALLBACK_URL } from "../js/weather/awc.js";
 import { createWeatherSnapshot } from "../js/weather/fusion.js";
 
 const gfsRaw = JSON.parse(await readFile(new URL("./fixtures/open-meteo-gfs-2026-10-21.json", import.meta.url)));
@@ -60,6 +60,32 @@ test("GFS deduplicates simultaneous requests and retries a rate limit", async ()
   assert.equal(requests, 2);
   await fetchGfsSnapshot(samplePlan, { fetcher });
   assert.equal(requests, 2);
+  await fetchGfsSnapshot(samplePlan, { fetcher, force: true });
+  assert.equal(requests, 3);
+});
+
+test("AWC recovers raw snapshot failure through GitHub content API", async () => {
+  const nowMs=Date.parse("2026-10-25T20:30:00Z");
+  const raw={generatedAt:"2026-10-25T20:20:00Z",sigmets:[],pireps:[]};
+  const calls=[];
+  const fetcher=async (url)=>{
+    calls.push(url);
+    if(!url.includes("api.github.com"))return {ok:false,status:503};
+    return {ok:true,status:200,json:async()=>({encoding:"base64",content:Buffer.from(JSON.stringify(raw)).toString("base64")})};
+  };
+  const result=await fetchAwcSnapshot({fetcher,nowMs});
+  assert.equal(result.status,"available");
+  assert.equal(result.ageMs,10*60_000);
+  assert.equal(calls.length,2);
+  assert.equal(calls[1],AWC_API_FALLBACK_URL);
+});
+
+test("AWC reports source failures without claiming clear skies", async () => {
+  const result=await fetchAwcSnapshot({fetcher:async(url)=>({ok:false,status:url.includes("api.github.com")?403:404})});
+  assert.equal(result.status,"unavailable");
+  assert.match(result.reason,/RAW: HTTP_404/);
+  assert.match(result.reason,/API: HTTP_403/);
+  assert.deepEqual(result.sigmets,[]);
 });
 
 test("AWC official SIGMET applies only inside polygon, valid interval and altitude", () => {

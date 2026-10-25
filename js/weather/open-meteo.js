@@ -82,12 +82,13 @@ async function fetchWithRetry(url, fetcher, signal) {
     const controller = new AbortController();
     const abort = () => controller.abort(signal?.reason);
     signal?.addEventListener("abort", abort, { once: true });
-    const timer = setTimeout(() => controller.abort(new Error("GFS timeout")), 12000);
+    const timer = setTimeout(() => controller.abort(new Error("GFS timeout after 20s")), 20000);
     try {
       const response = await fetcher(url, { signal: controller.signal, headers: { Accept: "application/json" } });
       if (response.ok) return await response.json();
       if (response.status !== 429 && response.status < 500) {
-        const error = new Error(`GFS HTTP ${response.status}`);
+        const detail = await response.json().catch(() => null);
+        const error = new Error(`GFS HTTP ${response.status}${detail?.reason ? `: ${String(detail.reason).slice(0,160)}` : ""}`);
         error.retryable = false;
         throw error;
       }
@@ -106,12 +107,12 @@ async function fetchWithRetry(url, fetcher, signal) {
 }
 
 /** One batched request is shared by every candidate FL. */
-export async function fetchGfsSnapshot(plan, { fetcher = fetch, signal, nowMs = Date.now() } = {}) {
+export async function fetchGfsSnapshot(plan, { fetcher = fetch, signal, nowMs = Date.now(), force = false } = {}) {
   const points = representativePoints(plan);
   if (!points.length) return { status: "unavailable", reason: "NO_ROUTE_COORDINATES", locations: [] };
   const url = buildGfsUrl(points);
   const saved = cache.get(url);
-  if (saved && nowMs - saved.fetchedAtMs < TTL_MS) return saved;
+  if (!force && saved && nowMs - saved.fetchedAtMs < TTL_MS) return saved;
   if (pending.has(url)) return pending.get(url);
   const task = (async () => {
     const locations = parseGfsResponse(await fetchWithRetry(url, fetcher, signal), points.length);

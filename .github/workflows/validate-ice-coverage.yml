@@ -27,6 +27,8 @@ jobs:
         run: npm test
       - name: Mission validation
         run: npm run validate:missions
+      - name: Live weather source diagnostics (non-blocking)
+        run: node scripts/diagnose-weather-live.mjs
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser audit 2.0

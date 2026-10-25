@@ -1,7 +1,7 @@
 import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261021-unified";
 import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261022-04";
-import { fetchGfsSnapshot } from "./weather/open-meteo.js";
-import { fetchAwcSnapshot } from "./weather/awc.js";
+import { fetchGfsSnapshot } from "./weather/open-meteo.js?v=20261025-weather03";
+import { fetchAwcSnapshot } from "./weather/awc.js?v=20261025-weather03";
 import { createWeatherSnapshot } from "./weather/fusion.js";
 import { calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261022-04";
 import { fetchLatestOFP } from "./simbrief.js?v=20261018-08";
@@ -1233,16 +1233,46 @@ function activatePlan(plan) {
   state.preflightSnapshot=null;lastRenderedMissionScore=null;lastRenderedFinancial=null;
   state.manual={active:false,waypointIndex:0,distanceNm:0,fuelRemainingGal:state.fuelOnboardGal,altitudeFt:null};
   render();
+  reloadWeatherSources(plan);
+}
+
+/** The weather controls never override or relax the engine's evidence checks. */
+let weatherLoading=false;
+function reloadWeatherSources(plan=state.plan,{force=false}={}) {
+  if(!plan)return false;
+  weatherRequest?.abort();
   const request=new AbortController();weatherRequest=request;
-  Promise.allSettled([fetchGfsSnapshot(plan,{signal:request.signal}),fetchAwcSnapshot({signal:request.signal})]).then((outcomes)=>{
+  weatherLoading=true;
+  Promise.allSettled([fetchGfsSnapshot(plan,{signal:request.signal,force}),fetchAwcSnapshot({signal:request.signal})]).then((outcomes)=>{
     if(request.signal.aborted||state.plan!==plan)return;
     const [gfs,awc]=outcomes.map((outcome)=>outcome.status==="fulfilled"?outcome.value:null);
-    const errors=outcomes.map((outcome,index)=>outcome.status==="rejected"?`${index===0?"OPEN_METEO":"AWC"}: ${outcome.reason?.message||"unavailable"}`:null).filter(Boolean);
+    const errors=outcomes.map((outcome,index)=>outcome.status==="rejected"?
+      `${index===0?"OPEN_METEO":"AWC"}: ${outcome.reason?.message||"unavailable"}`:null).filter(Boolean);
     state.weatherSnapshot=createWeatherSnapshot(plan,{gfs,awc,errors});
     invalidateDecision(false);
     render();
+  }).finally(()=>{
+    if(weatherRequest!==request)return;
+    weatherLoading=false;
+    window.dispatchEvent(new Event("velocityxl:weather-status"));
   });
+  window.dispatchEvent(new Event("velocityxl:weather-status"));
+  return true;
 }
+window.VelocityWeather=Object.freeze({
+  retry:()=>reloadWeatherSources(state.plan,{force:true}),
+  getStatus:()=>({
+    loading:weatherLoading,
+    gfs:state.weatherSnapshot?.sources?.OPEN_METEO?.status||"unavailable",
+    awc:state.weatherSnapshot?.sources?.AWC?.status||"unavailable",
+    gfsReason:state.weatherSnapshot?.gfs?.reason ||
+      state.weatherSnapshot?.errors?.find(message=>message.startsWith("OPEN_METEO:")) || "",
+    awcReason:state.weatherSnapshot?.awc?.reason ||
+      state.weatherSnapshot?.errors?.find(message=>message.startsWith("AWC:")) || "",
+    awcAgeMinutes:Number.isFinite(state.weatherSnapshot?.awc?.ageMs)?
+      Math.round(state.weatherSnapshot.awc.ageMs/60000):null
+  })
+});
 
 $("#simbriefImportForm").addEventListener("submit",async(event)=>{
   event.preventDefault();
