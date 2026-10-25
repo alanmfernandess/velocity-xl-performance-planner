@@ -1,0 +1,18 @@
+{
+  "model": "ncep_gefs025",
+  "checkedAt": "2026-10-24",
+  "location": {
+    "lat": 40,
+    "lon": -74
+  },
+  "levelHpa": 850,
+  "fields": [
+    "temperature",
+    "geopotential_height",
+    "wind_speed",
+    "wind_direction",
+    "relative_humidity",
+    "cloud_cover"
+  ],
+  "result": "All six unsuffixed pressure-field series returned null, units undefined; adapter does not use these as valid aviation data. ECMWF subsequently verified."
+}

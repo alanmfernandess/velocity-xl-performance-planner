@@ -1,8 +1,9 @@
-import { PERFORMANCE } from "./config.js?v=20261024-profile1";
-import { evaluateMissionAlternative } from "./unified-optimization.js?v=20261024-profile1";
-import { buildMissionProfile, profilePositionAtDistance, sampleMissionDistance } from "./mission-profile.js";
-import { retimeSimBriefPlan } from "./simbrief.js?v=20261024-profile1";
-import { sampleGfs, gfsSampleStatus } from "./weather/open-meteo.js";
+import { PERFORMANCE } from "./config.js?v=20261024-02";
+import { evaluateMissionAlternative } from "./unified-optimization.js?v=20261024-02";
+import { buildMissionProfile, profilePositionAtDistance, sampleMissionDistance } from "./mission-profile.js?v=20261024-02";
+import { retimeSimBriefPlan } from "./simbrief.js?v=20261024-02";
+import { bearingDeg } from "./engine.js?v=20261024-02";
+import { sampleGfs, gfsSampleStatus } from "./weather/open-meteo.js?v=20261024-02";
 
 const atmosphereMissingReason = (snapshot, point, sample) => sample
   ? "ATMOSPHERIC_FIELDS_MISSING" : gfsSampleStatus(snapshot, point, sample);
@@ -15,7 +16,7 @@ function phasePoint(model, phase, altitudeFt) {
   const ratio = part.endAltitudeFt === part.startAltitudeFt ? .5
     : (altitudeFt - part.startAltitudeFt) / (part.endAltitudeFt - part.startAltitudeFt);
   const distanceNm = part.startNm + (part.endNm - part.startNm) * ratio;
-  return { ...profilePositionAtDistance(model, distanceNm), altitudeFt,
+  return { ...profilePositionAtDistance(model, distanceNm), distanceNm, altitudeFt,
     timestampMs: model.startMs + (part.startSec + (part.endSec - part.startSec) * ratio) * 1000 };
 }
 
@@ -40,7 +41,11 @@ export function temporalPerformancePlan(plan, model, snapshot) {
           reason: atmosphereMissingReason(snapshot.gfs, point, wx) });
         return null;
       }
-      return { altitudeFt, windDir: wx.windDir, windSpd: wx.windSpd, oatC: wx.oatC };
+      const distance = vertical?.distanceNm ?? distanceNm;
+      const route = model.waypoints.filter(p => p.located && p.coordinatesValid);
+      const upper = Math.max(1, route.findIndex(p => p.distanceNm >= distance));
+      const courseDeg = route.length > 1 ? bearingDeg(route[upper - 1], route[upper]) : null;
+      return { altitudeFt, windDir: wx.windDir, windSpd: wx.windSpd, oatC: wx.oatC, courseDeg };
     }).filter(Boolean);
     return { ...fix, windLevels: levels, windDir: NaN, windSpd: NaN, oatC: NaN };
   });

@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-24T23:27:06.329Z",
+  "model": "ecmwf_ifs025_ensemble",
+  "status": "AVAILABLE",
+  "received": 51,
+  "valid": 51,
+  "covered": 51,
+  "firstSample": {
+    "id": "01",
+    "wx": {
+      "oatC": -16.680446610183285,
+      "humidity": 64.96885146075226,
+      "cloudCover": 15.037340503187842,
+      "verticalVelocity": null,
+      "windDir": 306.24005557353956,
+      "windSpd": 5.789278970812087,
+      "cape": null,
+      "freezingLevelFt": null,
+      "precipitationMm": null,
+      "source": "OPEN_METEO",
+      "model": "ecmwf_ifs025_ensemble",
+      "validAtMs": 1792884424434,
+      "fetchedAtMs": 1792884424434,
+      "method": "pressure-height and time interpolation",
+      "coverage": "two-point spatial interpolation",
+      "distanceNm": 15
+    }
+  },
+  "invalid": []
+}

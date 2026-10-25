@@ -109,6 +109,7 @@
   move('.kpi-grid', 'mission:overview');
   move('#pilotDecisionPanel', 'mission:overview');
   move('#missionProfilePanel', 'mission:overview');
+  move('#resilienceLab', 'mission:overview');
   const overviewGrid = item(); overviewGrid.className = 'summary-grid'; overviewGrid.dataset.uiCardPair = ''; overviewGrid.dataset.uiOverlapGroup = ''; missionOverview.append(overviewGrid);
   const score = $('.mission-score-panel'); if (score) overviewGrid.append(score);
   const recommendation = item(); recommendation.className = 'panel recommendation-card';

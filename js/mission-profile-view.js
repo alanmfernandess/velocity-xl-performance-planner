@@ -1,10 +1,10 @@
 import { buildMissionProfile, sampleMissionTime, sampleMissionDistance, clusterProfileWaypoints,
-  searchProfileWaypoints, smoothProfileGeometry, profileWeatherLayers, profilePositionAtDistance } from "./mission-profile.js";
-import { buildMissionEvents, missionAdvisor } from "./mission-events.js";
-import { evaluateDepartureScenario } from "./mission-time.js";
-import { weatherAt } from "./weather/fusion.js";
-import { sampleGfs } from "./weather/open-meteo.js";
-import { terminalWeatherAtTime } from "./engine.js?v=20261021-unified";
+  searchProfileWaypoints, smoothProfileGeometry, profileWeatherLayers, profilePositionAtDistance } from "./mission-profile.js?v=20261024-02";
+import { buildMissionEvents, missionAdvisor } from "./mission-events.js?v=20261024-02";
+import { evaluateDepartureScenario } from "./mission-time.js?v=20261024-02";
+import { weatherAt } from "./weather/fusion.js?v=20261024-02";
+import { sampleGfs } from "./weather/open-meteo.js?v=20261024-02";
+import { terminalWeatherAtTime } from "./engine.js?v=20261024-02";
 
 const words = {
   "pt-BR": { preview: "Prévia", distance: "Distância", altitude: "Altitude · MSL", fuelRemaining: "Combustível restante",
@@ -62,6 +62,7 @@ export function createMissionProfilePresenter() {
   let elapsedSec = 0, selectedFixId = null, selectedEvent = 0, focus = "waypoint", playing = false, frame = null, lastFrame = null;
   let revision = 0, comparisons = new Map(), computing = false, graph = null;
   const models = new WeakMap();
+  let externalScenario = null, resilienceAdvice = null;
   const w = (key) => words[context?.language || "pt-BR"][key] || key;
   const n = (value, digits = 0) => Number.isFinite(value) ? value.toLocaleString(context.language, { minimumFractionDigits: digits, maximumFractionDigits: digits }) : "—";
   const fuel = (value) => `${n(context.fuelUnit === "l" ? value * 3.785411784 : value, 1)}\u00a0${context.fuelUnit === "l" ? "L" : "gal"}`;
@@ -72,7 +73,7 @@ export function createMissionProfilePresenter() {
     return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
   };
   const reason = (code) => reasons[code]?.[context.language === "pt-BR" ? 0 : 1] || `${w("noProfile")} · ${(code || "—").replaceAll("_", " ")}`;
-  const current = () => comparisons.get(offset);
+  const current = () => externalScenario || comparisons.get(offset);
   const currentCandidate = () => current()?.candidate || context.candidate;
   const pause = () => { playing = false; if (frame !== null) cancelAnimationFrame(frame); frame = null; lastFrame = null; $("mpPlay").setAttribute("aria-label", w("play")); $("mpPlay").setAttribute("aria-pressed", "false"); $("mpPlay").querySelector("path").setAttribute("d", "m8 5 11 7-11 7Z"); };
 
@@ -92,8 +93,8 @@ export function createMissionProfilePresenter() {
     if (!scenario?.available || !candidate) { model = { valid: false, reason: scenario?.reason || "NO_TRAJECTORY", waypoints: [] }; layers = null; events = []; return; }
     let saved = models.get(candidate);
     if (!saved || saved.plan !== scenario.plan) {
-      const next = buildMissionProfile(scenario.plan, candidate);
-      const weather = profileWeatherLayers(next, context.mission.weatherSnapshot);
+      const next = scenario.model?.valid ? scenario.model : buildMissionProfile(scenario.plan, candidate);
+      const weather = profileWeatherLayers(next, scenario.snapshot || context.mission.weatherSnapshot);
       saved = { plan: scenario.plan, model: next, layers: weather, events: buildMissionEvents(next, weather) };
       models.set(candidate, saved);
     }
@@ -248,9 +249,12 @@ export function createMissionProfilePresenter() {
   function renderAdvisor() {
     const scenario = current();
     const candidate = scenario?.available ? scenario.candidate : null;
-    const advisor = missionAdvisor(candidate, context.mission);
+    const advisorCandidate = externalScenario ? context.candidate : candidate;
+    const nativeAdvisor = missionAdvisor(advisorCandidate, context.mission);
+    const advisor = resilienceAdvice && resilienceAdvice.priority < (nativeAdvisor.code === "NO_BLOCKER" ? Infinity : nativeAdvisor.priority) ? resilienceAdvice : nativeAdvisor;
     let text = w(advisor.code);
-    if (text === advisor.code) text = /ICE/.test(advisor.code) ? `ICE · ${w("noData")}`
+    if (advisor === resilienceAdvice) text = `LAB · ${advisor.code}`;
+    else if (text === advisor.code) text = /ICE/.test(advisor.code) ? `ICE · ${w("noData")}`
       : /RIDE/.test(advisor.code) ? `RIDE · ${w("noData")}` : advisor.priority === 1 ? `${advisor.code.replaceAll("_", " ")} · ${w("not-viable")}` : w("noData");
     if (!scenario?.available) text = reason(scenario?.reason);
     $("missionScoreAction").textContent = `${offset ? `+${offset} h · ` : ""}${text}${advisor.reference ? ` · ${advisor.reference}` : ""}`;
@@ -260,15 +264,15 @@ export function createMissionProfilePresenter() {
       $("missionScoreAction").closest(".mission-score-action").after(details);
       details.addEventListener("toggle", () => { const body = details.querySelector(".mp-advisor-source"); if (body) body.hidden = !details.open; });
     }
-    details.innerHTML = `<summary>${w("sources")}</summary><div class="mp-advisor-source" ${details.open ? "" : "hidden"}><strong data-ui-role="secondary">${esc(advisor.code.replaceAll("_", " "))}</strong><span data-ui-role="label">${esc(advisor.source)}</span><span data-ui-role="label">${esc([...(candidate?.physicalBlockers || []), ...(candidate?.unknownReasons || [])].join(" · ").replaceAll("_", " "))}</span></div>`;
+    details.innerHTML = `<summary>${w("sources")}</summary><div class="mp-advisor-source" ${details.open ? "" : "hidden"}><strong data-ui-role="secondary">${esc(advisor.code.replaceAll("_", " "))}</strong><span data-ui-role="label">${esc(advisor.source)}</span><span data-ui-role="label">${esc([...(advisorCandidate?.physicalBlockers || []), ...(advisorCandidate?.unknownReasons || [])].join(" · ").replaceAll("_", " "))}</span></div>`;
   }
 
   function render() {
     if (!context) return;
     translate(); prepareModel();
     const candidate = currentCandidate();
-    $("mpCandidate").textContent = candidate ? `FL${candidate.altitudeFt / 100} · ${candidate.mode}` : "—";
-    $("mpScenarioTag").textContent = offset ? `+${offset} h · ${w("analyzing")}`
+    $("mpCandidate").textContent = candidate ? candidate.profileLabel || `FL${candidate.altitudeFt / 100} · ${candidate.mode}` : "—";
+    $("mpScenarioTag").textContent = externalScenario ? w("analyzing") : offset ? `+${offset} h · ${w("analyzing")}`
       : current()?.source === "SHARED_FORECAST" ? `${w("original")} · ${w("analyzing")}` : w(context.source);
     $("mpScenarioTag").textContent += ` · ${w(current()?.candidate?.status || "unknown")}`;
     $("mpScenarioTag").dataset.status = current()?.candidate?.status || "unknown";
@@ -318,7 +322,7 @@ export function createMissionProfilePresenter() {
   host.addEventListener("click", (event) => {
     const target = event.target.closest("button"); if (!target) return;
     if (target.dataset.profileLayer) { layer = target.dataset.profileLayer; render(); }
-    if (target.dataset.profileOffset !== undefined) { pause(); offset = Number(target.dataset.profileOffset); elapsedSec = 0; focus = "waypoint"; selectedFixId = null; render(); computeComparisons(); }
+    if (target.dataset.profileOffset !== undefined) { pause(); externalScenario = null; offset = Number(target.dataset.profileOffset); elapsedSec = 0; focus = "waypoint"; selectedFixId = null; render(); computeComparisons(); }
     if (target.dataset.selectProfileFix) selectFix(target.dataset.selectProfileFix);
     if (["mpPreviousFix", "mpNextFix"].includes(target.id)) {
       const index = model.waypoints.findIndex((p) => p.id === selectedFixId);
@@ -375,6 +379,7 @@ export function createMissionProfilePresenter() {
       || context.selection !== next.selection;
     context = next;
     if (changed) {
+      externalScenario = null; resilienceAdvice = null;
       revision++; pause(); offset = 0; elapsedSec = 0; selectedFixId = null; selectedEvent = 0; focus = "waypoint";
       comparisons = new Map([[0, { available: Boolean(next.candidate), candidate: next.candidate, plan: next.plan,
         startMs: Number.isFinite(next.plan?.scheduledOffMs) ? next.plan.scheduledOffMs : null, offsetHours: 0, converged: true, iterations: 0, reason: "NO_TRAJECTORY", source: "ORIGINAL_CANDIDATE" }]]);
@@ -382,5 +387,9 @@ export function createMissionProfilePresenter() {
     }
     render();
     if ($("mpTimeMachine").open) computeComparisons();
-  }, pause };
+  }, pause, previewScenario(scenario) {
+    if (!context || !scenario?.available) return;
+    pause(); externalScenario = scenario; offset = 0; elapsedSec = 0; render();
+  }, clearPreview() { externalScenario = null; if(context) render(); },
+  setResilienceAdvisor(advice) { resilienceAdvice = advice; if(context) renderAdvisor(); } };
 }

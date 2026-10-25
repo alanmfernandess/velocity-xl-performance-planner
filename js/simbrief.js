@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261021-unified";
+import { greatCircleNm } from "./engine.js?v=20261024-02";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;
@@ -318,6 +318,7 @@ export function parseSimBrief(data) {
     lat: number(first(alternate?.pos_lat, alternate?.latitude, alternate?.lat), NaN),
     lon: number(first(alternate?.pos_long, alternate?.longitude, alternate?.lon), NaN),
     distanceNm: number(first(alternate?.route_distance, alternate?.distance), NaN),
+    elevationFt: number(first(alternate?.elevation, alternate?.elevation_ft), NaN),
   }));
   const alternate = alternates[0];
   const rawAlternateFixes = arrayOf(data.alternate_navlog);

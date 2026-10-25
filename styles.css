@@ -42,7 +42,9 @@
 }
 
 /* 2. BASE */
+*::-webkit-scrollbar { display: none; }
 * {
+  scrollbar-width: none;
   box-sizing: border-box;
 }
 [hidden] {
@@ -2387,7 +2389,6 @@ select:focus-visible {
   overflow-x: auto;
   padding: 16px 2px 4px;
   scroll-snap-type: x proximity;
-  scrollbar-width: thin;
 }
 .glide-route-point {
   position: relative;
@@ -3859,6 +3860,56 @@ select:focus-visible {
 .mp-empty { padding: var(--space-4); background: var(--panel-soft); border-radius: var(--control-radius); color: var(--muted); }
 
 /* 6. RESPONSIVE — one grouped section per breakpoint */
+/* Resilience Lab: composition only; shared components own type and controls. */
+.resilience-lab { display: grid; gap: var(--space-5); min-width: 0; }
+.rl-heading { display: grid; justify-items: start; gap: var(--space-2); }
+.rl-heading h2, .rl-analysis h3, .rl-analysis h4 { margin: 0; }
+.rl-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-2); }
+.rl-tabs .ui-button { white-space: normal; height: auto; }
+.rl-tabs [aria-pressed="true"], .rl-corridor [aria-pressed="true"], .rl-effects [aria-pressed="true"], .rl-profiles [aria-pressed="true"] { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
+.rl-analysis { display: grid; gap: var(--space-5); min-width: 0; }
+.rl-analysis > header { display: grid; gap: var(--space-2); }
+.rl-busy:empty { display: none; }
+.rl-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); }
+.rl-control { display: grid; gap: var(--space-3); min-width: 0; }
+.rl-control input[type="range"] { width: 100%; margin: 0; min-height: var(--control-height); accent-color: var(--blue); }
+.rl-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+.rl-metric { display: grid; min-width: 0; align-content: start; gap: var(--space-2); }
+.rl-frontier-values { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.rl-metric strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rl-state-row, .rl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.rl-state-count { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.rl-status[data-state="INCOMPATIBLE"] { color: var(--red); }
+.rl-status[data-state="MARGINAL"] { color: var(--orange); }
+.rl-status[data-state="FUEL_FEASIBLE"], .rl-status[data-state="ELIGIBLE"] { color: var(--green); }
+.rl-status[data-state="UNKNOWN"], .rl-status[data-state="UNAVAILABLE"] { color: var(--muted); }
+.rl-alert { display: grid; justify-items: start; gap: var(--space-3); background: var(--panel-soft); padding: var(--space-4); border-radius: var(--control-radius); }
+.rl-plot { min-width: 0; }
+.rl-plot svg { display: block; width: 100%; height: auto; }
+.rl-plot text { font-family: var(--font-family); font-size: var(--ui-caption); fill: var(--muted); }
+.rl-quantiles, .rl-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); align-items: start; }
+.rl-quantile, .rl-option { display: grid; gap: var(--space-4); min-width: 0; }
+.rl-option header { display: grid; gap: var(--space-2); }
+.rl-reason { color: var(--muted); }
+.rl-corridor { display: flex; gap: var(--space-2); overflow-x: auto; }
+.rl-corridor button { display: grid; flex: 0 0 auto; justify-items: start; gap: var(--space-2); }
+.rl-effects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.rl-profiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.rl-effect, .rl-profile { display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; justify-items: stretch; text-align: left; height: auto; white-space: normal; gap: var(--space-4); padding: var(--space-4); }
+.rl-effect-metrics, .rl-profile-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.rl-effect-metrics > span, .rl-profile-metrics > span, .rl-profile-margin { display: grid; gap: var(--space-2); font-size: var(--ui-caption); color: var(--muted); }
+.rl-effect-metrics strong, .rl-profile-metrics strong, .rl-profile-margin strong { font-size: var(--ui-body); color: var(--text); white-space: nowrap; }
+.rl-effect progress { display: block; width: 100%; height: var(--space-1); accent-color: var(--blue); }
+.rl-chain { display: grid; gap: var(--space-4); }
+.rl-selected { display: grid; gap: var(--space-4); min-width: 0; }
+.rl-selected .rl-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-block: var(--space-4); border-block: 1px solid var(--line); }
+.rl-selected-margin { display: grid; justify-items: start; gap: var(--space-3); }
+.rl-assumptions summary { min-height: var(--control-height); display: flex; align-items: center; cursor: pointer; color: var(--blue); }
+.rl-assumptions > div { display: grid; gap: var(--space-3); padding-top: var(--space-3); color: var(--muted); font-size: var(--ui-caption); }
+.rl-assumptions p, .rl-assumptions dl { margin: 0; }
+.rl-assumptions dd { margin: 0 0 var(--space-3); }
+.rl-assumptions dd, .rl-assumptions li { overflow-wrap: break-word; }
+
 @media (max-width: 1100px) {
   /* Layout */
   .plan-bar {
@@ -3896,6 +3947,9 @@ select:focus-visible {
 }
 
 @media (max-width: 900px) {
+  .rl-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rl-tabs > :last-child { grid-column: 1 / -1; }
+  .rl-controls, .rl-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tracker-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tracker-metrics > div:nth-child(2) { grid-column: span 2; }
   /* Four decision indicators need at least 200 px each. */
@@ -3906,9 +3960,11 @@ select:focus-visible {
 }
 
 @media (max-width: 760px) {
+  .rl-controls, .rl-options, .rl-effects, .rl-profiles { grid-template-columns: minmax(0, 1fr); }
+  .rl-quantiles { grid-template-columns: minmax(0, 1fr); }
+  .rl-quantile { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rl-quantile h4, .rl-metric[data-reading="utc"] { grid-column: 1 / -1; }
   /* Base */
-  html, body, .app-module, .app-module * { scrollbar-width: none; }
-  html::-webkit-scrollbar, body::-webkit-scrollbar, .app-module::-webkit-scrollbar, .app-module *::-webkit-scrollbar { display: none; width: 0; height: 0; }
   .mp-readings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mp-chart-layout { grid-template-columns: 64px minmax(0, 1fr); gap: var(--space-1); }
   .mp-context { text-align: left; }

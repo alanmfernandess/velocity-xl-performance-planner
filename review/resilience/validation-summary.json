@@ -1,0 +1,281 @@
+{
+  "generatedAt": "2026-10-25T00:00:14.369690+00:00",
+  "branch": "feature/mission-intelligence-resilience",
+  "baseCommit": "d7976b14fddc7d2f0a97bd567f740a184998b9a7",
+  "published": false,
+  "npmCi": "PASS",
+  "unitTests": {
+    "total": 238,
+    "passed": 238,
+    "failed": 0,
+    "new": 32
+  },
+  "cssIssues": 0,
+  "missionScenarios": {
+    "tested": 11,
+    "withoutRecommendation": 6
+  },
+  "audits": {
+    "application": {
+      "generatedAt": "2026-10-24T23:44:05.103Z",
+      "browser": "141.0.7390.37",
+      "states": 322,
+      "errors": [],
+      "screenshots": 49,
+      "widths": [
+        320,
+        375,
+        390,
+        430,
+        768,
+        1024,
+        1440,
+        1920
+      ],
+      "negativeChecks": [
+        {
+          "name": "38px select beside 44px input",
+          "expected": "control-row-drift",
+          "detected": true,
+          "codes": [
+            "short-control",
+            "control-row-drift",
+            "control-row-drift"
+          ]
+        },
+        {
+          "name": "38px grid track around 44px control",
+          "expected": "field-row-underflow",
+          "detected": true,
+          "codes": [
+            "field-row-underflow"
+          ]
+        },
+        {
+          "name": "money unit over next panel",
+          "expected": "unit-panel-collision",
+          "detected": true,
+          "codes": [
+            "unit-panel-collision"
+          ]
+        },
+        {
+          "name": "icon over label",
+          "expected": "icon-text-collision",
+          "detected": true,
+          "codes": [
+            "icon-text-collision"
+          ]
+        },
+        {
+          "name": "number separated from unit",
+          "expected": "split-number-unit",
+          "detected": true,
+          "codes": [
+            "split-number-unit"
+          ]
+        },
+        {
+          "name": "truncated operational text",
+          "expected": "clipped-text",
+          "detected": true,
+          "codes": [
+            "clipped-text"
+          ]
+        },
+        {
+          "name": "unequal paired cards",
+          "expected": "card-pair-drift",
+          "detected": true,
+          "codes": [
+            "card-pair-drift"
+          ]
+        },
+        {
+          "name": "different secondary typography",
+          "expected": "secondary-value-mismatch",
+          "detected": true,
+          "codes": [
+            "role-style-mismatch",
+            "typography-drift",
+            "secondary-value-mismatch"
+          ]
+        },
+        {
+          "name": "button text outside border",
+          "expected": "button-text-outside",
+          "detected": true,
+          "codes": [
+            "button-text-outside"
+          ]
+        },
+        {
+          "name": "narrow-screen overflow",
+          "expected": "viewport-overflow",
+          "detected": true,
+          "codes": [
+            "viewport-overflow"
+          ]
+        }
+      ]
+    },
+    "engineV2": {
+      "generatedAt": "2026-10-24T23:44:09.354Z",
+      "browser": "141.0.7390.37",
+      "states": 386,
+      "errors": [],
+      "screenshots": 92,
+      "widths": [
+        320,
+        375,
+        390,
+        430,
+        768,
+        1024,
+        1440,
+        1920
+      ],
+      "negativeChecks": [
+        {
+          "name": "38px select beside 44px input",
+          "expected": "control-row-drift",
+          "detected": true,
+          "codes": [
+            "short-control",
+            "control-row-drift",
+            "control-row-drift"
+          ]
+        },
+        {
+          "name": "38px grid track around 44px control",
+          "expected": "field-row-underflow",
+          "detected": true,
+          "codes": [
+            "field-row-underflow"
+          ]
+        },
+        {
+          "name": "money unit over next panel",
+          "expected": "unit-panel-collision",
+          "detected": true,
+          "codes": [
+            "unit-panel-collision"
+          ]
+        },
+        {
+          "name": "icon over label",
+          "expected": "icon-text-collision",
+          "detected": true,
+          "codes": [
+            "icon-text-collision"
+          ]
+        },
+        {
+          "name": "number separated from unit",
+          "expected": "split-number-unit",
+          "detected": true,
+          "codes": [
+            "split-number-unit"
+          ]
+        },
+        {
+          "name": "truncated operational text",
+          "expected": "clipped-text",
+          "detected": true,
+          "codes": [
+            "clipped-text"
+          ]
+        },
+        {
+          "name": "unequal paired cards",
+          "expected": "card-pair-drift",
+          "detected": true,
+          "codes": [
+            "card-pair-drift"
+          ]
+        },
+        {
+          "name": "different secondary typography",
+          "expected": "secondary-value-mismatch",
+          "detected": true,
+          "codes": [
+            "role-style-mismatch",
+            "typography-drift",
+            "secondary-value-mismatch"
+          ]
+        },
+        {
+          "name": "button text outside border",
+          "expected": "button-text-outside",
+          "detected": true,
+          "codes": [
+            "button-text-outside"
+          ]
+        },
+        {
+          "name": "narrow-screen overflow",
+          "expected": "viewport-overflow",
+          "detected": true,
+          "codes": [
+            "viewport-overflow"
+          ]
+        }
+      ]
+    },
+    "tracker": {
+      "generatedAt": "2026-10-24T23:48:31.591Z",
+      "browser": "141.0.7390.37",
+      "states": 59,
+      "errors": [],
+      "screenshots": 38,
+      "widths": [
+        320,
+        375,
+        390,
+        430,
+        768,
+        1024,
+        1440,
+        1920
+      ],
+      "negativeChecks": []
+    },
+    "missionProfile": {
+      "generatedAt": "2026-10-24T23:45:39.157Z",
+      "browser": "141.0.7390.37",
+      "states": 140,
+      "errors": [],
+      "screenshots": 10,
+      "widths": [
+        320,
+        375,
+        390,
+        430,
+        768,
+        1024,
+        1440,
+        1920
+      ],
+      "negativeChecks": []
+    },
+    "resilience": {
+      "browser": "141.0.7390.37",
+      "states": 291,
+      "errors": [],
+      "screenshots": 11,
+      "widths": [
+        320,
+        375,
+        390,
+        430,
+        768,
+        1024,
+        1440,
+        1920
+      ]
+    }
+  },
+  "weatherLive": "ensemble-live.json; weather-live.txt. No SimBrief request; no pilot id.",
+  "totalBrowserStates": 1198,
+  "totalBrowserErrors": 0
+}
