@@ -115,7 +115,7 @@
     for(const [key,node]of areaMap)node.hidden=key!==area;
     for(const [key,node]of panelMap)node.hidden=key!==`${area}:${module}`;
     document.querySelectorAll('[data-area-button]').forEach(b=>{const active=b.dataset.areaButton===area;b.classList.toggle('active',active);if(active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
-    const section=areaMap.get(area);section.querySelector('[data-area-title]').textContent=text(module==='overview'?area:module);section.querySelector('[data-back]').hidden=module==='overview';
+    const section=areaMap.get(area);section.querySelector('[data-area-title]').textContent=text(module==='overview'?area:module);section.querySelector('[data-back]').hidden=module==='overview';const backLabel=section.querySelector('[data-back] [data-layout-text]');if(backLabel){backLabel.dataset.layoutText=area;backLabel.textContent=text(area);}
     window.scrollTo({top:0,behavior:'instant'});window.lucide?.createIcons();
     document.dispatchEvent(new CustomEvent('velocity:navigate',{detail:{area,module}}));
   }
