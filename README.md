@@ -68,6 +68,14 @@ A sessão fica no `localStorage` deste navegador, vinculada à identidade do OFP
 - **Financeiro:** depende do preço por litro informado manualmente em BRL ou USD. Preço ausente produz custo indisponível, nunca custo zero.
 - **Persistência:** preferências, calibração e sessão do Tracker são locais ao navegador/dispositivo. A configuração aplicada e o Tracker são restaurados somente para o mesmo OFP; escolhas antigas não passam para outra missão.
 
+## Central de Ajuda e planejamento guiado
+
+O ícone **?** do cabeçalho abre a Central de Ajuda, com índice pesquisável de funcionalidades e explicações PT/EN. Botões contextuais de ajuda em painéis selecionados utilizam o mesmo cadastro em `js/help-registry.js`. O catálogo contém 51 tópicos, incluindo os quatro grupos de navegação, Flight Ribbon, Resilience Lab e Tracker.
+
+O roteiro guiado de 16 etapas navega pelos módulos existentes e destaca controles reais, sem duplicar o planejador. Importação, otimização, escolha de candidato e aplicação avançam somente após confirmação pelo mecanismo principal. Etapas de conferência solicitam confirmação explícita do piloto, sem alterar configurações. A etapa final explica o Tracker **sem iniciá-lo automaticamente**.
+
+A posição concluída do roteiro é armazenada em `localStorage` (`velocityxl.help.v1`), sem Pilot ID nem dados do OFP. Ao retomar, pré-requisitos são verificados para evitar continuar sobre um plano ausente ou resultado que deixou de ser válido. O guia pode ser fechado e retomado sem modificar a sessão real de voo.
+
 ## Executar e verificar
 
 ```bash

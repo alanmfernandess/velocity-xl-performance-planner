@@ -228,6 +228,11 @@ let latestActiveCandidate=null;
 let renderOptimizationCache=null;
 let decisionSnapshot=null;
 let analysisChoice=null;
+function helpSignal(type){
+  window.VelocityHelpFacts={plan:Boolean(state.plan),optimized:Boolean(decisionSnapshot),selected:Boolean(analysisChoice),applied:Boolean(state.appliedChoice)};
+  window.dispatchEvent(new CustomEvent("velocity:activity",{detail:{type}}));
+}
+
 let analysisCandidate=null;
 let decisionStale=false;
 let marginalApplyArmed=false;
@@ -1290,6 +1295,7 @@ $("#optimizeMission").addEventListener("click",async()=>{
     if(revision!==decisionRevision||plan!==state.plan)return;
     decisionSnapshot=snapshot;decisionStale=false;analysisChoice=null;analysisCandidate=null;
     renderDecisionPanel();window.VelocityLayout?.activate("mission","overview");
+    if($("#topLevelCards [data-decision-fl]"))helpSignal("mission-optimized");
     $("#pilotDecisionPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
   }finally{optimizationBusy=false;button.disabled=false;button.removeAttribute("aria-busy");}
 });
@@ -1300,7 +1306,7 @@ $("#pilotDecisionPanel").addEventListener("click",(event)=>{
     analysisChoice={altitudeFt,mode};marginalApplyArmed=false;
     const preset=PERFORMANCE.modes[mode];
     if(preset){$("#analysisMap").value=String(preset.mapInHg);$("#analysisRpm").value=String(preset.rpm);}
-    renderDecisionPanel();$("#pilotAnalysis").scrollIntoView({behavior:"smooth",block:"nearest"});return;
+    renderDecisionPanel();helpSignal("candidate-selected");$("#pilotAnalysis").scrollIntoView({behavior:"smooth",block:"nearest"});return;
   }
   const modeButton=event.target.closest("[data-analysis-mode]");
   if(modeButton&&analysisChoice){
@@ -1330,7 +1336,7 @@ $("#pilotDecisionPanel").addEventListener("click",(event)=>{
   $("#fuelInput").value=String(state.fuelOnboardGal);
   localStorage.setItem("velocityxl.powerSetting",JSON.stringify(state.powerSetting));
   localStorage.setItem("velocityxl.appliedMission",JSON.stringify({planKey:missionPlanKey(state.plan),choice:state.appliedChoice,engineMode:state.mode,powerSetting:state.powerSetting,fuelOnboardGal:state.fuelOnboardGal}));
-  marginalApplyArmed=false;render();showToast(state.language==="pt-BR"?"Configuração aplicada.":"Configuration applied.");
+  marginalApplyArmed=false;render();helpSignal("configuration-applied");showToast(state.language==="pt-BR"?"Configuração aplicada.":"Configuration applied.");
 });
 for(const selector of ["#analysisMap","#analysisRpm"]){$(selector).addEventListener("input",()=>{
   if(!analysisChoice||analysisChoice.mode!=="MANUAL")return;
@@ -1523,7 +1529,7 @@ function activatePlan(plan) {
   state.manual={active:false,waypointIndex:0,distanceNm:0,fuelRemainingGal:state.fuelOnboardGal,altitudeFt:null};
   trackerPanelMode=null;trackerPendingPhase=null;
   trackerSession=recoverVirtualFlight(storedJson(TRACKER_STORAGE_KEY,null),missionPlanKey(plan),Date.now());
-  render();
+  render();helpSignal("plan-imported");
   const request=new AbortController();weatherRequest=request;
   Promise.allSettled([fetchGfsSnapshot(plan,{signal:request.signal}),fetchAwcSnapshot({signal:request.signal})]).then((outcomes)=>{
     if(request.signal.aborted||state.plan!==plan)return;
@@ -1552,4 +1558,4 @@ $("#simbriefImportForm").addEventListener("submit",async(event)=>{
 
 const savedIdentifier=localStorage.getItem("velocityxl.simbriefIdentifier"); if(savedIdentifier)$("#quickPilotId").value=savedIdentifier;
 window.addEventListener("load",refreshUiIcons,{once:true});
-render();
+render();helpSignal("initial-state");

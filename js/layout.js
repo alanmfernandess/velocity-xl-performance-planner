@@ -236,6 +236,7 @@
     for (const [key, node] of moduleNodes) node.hidden = key !== `${area}:${module}`;
     window.scrollTo({ top: 0, behavior: 'auto' });
     if (window.lucide?.createIcons) window.lucide.createIcons();
+    window.dispatchEvent(new CustomEvent('velocity:activity', { detail: { type: 'navigation', value: area + ':' + module } }));
   }
   document.addEventListener('click', event => {
     const areaButton = event.target.closest('[data-area-button]');
