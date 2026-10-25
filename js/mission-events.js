@@ -1,5 +1,5 @@
-import { PERFORMANCE } from "./config.js?v=20261024-02";
-import { sampleMissionDistance } from "./mission-profile.js?v=20261024-02";
+import { PERFORMANCE } from "./config.js?v=20261024-03";
+import { sampleMissionDistance } from "./mission-profile.js?v=20261024-03";
 
 /** Events are references to existing model results, never invented risk zones. */
 export function buildMissionEvents(model, layers) {

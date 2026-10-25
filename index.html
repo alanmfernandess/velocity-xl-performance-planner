@@ -11,7 +11,7 @@
     <title>Velocity XL Performance Planner</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20261024-02" />
+    <link rel="stylesheet" href="./styles.css?v=20261024-03" />
   </head>
   <body>
     <header class="topbar">
@@ -83,7 +83,26 @@
         <p id="mpLayerStatus" class="mp-layer-status ui-status" role="status">—</p>
         <div class="mp-empty" id="mpUnavailable" hidden></div>
         <div id="mpProfileBody">
-          <div class="mp-chart-layout"><div class="mp-alt-axis" aria-hidden="true"><span id="mpAltitudeUpper"></span><span id="mpAltitudeLower"></span></div><div class="mp-plot" id="mpPlot"><svg id="mpSvg" role="img" aria-labelledby="mpSvgTitle" preserveAspectRatio="xMidYMid meet"><title id="mpSvgTitle">Mission Profile</title></svg><div class="mp-airports"><span id="mpOrigin" data-ui-role="label"></span><span id="mpDestination" data-ui-role="label"></span></div></div></div>
+          <div class="mp-ribbon" id="mpRibbonPanel">
+            <div class="mp-ribbon-heading"><span data-ui-role="label" data-profile-text="schematic">FASES · ESQUEMÁTICO</span><strong data-ui-role="secondary" id="mpRibbonFlightLevel">—</strong></div>
+            <div class="mp-ribbon-phases" id="mpRibbonPhases"></div>
+            <div class="mp-ribbon-visual">
+              <div class="mp-ribbon-strips" id="mpRibbonStrips"></div>
+              <span class="mp-ribbon-cursor" id="mpRibbonCursor" aria-hidden="true"></span>
+              <div class="mp-ribbon-boundaries" id="mpRibbonBoundaries"></div>
+            </div>
+            <div class="mp-ribbon-metrics">
+              <div class="ui-metric"><span data-ui-role="label">ALT · MSL</span><strong data-ui-role="secondary" id="mpRibbonAltitude">—</strong></div>
+              <div class="ui-metric"><span data-ui-role="label">ETE</span><strong data-ui-role="secondary" id="mpRibbonEte">—</strong></div>
+              <div class="ui-metric"><span data-ui-role="label">FUEL</span><strong data-ui-role="secondary" id="mpRibbonFuel">—</strong></div>
+            </div>
+            <div class="mp-route-rail">
+              <div class="mp-ribbon-heading"><span data-ui-role="label">OFP · WAYPOINTS</span><span data-ui-role="label" id="mpRibbonRailCount">—</span></div>
+              <div class="mp-plot" id="mpPlot"><svg id="mpSvg" role="group" aria-labelledby="mpSvgTitle" preserveAspectRatio="none"><title id="mpSvgTitle">Waypoints · OFP</title></svg>
+                <div class="mp-airports"><span id="mpOrigin" data-ui-role="label"></span><span id="mpDestination" data-ui-role="label"></span></div>
+              </div>
+            </div>
+          </div>
           <div class="mp-playback"><button id="mpPlay" class="text-button ui-button" type="button" aria-label="Reproduzir prévia"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button><label><span class="mp-progress-label"><span data-profile-text="preview">Prévia</span><strong id="mpElapsed" data-ui-role="secondary">—</strong></span><input id="mpProgress" type="range" min="0" max="1" value="0" step="1" /></label></div>
           <div class="mp-point-heading"><div><span data-ui-role="label" id="mpPointKind">OFP</span><strong data-ui-role="emphasis" id="mpPointName">—</strong></div><div class="mp-point-actions"><button id="mpPreviousFix" class="text-button ui-button mp-icon-button" type="button" aria-label="Waypoint anterior">‹</button><button id="mpNextFix" class="text-button ui-button mp-icon-button" type="button" aria-label="Próximo waypoint">›</button><button id="mpWaypointsToggle" class="text-button ui-button" type="button" aria-expanded="false" aria-controls="mpWaypointsPanel">Waypoints</button></div></div>
           <div class="mp-readings"><div class="ui-metric"><span data-ui-role="label" data-profile-text="distance">Distância</span><strong data-ui-role="emphasis" id="mpDistance">—</strong></div><div class="ui-metric"><span data-ui-role="label">ETA · UTC</span><strong data-ui-role="emphasis" id="mpEta">—</strong></div><div class="ui-metric"><span data-ui-role="label" data-profile-text="altitude">Altitude · MSL</span><strong data-ui-role="emphasis" id="mpAltitude">—</strong></div><div class="ui-metric"><span data-ui-role="label" data-profile-text="fuelRemaining">Combustível restante</span><strong data-ui-role="emphasis" id="mpFuel">—</strong></div></div>
@@ -443,7 +462,7 @@
     </main>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
-    <script src="./js/layout.js?v=20261024-02"></script>
-    <script type="module" src="./js/app.js?v=20261024-02"></script>
+    <script src="./js/layout.js?v=20261024-03"></script>
+    <script type="module" src="./js/app.js?v=20261024-03"></script>
   </body>
 </html>

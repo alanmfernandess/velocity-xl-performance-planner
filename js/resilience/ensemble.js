@@ -1,6 +1,6 @@
-import { PERFORMANCE } from "../config.js?v=20261024-02";
-import { representativePoints } from "../weather/open-meteo.js?v=20261024-02";
-import { solveScenario } from "./core.js?v=20261024-02";
+import { PERFORMANCE } from "../config.js?v=20261024-03";
+import { representativePoints } from "../weather/open-meteo.js?v=20261024-03";
+import { solveScenario } from "./core.js?v=20261024-03";
 export const ENSEMBLE_ENDPOINT="https://ensemble-api.open-meteo.com/v1/ensemble";
 // GEFS returned null pressure fields in the controlled live contract probe.
 // This explicitly selected global model returned actual geopotential/aviation data.

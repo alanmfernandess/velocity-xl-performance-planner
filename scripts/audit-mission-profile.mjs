@@ -34,9 +34,18 @@ async function audit(page, label) {
     const controls = [...panel.querySelectorAll("button,input,summary")].filter((e) => e.getClientRects().length)
       .map((e) => ({ id: e.id || e.dataset.profileLayer || e.tagName, height: e.getBoundingClientRect().height }));
     const svg = document.querySelector("#mpSvg"), box = svg.getBoundingClientRect();
-    const axis = document.querySelector(".mp-alt-axis").getBoundingClientRect();
+    const ribbon = document.querySelector("#mpRibbonPanel").getBoundingClientRect();
+    const track = document.querySelector("#mpRibbonStrips").getBoundingClientRect();
+    const phaseCount = document.querySelectorAll(".mp-ribbon-phase").length;
+    const metricNodes = [...document.querySelectorAll(".mp-ribbon-metrics strong")];
+    const metricClipping = metricNodes.some(node => node.scrollWidth > node.clientWidth + 1);
+    const ribbonContained = track.width > 80 && track.left >= ribbon.left - 1 && track.right <= ribbon.right + 1;
+    const point = document.querySelector("#mpRailProgress");
+    const ribbonCursor = document.querySelector("#mpRibbonCursor");
+    const cursorVisible = ribbonCursor && Number.parseFloat(ribbonCursor.style.left) >= 1 && Number.parseFloat(ribbonCursor.style.left) <= 99;
+    const phaseTimesAvailable = [...document.querySelectorAll(".mp-ribbon-phase span")].every(node => /^\d{2}:\d{2}$/.test(node.textContent));
     return { viewport: innerWidth, scrollWidth: document.documentElement.scrollWidth, issues: probe.issues,
-      controls, markers: svg.querySelectorAll("[data-profile-fix]").length, axisRight: axis.right, plotLeft: box.left,
+      controls, markers: svg.querySelectorAll("[data-profile-fix]").length, plotLeft: box.left, ribbonContained, metricClipping, phaseCount, cursorVisible, phaseTimesAvailable, railProgress: point?.dataset.distance,
       badSvg: /NaN|Infinity/.test(svg.innerHTML), source: document.querySelector("#mpScenarioTag").textContent,
       profileVisible: !document.querySelector("#mpProfileBody").hidden,
       scrollbarsHidden: innerWidth > 760 || getComputedStyle(document.querySelector("#mpWaypointList")).scrollbarWidth === "none" };
@@ -44,7 +53,11 @@ async function audit(page, label) {
   const failures = [...state.issues.map((item) => `${item.code}: ${item.target} ${item.detail || ""}`)];
   if (state.scrollWidth > state.viewport + 1) failures.push(`viewport overflow ${state.scrollWidth - state.viewport}`);
   for (const item of state.controls) if (item.height < 43) failures.push(`${item.id} control ${item.height}px`);
-  if (state.axisRight > state.plotLeft + 1) failures.push("altitude axis overlaps plot");
+  if (state.profileVisible && !state.ribbonContained) failures.push("Flight Ribbon exceeds panel");
+  if (state.profileVisible && state.phaseCount < 2) failures.push("Flight Ribbon missing phases");
+  if (state.profileVisible && !state.phaseTimesAvailable) failures.push("Flight Ribbon phase times unavailable");
+  if (state.profileVisible && !state.cursorVisible) failures.push("Flight Ribbon preview cursor invalid");
+  if (state.profileVisible && state.metricClipping) failures.push("Flight Ribbon metric clipping");
   if (state.badSvg) failures.push("nonfinite SVG");
   if (!state.scrollbarsHidden) failures.push("mobile scrollbar visible");
   report.states.push({ label, ...state, failures });
@@ -84,7 +97,7 @@ try {
     await page.waitForFunction(() => Boolean(window.VelocityLayout));
     assert.equal(await page.locator("#missionProfilePanel").isVisible(), false);
     await page.locator("#quickPilotId").fill("ILLUSTRATIVE"); await page.locator("#importLatest").click();
-    await page.waitForSelector("#mpSvg [data-profile-curve]");
+    await page.waitForSelector("#mpRibbonStrips .mp-ribbon-strip");
     await page.waitForFunction(() => /GFS · [1-9]/.test(document.querySelector("#mpLayerStatus").textContent));
     await page.locator('[data-area-button="planning"]:visible').click();
     await page.locator("#optimizeMission").click();
@@ -115,7 +128,7 @@ try {
     await page.locator("#mpWaypointSearch").fill("fix010");
     await page.keyboard.press("ArrowDown"); await page.keyboard.press("Enter");
     assert.equal(await page.locator("#mpPointName").textContent(), "FIX010");
-    const selectedDistance = await page.locator("[data-profile-indicator]").getAttribute("data-distance");
+    const selectedDistance = await page.locator("#mpRailProgress").getAttribute("data-distance");
     assert.ok(Number(selectedDistance) > 0);
     await audit(page, `${width}px waypoint search`);
     await page.keyboard.press("Escape");

@@ -1,9 +1,9 @@
-import { PERFORMANCE } from "./config.js?v=20261024-02";
-import { evaluateMissionAlternative } from "./unified-optimization.js?v=20261024-02";
-import { buildMissionProfile, profilePositionAtDistance, sampleMissionDistance } from "./mission-profile.js?v=20261024-02";
-import { retimeSimBriefPlan } from "./simbrief.js?v=20261024-02";
-import { bearingDeg } from "./engine.js?v=20261024-02";
-import { sampleGfs, gfsSampleStatus } from "./weather/open-meteo.js?v=20261024-02";
+import { PERFORMANCE } from "./config.js?v=20261024-03";
+import { evaluateMissionAlternative } from "./unified-optimization.js?v=20261024-03";
+import { buildMissionProfile, profilePositionAtDistance, sampleMissionDistance } from "./mission-profile.js?v=20261024-03";
+import { retimeSimBriefPlan } from "./simbrief.js?v=20261024-03";
+import { bearingDeg } from "./engine.js?v=20261024-03";
+import { sampleGfs, gfsSampleStatus } from "./weather/open-meteo.js?v=20261024-03";
 
 const atmosphereMissingReason = (snapshot, point, sample) => sample
   ? "ATMOSPHERIC_FIELDS_MISSING" : gfsSampleStatus(snapshot, point, sample);
