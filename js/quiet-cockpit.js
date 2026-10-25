@@ -45,7 +45,9 @@ export function createQuietCockpit(actions){
   }
   function renderRibbon(){
     if(!ctx)return;
-    const m=preview||model,host=$('#missionProfilePanel'),wx=m?.valid?profileWeatherLayers(m,ctx.weatherSnapshot):null;
+    const host=$('#missionProfilePanel'),focused=document.activeElement,detailsOpen=host.querySelector('details')?.open||false;
+    const focusSelector=host.contains(focused)?focused?.dataset.ribbonLayer?`[data-ribbon-layer="${focused.dataset.ribbonLayer}"]`:focused?.dataset.routeOrder?`[data-route-order="${focused.dataset.routeOrder}"]`:null:null;
+    const m=preview||model,wx=m?.valid?profileWeatherLayers(m,ctx.weatherSnapshot):null;
     let rows='';
     if(m?.valid){
       const sample=sampleMissionDistance(m,Math.min(nm,m.totalNm));
@@ -57,7 +59,9 @@ export function createQuietCockpit(actions){
       if(layer==='METEO')val=wx?.METEO?.length?`${wx.METEO.filter(p=>p.known).length}/${wx.METEO.length}`:w('NÃO AVALIADO','UNASSESSED');
       rows=`<div class="essential-metrics">${metric(layer,val)}${metric('FL',sample?`FL${n(sample.altitudeFt/100,0)}`:'—')}${metric('ETE',sample?time(m.profile.totalSec-sample.elapsedSec):'—')}</div>`;
     }
-    host.innerHTML=`<div class="shared-card-head"><h2>Flight Ribbon</h2>${preview?`<button type="button" class="text-button" data-route-original>${w('Original','Original')}</button>`:`<span>${w('PREVISTO · MANUAL','PLANNED · MANUAL')}</span>`}</div>${m?.valid?ribbonShape(m,wx?.[layer]||[]):`<p role="status">${w('Perfil não avaliado','Profile unassessed')} · ${esc(m?.reason||'OFP')}</p>`}<div class="ribbon-layers" role="group" aria-label="Layers">${['METEO','ICE','RIDE','FUEL'].map(v=>`<button type="button" class="text-button" data-ribbon-layer="${v}" aria-pressed="${v===layer}">${v}</button>`).join('')}</div>${rows}<details class="technical-details"><summary>OFP · ${w('Waypoints','Waypoints')}</summary><div class="ribbon-waypoints">${reference?.valid?reference.points.map((p,i)=>`<button class="text-button" type="button" data-route-distance="${p.distanceNm}"><strong>${esc(p.ident)}</strong><span>${n(p.distanceNm,2)} NM</span></button>`).join(''):`<p>${w('Posição não avaliada · navlog insuficiente','Position unassessed · insufficient navlog')}</p>`}</div></details>`;
+    host.innerHTML=`<div class="shared-card-head"><h2>Flight Ribbon</h2>${preview?`<button type="button" class="text-button" data-route-original>${w('Original','Original')}</button>`:`<span>${w('PREVISTO · MANUAL','PLANNED · MANUAL')}</span>`}</div>${m?.valid?ribbonShape(m,wx?.[layer]||[]):`<p role="status">${w('Perfil não avaliado','Profile unassessed')} · ${esc(m?.reason||'OFP')}</p>`}<div class="ribbon-layers" role="group" aria-label="Layers">${['METEO','ICE','RIDE','FUEL'].map(v=>`<button type="button" class="text-button" data-ribbon-layer="${v}" aria-pressed="${v===layer}">${v}</button>`).join('')}</div>${rows}<details class="technical-details"><summary>OFP · ${w('Waypoints','Waypoints')}</summary><div class="ribbon-waypoints">${reference?.valid?reference.points.map((p,i)=>`<button class="text-button" type="button" data-route-order="${i}" data-route-distance="${p.distanceNm}"><strong>${esc(p.ident)}</strong><span>${n(p.distanceNm,2)} NM</span></button>`).join(''):`<p>${w('Posição não avaliada · navlog insuficiente','Position unassessed · insufficient navlog')}</p>`}</div></details>`;
+    const details=host.querySelector('details');if(details)details.open=detailsOpen;
+    if(focusSelector)host.querySelector(focusSelector)?.focus({preventScroll:true});
   }
   function renderTracker(){
     if(!ctx)return;
