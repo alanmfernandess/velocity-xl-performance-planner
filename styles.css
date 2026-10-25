@@ -3210,6 +3210,9 @@ body[data-active-module]:not([data-active-module$=":overview"]) .plan-bar { padd
 /* Quiet Cockpit Essential — approved information hierarchy; existing calculation widgets are unchanged. */
 body:has(#plannerContent:not([hidden])) .plan-bar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--space-2); align-items: center; border-bottom: 0; padding-block: var(--space-3); margin-bottom: var(--space-4); }
 body[data-active-module$=":overview"] .area-heading { display: none; }
+body[data-active-module]:not([data-active-module$=":overview"]) .area-heading { display: grid; grid-template-columns: minmax(0,1fr); gap: var(--space-1); }
+body[data-active-module]:not([data-active-module$=":overview"]) .area-heading .context-back { justify-self: start; min-height: var(--control-height); padding: 0; border: 0; }
+body[data-active-module]:not([data-active-module$=":overview"]) .area-heading h1 { grid-column: 1; }
 body:has(#plannerContent:not([hidden])) .route-source { display: none; }
 body:has(#plannerContent:not([hidden])) footer { padding-block: var(--space-2); border-top: 0; }
 body:has(#plannerContent:not([hidden])) footer > span:first-child,
