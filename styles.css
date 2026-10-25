@@ -3978,6 +3978,9 @@ select:focus-visible {
 }
 
 @media (max-width: 760px) {
+ .help-drawer { top: 11vh; bottom: 0; width: 100%; border-radius: var(--card-radius) var(--card-radius) 0 0; }
+  .help-drawer-body { padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom)); }
+  .help-launch { min-width: var(--control-height); min-height: var(--control-height); }
   .rl-controls, .rl-options, .rl-effects, .rl-profiles { grid-template-columns: minmax(0, 1fr); }
   .rl-quantiles { grid-template-columns: minmax(0, 1fr); }
   .rl-quantile { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -4507,6 +4510,8 @@ select:focus-visible {
 }
 
 @media (max-width: 360px) {
+ .help-tip-actions { flex-wrap: wrap; }
+  .help-tip-actions button { flex-basis: 100%; }
   .mp-ribbon-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mp-ribbon-metrics > .ui-metric:last-child { grid-column: 1 / -1; }
   .mp-layers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -4652,12 +4657,3 @@ select:focus-visible {
 .help-tip-actions { display: flex; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-2); border-top: 1px solid var(--line); padding-top: var(--space-3); }
 .help-tip-actions button { flex: 1 1 0; }
 .help-tip-centered { top: 50% !important; transform: translateY(-50%); }
-@media (max-width: 760px) {
- .help-drawer { top: 11vh; bottom: 0; width: 100%; border-radius: var(--card-radius) var(--card-radius) 0 0; }
- .help-drawer-body { padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom)); }
- .help-launch { min-width: var(--control-height); min-height: var(--control-height); }
-}
-@media (max-width: 360px) {
- .help-tip-actions { flex-wrap: wrap; }
- .help-tip-actions button { flex-basis: 100%; }
-}
