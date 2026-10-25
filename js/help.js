@@ -116,8 +116,9 @@ export function initVelocityHelp(){
    window.VelocityLayout.activate(t.area,t.module);
   }
   const tools={"weight-balance":"wb",oxygen:"oxygen",cost:"cost",ice:"ice",ride:"ride",etp:"etp",alternate:"alternate",glide:"glide",step:"steps"};
-  if((mode==="quick"||t.id==="oxygen")&&tools[t.id]){
-   const button=qs('[data-tool-view="'+tools[t.id]+'"]');
+  const toolName=tools[t.topic||t.id];
+  if((mode==="quick"||t.id==="oxygen-review")&&toolName){
+   const button=qs('[data-tool-view="'+toolName+'"]');
    if(button&&visible(button))button.click();
   }
  }
