@@ -124,8 +124,8 @@ export function initVelocityHelp(){
  }
  function locate(t){
   hideDrawer();
-  navigateTo(t);
   quick=t;mode="quick";active=true;tracking=false;
+  navigateTo(t);
   requestAnimationFrame(()=>requestAnimationFrame(placeTour));
  }
  function startTour(){
