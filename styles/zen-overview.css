@@ -1,0 +1,107 @@
+/* Zen — Missão / Visão geral. Scoped to the approved visual surface.
+   Flight calculations and other modules retain their existing styles. */
+body.zen-overview { background:var(--bg); }
+body.zen-overview > .topbar,
+body.zen-overview > #areaNav,
+body.zen-overview > .mobile-area-nav,
+body.zen-overview > main.shell { display:none!important; }
+#zenShell[hidden],#zenShell [hidden] { display:none!important; }
+#zenShell { --zen-ink:var(--text);--zen-muted:var(--muted);--zen-blue:var(--blue);color:var(--zen-ink);font:var(--ui-body)/1.4 var(--font-family); }
+#zenShell * { box-sizing:border-box; }
+#zenShell button,#zenShell input {font:inherit}
+#zenShell button {cursor:pointer}
+#zenShell button:focus-visible,#zenShell input:focus-visible {outline:2px solid var(--zen-blue);outline-offset:3px}
+#zenShell .zen-outer {padding:16px;background:var(--bg)}
+#zenShell .zen-app {position:relative;isolation:isolate;max-width:840px;min-height:675px;margin:auto;background:#fff;border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:0 8px 26px rgba(24,35,49,.045)}
+#zenShell .zen-art {position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:.55}
+#zenShell .zen-header {height:72px;padding:0 30px;display:flex;align-items:center;justify-content:space-between;border:0;background:transparent}
+#zenShell .zen-brand {display:flex;gap:12px;align-items:center;font-size:12px;font-weight:750;letter-spacing:.17em;color:var(--zen-ink)}
+#zenShell .zen-brand .zen-icon {color:var(--zen-blue);width:23px;height:23px}
+#zenShell .zen-icon {width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+#zenShell .zen-icon.small {width:15px;height:15px}
+#zenShell .zen-iconbtn {display:grid;place-items:center;width:42px;height:42px;background:transparent;color:var(--zen-muted);border:0;border-radius:10px}
+#zenShell .zen-iconbtn:hover {background:#eef2f6}
+#zenShell .zen-content {max-width:490px;margin:auto;padding:22px 24px 35px;text-align:center}
+#zenShell .zen-route {display:flex;align-items:center;justify-content:center;gap:24px;margin:43px 0 56px;color:#53677e;font-size:14px;font-weight:550;letter-spacing:.14em}
+#zenShell .zen-route .zen-icon {color:#536f8b}
+#zenShell .zen-kicker {font-size:10px;font-weight:650;letter-spacing:.22em;color:#71859a}
+#zenShell .zen-level {font-size:106px;font-weight:420;letter-spacing:-.085em;line-height:1.12;margin:13px 0 7px;padding-right:11px;font-variant-numeric:tabular-nums}
+#zenShell .zen-mode {display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.16em;color:#587186}
+#zenShell .zen-mode:before {content:"";width:5px;height:5px;background:var(--green);border-radius:50%}
+#zenShell .zen-mode.caution:before {background:var(--orange)}
+#zenShell .zen-mode.danger:before {background:var(--red)}
+#zenShell .zen-mode.unknown:before {background:#9ba8b6}
+#zenShell .zen-metrics {display:grid;grid-template-columns:1fr 1px 1fr;gap:28px;align-items:center;max-width:340px;margin:55px auto 48px}
+#zenShell .zen-metric {display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
+#zenShell .zen-metric .zen-icon {color:#758394;margin-bottom:5px}
+#zenShell .zen-metric strong {font-size:35px;letter-spacing:-.055em;font-weight:450;line-height:1.1;font-variant-numeric:tabular-nums}
+#zenShell .zen-metric small {font-size:10px;color:#758394;letter-spacing:.16em;text-transform:uppercase}
+#zenShell .zen-vline {height:68px;background:var(--line)}
+#zenShell .zen-primary {width:100%;height:48px;background:var(--zen-blue);color:#fff;border:1px solid var(--zen-blue);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:11px;font-size:13px;font-weight:650}
+#zenShell .zen-primary:hover:not(:disabled) {background:#1265b5}
+#zenShell .zen-primary:disabled {opacity:.45;cursor:not-allowed}
+#zenShell .zen-secondary {width:100%;height:48px;background:#fff;color:#53677e;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:600}
+#zenShell .zen-secondary:hover {background:var(--panel-soft)}
+#zenShell .zen-textbtn {display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px;border:0;background:transparent;color:#637f98;font-size:11px}
+#zenShell .zen-textbtn:hover {color:var(--zen-blue)}
+#zenShell .zen-notice {display:flex;align-items:center;justify-content:center;gap:7px;font-size:10px;color:var(--zen-muted);margin-top:8px;line-height:1.6}
+#zenShell .zen-notice .zen-icon {width:14px;height:14px}
+#zenShell .zen-condition {min-height:24px;font-size:11px;color:#657d95;margin-top:10px}
+#zenShell .zen-condition.warning {color:var(--orange)}
+#zenShell .zen-condition.danger {color:var(--red)}
+#zenShell .zen-import {display:grid;gap:12px;max-width:340px;margin:0 auto 30px}
+#zenShell .zen-import label {text-align:left;display:grid;gap:6px;color:var(--zen-muted);font-size:12px}
+#zenShell .zen-import input {height:44px;border-radius:10px;border:1px solid var(--line);padding:0 13px;background:#fff;color:var(--zen-ink);min-width:0;font-size:16px}
+#zenShell .zen-empty-route {margin-bottom:48px}
+#zenShell .zen-drawer-shade {position:absolute;inset:0;z-index:4;background:rgba(24,35,49,.14)}
+#zenShell .zen-drawer {position:absolute;top:0;right:0;bottom:0;width:min(410px,100%);z-index:5;background:#fff;display:flex;flex-direction:column;box-shadow:-12px 0 35px rgba(24,35,49,.08)}
+#zenShell .zen-drawer-head {display:flex;align-items:center;justify-content:space-between;padding:19px 22px;border-bottom:1px solid #e8edf1}
+#zenShell .zen-drawer-head strong {font-size:17px;font-weight:650}
+#zenShell .zen-drawer-content {padding:24px 22px;flex:1;overflow:auto}
+#zenShell .zen-drawer-bottom {padding:20px 22px;border-top:1px solid #e8edf1}
+#zenShell .zen-smallhead {font-size:10px;letter-spacing:.13em;font-weight:650;color:var(--zen-muted);margin:0 0 13px;text-transform:uppercase}
+#zenShell .zen-choice {width:100%;padding:14px;margin-bottom:9px;background:#fff;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left}
+#zenShell .zen-choice.selected {background:#eff7ff;border-color:var(--zen-blue)}
+#zenShell .zen-choice strong {font-size:16px;font-weight:650}
+#zenShell .zen-choice small {display:block;color:var(--zen-muted);font-size:11px;margin-top:3px}
+#zenShell .zen-choice:disabled {opacity:.6;cursor:not-allowed}
+#zenShell .zen-detail {display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #edf0f3}
+#zenShell .zen-detail span {font-size:12px;color:var(--zen-muted)}
+#zenShell .zen-detail strong {font-size:13px;text-align:right}
+#zenShell .zen-hint {color:var(--zen-muted);font-size:11px;line-height:1.5;margin:20px 0 0}
+#zenShell .zen-quicknav {display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0 25px}
+#zenShell .zen-quicknav button {padding:12px 8px;border:1px solid var(--line);border-radius:9px;background:white;color:#53677e;font-size:12px}
+#zenShell .zen-quicknav button:hover {border-color:#a6c7e1;color:var(--zen-blue)}
+#zenShell .zen-toggle {display:flex;gap:9px;margin:12px 0 18px}
+#zenShell .zen-toggle button {flex:1;height:44px;background:#fff;border:1px solid var(--line);border-radius:9px;color:#53677e}
+#zenShell .zen-toggle button.selected {background:#eff7ff;color:var(--zen-blue);border-color:var(--zen-blue)}
+#zenShell .zen-modal-shade {position:absolute;inset:0;z-index:10;background:rgba(24,35,49,.42);display:flex;align-items:center;justify-content:center;padding:22px}
+#zenShell .zen-modal {width:min(100%,380px);background:#fff;border-radius:17px;padding:27px 27px 24px;text-align:center;box-shadow:0 22px 70px rgba(24,35,49,.17)}
+#zenShell .zen-modal-icon {width:46px;height:46px;display:grid;place-items:center;margin:1px auto 19px;background:#eef5fb;color:var(--zen-blue);border-radius:50%}
+#zenShell .zen-modal-icon .zen-icon {width:21px;height:21px}
+#zenShell .zen-modal h2 {font-size:20px;font-weight:650;letter-spacing:-.035em;line-height:1.25;margin:0 0 9px;color:var(--zen-ink)}
+#zenShell .zen-modal p {font-size:13px;color:var(--zen-muted);margin:0}
+#zenShell .zen-modal-details {display:flex;align-items:center;justify-content:center;gap:10px;padding:13px;background:#f5f7fa;border-radius:9px;margin:23px 0 21px;font-size:12px}
+#zenShell .zen-modal-details strong {font-size:13px}
+#zenShell .zen-modal-actions {display:grid;gap:10px}
+#zenShell .zen-diagnostic {background:#fff7ec;border:1px solid #efd8b8;border-radius:9px;padding:13px;color:#885613;font-size:12px;text-align:left;margin:14px 0}
+#zenShell .zen-status-toast {position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:9;background:#182331;color:#fff;border-radius:10px;padding:12px 19px;font-size:12px;white-space:nowrap;box-shadow:0 8px 24px rgba(24,35,49,.14)}
+@media (max-width:760px) {
+  #zenShell .zen-outer {padding:0}
+  #zenShell .zen-app {width:100%;max-width:none;min-height:100dvh;border:0;border-radius:0}
+  #zenShell .zen-header {height:65px;padding:0 18px}
+  #zenShell .zen-content {padding:22px 18px 35px}
+  #zenShell .zen-route {margin:48px 0 70px;gap:17px;font-size:12px}
+  #zenShell .zen-level {font-size:95px}
+  #zenShell .zen-metrics {margin:65px auto 55px;gap:22px}
+  #zenShell .zen-metric strong {font-size:29px}
+}
+@media (max-width:360px) {
+  #zenShell .zen-content {padding:18px 16px 25px}
+  #zenShell .zen-route {gap:14px}
+  #zenShell .zen-level {font-size:82px}
+  #zenShell .zen-metrics {gap:16px}
+  #zenShell .zen-metric strong {font-size:27px}
+  #zenShell .zen-modal {padding:22px 17px}
+}
+@media (prefers-reduced-motion:reduce) {#zenShell *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
