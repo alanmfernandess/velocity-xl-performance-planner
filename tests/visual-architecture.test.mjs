@@ -42,6 +42,19 @@ test("responsive rules are grouped and iOS zoom remains available", () => {
   assert.doesNotMatch(css, /body \*\s*\{[^}]*!important/);
 });
 
+test("Zen mobile fills the visual viewport without hidden navigation padding", () => {
+  assertDeclaration(css, "body.zen-overview", "padding", "0");
+  assertDeclaration(css, "html.zen-locked", "overflow", "hidden");
+  assert.match(css, /#zenShell \.zen-app\s*\{[^}]*height:100%/);
+  assert.match(css, /#zenShell \.zen-content\s*\{[^}]*overflow-y:auto/);
+  assert.match(html, /viewport-fit=cover/);
+  const zen = readFileSync(new URL("../js/zen-overview.js", import.meta.url), "utf8");
+  assert.match(zen, /document\.documentElement\.classList\.toggle\("zen-locked"/);
+  assert.match(zen, /document\.addEventListener\("gesturestart"/);
+  assert.match(zen, /event\.touches\.length>1/);
+  assert.match(zen, /\(applied\|\|confirmed\)\?/);
+});
+
 test("removed visual variables have no JavaScript writer", () => {
   assert.doesNotMatch(app, /--(?:ice-status|topbar-height)/);
   assert.match(app, /setProperty\("--score"/);
@@ -67,5 +80,5 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261025-zen01/);
+  assert.match(html, /styles\.css\?v=20261025-mobile02/);
 });
