@@ -18,6 +18,10 @@
   --zen-font-82: 82px;
   --zen-font-95: 95px;
   --zen-font-106: 106px;
+  --zas-font-48: 48px;
+  --zas-font-42: 42px;
+  --zas-font-22: 22px;
+  --zas-font-18: 18px;
   --bg: #eef2f6;
   --panel: #ffffff;
   --panel-soft: #f5f7fa;
@@ -4438,3 +4442,96 @@ body.zen-overview > main.shell { display:none!important; }
   #zenShell .zen-modal {padding:22px 17px}
 }
 @media (prefers-reduced-motion:reduce) {#zenShell *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+
+/* Zen Status · mission assessment. Scoped, read-only view of the native engine.
+   Uses the existing design-system colors and typography scale. */
+body.zen-assessment {height:100%;overflow:hidden;overscroll-behavior:none;padding:0;background:var(--bg)}
+body.zen-assessment > .topbar,
+body.zen-assessment > #areaNav,
+body.zen-assessment > .mobile-area-nav,
+body.zen-assessment > main.shell {display:none!important}
+#zenAssessmentShell {height:100dvh;overflow:hidden;color:var(--text);font:var(--ui-body)/1.4 var(--font-family)}
+#zenAssessmentShell * {box-sizing:border-box}
+#zenAssessmentShell .zas-outer {height:100%;padding:16px;background:var(--bg);overflow:hidden}
+#zenAssessmentShell .zas-app {height:100%;max-width:840px;margin:auto;position:relative;isolation:isolate;display:flex;flex-direction:column;overflow:hidden;min-height:0;background:#fff;border:1px solid var(--line);border-radius:15px;box-shadow:0 8px 26px rgba(24,35,49,.045);--zas-tone:var(--orange)}
+#zenAssessmentShell .zas-art {position:absolute;inset:0;z-index:-1;width:100%;height:100%;pointer-events:none}
+#zenAssessmentShell .zas-icon {width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+#zenAssessmentShell button {font:inherit;cursor:pointer}
+#zenAssessmentShell button:focus-visible {outline:2px solid var(--blue);outline-offset:3px}
+#zenAssessmentShell .zas-header {display:flex;justify-content:space-between;align-items:center;gap:10px;flex:0 0 72px;padding:0 30px}
+#zenAssessmentShell .zas-brand {display:flex;gap:12px;align-items:center;border:0;padding:0;background:transparent;color:var(--text);letter-spacing:.15em;font-size:var(--zen-font-12);font-weight:750}
+#zenAssessmentShell .zas-brand .zas-icon {width:23px;height:23px;color:var(--blue)}
+#zenAssessmentShell .zas-iconbtn {display:grid;place-items:center;width:40px;height:40px;border:0;background:transparent;border-radius:10px;color:#63778b}
+#zenAssessmentShell .zas-iconbtn:hover {background:var(--panel-soft)}
+#zenAssessmentShell .zas-body {display:flex;flex-direction:column;justify-content:safe center;flex:1 1 auto;min-height:0;min-width:0;width:100%;max-width:585px;margin:0 auto;padding:20px 28px 33px;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;text-align:center}
+#zenAssessmentShell .zas-scene {width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:17px;flex:0 0 auto}
+#zenAssessmentShell .zas-route {display:flex;justify-content:center;align-items:center;gap:16px;color:#617389;font-size:var(--zen-font-12);font-weight:600;letter-spacing:.14em;margin:0 0 13px}
+#zenAssessmentShell .zas-route .zas-icon {width:16px;height:16px}
+#zenAssessmentShell .zas-kicker {font-size:var(--zen-font-10);font-weight:650;letter-spacing:.18em;color:var(--muted)}
+#zenAssessmentShell .zas-status {font-size:var(--zas-font-48);font-weight:530;letter-spacing:0;line-height:1.16;color:var(--zas-tone);overflow-wrap:anywhere}
+#zenAssessmentShell .zas-score {font-size:var(--zen-font-12);color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+#zenAssessmentShell .zas-score.missing {font-size:var(--zen-font-12)}
+#zenAssessmentShell .zas-reason {color:var(--muted);font-size:var(--zen-font-12);max-width:470px;overflow-wrap:anywhere}
+#zenAssessmentShell .zas-metrics {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;width:100%;margin:20px 0 10px}
+#zenAssessmentShell .zas-metric {display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
+#zenAssessmentShell .zas-metric .zas-icon {color:#73859a}
+#zenAssessmentShell .zas-metric > span {font-size:var(--zen-font-10);font-weight:650;letter-spacing:.12em;color:var(--muted)}
+#zenAssessmentShell .zas-metric > strong {color:var(--text);font-size:var(--zen-font-12);font-weight:600;overflow-wrap:anywhere;line-height:1.5}
+#zenAssessmentShell .zas-metric > strong.alert {color:var(--red)}
+#zenAssessmentShell .zas-primary {display:flex;align-items:center;justify-content:center;gap:9px;min-height:47px;width:100%;padding:9px 16px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-size:var(--zen-font-13);font-weight:650;margin-top:10px}
+#zenAssessmentShell .zas-primary:hover {background:#1265b5}
+#zenAssessmentShell .zas-primary .zas-icon {width:16px;height:16px}
+#zenAssessmentShell .zas-notice {display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:var(--zen-font-10);line-height:1.5;margin-top:13px}
+#zenAssessmentShell .zas-notice .zas-icon {width:13px;height:13px}
+#zenAssessmentShell .zas-shade {position:absolute;inset:0;z-index:5;background:rgba(24,35,49,.32)}
+#zenAssessmentShell .zas-drawer {position:absolute;top:0;right:0;bottom:0;z-index:6;width:min(390px,100%);background:#fff;display:flex;flex-direction:column;box-shadow:-10px 0 28px rgba(24,35,49,.13)}
+#zenAssessmentShell .zas-drawer-head {padding:20px 21px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #edf0f3}
+#zenAssessmentShell .zas-drawer-head strong {font-size:var(--zas-font-18);font-weight:650}
+#zenAssessmentShell .zas-drawer-body {padding:24px 22px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain}
+#zenAssessmentShell .zas-drawer-footer {padding:16px 22px 22px;border-top:1px solid #edf0f3}
+#zenAssessmentShell .zas-secondary {width:100%;min-height:43px;border:1px solid var(--line);background:#fff;border-radius:9px;color:#536779;font-size:var(--zen-font-13);font-weight:600}
+#zenAssessmentShell .zas-secondary:hover {background:var(--panel-soft)}
+#zenAssessmentShell .zas-detail {display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #edf0f3;padding:14px 0}
+#zenAssessmentShell .zas-detail > span {font-size:var(--zen-font-12);color:var(--muted)}
+#zenAssessmentShell .zas-detail > strong {font-size:var(--zen-font-13);text-align:right;max-width:65%;overflow-wrap:anywhere;font-weight:600}
+#zenAssessmentShell .zas-subhead {font-size:var(--zen-font-10);font-weight:650;letter-spacing:.16em;color:var(--muted);margin:23px 0 8px}
+#zenAssessmentShell .zas-finding {display:flex;align-items:flex-start;gap:9px;font-size:var(--zen-font-12);line-height:1.5;padding:11px 0;color:#536474}
+#zenAssessmentShell .zas-finding .zas-icon {color:var(--zas-tone);width:16px;height:16px;flex-shrink:0;margin-top:1px}
+#zenAssessmentShell .zas-finding strong {margin-left:auto;font-size:var(--zen-font-11);white-space:nowrap}
+#zenAssessmentShell .zas-finding.critical .zas-icon {color:var(--red)}
+#zenAssessmentShell .zas-info {background:var(--panel-soft);border:1px solid var(--line);border-radius:10px;padding:13px;margin:14px 0;font-size:var(--zen-font-12);color:#617285;line-height:1.6;overflow-wrap:anywhere}
+#zenAssessmentShell .zas-drawer-status {color:var(--zas-tone);font-size:var(--zen-font-27);font-weight:600}
+#zenAssessmentShell .zas-drawer-score {font-size:var(--zen-font-12);color:var(--muted)}
+#zenAssessmentShell .zas-nav {display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+#zenAssessmentShell .zas-nav button {border:1px solid var(--line);border-radius:9px;background:#fff;padding:12px 8px;font-size:var(--zen-font-12);color:#536779}
+#zenAssessmentShell .zas-nav button:hover {border-color:var(--blue);color:var(--blue)}
+@media (min-width:761px) and (max-height:650px) {
+  #zenAssessmentShell .zas-header {flex-basis:58px}
+  #zenAssessmentShell .zas-body {padding:12px 28px 18px}
+  #zenAssessmentShell .zas-scene {gap:11px}
+  #zenAssessmentShell .zas-route {margin-bottom:4px}
+  #zenAssessmentShell .zas-status {font-size:var(--zas-font-42)}
+  #zenAssessmentShell .zas-metrics {margin:10px 0 7px}
+}
+@media (max-width:760px) {
+  body.zen-assessment {padding:0}
+  #zenAssessmentShell .zas-outer {padding:0}
+  #zenAssessmentShell .zas-app {max-width:none;border:0;border-radius:0;box-shadow:none}
+  #zenAssessmentShell .zas-header {flex-basis:65px;padding:env(safe-area-inset-top) 18px 0}
+  #zenAssessmentShell .zas-brand {font-size:var(--zen-font-10)}
+  #zenAssessmentShell .zas-body {max-width:none;padding:16px 20px max(28px,env(safe-area-inset-bottom))}
+  #zenAssessmentShell .zas-scene {gap:15px}
+  #zenAssessmentShell .zas-route {margin-bottom:5px}
+  #zenAssessmentShell .zas-status {font-size:var(--zas-font-42)}
+  #zenAssessmentShell .zas-metrics {gap:6px;margin:15px 0 8px}
+  #zenAssessmentShell .zas-metric > strong {font-size:var(--zen-font-11)}
+  #zenAssessmentShell .zas-drawer-head {padding-top:max(20px,env(safe-area-inset-top))}
+  #zenAssessmentShell .zas-drawer-footer {padding-bottom:max(22px,env(safe-area-inset-bottom))}
+}
+@media (max-width:360px) {
+  #zenAssessmentShell .zas-body {padding:12px 16px 25px}
+  #zenAssessmentShell .zas-scene {gap:12px}
+  #zenAssessmentShell .zas-status {font-size:var(--zen-font-35)}
+  #zenAssessmentShell .zas-metric > strong {font-size:var(--zen-font-10)}
+}
