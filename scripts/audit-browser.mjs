@@ -166,6 +166,11 @@ const revealDecision = async page => {
   await page.locator('#focus-compare:visible').click();
   await page.locator('#pilotDecisionPanel:visible').waitFor();
 };
+const clickPreference = async (page, selector) => {
+  const element = page.locator(selector);
+  if (!await element.isVisible()) await page.locator('#focus-settings:visible').click();
+  await element.click();
+};
 const screenshot = async (page, width, area, module) => {
   const device = captureWidths.get(width);
   if (!device) return;
@@ -404,20 +409,20 @@ try {
         }
       }
     }
-    await page.locator('[data-language="en-US"]').click();
-    await page.locator('[data-weight-unit="kg"]').click();
-    await page.locator('[data-fuel-unit="l"]').click();
-    await page.locator('[data-font-size="large"]').click();
+    await clickPreference(page, '[data-language="en-US"]');
+    await clickPreference(page, '[data-weight-unit="kg"]');
+    await clickPreference(page, '[data-fuel-unit="l"]');
+    await clickPreference(page, '[data-font-size="large"]');
     for (const [area, keys] of Object.entries(modules)) {
       for (const module of keys) {
         await activate(page, area, module);
         await audit(page, `${width}px EN-US KG/L A+ ${area}:${module}`);
       }
     }
-    await page.locator('[data-font-size="small"]').click();
+    await clickPreference(page, '[data-font-size="small"]');
     await activate(page, 'mission', 'overview');
     await audit(page, `${width}px EN-US KG/L A- mission:overview`);
-    await page.locator('[data-font-size="normal"]').click();
+    await clickPreference(page, '[data-font-size="normal"]');
     await audit(page, `${width}px EN-US KG/L A mission:overview`);
     if ([390, 1440].includes(width)) {
       await activate(page, 'planning', 'config');
@@ -433,12 +438,12 @@ try {
       await audit(page, `${width}px EN-US KG/L A planning:config minimum load`);
       await setRange('#payloadInput', 520);
       await setRange('#fuelInput', 77);
-      await page.locator('[data-weight-unit="lb"]').click();
+      await clickPreference(page, '[data-weight-unit="lb"]');
       await audit(page, `${width}px EN-US LB/L A planning:config`);
-      await page.locator('[data-weight-unit="kg"]').click();
-      await page.locator('[data-fuel-unit="gal"]').click();
+      await clickPreference(page, '[data-weight-unit="kg"]');
+      await clickPreference(page, '[data-fuel-unit="gal"]');
       await audit(page, `${width}px EN-US KG/GAL A planning:config`);
-      await page.locator('[data-fuel-unit="l"]').click();
+      await clickPreference(page, '[data-fuel-unit="l"]');
     }
     if (width === 390) {
       await page.locator('#toast').evaluate(element => { element.textContent = 'A very long alert about weather, available oxygen and fuel margin across the route, used solely to check line wrapping in the visual audit.'; element.classList.add('show'); });
@@ -456,8 +461,8 @@ try {
       if (bottomClearance.footerBottom > bottomClearance.navTop + 1)
         report.errors.push({ label: '390px bottom navigation', issues: [`footer ends at ${bottomClearance.footerBottom}px behind navigation at ${bottomClearance.navTop}px`] });
       await page.locator('#toast').evaluate(element => element.classList.remove('show'));
-      await page.locator('[data-language="pt-BR"]').click();
-      await page.locator('[data-fuel-unit="gal"]').click();
+      await clickPreference(page, '[data-language="pt-BR"]');
+      await clickPreference(page, '[data-fuel-unit="gal"]');
       await page.locator('#resetCalibration').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(output, afterFolder, 'mobile-flight-calibration-bottom.png'), animations: 'disabled' });
       report.screenshots.push(`${afterFolder}/mobile-flight-calibration-bottom.png`);
@@ -476,7 +481,7 @@ try {
       await audit(page, '1440px at 200% equivalent viewport planning:config');
       await page.setViewportSize({ width: 1440, height: 900 });
       await activate(page, 'flight', 'update');
-      await page.locator('[data-fuel-unit="gal"]').click();
+      await clickPreference(page, '[data-fuel-unit="gal"]');
       await page.locator('#manualWaypoint').selectOption({ index: 2 });
       await page.locator('#manualAltitude').selectOption('18000');
       await page.locator('#manualFuel').fill('60');
