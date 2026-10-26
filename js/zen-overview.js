@@ -139,7 +139,8 @@
     document.body.classList.toggle("zen-overview",zenActive);
     // Both approved Zen screens share the app-style viewport lock.
     const onAssessment=active?.area==="mission"&&active.module?.mission==="score";
-    document.documentElement.classList.toggle("zen-locked",zenActive||onAssessment);
+    const onPlanning=active?.area==="planning"&&active.module?.planning==="config";
+    document.documentElement.classList.toggle("zen-locked",zenActive||onAssessment||onPlanning);
     root.hidden=!zenActive;
     if(!zenActive){closeModal();drawer=null;renderDrawer();}
   }
