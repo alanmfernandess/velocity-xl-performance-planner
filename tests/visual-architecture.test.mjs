@@ -114,6 +114,24 @@ test("approved Zen Essential planning has native editable controls and a centere
   assert.ok(assessment.includes("zen-planning"));
 });
 
+test("Zen Overview refined hierarchy keeps real metrics and deliberate spacing", () => {
+  const overview=readFileSync(new URL("../js/zen-overview.js",import.meta.url),"utf8");
+  assert.ok(html.includes("styles.css?v=20261026-02"));
+  assert.ok(html.includes("zen-overview.js?v=20261026-02"));
+  for(const id of ["zenFuelLabel","zenFuel","zenFuelUnit","zenTime","zenTimeUnit","zenReview","zenDetails","zenCaveat"]){
+    assert.ok(overview.includes(id),id);
+  }
+  assert.ok(overview.includes('class="zen-reading"'));
+  assert.ok(overview.includes('class="zen-main-actions"'));
+  assert.ok(overview.includes('tr("COMBUSTÍVEL","FUEL")'));
+  assert.match(css,/zenReview\s*\{max-width:355px/);
+  assert.match(css,/zenDetails\s*\{[^}]*margin-top:35px/);
+  assert.match(css,/zen-notice\s*\{margin-top:30px/);
+  assert.match(css,/max-height:650px/);
+  assert.match(css,/max-width:760px/);
+  assert.ok(css.includes("scrollbar-width: none !important"));
+});
+
 test("removed visual variables have no JavaScript writer", () => {
   assert.doesNotMatch(app, /--(?:ice-status|topbar-height)/);
   assert.match(app, /setProperty\("--score"/);
