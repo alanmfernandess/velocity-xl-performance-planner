@@ -693,4 +693,7 @@ try {
 
 await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
+for (const issue of report.errors.filter(item => item.issues || item.pageError)) {
+  console.error('BROWSER_AUDIT_FAILURE', JSON.stringify(issue));
+}
 if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;
