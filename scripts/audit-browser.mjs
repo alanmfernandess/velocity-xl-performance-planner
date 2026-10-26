@@ -151,10 +151,25 @@ const audit = async (page, label) => {
   if (issues.length) report.errors.push({ label, issues });
 };
 const activate = async (page, area, module) => {
+  if (await page.locator('#focus-overlay:not([hidden])').count()) await page.locator('#focus-close').click();
   await page.locator(`[data-area-button="${area}"]:visible`).first().click();
   const tab=page.locator(`[data-module-button="${area}:${module}"]:visible`);
   if(await tab.count())await tab.click();
   await assert.doesNotReject(page.locator(`[data-module-panel="${area}:${module}"]:visible`).waitFor());
+};
+const importLatest = async page => {
+  if (!await page.locator('#importLatest').isVisible()) await page.locator('#focus-import-button:visible').click();
+  await page.locator('#importLatest').click();
+};
+const revealDecision = async page => {
+  await page.waitForFunction(() => !document.querySelector('#pilotDecisionPanel')?.hidden);
+  await page.locator('#focus-compare:visible').click();
+  await page.locator('#pilotDecisionPanel:visible').waitFor();
+};
+const clickPreference = async (page, selector) => {
+  const element = page.locator(selector);
+  if (!await element.isVisible()) await page.locator('#focus-settings:visible').click();
+  await element.click();
 };
 const screenshot = async (page, width, area, module) => {
   const device = captureWidths.get(width);
@@ -225,7 +240,7 @@ try {
       report.screenshots.push(`${afterFolder}/desktop-no-ofp.png`);
     }
     await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-    await page.locator('#importLatest').click();
+    await importLatest(page);
     await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
     await page.waitForFunction(() => document.querySelector('#missionRiskValue')?.textContent !== '—', { timeout: 10000 });
     if (width === 390 && !baseline) {
@@ -293,7 +308,7 @@ try {
         if (captureWidths.has(width) && ['mission:overview', 'mission:score', 'planning:config', 'planning:systems', 'route:ice', 'route:ride', 'flight:update'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
         if (area === 'planning' && module === 'config') {
           await page.locator('#optimizeMission').click();
-          await page.locator('#pilotDecisionPanel:visible').waitFor();
+          await revealDecision(page);
           await audit(page, `${width}px optimized mission:overview`);
           const decision = await page.evaluate(() => ({
             top: document.querySelectorAll('#topLevelCards .top-level-card').length,
@@ -340,7 +355,7 @@ try {
     if (width === 1440) {
       await activate(page, 'planning', 'config');
       await page.locator('#optimizeMission').click();
-      await page.locator('#pilotDecisionPanel:visible').waitFor();
+      await revealDecision(page);
       const cards=page.locator('#topLevelCards .top-level-card');
       if(await cards.count()){
         await cards.first().click();
@@ -375,39 +390,39 @@ try {
             await page.reload({waitUntil:'domcontentloaded'});
             await page.addScriptTag({path:path.join(projectRoot,'scripts/visual-probe.js')});
             await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-            await page.locator('#importLatest').click();
+            await importLatest(page);
             await page.locator('#routeTitle').getByText('SBSP',{exact:false}).waitFor();
             const restored=await page.evaluate(()=>({fuel:Number(document.querySelector('#fuelInput').value),level:document.querySelector('#kpiLevelMeta').textContent}));
             if(restored.fuel!==expectedFuel || !/aplicada|applied/i.test(restored.level))
               report.errors.push({label:'1440px applied restore',issues:[JSON.stringify(restored)]});
             const otherOFP=route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({...fixture,destination:{...fixture.destination,icao_code:'SBNF'}})});
             await page.route('**/api/xml.fetcher.php?**',otherOFP);
-            await page.locator('#importLatest').click();
+            await importLatest(page);
             await page.locator('#routeTitle').getByText('SBNF',{exact:false}).waitFor();
             const otherLevel=await page.locator('#kpiLevelMeta').textContent();
             if(/aplicada|applied/i.test(otherLevel))
               report.errors.push({label:'1440px other OFP',issues:['configuration from previous OFP was restored']});
             await page.unroute('**/api/xml.fetcher.php?**',otherOFP);
-            await page.locator('#importLatest').click();
+            await importLatest(page);
             await page.locator('#routeTitle').getByText('SBGL',{exact:false}).waitFor();
           }
         }
       }
     }
-    await page.locator('[data-language="en-US"]').click();
-    await page.locator('[data-weight-unit="kg"]').click();
-    await page.locator('[data-fuel-unit="l"]').click();
-    await page.locator('[data-font-size="large"]').click();
+    await clickPreference(page, '[data-language="en-US"]');
+    await clickPreference(page, '[data-weight-unit="kg"]');
+    await clickPreference(page, '[data-fuel-unit="l"]');
+    await clickPreference(page, '[data-font-size="large"]');
     for (const [area, keys] of Object.entries(modules)) {
       for (const module of keys) {
         await activate(page, area, module);
         await audit(page, `${width}px EN-US KG/L A+ ${area}:${module}`);
       }
     }
-    await page.locator('[data-font-size="small"]').click();
+    await clickPreference(page, '[data-font-size="small"]');
     await activate(page, 'mission', 'overview');
     await audit(page, `${width}px EN-US KG/L A- mission:overview`);
-    await page.locator('[data-font-size="normal"]').click();
+    await clickPreference(page, '[data-font-size="normal"]');
     await audit(page, `${width}px EN-US KG/L A mission:overview`);
     if ([390, 1440].includes(width)) {
       await activate(page, 'planning', 'config');
@@ -423,12 +438,12 @@ try {
       await audit(page, `${width}px EN-US KG/L A planning:config minimum load`);
       await setRange('#payloadInput', 520);
       await setRange('#fuelInput', 77);
-      await page.locator('[data-weight-unit="lb"]').click();
+      await clickPreference(page, '[data-weight-unit="lb"]');
       await audit(page, `${width}px EN-US LB/L A planning:config`);
-      await page.locator('[data-weight-unit="kg"]').click();
-      await page.locator('[data-fuel-unit="gal"]').click();
+      await clickPreference(page, '[data-weight-unit="kg"]');
+      await clickPreference(page, '[data-fuel-unit="gal"]');
       await audit(page, `${width}px EN-US KG/GAL A planning:config`);
-      await page.locator('[data-fuel-unit="l"]').click();
+      await clickPreference(page, '[data-fuel-unit="l"]');
     }
     if (width === 390) {
       await page.locator('#toast').evaluate(element => { element.textContent = 'A very long alert about weather, available oxygen and fuel margin across the route, used solely to check line wrapping in the visual audit.'; element.classList.add('show'); });
@@ -446,8 +461,8 @@ try {
       if (bottomClearance.footerBottom > bottomClearance.navTop + 1)
         report.errors.push({ label: '390px bottom navigation', issues: [`footer ends at ${bottomClearance.footerBottom}px behind navigation at ${bottomClearance.navTop}px`] });
       await page.locator('#toast').evaluate(element => element.classList.remove('show'));
-      await page.locator('[data-language="pt-BR"]').click();
-      await page.locator('[data-fuel-unit="gal"]').click();
+      await clickPreference(page, '[data-language="pt-BR"]');
+      await clickPreference(page, '[data-fuel-unit="gal"]');
       await page.locator('#resetCalibration').scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(output, afterFolder, 'mobile-flight-calibration-bottom.png'), animations: 'disabled' });
       report.screenshots.push(`${afterFolder}/mobile-flight-calibration-bottom.png`);
@@ -466,7 +481,7 @@ try {
       await audit(page, '1440px at 200% equivalent viewport planning:config');
       await page.setViewportSize({ width: 1440, height: 900 });
       await activate(page, 'flight', 'update');
-      await page.locator('[data-fuel-unit="gal"]').click();
+      await clickPreference(page, '[data-fuel-unit="gal"]');
       await page.locator('#manualWaypoint').selectOption({ index: 2 });
       await page.locator('#manualAltitude').selectOption('18000');
       await page.locator('#manualFuel').fill('60');
@@ -480,7 +495,7 @@ try {
     }
     if (engineV2 && [390, 1440].includes(width)) {
       awcMode = 'ice';
-      await page.locator('#importLatest').click();
+      await importLatest(page);
       await page.waitForFunction(() => document.querySelector('#kpiAltitude')?.textContent === '—');
       await activate(page, 'planning', 'config');
       await audit(page, `${width}px EN-US KG/L A planning:config no feasible FL`);
@@ -505,11 +520,11 @@ try {
       await page.waitForFunction(() => !!window.VelocityLayout);
       await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
       await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-      await page.locator('#importLatest').click();
+      await importLatest(page);
       await page.waitForTimeout(mode === 'offline' ? 1800 : 500);
       await activate(page, 'planning', 'config');
       await page.locator('#optimizeMission').click();
-      await page.locator('#pilotDecisionPanel:visible').waitFor();
+      await revealDecision(page);
       await audit(page, `${width}px ${mode} weather mission:overview`);
       if (mode === 'offline' && (await page.locator('#kpiAltitude').textContent())?.trim() !== '—')
         report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather appears as a recommended FL'] });
