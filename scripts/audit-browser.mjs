@@ -630,6 +630,26 @@ try {
         }
         await page.setViewportSize({width,height:900});
       }
+      const hierarchy=await page.evaluate(()=>{
+        const reading=document.querySelector('#zenShell .zen-reading');
+        const review=document.querySelector('#zenReview').getBoundingClientRect();
+        const details=document.querySelector('#zenDetails').getBoundingClientRect();
+        const notice=document.querySelector('#zenShell .zen-notice').getBoundingClientRect();
+        const labels=[...document.querySelectorAll('#zenShell .zen-metric-label')].map(n=>n.textContent.trim());
+        return {reviewWidth:review.width,
+          detailsGap:details.top-review.bottom,
+          noticeGap:notice.top-details.bottom,
+          labels,reading:reading?.textContent.trim(),
+          scrollbar:getComputedStyle(document.querySelector('#zenShell .zen-content')).scrollbarWidth,
+          appBottom:document.querySelector('#zenShell .zen-app').getBoundingClientRect().bottom,
+          viewportHeight:innerHeight};
+      });
+      if(hierarchy.reviewWidth>357||hierarchy.reviewWidth<175||
+         hierarchy.detailsGap<24||hierarchy.noticeGap<18||
+         hierarchy.scrollbar!=='none'||hierarchy.appBottom>hierarchy.viewportHeight+2||
+         !hierarchy.labels.some(x=>/combustível|fuel/i.test(x))||
+         !hierarchy.labels.some(x=>/tempo|time/i.test(x))||!hierarchy.reading)
+        report.errors.push({label:'Zen Overview refined hierarchy '+width,issues:[JSON.stringify(hierarchy)]});
       const name=(width===390?'mobile':'desktop')+'-zen-overview.png';
       await page.screenshot({path:path.join(output,afterFolder,name),animations:'disabled'});
       report.screenshots.push(afterFolder+'/'+name);
