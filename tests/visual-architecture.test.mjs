@@ -24,6 +24,20 @@ test("one stylesheet owns visual tokens and component dimensions", () => {
   assertDeclaration(css, ".module-nav button", "min-height", "var(--control-height)");
 });
 
+test("global scrollbars are hidden without disabling vertical or horizontal scroll", () => {
+  const universal=cssRule(css,"*");
+  const webkit=cssRule(css,"*::-webkit-scrollbar");
+  assert.match(universal,/scrollbar-width:\s*none\s*!important/);
+  assert.match(universal,/-ms-overflow-style:\s*none/);
+  assert.match(webkit,/display:\s*none\s*!important/);
+  assert.match(webkit,/width:\s*0/);
+  assert.match(webkit,/height:\s*0/);
+  for (const selector of ["#zenShell .zen-content","#zenShell .zen-drawer-content","#zenAssessmentShell .zas-body","#zenAssessmentShell .zas-drawer-body",".glide-route",".ride-route-scroll"]) {
+    assert.match(cssRule(css,selector),/overflow(?:-[xy])?:\s*(?:auto|scroll)/);
+  }
+  assert.doesNotMatch(universal,/(?:^|;)overflow\s*:\s*hidden/);
+});
+
 test("cards size to content and hidden modules stay hidden", () => {
   assertDeclaration(css, ".summary-grid > .panel", "min-height", "0");
   assertDeclaration(css, ".planning-live-summary", "min-height", "0");
@@ -107,5 +121,5 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261025-06/);
+  assert.match(html, /styles\.css\?v=20261025-07/);
 });

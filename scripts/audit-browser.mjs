@@ -541,6 +541,24 @@ try {
         }, true);
       });
       await page.goto(base, { waitUntil:'domcontentloaded' });
+      // Test scrollbar visibility as an app-wide rule in desktop and mobile.
+      // Both axes must still be scrollable by input / keyboard / script.
+      const scrollbarProbe=await page.evaluate(()=>{
+        const host=document.createElement('div');
+        host.style.cssText='position:fixed;left:0;top:0;width:84px;height:84px;overflow:scroll;z-index:-1;';
+        host.innerHTML='<div style="width:420px;height:420px"></div>';
+        document.body.append(host);
+        const firefoxValue=getComputedStyle(host).scrollbarWidth;
+        const webkitDisplay=getComputedStyle(host,'::-webkit-scrollbar').display;
+        host.scrollLeft=90;
+        host.scrollTop=110;
+        const result={firefoxValue,webkitDisplay,scrollLeft:host.scrollLeft,scrollTop:host.scrollTop};
+        host.remove();
+        return result;
+      });
+      if(scrollbarProbe.firefoxValue!=='none' || scrollbarProbe.webkitDisplay!=='none' ||
+         scrollbarProbe.scrollTop!==110 || scrollbarProbe.scrollLeft!==90)
+        report.errors.push({label:'Invisible global scrollbars '+width,issues:[JSON.stringify(scrollbarProbe)]});
       await page.locator('#zenImport:visible').waitFor();
       if (!await page.locator('body').evaluate(el=>el.classList.contains('zen-overview'))) report.errors.push({label:'Zen '+width,issues:['Zen view not displayed']});
       if(width===390) {
