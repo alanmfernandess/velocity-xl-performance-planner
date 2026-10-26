@@ -829,6 +829,111 @@ try {
       await page.locator('#zenShell:visible').waitFor();
       if(await page.locator('#zenPlanningShell:visible').count())
         report.errors.push({label:'Zen Planning optimization '+width,issues:['Did not return to native optimized mission overview']});
+
+      // Approved Zen Essential Refined Weight & Systems: full native W&B
+      // envelope, all oxygen diagnostics, draft/cancel/apply, mobile layout.
+      await page.evaluate(()=>window.VelocityLayout.activate('planning','systems'));
+      await page.locator('#zenSystemsShell:visible').waitFor();
+      const systems=await page.evaluate(()=>{
+        const app=document.querySelector('#zenSystemsShell .zws-app').getBoundingClientRect();
+        const body=document.querySelector('#zenSystemsShell .zws-body');
+        const button=document.querySelector('#zwsEdit').getBoundingClientRect();
+        const detail=document.querySelector('#zwsDetails').getBoundingClientRect();
+        return {
+          appBottom:app.bottom,viewport:innerHeight,
+          height:document.documentElement.scrollHeight,
+          locked:document.documentElement.classList.contains('zen-locked'),
+          scrollbar:getComputedStyle(body).scrollbarWidth,
+          buttonWidth:button.width,
+          detailsGap:detail.top-button.bottom,
+          label:document.querySelector('#zwsStatus').textContent.trim(),
+          nativeLabel:document.querySelector('#wbStatus').textContent.trim(),
+          weight:document.querySelector('#zwsValueOne').textContent.trim(),
+          nativeWeight:document.querySelector('#wbGrossWeight').textContent.trim(),
+          cg:document.querySelector('#zwsValueTwo').textContent.trim(),
+          nativeCg:document.querySelector('#wbTakeoffCg').textContent.trim()
+        };
+      });
+      if(!systems.locked||systems.appBottom>systems.viewport+2||
+         systems.height>systems.viewport+2||systems.scrollbar!=='none'||
+         systems.buttonWidth>356||systems.detailsGap<(width===390?25:31)||
+         systems.label!==systems.nativeLabel||systems.weight!==systems.nativeWeight||
+         systems.cg!==systems.nativeCg)
+        report.errors.push({label:'Zen Systems Weight layout '+width,issues:[JSON.stringify(systems)]});
+      const weightShot=(width===390?'mobile':'desktop')+'-zen-systems-weight.png';
+      await page.screenshot({path:path.join(output,afterFolder,weightShot),animations:'disabled'});
+      report.screenshots.push(afterFolder+'/'+weightShot);
+      await page.locator('#zwsDetails').click();
+      await page.locator('#zwsDrawer:visible').waitFor();
+      const cgDetails=await page.evaluate(()=>({
+        nativePhases:document.querySelectorAll('#cgChart .cg-phase-row').length,
+        mirroredPhases:document.querySelectorAll('#zwsDrawer .cg-phase-row').length,
+        nativeStations:document.querySelectorAll('#wbStationRows > div').length,
+        mirrorStations:document.querySelectorAll('#zwsDrawer .zws-stations > div').length-1,
+        margins:document.querySelector('#wbMargins').textContent.trim(),
+        visibleMargins:document.querySelector('#zwsDrawerBody').textContent
+      }));
+      if(cgDetails.nativePhases!==3||cgDetails.mirroredPhases!==3||
+         cgDetails.nativeStations!==cgDetails.mirrorStations||
+         !cgDetails.visibleMargins.includes(cgDetails.margins))
+        report.errors.push({label:'Zen Systems complete CG '+width,issues:[JSON.stringify(cgDetails)]});
+      await page.locator('#zwsBack').click();
+      await page.locator('#zwsEdit').click();
+      await page.locator('#zwsDrawer [data-zws-weight="baggage"]').fill('41');
+      const originalBaggage=await page.locator('[data-wb-key="baggage"]').inputValue();
+      await page.locator('#zwsDrawer [data-zws="save"]').click();
+      await page.locator('#zwsModalShade:visible').waitFor();
+      if(await page.locator('[data-wb-key="baggage"]').inputValue()!==originalBaggage)
+        report.errors.push({label:'Zen Systems draft W&B '+width,issues:['Native baggage changed before confirmation']});
+      await page.locator('#zwsCancel').click();
+      if(await page.locator('#zwsModalShade:visible').count())
+        report.errors.push({label:'Zen Systems cancel '+width,issues:['Modal remained visible']});
+      await page.locator('#zwsDrawer [data-zws="save"]').click();
+      const confirmPosition=await page.evaluate(()=>{
+        const b=document.querySelector('#zwsModalShade .zws-modal').getBoundingClientRect();
+        return {x:b.left+b.width/2,y:b.top+b.height/2,mx:innerWidth/2,my:innerHeight/2};
+      });
+      if(Math.abs(confirmPosition.x-confirmPosition.mx)>3||Math.abs(confirmPosition.y-confirmPosition.my)>3)
+        report.errors.push({label:'Zen Systems centered modal '+width,issues:[JSON.stringify(confirmPosition)]});
+      await page.locator('#zwsConfirm').click();
+      await page.waitForFunction(()=>document.querySelector('[data-wb-key="baggage"]').value==='41');
+      await page.waitForFunction(()=>document.querySelector('#zwsValueOne').textContent.trim()===document.querySelector('#wbGrossWeight').textContent.trim());
+      await page.locator('#zwsOxygenTab').click();
+      const oxy=await page.evaluate(()=>({
+        status:document.querySelector('#zwsStatus').textContent.trim(),
+        native:document.querySelector('#oxygenStatus').textContent.trim(),
+        cylinders:document.querySelector('#zwsValueOne').textContent.trim(),
+        nativeCylinders:document.querySelector('#oxygenBottleCount').value,
+        endurance:document.querySelector('#zwsValueTwo').textContent.trim(),
+        nativeEndurance:document.querySelector('#oxygenEndurance').textContent.trim(),
+        required:document.querySelector('#zwsTechOne').textContent.trim(),
+        nativeRequired:document.querySelector('#oxygenRequired').textContent.trim(),
+        installed:document.querySelector('#zwsTechTwo').textContent.trim(),
+        nativeInstalled:document.querySelector('#oxygenInstalled').textContent.trim()
+      }));
+      if(oxy.status!==oxy.native||oxy.cylinders!==oxy.nativeCylinders||
+         oxy.endurance!==oxy.nativeEndurance||oxy.required!==oxy.nativeRequired||
+         oxy.installed!==oxy.nativeInstalled)
+        report.errors.push({label:'Zen Systems O2 native outputs '+width,issues:[JSON.stringify(oxy)]});
+      const oxyShot=(width===390?'mobile':'desktop')+'-zen-systems-oxygen.png';
+      await page.screenshot({path:path.join(output,afterFolder,oxyShot),animations:'disabled'});
+      report.screenshots.push(afterFolder+'/'+oxyShot);
+      await page.locator('#zwsDetails').click();
+      if(await page.locator('#zwsDrawerBody .zws-row').count()<8)
+        report.errors.push({label:'Zen Systems O2 detail '+width,issues:['Incomplete engine oxygen details']});
+      await page.locator('#zwsBack').click();
+      await page.locator('#zwsEdit').click();
+      const nativeO2Count=await page.locator('#oxygenBottleCount').inputValue();
+      const candidate=nativeO2Count==='2'?'1':'2';
+      await page.locator('#zwsDrawer [data-zws-count]').selectOption(candidate);
+      await page.locator('#zwsDrawer [data-zws="save"]').click();
+      if(await page.locator('#oxygenBottleCount').inputValue()!==nativeO2Count)
+        report.errors.push({label:'Zen Systems draft O2 '+width,issues:['Native O2 count changed before confirmation']});
+      await page.locator('#zwsConfirm').click();
+      await page.waitForFunction(value=>document.querySelector('#oxygenBottleCount').value===value,candidate);
+      await page.waitForFunction(()=>document.querySelector('#zwsValueOne').textContent.trim()===document.querySelector('#oxygenBottleCount').value);
+      await page.locator('#zenSystemsShell .zws-brand').click();
+      await page.locator('#zenShell:visible').waitFor();
       await context.close();
     }
   }
