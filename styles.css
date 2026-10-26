@@ -4348,12 +4348,12 @@ body.zen-overview > main.shell { display:none!important; }
 #zenShell .zen-mode.caution:before {background:var(--orange)}
 #zenShell .zen-mode.danger:before {background:var(--red)}
 #zenShell .zen-mode.unknown:before {background:#9ba8b6}
-#zenShell .zen-metrics {display:grid;grid-template-columns:1fr 1px 1fr;gap:28px;align-items:center;max-width:340px;margin:55px auto 48px}
-#zenShell .zen-metric {display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
-#zenShell .zen-metric .zen-icon {color:#758394;margin-bottom:5px}
+#zenShell .zen-metrics {display:grid;grid-template-columns:1fr 1px 1fr;gap:28px;align-items:center;max-width:405px;margin:29px auto 31px;width:100%;max-width:405px;grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr);gap:22px;margin:29px auto 31px}
+#zenShell .zen-metric {display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;gap:8px}
+#zenShell .zen-metric .zen-icon {color:#758394;margin-bottom:0;width:21px;height:21px;margin-bottom:0}
 #zenShell .zen-metric strong {font-size:var(--zen-font-35);letter-spacing:0;font-weight:450;line-height:1.1;font-variant-numeric:tabular-nums}
 #zenShell .zen-metric small {font-size:var(--zen-font-10);color:#758394;letter-spacing:.16em;text-transform:uppercase}
-#zenShell .zen-vline {height:68px;background:var(--line)}
+#zenShell .zen-vline {height:68px;background:var(--line);height:81px;background:var(--line)}
 #zenShell .zen-primary {width:100%;height:48px;background:var(--zen-blue);color:#fff;border:1px solid var(--zen-blue);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:11px;font-size:var(--zen-font-13);font-weight:650}
 #zenShell .zen-primary:hover:not(:disabled) {background:#1265b5}
 #zenShell .zen-primary:disabled {opacity:.45;cursor:not-allowed}
@@ -4361,7 +4361,7 @@ body.zen-overview > main.shell { display:none!important; }
 #zenShell .zen-secondary:hover {background:var(--panel-soft)}
 #zenShell .zen-textbtn {display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px;border:0;background:transparent;color:#637f98;font-size:var(--zen-font-11)}
 #zenShell .zen-textbtn:hover {color:var(--zen-blue)}
-#zenShell .zen-notice {display:flex;align-items:center;justify-content:center;gap:7px;font-size:var(--zen-font-10);color:var(--zen-muted);margin-top:8px;line-height:1.6}
+#zenShell .zen-notice {display:flex;align-items:center;justify-content:center;gap:7px;font-size:var(--zen-font-10);color:var(--zen-muted);margin-top:8px;line-height:1.6;margin-top:30px;line-height:1.6}
 #zenShell .zen-notice .zen-icon {width:14px;height:14px}
 #zenShell .zen-condition {min-height:24px;font-size:var(--zen-font-11);color:#657d95;margin-top:10px}
 #zenShell .zen-condition.warning {color:var(--orange)}
@@ -4410,7 +4410,7 @@ body.zen-overview > main.shell { display:none!important; }
   #zenShell .zen-content {padding:14px 24px 20px}
   #zenShell .zen-route {margin:18px 0 25px}
   #zenShell .zen-level {font-size:var(--zen-font-95);margin:8px 0 4px}
-  #zenShell .zen-metrics {margin:23px auto 23px}
+  #zenShell .zen-metrics {margin:17px auto 19px}
   #zenShell .zen-condition {min-height:18px;margin-top:7px}
 }
 @media (min-width:761px) and (max-height:650px) {
@@ -4418,9 +4418,9 @@ body.zen-overview > main.shell { display:none!important; }
   #zenShell .zen-content {padding:10px 24px 14px}
   #zenShell .zen-route {margin:10px 0 18px}
   #zenShell .zen-level {font-size:var(--zen-font-82);margin:5px 0 2px}
-  #zenShell .zen-metrics {margin:12px auto 13px}
+  #zenShell .zen-metrics {margin:9px auto 10px}
   #zenShell .zen-condition {min-height:16px;margin-top:5px}
-  #zenShell .zen-vline {height:56px}
+  #zenShell .zen-vline {height:65px}
 }
 @media (max-width:760px) {
   /* Safari standalone and browser: exactly one visual viewport, no phantom
@@ -4433,7 +4433,7 @@ body.zen-overview > main.shell { display:none!important; }
   #zenShell .zen-content {display:flex;flex-direction:column;justify-content:safe center;flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding:22px 18px max(25px, env(safe-area-inset-bottom))}
   #zenShell .zen-route {margin:28px 0 40px;gap:17px;font-size:var(--zen-font-12)}
   #zenShell .zen-level {font-size:var(--zen-font-95)}
-  #zenShell .zen-metrics {margin:34px auto 31px;gap:22px}
+  #zenShell .zen-metrics {margin:22px auto 22px;gap:14px;max-width:340px}
   #zenShell .zen-metric strong {font-size:var(--zen-font-29)}
   #zenShell .zen-drawer-head {padding-top:max(19px,env(safe-area-inset-top))}
   #zenShell .zen-drawer-bottom {padding-bottom:max(20px,env(safe-area-inset-bottom))}
@@ -4444,7 +4444,7 @@ body.zen-overview > main.shell { display:none!important; }
   #zenShell .zen-content {padding:18px 16px 25px}
   #zenShell .zen-route {gap:14px;margin:20px 0 27px}
   #zenShell .zen-level {font-size:var(--zen-font-82)}
-  #zenShell .zen-metrics {gap:16px}
+  #zenShell .zen-metrics {gap:10px;margin:15px auto 14px}
   #zenShell .zen-metric strong {font-size:var(--zen-font-27)}
   #zenShell .zen-modal {padding:22px 17px}
 }
@@ -4660,34 +4660,25 @@ body.zen-planning > main.shell {display:none!important}
    fuel and time together; one centered action; secondary details after a
    full line of breathing room; terrain disclaimer distinctly below. */
 #zenShell #zenHasPlan {width:100%}
-#zenShell .zen-metrics {width:100%;max-width:405px;grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr);gap:22px;margin:29px auto 31px}
-#zenShell .zen-metric {gap:8px}
-#zenShell .zen-metric .zen-icon {width:21px;height:21px;margin-bottom:0}
 #zenShell .zen-metric .zen-metric-label {order:1;color:#798b9f;font-size:var(--zen-font-10);font-weight:650;letter-spacing:.13em;line-height:1.5}
 #zenShell .zen-reading {order:2;display:flex;align-items:baseline;justify-content:center;gap:5px;min-width:0;font-variant-numeric:tabular-nums}
-#zenShell .zen-reading strong {font-size:var(--zen-font-35);font-weight:440;letter-spacing:-.02em}
+#zenShell .zen-reading strong {font-size:var(--zen-font-35);font-weight:440;letter-spacing:0}
 #zenShell .zen-reading small {font-size:var(--zen-font-16);letter-spacing:0;color:#62798c;font-weight:450}
-#zenShell .zen-vline {height:81px;background:var(--line)}
 #zenShell .zen-main-actions {display:flex;flex-direction:column;align-items:center;width:100%}
 #zenShell #zenReview {max-width:355px;margin:0 auto}
 #zenShell #zenDetails {width:auto;min-height:28px;margin-top:35px;padding:4px 9px}
-#zenShell .zen-notice {margin-top:30px;line-height:1.6}
 @media (min-width:761px) and (max-height:820px) {
-  #zenShell .zen-metrics {margin:17px auto 19px}
   #zenShell #zenDetails {margin-top:24px}
   #zenShell .zen-notice {margin-top:19px}
 }
 @media (min-width:761px) and (max-height:650px) {
-  #zenShell .zen-metrics {margin:9px auto 10px}
   #zenShell .zen-metric {gap:5px}
   #zenShell .zen-metric .zen-icon {width:18px;height:18px}
   #zenShell .zen-reading strong {font-size:var(--zen-font-27)}
-  #zenShell .zen-vline {height:65px}
   #zenShell #zenDetails {margin-top:13px}
   #zenShell .zen-notice {margin-top:11px}
 }
 @media (max-width:760px) {
-  #zenShell .zen-metrics {max-width:340px;gap:14px;margin:22px auto 22px}
   #zenShell .zen-reading strong {font-size:var(--zen-font-29)}
   #zenShell .zen-reading small {font-size:var(--zen-font-13)}
   #zenShell .zen-vline {height:70px}
@@ -4696,7 +4687,6 @@ body.zen-planning > main.shell {display:none!important}
   #zenShell .zen-notice {margin-top:23px}
 }
 @media (max-width:360px) {
-  #zenShell .zen-metrics {margin:15px auto 14px;gap:10px}
   #zenShell .zen-metric .zen-metric-label {font-size:var(--zen-font-9)}
   #zenShell .zen-reading strong {font-size:var(--zen-font-27)}
   #zenShell #zenDetails {margin-top:25px}
