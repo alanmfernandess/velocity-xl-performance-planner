@@ -27,11 +27,11 @@ test("one stylesheet owns visual tokens and component dimensions", () => {
 test("global scrollbars are hidden without disabling vertical or horizontal scroll", () => {
   const universal=cssRule(css,"*");
   const webkit=cssRule(css,"*::-webkit-scrollbar");
-  assert.match(universal,/scrollbar-width:none\s*!important/);
-  assert.match(universal,/-ms-overflow-style:none/);
-  assert.match(webkit,/display:none\s*!important/);
-  assert.match(webkit,/width:0/);
-  assert.match(webkit,/height:0/);
+  assert.match(universal,/scrollbar-width:\s*none\s*!important/);
+  assert.match(universal,/-ms-overflow-style:\s*none/);
+  assert.match(webkit,/display:\s*none\s*!important/);
+  assert.match(webkit,/width:\s*0/);
+  assert.match(webkit,/height:\s*0/);
   for (const selector of ["#zenShell .zen-content","#zenShell .zen-drawer-content","#zenAssessmentShell .zas-body","#zenAssessmentShell .zas-drawer-body",".glide-route",".ride-route-scroll"]) {
     assert.match(cssRule(css,selector),/overflow(?:-[xy])?:\s*(?:auto|scroll)/);
   }
