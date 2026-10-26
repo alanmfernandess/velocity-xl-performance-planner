@@ -100,18 +100,18 @@ test("approved Zen Essential planning has native editable controls and a centere
   const planning=readFileSync(new URL("../js/zen-planning.js",import.meta.url),"utf8");
   const overview=readFileSync(new URL("../js/zen-overview.js",import.meta.url),"utf8");
   const assessment=readFileSync(new URL("../js/zen-assessment.js",import.meta.url),"utf8");
-  assert.match(html,/zen-planning\\.js\\?v=20261026-01/);
+  assert.ok(html.includes("zen-planning.js?v=20261026-01"));
   assert.match(cssRule(css,"#zenPlanningShell"),/height:100dvh/);
   assert.match(cssRule(css,"#zenPlanningShell .zpc-app"),/height:100%/);
   assert.match(cssRule(css,"#zenPlanningShell .zpc-body"),/overflow-y:auto/);
   assert.match(cssRule(css,"#zenPlanningShell .zpc-modal-shade"),/justify-content:center/);
-  for(const selector of ["payloadInput","fuelInput","reserveInput","optimizeMission","powerSettingValue","weightValue","weightNote","layoutFuelMargin","layoutOxygenSummary"])assert.match(planning,new RegExp(selector));
-  assert.match(planning,/\.dispatchEvent\\(new Event\\("input"/);
-  assert.match(planning,/\.dispatchEvent\\(new Event\\("change"/);
-  assert.match(planning,/role="alertdialog"/);
-  assert.match(planning,/hasPlan\\(\\)/);
-  assert.match(overview,/onPlanning/);
-  assert.match(assessment,/zen-planning/);
+  for(const selector of ["payloadInput","fuelInput","reserveInput","optimizeMission","powerSettingValue","weightValue","weightNote","layoutFuelMargin","layoutOxygenSummary"])assert.ok(planning.includes(selector));
+  assert.ok(planning.includes('dispatchEvent(new Event("input"'));
+  assert.ok(planning.includes('dispatchEvent(new Event("change"'));
+  assert.ok(planning.includes('role="alertdialog"'));
+  assert.ok(planning.includes("hasPlan()"));
+  assert.ok(overview.includes("onPlanning"));
+  assert.ok(assessment.includes("zen-planning"));
 });
 
 test("removed visual variables have no JavaScript writer", () => {
