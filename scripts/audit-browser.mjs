@@ -560,6 +560,12 @@ try {
          scrollbarProbe.scrollTop!==110 || scrollbarProbe.scrollLeft!==90)
         report.errors.push({label:'Invisible global scrollbars '+width,issues:[JSON.stringify(scrollbarProbe)]});
       await page.locator('#zenImport:visible').waitFor();
+      await page.evaluate(()=>window.VelocityLayout.activate('planning','config'));
+      await page.locator('#zpcImport:visible').waitFor();
+      if(!await page.evaluate(()=>document.body.classList.contains('zen-planning')))
+        report.errors.push({label:'Zen Planning empty '+width,issues:['Planning view does not use Zen when no OFP exists']});
+      await page.locator('#zenPlanningShell .zpc-brand').click();
+      await page.locator('#zenImport:visible').waitFor();
       if (!await page.locator('body').evaluate(el=>el.classList.contains('zen-overview'))) report.errors.push({label:'Zen '+width,issues:['Zen view not displayed']});
       if(width===390) {
         const check=await page.evaluate(()=>{
@@ -714,6 +720,64 @@ try {
       await page.locator('#zenShell:visible').waitFor();
       if(await page.locator('#zenAssessmentShell:visible').count())
         report.errors.push({label:'Zen Assessment navigation '+width,issues:['Overview return failed']});
+
+      // Zen Essential Planning: visual viewport, genuine native form bindings,
+      // settings/details drawer and centralized confirmation before optimization.
+      await page.evaluate(()=>window.VelocityLayout.activate('planning','config'));
+      await page.locator('#zpcConfig:visible').waitFor();
+      const zpcLayout=await page.evaluate(()=>{
+        const app=document.querySelector('#zenPlanningShell .zpc-app').getBoundingClientRect();
+        const body=document.querySelector('#zenPlanningShell .zpc-body');
+        return {appBottom:app.bottom,viewport:innerHeight,
+          outerHeight:document.documentElement.scrollHeight,
+          scrollbar:getComputedStyle(body).scrollbarWidth,
+          bodyPadding:getComputedStyle(document.body).paddingBottom,
+          fixed:document.documentElement.classList.contains('zen-locked'),
+          nativeProfile:[...document.querySelectorAll('[data-mode]')].find(e=>e.classList.contains('active'))?.dataset.mode,
+          zenProfile:[...document.querySelectorAll('[data-zpc-mode]')].find(e=>e.classList.contains('active'))?.dataset.zpcMode};
+      });
+      if(!zpcLayout.fixed||zpcLayout.bodyPadding!=='0px'||
+         zpcLayout.scrollbar!=='none'||zpcLayout.appBottom>zpcLayout.viewport+2||
+         zpcLayout.outerHeight>zpcLayout.viewport+2||zpcLayout.nativeProfile!==zpcLayout.zenProfile)
+        report.errors.push({label:'Zen Planning viewport '+width,issues:[JSON.stringify(zpcLayout)]});
+      const zpcShot=(width===390?'mobile':'desktop')+'-zen-planning-essential.png';
+      await page.screenshot({path:path.join(output,afterFolder,zpcShot),animations:'disabled'});
+      report.screenshots.push(afterFolder+'/'+zpcShot);
+      await page.locator('#zenPlanningShell [data-zpc-mode="ECON"]').click();
+      await page.waitForFunction(()=>document.querySelector('[data-mode="ECON"]').classList.contains('active'));
+      await page.locator('#zpcPayload').evaluate(el=>{
+        el.value='650';el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));
+      });
+      await page.waitForFunction(()=>document.querySelector('#payloadInput').value==='650');
+      await page.locator('#zpcFuel').evaluate(el=>{
+        el.value='65.5';el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));
+      });
+      await page.waitForFunction(()=>document.querySelector('#fuelInput').value==='65.5');
+      await page.locator('#zpcReserve').selectOption('60');
+      await page.waitForFunction(()=>document.querySelector('#reserveInput').value==='60');
+      await page.locator('#zpcDetails').click();
+      await page.locator('#zpcDrawer:visible').waitFor();
+      if(await page.locator('#zpcDrawerContent .zpc-row').count()<7)
+        report.errors.push({label:'Zen Planning details '+width,issues:['Missing operational parameter details']});
+      await page.locator('#zpcBack').click();
+      await page.locator('#zpcOptimize').click();
+      await page.locator('#zpcModalShade:visible').waitFor();
+      const modal=await page.evaluate(()=>{
+        const rect=document.querySelector('.zpc-modal').getBoundingClientRect();
+        return {centerX:rect.left+rect.width/2,centerY:rect.top+rect.height/2,
+          winX:innerWidth/2,winY:innerHeight/2,
+          nativeBusy:document.querySelector('#optimizeMission').getAttribute('aria-busy')};
+      });
+      if(Math.abs(modal.centerX-modal.winX)>3||Math.abs(modal.centerY-modal.winY)>3||modal.nativeBusy==='true')
+        report.errors.push({label:'Zen Planning confirmation '+width,issues:[JSON.stringify(modal)]});
+      await page.locator('[data-zpc="cancel"]').click();
+      if(await page.locator('#zpcModalShade:visible').count())
+        report.errors.push({label:'Zen Planning cancel '+width,issues:['Confirmation remained open']});
+      await page.locator('#zpcOptimize').click();
+      await page.locator('#zpcConfirm').click();
+      await page.locator('#zenShell:visible').waitFor();
+      if(await page.locator('#zenPlanningShell:visible').count())
+        report.errors.push({label:'Zen Planning optimization '+width,issues:['Did not return to native optimized mission overview']});
       await context.close();
     }
   }
