@@ -61,12 +61,20 @@
         <div class="zen-mode" id="zenMode">—</div>
         <div class="zen-condition" id="zenCondition" role="status" aria-live="polite"></div>
         <div class="zen-metrics">
-          <div class="zen-metric">${icon("fuel")}<strong id="zenFuel">—</strong><small id="zenFuelUnit">GAL</small></div>
+          <div class="zen-metric">${icon("fuel")}
+            <small class="zen-metric-label" id="zenFuelLabel">COMBUSTÍVEL</small>
+            <div class="zen-reading"><strong id="zenFuel">—</strong><small id="zenFuelUnit">GAL</small></div>
+          </div>
           <div class="zen-vline"></div>
-          <div class="zen-metric">${icon("clock")}<strong id="zenTime">—</strong><small id="zenTimeUnit">TEMPO</small></div>
+          <div class="zen-metric">${icon("clock")}
+            <small class="zen-metric-label" id="zenTimeUnit">TEMPO</small>
+            <div class="zen-reading"><strong id="zenTime">—</strong></div>
+          </div>
         </div>
-        <button class="zen-primary" type="button" data-zen="review" id="zenReview">Revisar voo ${icon("arrow","small")}</button>
-        <button class="zen-textbtn" type="button" data-zen="details" id="zenDetails">Detalhes da missão ›</button>
+        <div class="zen-main-actions">
+          <button class="zen-primary" type="button" data-zen="review" id="zenReview">Revisar voo ${icon("arrow","small")}</button>
+          <button class="zen-textbtn" type="button" data-zen="details" id="zenDetails">Detalhes da missão ›</button>
+        </div>
       </div>
       <form class="zen-import" id="zenImport" hidden>
         <label><span id="zenImportLabel">Pilot ID / Alias</span>
@@ -193,6 +201,7 @@
     const split=originText.split(/\s*[→➜]\s*/);
     z("#zenFrom").textContent=loaded?(split[0]||"—"):"—";
     z("#zenTo").textContent=loaded?(split[1]||"—"):"—";
+    z("#zenFuelLabel").textContent=tr("COMBUSTÍVEL","FUEL");
     z("#zenTimeUnit").textContent=tr("TEMPO","TIME");
     z("#zenCaveat").textContent=tr("Terreno e obstáculos não avaliados","Terrain and obstacles not assessed");
     if(!loaded){z("#zenRoute").classList.add("zen-empty-route");return;}
