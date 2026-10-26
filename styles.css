@@ -4724,7 +4724,7 @@ body.zen-planning > main.shell {display:none!important}
   #zenPlanningShell .zpc-notice {margin-top:24px}
 }
 @media (max-width:360px) {
-  #zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-24)}
+  #zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-20)}
   #zenPlanningShell .zpc-technical {gap:14px;margin-top:20px}
   #zenPlanningShell .zpc-main-actions {margin-top:26px}
   #zenPlanningShell #zpcDetails {margin-top:25px}
