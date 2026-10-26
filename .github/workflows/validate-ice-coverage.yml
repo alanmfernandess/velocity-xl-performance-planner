@@ -30,7 +30,7 @@ jobs:
       - name: Live weather source diagnostics (non-blocking)
         run: node scripts/diagnose-weather-live.mjs
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Browser audit 2.0
         run: npm run audit:browser:v2
       - name: Save browser audit evidence
