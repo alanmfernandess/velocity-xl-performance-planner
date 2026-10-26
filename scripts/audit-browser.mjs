@@ -151,10 +151,20 @@ const audit = async (page, label) => {
   if (issues.length) report.errors.push({ label, issues });
 };
 const activate = async (page, area, module) => {
+  if (await page.locator('#focus-overlay:not([hidden])').count()) await page.locator('#focus-close').click();
   await page.locator(`[data-area-button="${area}"]:visible`).first().click();
   const tab=page.locator(`[data-module-button="${area}:${module}"]:visible`);
   if(await tab.count())await tab.click();
   await assert.doesNotReject(page.locator(`[data-module-panel="${area}:${module}"]:visible`).waitFor());
+};
+const importLatest = async page => {
+  if (!await page.locator('#importLatest').isVisible()) await page.locator('#focus-import-button:visible').click();
+  await page.locator('#importLatest').click();
+};
+const revealDecision = async page => {
+  await page.waitForFunction(() => !document.querySelector('#pilotDecisionPanel')?.hidden);
+  await page.locator('#focus-compare:visible').click();
+  await page.locator('#pilotDecisionPanel:visible').waitFor();
 };
 const screenshot = async (page, width, area, module) => {
   const device = captureWidths.get(width);
@@ -225,7 +235,7 @@ try {
       report.screenshots.push(`${afterFolder}/desktop-no-ofp.png`);
     }
     await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-    await page.locator('#importLatest').click();
+    await importLatest(page);
     await page.locator('#routeTitle').getByText('SBSP', { exact: false }).waitFor();
     await page.waitForFunction(() => document.querySelector('#missionRiskValue')?.textContent !== '—', { timeout: 10000 });
     if (width === 390 && !baseline) {
@@ -293,7 +303,7 @@ try {
         if (captureWidths.has(width) && ['mission:overview', 'mission:score', 'planning:config', 'planning:systems', 'route:ice', 'route:ride', 'flight:update'].includes(`${area}:${module}`)) await screenshot(page, width, area, module);
         if (area === 'planning' && module === 'config') {
           await page.locator('#optimizeMission').click();
-          await page.locator('#pilotDecisionPanel:visible').waitFor();
+          await revealDecision(page);
           await audit(page, `${width}px optimized mission:overview`);
           const decision = await page.evaluate(() => ({
             top: document.querySelectorAll('#topLevelCards .top-level-card').length,
@@ -340,7 +350,7 @@ try {
     if (width === 1440) {
       await activate(page, 'planning', 'config');
       await page.locator('#optimizeMission').click();
-      await page.locator('#pilotDecisionPanel:visible').waitFor();
+      await revealDecision(page);
       const cards=page.locator('#topLevelCards .top-level-card');
       if(await cards.count()){
         await cards.first().click();
@@ -375,20 +385,20 @@ try {
             await page.reload({waitUntil:'domcontentloaded'});
             await page.addScriptTag({path:path.join(projectRoot,'scripts/visual-probe.js')});
             await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-            await page.locator('#importLatest').click();
+            await importLatest(page);
             await page.locator('#routeTitle').getByText('SBSP',{exact:false}).waitFor();
             const restored=await page.evaluate(()=>({fuel:Number(document.querySelector('#fuelInput').value),level:document.querySelector('#kpiLevelMeta').textContent}));
             if(restored.fuel!==expectedFuel || !/aplicada|applied/i.test(restored.level))
               report.errors.push({label:'1440px applied restore',issues:[JSON.stringify(restored)]});
             const otherOFP=route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({...fixture,destination:{...fixture.destination,icao_code:'SBNF'}})});
             await page.route('**/api/xml.fetcher.php?**',otherOFP);
-            await page.locator('#importLatest').click();
+            await importLatest(page);
             await page.locator('#routeTitle').getByText('SBNF',{exact:false}).waitFor();
             const otherLevel=await page.locator('#kpiLevelMeta').textContent();
             if(/aplicada|applied/i.test(otherLevel))
               report.errors.push({label:'1440px other OFP',issues:['configuration from previous OFP was restored']});
             await page.unroute('**/api/xml.fetcher.php?**',otherOFP);
-            await page.locator('#importLatest').click();
+            await importLatest(page);
             await page.locator('#routeTitle').getByText('SBGL',{exact:false}).waitFor();
           }
         }
@@ -480,7 +490,7 @@ try {
     }
     if (engineV2 && [390, 1440].includes(width)) {
       awcMode = 'ice';
-      await page.locator('#importLatest').click();
+      await importLatest(page);
       await page.waitForFunction(() => document.querySelector('#kpiAltitude')?.textContent === '—');
       await activate(page, 'planning', 'config');
       await audit(page, `${width}px EN-US KG/L A planning:config no feasible FL`);
@@ -505,11 +515,11 @@ try {
       await page.waitForFunction(() => !!window.VelocityLayout);
       await page.addScriptTag({ path: path.join(projectRoot, 'scripts/visual-probe.js') });
       await page.locator('#quickPilotId').fill('VISUAL-FIXTURE');
-      await page.locator('#importLatest').click();
+      await importLatest(page);
       await page.waitForTimeout(mode === 'offline' ? 1800 : 500);
       await activate(page, 'planning', 'config');
       await page.locator('#optimizeMission').click();
-      await page.locator('#pilotDecisionPanel:visible').waitFor();
+      await revealDecision(page);
       await audit(page, `${width}px ${mode} weather mission:overview`);
       if (mode === 'offline' && (await page.locator('#kpiAltitude').textContent())?.trim() !== '—')
         report.errors.push({ label: `${width}px ${mode}`, issues: ['unknown weather appears as a recommended FL'] });
