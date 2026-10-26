@@ -61,7 +61,7 @@ const plan=()=>Boolean($("#plannerContent")&&!$("#plannerContent").hidden);
 let tab="weight",drawer=null,modal=null,draft=null,focus=null,scheduled=false;
 const keys=["pilot","copilot","rearLeft","rearCenter","rearRight","baggage"];
 const labels=()=>pt()?["Piloto","Copiloto","Traseiro E","Traseiro C","Traseiro D","Bagagem"]:["Pilot","Copilot","Rear L","Rear C","Rear R","Baggage"];
-const tone=(kind)=>kind.includes("not-viable")||kind.includes("insufficient")||kind.includes("avoid")?"bad":kind.includes("marginal")||kind.includes("limited")?"marginal":kind.includes("viable")||kind.includes("sufficient")||kind.includes("adequate")?"good":"unknown";
+const tone=(kind)=>kind.includes("not-viable")||kind.includes("insufficient")||kind.includes("unavailable")||kind.includes("avoid")?"bad":kind.includes("marginal")||kind.includes("limited")?"marginal":kind.includes("viable")||kind.includes("sufficient")||kind.includes("adequate")?"good":"unknown";
 function setText(id,str){const n=z(id);if(n&&n.textContent!==str)n.textContent=str;}
 function selectedTab(){for(const b of root.querySelectorAll("[data-zws-tab]")){const yes=b.dataset.zwsTab===tab;b.classList.toggle("active",yes);b.setAttribute("aria-selected",String(yes));}}
 function isActive(){const l=window.VelocityLayout?.state;return l?.area==="planning"&&l.module?.planning==="systems";}
