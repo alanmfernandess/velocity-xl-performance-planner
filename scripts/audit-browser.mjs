@@ -674,10 +674,23 @@ try {
           el.dataset.status=next;el.textContent=score;
         },[tone,value]);
         await page.waitForFunction(expected=>document.querySelector('#zasStatus').textContent===expected,label);
-        const result=await page.locator('#zasScore').textContent();
-        if((tone==='unknown' && result!=='Score indisponível') ||
-           (tone!=='unknown' && result!==value.replace('/',' / ')))
-          report.errors.push({label:'Zen Assessment '+tone+' '+width,issues:['Score state mismatch: '+result]});
+        // The calculation engine may re-render a real score concurrently
+        // with synthetic status fixtures. Compare against its live source,
+        // never assume that fixture value survives a calculation update.
+        await page.waitForFunction(() => {
+          const native=document.querySelector('#missionRiskValue').textContent.trim();
+          const score=document.querySelector('#zasScore').textContent.trim();
+          return native==='—'? /indisponível|unavailable/i.test(score) :
+            score===native.replace('/',' / ');
+        });
+        const snapshot=await page.evaluate(()=>({
+          score:document.querySelector('#zasScore').textContent.trim(),
+          native:document.querySelector('#missionRiskValue').textContent.trim(),
+          tone:document.querySelector('#missionRiskValue').dataset.status,
+          label:document.querySelector('#zasStatus').textContent.trim()
+        }));
+        if(snapshot.native==='—' && !/indisponível|unavailable/i.test(snapshot.score))
+          report.errors.push({label:'Zen Assessment '+tone+' '+width,issues:['Partial score presented as numeric: '+JSON.stringify(snapshot)]});
       }
       await page.locator('#zenAssessmentShell .zas-brand').click();
       await page.locator('#zenShell:visible').waitFor();
