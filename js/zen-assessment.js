@@ -65,7 +65,7 @@ function active(){
  document.body.classList.toggle("zen-assessment",on);
  // Overview and assessment both use a fixed visual viewport. On other modules,
  // restore standard scrolling and the original navigation.
- document.documentElement.classList.toggle("zen-locked",on||Boolean(document.body.classList.contains("zen-overview"))||Boolean(document.body.classList.contains("zen-planning")));
+ document.documentElement.classList.toggle("zen-locked",on||Boolean(document.body.classList.contains("zen-overview"))||Boolean(document.body.classList.contains("zen-planning"))||Boolean(document.body.classList.contains("zen-systems")));
  if(!on&&drawer)close();
  if(on)render();
 }

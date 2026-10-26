@@ -4728,3 +4728,128 @@ body.zen-planning > main.shell {display:none!important}
   #zenPlanningShell .zpc-main-actions {margin-top:26px}
   #zenPlanningShell #zpcDetails {margin-top:25px}
 }
+
+
+/* Zen Essential Refinado · Planejamento / Peso & Sistemas.
+   Source: existing native W&B and oxygen calculator; presentation only. */
+body.zen-systems {height:100%;overflow:hidden;overscroll-behavior:none;padding:0;background:var(--bg)}
+body.zen-systems > .topbar,
+body.zen-systems > #areaNav,
+body.zen-systems > .mobile-area-nav,
+body.zen-systems > main.shell {display:none!important}
+#zenSystemsShell {height:100dvh;overflow:hidden;color:var(--text);font:var(--ui-body)/1.4 var(--font-family)}
+#zenSystemsShell * {box-sizing:border-box}
+#zenSystemsShell button,#zenSystemsShell input,#zenSystemsShell select {font:inherit}
+#zenSystemsShell button {cursor:pointer}
+#zenSystemsShell button:focus-visible,#zenSystemsShell input:focus-visible,#zenSystemsShell select:focus-visible {outline:2px solid var(--blue);outline-offset:3px}
+#zenSystemsShell .zws-outer {height:100%;overflow:hidden;padding:16px;background:var(--bg)}
+#zenSystemsShell .zws-app {position:relative;isolation:isolate;display:flex;flex-direction:column;max-width:840px;height:100%;min-height:0;margin:auto;background:#fff;border:1px solid var(--line);border-radius:15px;overflow:hidden;box-shadow:0 8px 26px rgba(24,35,49,.045)}
+#zenSystemsShell .zws-art {position:absolute;inset:0;z-index:-1;width:100%;height:100%;pointer-events:none}
+#zenSystemsShell .zws-icon {width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+#zenSystemsShell .zws-header {display:flex;justify-content:space-between;align-items:center;flex:0 0 72px;padding:0 30px}
+#zenSystemsShell .zws-brand {display:flex;align-items:center;gap:12px;border:0;background:transparent;padding:0;color:var(--text);font-size:var(--zen-font-12);letter-spacing:.16em;font-weight:750}
+#zenSystemsShell .zws-brand .zws-icon {width:23px;height:23px;color:var(--blue)}
+#zenSystemsShell .zws-iconbtn {display:grid;place-items:center;width:40px;height:40px;border:0;background:transparent;color:#70859a;border-radius:10px}
+#zenSystemsShell .zws-iconbtn:hover {background:var(--panel-soft)}
+#zenSystemsShell .zws-body {display:flex;flex-direction:column;justify-content:safe center;flex:1 1 auto;min-height:0;min-width:0;width:100%;max-width:565px;margin:0 auto;padding:15px 28px 30px;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;text-align:center}
+#zenSystemsShell .zws-route {display:flex;justify-content:center;align-items:center;gap:17px;color:#62788e;font-size:var(--zen-font-12);font-weight:650;letter-spacing:.16em;margin:0 0 16px}
+#zenSystemsShell .zws-route .zws-icon {width:16px;height:16px}
+#zenSystemsShell .zws-kicker {color:var(--muted);font-size:var(--zen-font-10);letter-spacing:.18em;font-weight:650}
+#zenSystemsShell .zws-tabs {display:flex;justify-content:center;gap:27px;margin:16px 0 18px}
+#zenSystemsShell .zws-tabs button {font-size:var(--zen-font-11);letter-spacing:.08em;font-weight:650;border:0;border-bottom:2px solid transparent;padding:9px 5px;color:#93a0ac;background:transparent}
+#zenSystemsShell .zws-tabs button.active {color:var(--blue);border-bottom-color:var(--blue)}
+#zenSystemsShell .zws-status {font-size:var(--zen-font-27);line-height:1.2;font-weight:500;letter-spacing:0;color:#71869a;overflow-wrap:break-word}
+#zenSystemsShell .zws-status[data-tone="good"] {color:var(--green)}
+#zenSystemsShell .zws-status[data-tone="marginal"] {color:var(--orange)}
+#zenSystemsShell .zws-status[data-tone="bad"] {color:var(--red)}
+#zenSystemsShell .zws-statusnote {font-size:var(--zen-font-11);color:var(--muted);margin-top:8px;min-height:17px;line-height:1.6;overflow-wrap:break-word}
+#zenSystemsShell .zws-metrics {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;margin:28px 0 17px}
+#zenSystemsShell .zws-metric {display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+#zenSystemsShell .zws-metric .zws-icon {width:22px;height:22px;color:#7c8da0}
+#zenSystemsShell .zws-metric small {font-size:var(--zen-font-10);letter-spacing:.11em;font-weight:650;color:#7c8da0}
+#zenSystemsShell .zws-metric strong {font-size:var(--zen-font-35);line-height:1.15;font-weight:440;letter-spacing:0;font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+#zenSystemsShell .zws-technical {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;width:100%;border-top:1px solid var(--line);padding-top:19px;margin-top:16px}
+#zenSystemsShell .zws-tech {display:flex;align-items:center;flex-direction:column;gap:7px;min-width:0}
+#zenSystemsShell .zws-tech small {font-size:var(--zen-font-10);letter-spacing:.13em;font-weight:650;color:var(--muted)}
+#zenSystemsShell .zws-tech strong {font-size:var(--zen-font-12);font-weight:550;line-height:1.5;color:#536f86;overflow-wrap:break-word}
+#zenSystemsShell .zws-primary-note {font-size:var(--zen-font-12);color:var(--orange);line-height:1.5;margin-top:13px;overflow-wrap:break-word}
+#zenSystemsShell .zws-primary-note[data-tone="bad"] {color:var(--red)}
+#zenSystemsShell .zws-actions {display:flex;flex-direction:column;align-items:center;width:100%;margin-top:37px}
+#zenSystemsShell .zws-primary {display:flex;justify-content:center;align-items:center;gap:12px;min-height:47px;width:100%;max-width:355px;padding:10px 16px;border:0;border-radius:10px;background:var(--blue);color:#fff;font-size:var(--zen-font-13);font-weight:650}
+#zenSystemsShell .zws-primary:hover {background:#1368bb}
+#zenSystemsShell .zws-primary .zws-icon {width:16px;height:16px}
+#zenSystemsShell .zws-textbutton {border:0;background:transparent;color:#5f809b;font-size:var(--zen-font-12);margin-top:35px;padding:5px 8px}
+#zenSystemsShell .zws-caveat {display:flex;align-items:center;justify-content:center;gap:7px;margin-top:27px;font-size:var(--zen-font-10);color:#899aab;line-height:1.5}
+#zenSystemsShell .zws-caveat .zws-icon {width:14px;height:14px}
+#zenSystemsShell .zws-no-plan {display:grid;gap:18px;place-items:center;font-size:var(--zen-font-13);color:var(--muted);padding:24px 0}
+#zenSystemsShell .zws-shade {position:absolute;inset:0;z-index:4;background:rgba(25,36,50,.31)}
+#zenSystemsShell .zws-drawer {position:absolute;top:0;right:0;bottom:0;z-index:5;display:flex;flex-direction:column;width:min(405px,100%);background:#fff;box-shadow:-9px 0 25px rgba(25,36,50,.15)}
+#zenSystemsShell .zws-drawerhead {display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+#zenSystemsShell .zws-drawerhead strong {font-size:var(--zen-font-17);font-weight:650}
+#zenSystemsShell .zws-drawerbody {flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding:21px 22px}
+#zenSystemsShell .zws-drawerfoot {padding:15px 22px;border-top:1px solid var(--line)}
+#zenSystemsShell .zws-secondary {display:flex;justify-content:center;align-items:center;width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--line);background:#fff;color:#59738a;border-radius:9px;font-size:var(--zen-font-12);font-weight:600}
+#zenSystemsShell .zws-secondary:hover {background:var(--panel-soft)}
+#zenSystemsShell .zws-subhead {font-size:var(--zen-font-10);font-weight:650;letter-spacing:.16em;color:var(--muted);margin:20px 0 12px}
+#zenSystemsShell .zws-row {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #edf1f4;color:#5e7285;font-size:var(--zen-font-12)}
+#zenSystemsShell .zws-row strong {font-size:var(--zen-font-12);font-weight:600;color:var(--text);max-width:68%;text-align:right;overflow-wrap:break-word}
+#zenSystemsShell .zws-row input,#zenSystemsShell .zws-row select {width:130px;max-width:55%;height:40px;border:1px solid var(--line);border-radius:8px;padding:0 9px;background:#fff;color:var(--text)}
+#zenSystemsShell .zws-row input[type="checkbox"] {width:18px;height:18px;accent-color:var(--blue)}
+#zenSystemsShell .zws-info {font-size:var(--zen-font-11);line-height:1.6;color:#63778b;background:var(--panel-soft);border:1px solid var(--line);border-radius:10px;padding:13px;margin:17px 0}
+#zenSystemsShell .zws-nav {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#zenSystemsShell .zws-nav button {min-height:43px;padding:8px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#536779;font-size:var(--zen-font-12)}
+#zenSystemsShell .zws-nav button:hover {color:var(--blue);border-color:var(--blue)}
+#zenSystemsShell .zws-cg-chart {margin:18px 0}
+#zenSystemsShell .zws-stations {overflow-x:auto;font-size:var(--zen-font-11)}
+#zenSystemsShell .zws-station-head,#zenSystemsShell .zws-stations #wbStationRows > div,#zenSystemsShell .zws-stations > div:not(.zws-station-head) {display:grid;grid-template-columns:minmax(0,1.8fr) repeat(3,minmax(0,1fr));gap:6px;align-items:center;min-width:330px;padding:8px 0;border-bottom:1px solid var(--line);font-size:var(--zen-font-10)}
+#zenSystemsShell .zws-station-head {color:var(--muted);font-weight:650}
+#zenSystemsShell .zws-station-head span:not(:first-child),#zenSystemsShell .zws-stations > div:not(.zws-station-head) span,#zenSystemsShell .zws-stations > div:not(.zws-station-head) strong {text-align:right}
+#zenSystemsShell .zws-stations b {font-weight:600;display:flex;align-items:center;gap:3px}
+#zenSystemsShell .zws-stations b .lucide {width:13px;height:13px;flex:0 0 auto}
+#zenSystemsShell .zws-references {margin-top:20px;font-size:var(--zen-font-11);color:var(--muted);line-height:1.6;overflow-wrap:break-word}
+#zenSystemsShell .zws-references a {color:var(--blue);text-decoration:underline}
+#zenSystemsShell .zws-modalshade {position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(25,36,50,.38)}
+#zenSystemsShell .zws-modal {display:flex;flex-direction:column;align-items:center;gap:13px;width:100%;max-width:355px;max-height:95%;overflow-y:auto;border-radius:16px;padding:25px 23px;background:#fff;text-align:center;box-shadow:0 16px 36px rgba(25,36,50,.17)}
+#zenSystemsShell .zws-modal-icon {color:var(--blue)}
+#zenSystemsShell .zws-modal h2 {font-size:var(--zen-font-20);margin:0;font-weight:650}
+#zenSystemsShell .zws-modal p {font-size:var(--zen-font-12);color:var(--muted);line-height:1.6;margin:0}
+#zenSystemsShell .zws-modal-summary {font-size:var(--zen-font-11);color:#536779;line-height:1.7;overflow-wrap:break-word}
+@media (min-width:761px) and (max-height:750px) {
+  #zenSystemsShell .zws-body {padding:10px 28px 18px}
+  #zenSystemsShell .zws-route {margin-bottom:9px}
+  #zenSystemsShell .zws-tabs {margin:8px 0 12px}
+  #zenSystemsShell .zws-metrics {margin:17px 0 9px}
+  #zenSystemsShell .zws-metric strong {font-size:var(--zen-font-27)}
+  #zenSystemsShell .zws-technical {margin-top:8px;padding-top:11px}
+  #zenSystemsShell .zws-actions {margin-top:23px}
+  #zenSystemsShell .zws-textbutton {margin-top:19px}
+  #zenSystemsShell .zws-caveat {margin-top:17px}
+}
+@media (max-width:760px) {
+  body.zen-systems {padding:0}
+  #zenSystemsShell .zws-outer {padding:0}
+  #zenSystemsShell .zws-app {max-width:none;width:100%;border:0;border-radius:0;box-shadow:none}
+  #zenSystemsShell .zws-header {flex-basis:65px;padding:env(safe-area-inset-top) 18px 0}
+  #zenSystemsShell .zws-brand {font-size:var(--zen-font-10)}
+  #zenSystemsShell .zws-body {max-width:none;padding:14px 19px max(27px,env(safe-area-inset-bottom))}
+  #zenSystemsShell .zws-route {margin-bottom:9px}
+  #zenSystemsShell .zws-tabs {margin:9px 0 14px}
+  #zenSystemsShell .zws-status {font-size:var(--zen-font-20)}
+  #zenSystemsShell .zws-metrics {gap:8px;margin:20px 0 11px}
+  #zenSystemsShell .zws-metric strong {font-size:var(--zen-font-27)}
+  #zenSystemsShell .zws-metric small {font-size:var(--zen-font-10)}
+  #zenSystemsShell .zws-technical {grid-template-columns:1fr;gap:16px;margin-top:12px;padding-top:17px}
+  #zenSystemsShell .zws-actions {margin-top:29px}
+  #zenSystemsShell .zws-textbutton {margin-top:32px}
+  #zenSystemsShell .zws-caveat {margin-top:22px}
+  #zenSystemsShell .zws-drawer {width:100%}
+  #zenSystemsShell .zws-drawerhead {padding-top:max(20px,env(safe-area-inset-top))}
+  #zenSystemsShell .zws-drawerfoot {padding-bottom:max(18px,env(safe-area-inset-bottom))}
+}
+@media (max-width:360px) {
+  #zenSystemsShell .zws-body {padding:11px 16px 24px}
+  #zenSystemsShell .zws-route {margin-bottom:6px}
+  #zenSystemsShell .zws-metrics {margin:15px 0 8px}
+  #zenSystemsShell .zws-metric strong {font-size:var(--zen-font-20)}
+  #zenSystemsShell .zws-actions {margin-top:23px}
+}
