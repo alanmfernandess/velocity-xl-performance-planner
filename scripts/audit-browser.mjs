@@ -763,6 +763,37 @@ try {
       const zpcShot=(width===390?'mobile':'desktop')+'-zen-planning-essential.png';
       await page.screenshot({path:path.join(output,afterFolder,zpcShot),animations:'disabled'});
       report.screenshots.push(afterFolder+'/'+zpcShot);
+      await page.locator('#zpcDetails').scrollIntoViewIfNeeded();
+      const refined=await page.evaluate(()=>{
+        const box=s=>document.querySelector(s).getBoundingClientRect();
+        const button=box('#zpcOptimize'),details=box('#zpcDetails'),notice=box('#zenPlanningShell .zpc-notice');
+        const source=document.querySelector('#weightNote').textContent.trim();
+        const technical=document.querySelector('#zenPlanningShell .zpc-technical');
+        const techLabels=[...technical.querySelectorAll('small')].map(n=>n.textContent.trim());
+        return {
+          buttonWidth:button.width,
+          detailsGap:details.top-button.bottom,
+          noticeGap:notice.top-details.bottom,
+          technicalColumns:getComputedStyle(technical).gridTemplateColumns.split(' ').length,
+          margin:document.querySelector('#zpcMarginValue').textContent.trim(),
+          cg:document.querySelector('#zpcCgValue').textContent.trim(),
+          source,techLabels,
+          actualWeight:document.querySelector('#zpcWeight').textContent.trim(),
+          nativeWeight:document.querySelector('#weightValue').textContent.trim(),
+          actualFuel:document.querySelector('#zpcFuelSummary').textContent.trim(),
+          nativeFuel:document.querySelector('#fuelOutput').textContent.trim()
+        };
+      });
+      if(refined.buttonWidth>356||refined.detailsGap<(width===390?27:17)||
+         refined.noticeGap<9||refined.actualWeight!==refined.nativeWeight||
+         refined.actualFuel!==refined.nativeFuel||
+         refined.technicalColumns!==(width===390?1:2)||
+         (refined.source.includes('·')&&/\bCG\b/.test(refined.source)&&
+           (refined.cg==='—'||refined.margin.includes('CG'))))
+        report.errors.push({label:'Zen Planning approved refined lower section '+width,issues:[JSON.stringify(refined)]});
+      const zpcLowerShot=(width===390?'mobile':'desktop')+'-zen-planning-lower-refined.png';
+      await page.screenshot({path:path.join(output,afterFolder,zpcLowerShot),animations:'disabled'});
+      report.screenshots.push(afterFolder+'/'+zpcLowerShot);
       await page.locator('#zenPlanningShell [data-zpc-mode="ECON"]').click();
       await page.waitForFunction(()=>document.querySelector('[data-mode="ECON"]').classList.contains('active'));
       await page.locator('#zpcPayload').evaluate(el=>{

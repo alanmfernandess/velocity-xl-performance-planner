@@ -100,7 +100,7 @@ test("approved Zen Essential planning has native editable controls and a centere
   const planning=readFileSync(new URL("../js/zen-planning.js",import.meta.url),"utf8");
   const overview=readFileSync(new URL("../js/zen-overview.js",import.meta.url),"utf8");
   const assessment=readFileSync(new URL("../js/zen-assessment.js",import.meta.url),"utf8");
-  assert.ok(html.includes("zen-planning.js?v=20261026-01"));
+  assert.ok(html.includes("zen-planning.js?v=20261026-03"));
   assert.match(cssRule(css,"#zenPlanningShell"),/height:100dvh/);
   assert.match(cssRule(css,"#zenPlanningShell .zpc-app"),/height:100%/);
   assert.match(cssRule(css,"#zenPlanningShell .zpc-body"),/overflow-y:auto/);
@@ -116,7 +116,7 @@ test("approved Zen Essential planning has native editable controls and a centere
 
 test("Zen Overview refined hierarchy keeps real metrics and deliberate spacing", () => {
   const overview=readFileSync(new URL("../js/zen-overview.js",import.meta.url),"utf8");
-  assert.ok(html.includes("styles.css?v=20261026-02"));
+  assert.ok(html.includes("styles.css?v=20261026-03"));
   assert.ok(html.includes("zen-overview.js?v=20261026-02"));
   for(const id of ["zenFuelLabel","zenFuel","zenFuelUnit","zenTime","zenTimeUnit","zenReview","zenDetails","zenCaveat"]){
     assert.ok(overview.includes(id),id);
@@ -130,6 +130,25 @@ test("Zen Overview refined hierarchy keeps real metrics and deliberate spacing",
   assert.match(css,/max-height:650px/);
   assert.match(css,/max-width:760px/);
   assert.ok(css.includes("scrollbar-width: none !important"));
+});
+
+test("Planning Zen Essential refined lower section follows approved layout", () => {
+  const planning=readFileSync(new URL("../js/zen-planning.js",import.meta.url),"utf8");
+  assert.ok(planning.includes('class="zpc-lower"'));
+  assert.ok(planning.includes('class="zpc-technical"'));
+  assert.ok(planning.includes('id="zpcMarginValue"'));
+  assert.ok(planning.includes('id="zpcCgValue"'));
+  assert.ok(planning.includes('class="zpc-main-actions"'));
+  assert.ok(planning.includes('const parts=note.split(/\\s*[·•]\\s*/).filter(Boolean)'.replaceAll("\\\\","\\")));
+  assert.ok(planning.includes('const warning=Boolean($("#weightNote")?.style.color)'));
+  assert.ok(planning.includes('z("#zpcWeightNote").hidden=!warning'));
+  assert.ok(css.includes('#zenPlanningShell #zpcOptimize {width:100%;max-width:355px'));
+  assert.ok(css.includes('#zenPlanningShell #zpcDetails {width:auto;min-height:28px;margin-top:35px'));
+  assert.ok(css.includes('#zenPlanningShell .zpc-technical {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))'));
+  assert.ok(css.includes('#zenPlanningShell .zpc-tech strong.warning {color:var(--red)}'));
+  assert.ok(css.includes('@media (max-width:760px)'));
+  assert.ok(html.includes("styles.css?v=20261026-03"));
+  assert.ok(html.includes("zen-planning.js?v=20261026-03"));
 });
 
 test("removed visual variables have no JavaScript writer", () => {
@@ -157,5 +176,5 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261026-02/);
+  assert.match(html, /styles\.css\?v=20261026-03/);
 });

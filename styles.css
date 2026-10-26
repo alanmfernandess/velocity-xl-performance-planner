@@ -4580,12 +4580,11 @@ body.zen-planning > main.shell {display:none!important}
 #zenPlanningShell .zpc-range input {width:100%;height:16px;accent-color:var(--blue);cursor:pointer}
 #zenPlanningShell .zpc-reserve {display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:52px;color:#61768b;font-size:var(--zen-font-13);text-align:left}
 #zenPlanningShell .zpc-reserve select {height:41px;min-width:112px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--text);font-size:var(--zen-font-13)}
-#zenPlanningShell .zpc-separator {height:1px;background:var(--line);width:100%}
-#zenPlanningShell .zpc-stats {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;width:100%;padding:3px 0}
-#zenPlanningShell .zpc-stat {display:flex;align-items:center;flex-direction:column;gap:4px;min-width:0}
+#zenPlanningShell .zpc-stats {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;width:100%;max-width:570px;margin:0 auto;padding:2px 0}
+#zenPlanningShell .zpc-stat {display:flex;align-items:center;flex-direction:column;gap:9px;min-width:0;text-align:center}
 #zenPlanningShell .zpc-stat .zpc-icon {color:#758394;margin-bottom:3px}
-#zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-27);font-weight:460;line-height:1.15;color:var(--text);font-variant-numeric:tabular-nums;overflow-wrap:break-word}
-#zenPlanningShell .zpc-stat small {font-size:var(--zen-font-10);font-weight:600;letter-spacing:.12em;color:var(--muted)}
+#zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-35);font-weight:440;line-height:1.15;color:var(--text);font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+#zenPlanningShell .zpc-stat small {font-size:var(--zen-font-10);font-weight:650;letter-spacing:.12em;color:var(--muted)}
 #zenPlanningShell .zpc-weight-note {font-size:var(--zen-font-10);color:var(--muted);min-height:14px}
 #zenPlanningShell .zpc-weight-note.warning {color:var(--red)}
 #zenPlanningShell .zpc-primary {display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;padding:8px 15px;border:1px solid var(--blue);background:var(--blue);color:white;border-radius:10px;font-size:var(--zen-font-13);font-weight:650}
@@ -4593,7 +4592,7 @@ body.zen-planning > main.shell {display:none!important}
 #zenPlanningShell .zpc-primary:disabled {opacity:.5;cursor:not-allowed}
 #zenPlanningShell .zpc-primary .zpc-icon {width:16px;height:16px}
 #zenPlanningShell .zpc-textbtn {border:0;background:transparent;color:#637f98;font-size:var(--zen-font-11);padding:4px 8px}
-#zenPlanningShell .zpc-notice {display:flex;align-items:center;justify-content:center;gap:7px;margin-top:11px;font-size:var(--zen-font-10);line-height:1.5;color:var(--muted)}
+#zenPlanningShell .zpc-notice {display:flex;align-items:center;justify-content:center;gap:7px;margin-top:28px;font-size:var(--zen-font-10);line-height:1.5;color:var(--muted)}
 #zenPlanningShell .zpc-notice .zpc-icon {width:14px;height:14px}
 #zenPlanningShell .zpc-import {display:grid;gap:13px;width:100%;max-width:340px;margin:0 auto;padding:40px 0}
 #zenPlanningShell .zpc-import label {display:grid;gap:6px;text-align:left;color:var(--muted);font-size:var(--zen-font-12)}
@@ -4631,7 +4630,7 @@ body.zen-planning > main.shell {display:none!important}
   #zenPlanningShell .zpc-controls {gap:1px}
   #zenPlanningShell .zpc-range {padding:5px 0}
   #zenPlanningShell .zpc-stats {padding:0}
-  #zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-20)}
+  #zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-27)}
 }
 @media (max-width:760px) {
   body.zen-planning {padding:0}
@@ -4644,7 +4643,7 @@ body.zen-planning > main.shell {display:none!important}
   #zenPlanningShell .zpc-config {gap:12px}
   #zenPlanningShell .zpc-range {padding:7px 0}
   #zenPlanningShell .zpc-stats {gap:7px}
-  #zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-20)}
+  #zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-27)}
   #zenPlanningShell .zpc-drawer-head {padding-top:max(20px,env(safe-area-inset-top))}
   #zenPlanningShell .zpc-drawer-bottom {padding-bottom:max(20px,env(safe-area-inset-bottom))}
 }
@@ -4691,4 +4690,41 @@ body.zen-planning > main.shell {display:none!important}
   #zenShell .zen-reading strong {font-size:var(--zen-font-27)}
   #zenShell #zenDetails {margin-top:25px}
   #zenShell .zen-notice {margin-top:17px}
+}
+
+
+/* Planning lower section — approved Zen Essential Refinado hierarchy. */
+#zenPlanningShell .zpc-lower {display:flex;flex-direction:column;width:100%;margin-top:8px}
+#zenPlanningShell .zpc-technical {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;width:100%;max-width:570px;margin:31px auto 0;padding-top:20px;border-top:1px solid var(--line)}
+#zenPlanningShell .zpc-tech {display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;text-align:center}
+#zenPlanningShell .zpc-tech small {font-size:var(--zen-font-10);font-weight:650;letter-spacing:.13em;color:var(--muted)}
+#zenPlanningShell .zpc-tech strong {font-size:var(--zen-font-13);line-height:1.5;font-weight:550;color:#526f88;overflow-wrap:break-word}
+#zenPlanningShell .zpc-tech strong.warning {color:var(--red)}
+#zenPlanningShell .zpc-weight-note[hidden] {display:none}
+#zenPlanningShell .zpc-main-actions {display:flex;flex-direction:column;align-items:center;width:100%;margin-top:43px}
+#zenPlanningShell #zpcOptimize {width:100%;max-width:355px;margin:0 auto}
+#zenPlanningShell #zpcDetails {width:auto;min-height:28px;margin-top:35px;padding:4px 9px}
+@media (min-width:761px) and (max-height:750px) {
+  #zenPlanningShell .zpc-lower {margin-top:2px}
+  #zenPlanningShell .zpc-technical {margin-top:14px;padding-top:11px}
+  #zenPlanningShell .zpc-tech {gap:4px}
+  #zenPlanningShell .zpc-main-actions {margin-top:20px}
+  #zenPlanningShell #zpcDetails {margin-top:18px}
+  #zenPlanningShell .zpc-notice {margin-top:14px}
+}
+@media (max-width:760px) {
+  #zenPlanningShell .zpc-lower {margin-top:4px}
+  #zenPlanningShell .zpc-stat {gap:7px}
+  #zenPlanningShell .zpc-stat small {font-size:var(--zen-font-9)}
+  #zenPlanningShell .zpc-technical {grid-template-columns:1fr;gap:19px;margin-top:25px;padding-top:17px}
+  #zenPlanningShell .zpc-tech {gap:5px}
+  #zenPlanningShell .zpc-main-actions {margin-top:33px}
+  #zenPlanningShell #zpcDetails {margin-top:32px}
+  #zenPlanningShell .zpc-notice {margin-top:24px}
+}
+@media (max-width:360px) {
+  #zenPlanningShell .zpc-stat strong {font-size:var(--zen-font-20)}
+  #zenPlanningShell .zpc-technical {gap:14px;margin-top:20px}
+  #zenPlanningShell .zpc-main-actions {margin-top:26px}
+  #zenPlanningShell #zpcDetails {margin-top:25px}
 }

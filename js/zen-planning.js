@@ -55,14 +55,21 @@ root.innerHTML=`<div class="zpc-outer"><div class="zpc-app">${background}
 <label class="zpc-range"><span><span id="zpcFuelLabel">Combustível a bordo</span><strong id="zpcFuelValue">—</strong></span><input id="zpcFuel" type="range" min="0" max="87" step="0.5" value="77"/></label>
 <label class="zpc-reserve"><span id="zpcReserveLabel">Reserva</span><select id="zpcReserve" aria-label="Reserva"><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option></select></label>
 </div>
-<div class="zpc-separator"></div>
-<div class="zpc-stats">
-<div class="zpc-stat">${icon("scale")}<strong id="zpcWeight">—</strong><small id="zpcWeightLabel">PESO DE DECOLAGEM</small></div>
-<div class="zpc-stat">${icon("fuel")}<strong id="zpcFuelSummary">—</strong><small id="zpcFuelSummaryLabel">A BORDO</small></div>
+<div class="zpc-lower">
+  <div class="zpc-stats">
+    <div class="zpc-stat">${icon("scale")}<small id="zpcWeightLabel">PESO DE DECOLAGEM</small><strong id="zpcWeight">—</strong></div>
+    <div class="zpc-stat">${icon("fuel")}<small id="zpcFuelSummaryLabel">COMBUSTÍVEL A BORDO</small><strong id="zpcFuelSummary">—</strong></div>
+  </div>
+  <div class="zpc-technical" role="group" aria-label="Peso e centro de gravidade">
+    <div class="zpc-tech"><small id="zpcMarginLabel">MARGEM DE PESO</small><strong id="zpcMarginValue">—</strong></div>
+    <div class="zpc-tech"><small id="zpcCgLabel">CENTRO DE GRAVIDADE</small><strong id="zpcCgValue">—</strong></div>
+  </div>
+  <div class="zpc-weight-note" id="zpcWeightNote" role="status" hidden></div>
+  <div class="zpc-main-actions">
+    <button class="zpc-primary" type="button" data-zpc="optimize" id="zpcOptimize">Otimizar missão ${icon("arrow")}</button>
+    <button class="zpc-textbtn" type="button" data-zpc="details" id="zpcDetails">Detalhes da configuração ›</button>
+  </div>
 </div>
-<div class="zpc-weight-note" id="zpcWeightNote" role="status"></div>
-<button class="zpc-primary" type="button" data-zpc="optimize" id="zpcOptimize">Otimizar missão ${icon("arrow")}</button>
-<button class="zpc-textbtn" type="button" data-zpc="details" id="zpcDetails">Detalhes da configuração ›</button>
 </section>
 <form class="zpc-import" id="zpcImport" hidden>
 <div class="zpc-kicker" id="zpcImportKicker">PLANEJAMENTO</div>
@@ -121,7 +128,10 @@ function draw(){
  z("#zpcFuelLabel").textContent=tr("Combustível a bordo","Fuel onboard");
  z("#zpcReserveLabel").textContent=tr("Reserva","Reserve");
  z("#zpcWeightLabel").textContent=tr("PESO DE DECOLAGEM","TAKEOFF WEIGHT");
- z("#zpcFuelSummaryLabel").textContent=tr("A BORDO","ONBOARD");
+ z("#zpcFuelSummaryLabel").textContent=tr("COMBUSTÍVEL A BORDO","FUEL ONBOARD");
+ z("#zpcMarginLabel").textContent=tr("MARGEM DE PESO","WEIGHT MARGIN");
+ z("#zpcCgLabel").textContent=tr("CENTRO DE GRAVIDADE","CENTER OF GRAVITY");
+ z(".zpc-technical").setAttribute("aria-label",tr("Peso e centro de gravidade","Weight and center of gravity"));
  z("#zpcOptimize").innerHTML=tr("Otimizar missão","Optimize mission")+" "+icon("arrow");
  z("#zpcDetails").textContent=tr("Detalhes da configuração ›","Configuration details ›");
  for(const mode of ["ECON","NORMAL","FAST"]){
@@ -144,8 +154,19 @@ function draw(){
  z("#zpcWeight").textContent=txt("#weightValue")||"—";
  z("#zpcFuelSummary").textContent=txt("#fuelOutput")||"—";
  const note=txt("#weightNote");
- z("#zpcWeightNote").textContent=note||"";
- z("#zpcWeightNote").classList.toggle("warning",Boolean($("#weightNote")?.style.color));
+ // Display both native W&B diagnostics separately without changing the math.
+ // Preserve the complete native warning verbatim when its state is unsafe.
+ const parts=note.split(/\s*[·•]\s*/).filter(Boolean);
+ const cgPart=parts.find(part=>/\bCG\b|centro de gravidade|center of gravity/i.test(part));
+ const marginPart=parts.filter(part=>part!==cgPart).join(" · ");
+ z("#zpcMarginValue").textContent=marginPart|| (cgPart?"—":note||"—");
+ z("#zpcCgValue").textContent=cgPart?cgPart.replace(/^(?:CG|centro de gravidade|center of gravity)\s*[:：]?\s*/i,""):"—";
+ const warning=Boolean($("#weightNote")?.style.color);
+ z("#zpcMarginValue").classList.toggle("warning",warning);
+ z("#zpcCgValue").classList.toggle("warning",warning);
+ z("#zpcWeightNote").textContent=warning?note:"";
+ z("#zpcWeightNote").hidden=!warning;
+ z("#zpcWeightNote").classList.toggle("warning",warning);
  z("#zpcOptimize").disabled=Boolean($("#optimizeMission")?.disabled);
  if(drawer)drawDrawer();
 }
