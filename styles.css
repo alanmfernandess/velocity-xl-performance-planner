@@ -4348,12 +4348,12 @@ body.zen-overview > main.shell { display:none!important; }
 #zenShell .zen-mode.caution:before {background:var(--orange)}
 #zenShell .zen-mode.danger:before {background:var(--red)}
 #zenShell .zen-mode.unknown:before {background:#9ba8b6}
-#zenShell .zen-metrics {display:grid;grid-template-columns:1fr 1px 1fr;gap:28px;align-items:center;max-width:405px;margin:29px auto 31px;width:100%;max-width:405px;grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr);gap:22px;margin:29px auto 31px}
-#zenShell .zen-metric {display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0;gap:8px}
-#zenShell .zen-metric .zen-icon {color:#758394;margin-bottom:0;width:21px;height:21px;margin-bottom:0}
+#zenShell .zen-metrics {display:grid;align-items:center;width:100%;max-width:405px;grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr);gap:22px;margin:29px auto 31px}
+#zenShell .zen-metric {display:flex;flex-direction:column;align-items:center;min-width:0;gap:8px}
+#zenShell .zen-metric .zen-icon {color:#758394;width:21px;height:21px;margin-bottom:0}
 #zenShell .zen-metric strong {font-size:var(--zen-font-35);letter-spacing:0;font-weight:450;line-height:1.1;font-variant-numeric:tabular-nums}
 #zenShell .zen-metric small {font-size:var(--zen-font-10);color:#758394;letter-spacing:.16em;text-transform:uppercase}
-#zenShell .zen-vline {height:68px;background:var(--line);height:81px;background:var(--line)}
+#zenShell .zen-vline {height:81px;background:var(--line)}
 #zenShell .zen-primary {width:100%;height:48px;background:var(--zen-blue);color:#fff;border:1px solid var(--zen-blue);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:11px;font-size:var(--zen-font-13);font-weight:650}
 #zenShell .zen-primary:hover:not(:disabled) {background:#1265b5}
 #zenShell .zen-primary:disabled {opacity:.45;cursor:not-allowed}
@@ -4361,7 +4361,7 @@ body.zen-overview > main.shell { display:none!important; }
 #zenShell .zen-secondary:hover {background:var(--panel-soft)}
 #zenShell .zen-textbtn {display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px;border:0;background:transparent;color:#637f98;font-size:var(--zen-font-11)}
 #zenShell .zen-textbtn:hover {color:var(--zen-blue)}
-#zenShell .zen-notice {display:flex;align-items:center;justify-content:center;gap:7px;font-size:var(--zen-font-10);color:var(--zen-muted);margin-top:8px;line-height:1.6;margin-top:30px;line-height:1.6}
+#zenShell .zen-notice {display:flex;align-items:center;justify-content:center;gap:7px;font-size:var(--zen-font-10);color:var(--zen-muted);margin-top:30px;line-height:1.6}
 #zenShell .zen-notice .zen-icon {width:14px;height:14px}
 #zenShell .zen-condition {min-height:24px;font-size:var(--zen-font-11);color:#657d95;margin-top:10px}
 #zenShell .zen-condition.warning {color:var(--orange)}
