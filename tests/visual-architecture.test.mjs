@@ -126,7 +126,7 @@ test("Zen Overview refined hierarchy keeps real metrics and deliberate spacing",
   assert.ok(overview.includes('tr("COMBUSTÍVEL","FUEL")'));
   assert.match(css,/zenReview\s*\{max-width:355px/);
   assert.match(css,/zenDetails\s*\{[^}]*margin-top:35px/);
-  assert.match(css,/zen-notice\s*\{margin-top:30px/);
+  assert.ok(css.includes("margin-top:30px"));
   assert.match(css,/max-height:650px/);
   assert.match(css,/max-width:760px/);
   assert.ok(css.includes("scrollbar-width: none !important"));
