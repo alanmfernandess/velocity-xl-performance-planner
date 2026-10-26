@@ -65,6 +65,23 @@ test("Zen desktop remains contained and scrollable at short viewport heights", (
   assert.doesNotMatch(cssRule(css, "#zenShell .zen-app"), /min-height:675px/);
 });
 
+test("Zen Status assessment uses native results and fits the app viewport", () => {
+  const assessment=readFileSync(new URL("../js/zen-assessment.js",import.meta.url),"utf8");
+  assert.match(html,/zen-assessment\.js\?v=20261025-06/);
+  assert.match(cssRule(css,"#zenAssessmentShell"),/height:100dvh/);
+  assert.match(cssRule(css,"#zenAssessmentShell .zas-app"),/height:100%/);
+  assert.match(cssRule(css,"#zenAssessmentShell .zas-body"),/overflow-y:auto/);
+  assert.match(assessment,/missionRiskValue/);
+  assert.match(assessment,/missionScoreReasons/);
+  assert.match(assessment,/cruiseIcingValue/);
+  assert.match(assessment,/rideValue/);
+  assert.match(assessment,/oxygenValue/);
+  assert.match(assessment,/kpiFuelDelta/);
+  assert.match(assessment,/role="dialog"/);
+  assert.match(assessment,/nativeStatus/);
+  assert.match(assessment,/score===null/);
+});
+
 test("removed visual variables have no JavaScript writer", () => {
   assert.doesNotMatch(app, /--(?:ice-status|topbar-height)/);
   assert.match(app, /setProperty\("--score"/);
@@ -90,5 +107,5 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261025-05/);
+  assert.match(html, /styles\.css\?v=20261025-06/);
 });

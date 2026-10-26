@@ -629,6 +629,73 @@ try {
           if(!await page.evaluate(()=>JSON.parse(localStorage.getItem('velocityxl.appliedMission')||'null')?.choice))report.errors.push({label:'Zen '+width,issues:['Native engine did not persist selected choice']});
         }
       }
+      // Approved Zen Status: native scoreboard, modal details and four
+      // operational states at desktop and mobile widths.
+      await page.evaluate(() => window.VelocityLayout.activate('mission','score'));
+      await page.locator('#zenAssessmentShell:visible').waitFor();
+      await page.waitForFunction(()=>document.body.classList.contains('zen-assessment'));
+      const assessment=await page.evaluate(()=>{
+        const shell=document.querySelector('#zenAssessmentShell .zas-app').getBoundingClientRect();
+        return {
+          status:document.querySelector('#missionRiskValue').dataset.status,
+          statusText:document.querySelector('#zasStatus').textContent.trim(),
+          score:document.querySelector('#zasScore').textContent.trim(),
+          nativeScore:document.querySelector('#missionRiskValue').textContent.trim(),
+          ice:document.querySelector('#zasIce').textContent.trim(),
+          nativeIce:document.querySelector('#cruiseIcingValue').textContent.trim(),
+          oxygen:document.querySelector('#zasOxygen').textContent.trim(),
+          nativeOxygen:document.querySelector('#oxygenValue').textContent.trim(),
+          shellBottom:shell.bottom, viewport:innerHeight,
+          htmlHeight:document.documentElement.scrollHeight,
+          locked:document.documentElement.classList.contains('zen-locked')
+        };
+      });
+      if(assessment.score!==(assessment.nativeScore==='—'?'Score indisponível':assessment.nativeScore.replace('/', ' / '))||
+         assessment.ice!==assessment.nativeIce || assessment.oxygen!==assessment.nativeOxygen)
+        report.errors.push({label:'Zen Assessment native bindings '+width,issues:[JSON.stringify(assessment)]});
+      if(!assessment.locked||assessment.shellBottom>assessment.viewport+2||assessment.htmlHeight>assessment.viewport+2)
+        report.errors.push({label:'Zen Assessment viewport '+width,issues:[JSON.stringify(assessment)]});
+      const assessmentShot=(width===390?'mobile':'desktop')+'-zen-assessment.png';
+      await page.screenshot({path:path.join(output,afterFolder,assessmentShot),animations:'disabled'});
+      report.screenshots.push(afterFolder+'/'+assessmentShot);
+      await page.locator('#zasReview').click();
+      await page.locator('#zasDrawer:visible').waitFor();
+      if(await page.locator('#zasDrawerBody .zas-detail').count()<4)
+        report.errors.push({label:'Zen Assessment details '+width,issues:['Safety criteria absent']});
+      await page.locator('#zasClose').click();
+      if(await page.locator('#zasDrawer:visible').count())
+        report.errors.push({label:'Zen Assessment drawer '+width,issues:['Did not close']});
+      for(const [tone,value,label] of [
+        ['viable','89/100','VIÁVEL'],['marginal','62/100','MARGINAL'],
+        ['not-viable','24/100','NÃO VIÁVEL'],['unknown','—','NÃO AVALIADO']
+      ]){
+        await page.evaluate(([next,score])=>{
+          const el=document.querySelector('#missionRiskValue');
+          el.dataset.status=next;el.textContent=score;
+        },[tone,value]);
+        await page.waitForFunction(expected=>document.querySelector('#zasStatus').textContent===expected,label);
+        // The calculation engine may re-render a real score concurrently
+        // with synthetic status fixtures. Compare against its live source,
+        // never assume that fixture value survives a calculation update.
+        await page.waitForFunction(() => {
+          const native=document.querySelector('#missionRiskValue').textContent.trim();
+          const score=document.querySelector('#zasScore').textContent.trim();
+          return native==='—'? /indisponível|unavailable/i.test(score) :
+            score===native.replace('/',' / ');
+        });
+        const snapshot=await page.evaluate(()=>({
+          score:document.querySelector('#zasScore').textContent.trim(),
+          native:document.querySelector('#missionRiskValue').textContent.trim(),
+          tone:document.querySelector('#missionRiskValue').dataset.status,
+          label:document.querySelector('#zasStatus').textContent.trim()
+        }));
+        if(snapshot.native==='—' && !/indisponível|unavailable/i.test(snapshot.score))
+          report.errors.push({label:'Zen Assessment '+tone+' '+width,issues:['Partial score presented as numeric: '+JSON.stringify(snapshot)]});
+      }
+      await page.locator('#zenAssessmentShell .zas-brand').click();
+      await page.locator('#zenShell:visible').waitFor();
+      if(await page.locator('#zenAssessmentShell:visible').count())
+        report.errors.push({label:'Zen Assessment navigation '+width,issues:['Overview return failed']});
       await context.close();
     }
   }
@@ -639,4 +706,7 @@ try {
 
 await fs.writeFile(path.join(output, baseline ? 'definitive-baseline-audit.json' : engineV2 ? 'decision-engine-v3-browser-audit.json' : 'definitive-browser-audit.json'), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`${report.states.length} browser states, ${report.errors.filter(item => item.issues || item.pageError).length} failures, ${report.screenshots.length} screenshots`);
+for (const issue of report.errors.filter(item => item.issues || item.pageError)) {
+  console.error('BROWSER_AUDIT_FAILURE', JSON.stringify(issue));
+}
 if (report.errors.some(item => item.issues || item.pageError)) process.exitCode = 1;
