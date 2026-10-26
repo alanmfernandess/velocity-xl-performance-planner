@@ -106,7 +106,7 @@ function visible(){
  root.hidden=!on;
  document.body.classList.toggle("zen-planning",on);
  document.documentElement.classList.toggle("zen-locked",
-   on||document.body.classList.contains("zen-overview")||document.body.classList.contains("zen-assessment"));
+   on||document.body.classList.contains("zen-overview")||document.body.classList.contains("zen-assessment")||document.body.classList.contains("zen-systems"));
  if(!on){if(drawer)closeDrawer();if(modal)closeModal();}
  else draw();
 }
