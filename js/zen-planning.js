@@ -156,11 +156,11 @@ function draw(){
  const note=txt("#weightNote");
  // Display both native W&B diagnostics separately without changing the math.
  // Preserve the complete native warning verbatim when its state is unsafe.
- const parts=note.split(/\\s*[·•]\\s*/).filter(Boolean);
- const cgPart=parts.find(part=>/\\bCG\\b|centro de gravidade|center of gravity/i.test(part));
+ const parts=note.split(/\s*[·•]\s*/).filter(Boolean);
+ const cgPart=parts.find(part=>/\bCG\b|centro de gravidade|center of gravity/i.test(part));
  const marginPart=parts.filter(part=>part!==cgPart).join(" · ");
  z("#zpcMarginValue").textContent=marginPart|| (cgPart?"—":note||"—");
- z("#zpcCgValue").textContent=cgPart?cgPart.replace(/^(?:CG|centro de gravidade|center of gravity)\\s*[:：]?\\s*/i,""):"—";
+ z("#zpcCgValue").textContent=cgPart?cgPart.replace(/^(?:CG|centro de gravidade|center of gravity)\s*[:：]?\s*/i,""):"—";
  const warning=Boolean($("#weightNote")?.style.color);
  z("#zpcMarginValue").classList.toggle("warning",warning);
  z("#zpcCgValue").classList.toggle("warning",warning);
