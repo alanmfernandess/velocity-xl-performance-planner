@@ -137,7 +137,9 @@
     const active=window.VelocityLayout?.state;
     const zenActive=!active||(active.area==="mission"&&active.module?.mission==="overview");
     document.body.classList.toggle("zen-overview",zenActive);
-    document.documentElement.classList.toggle("zen-locked",zenActive);
+    // Both approved Zen screens share the app-style viewport lock.
+    const onAssessment=active?.area==="mission"&&active.module?.mission==="score";
+    document.documentElement.classList.toggle("zen-locked",zenActive||onAssessment);
     root.hidden=!zenActive;
     if(!zenActive){closeModal();drawer=null;renderDrawer();}
   }
