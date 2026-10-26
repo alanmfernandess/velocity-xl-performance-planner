@@ -96,6 +96,24 @@ test("Zen Status assessment uses native results and fits the app viewport", () =
   assert.match(assessment,/score===null/);
 });
 
+test("approved Zen Essential planning has native editable controls and a centered confirmation", () => {
+  const planning=readFileSync(new URL("../js/zen-planning.js",import.meta.url),"utf8");
+  const overview=readFileSync(new URL("../js/zen-overview.js",import.meta.url),"utf8");
+  const assessment=readFileSync(new URL("../js/zen-assessment.js",import.meta.url),"utf8");
+  assert.match(html,/zen-planning\\.js\\?v=20261026-01/);
+  assert.match(cssRule(css,"#zenPlanningShell"),/height:100dvh/);
+  assert.match(cssRule(css,"#zenPlanningShell .zpc-app"),/height:100%/);
+  assert.match(cssRule(css,"#zenPlanningShell .zpc-body"),/overflow-y:auto/);
+  assert.match(cssRule(css,"#zenPlanningShell .zpc-modal-shade"),/justify-content:center/);
+  for(const selector of ["payloadInput","fuelInput","reserveInput","optimizeMission","powerSettingValue","weightValue","weightNote","layoutFuelMargin","layoutOxygenSummary"])assert.match(planning,new RegExp(selector));
+  assert.match(planning,/\.dispatchEvent\\(new Event\\("input"/);
+  assert.match(planning,/\.dispatchEvent\\(new Event\\("change"/);
+  assert.match(planning,/role="alertdialog"/);
+  assert.match(planning,/hasPlan\\(\\)/);
+  assert.match(overview,/onPlanning/);
+  assert.match(assessment,/zen-planning/);
+});
+
 test("removed visual variables have no JavaScript writer", () => {
   assert.doesNotMatch(app, /--(?:ice-status|topbar-height)/);
   assert.match(app, /setProperty\("--score"/);
@@ -121,5 +139,5 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261025-07/);
+  assert.match(html, /styles\.css\?v=20261026-01/);
 });
