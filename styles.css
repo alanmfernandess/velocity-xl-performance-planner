@@ -61,6 +61,14 @@
 /* 2. BASE */
 * {
   box-sizing: border-box;
+  /* Global visual-only policy: scrolling works, its bars are invisible. */
+  scrollbar-width: none !important;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0;
+  height: 0;
 }
 [hidden] {
   display: none !important;
