@@ -81,7 +81,7 @@ test("Zen desktop remains contained and scrollable at short viewport heights", (
 
 test("Zen Status assessment uses native results and fits the app viewport", () => {
   const assessment=readFileSync(new URL("../js/zen-assessment.js",import.meta.url),"utf8");
-  assert.match(html,/zen-assessment\.js\?v=20261025-06/);
+  assert.match(html,/zen-assessment\.js\?v=20261026-01/);
   assert.match(cssRule(css,"#zenAssessmentShell"),/height:100dvh/);
   assert.match(cssRule(css,"#zenAssessmentShell .zas-app"),/height:100%/);
   assert.match(cssRule(css,"#zenAssessmentShell .zas-body"),/overflow-y:auto/);
