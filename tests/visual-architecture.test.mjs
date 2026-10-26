@@ -81,7 +81,7 @@ test("Zen desktop remains contained and scrollable at short viewport heights", (
 
 test("Zen Status assessment uses native results and fits the app viewport", () => {
   const assessment=readFileSync(new URL("../js/zen-assessment.js",import.meta.url),"utf8");
-  assert.match(html,/zen-assessment\.js\?v=20261026-01/);
+  assert.match(html,/zen-assessment\.js\?v=20261026-systems01/);
   assert.match(cssRule(css,"#zenAssessmentShell"),/height:100dvh/);
   assert.match(cssRule(css,"#zenAssessmentShell .zas-app"),/height:100%/);
   assert.match(cssRule(css,"#zenAssessmentShell .zas-body"),/overflow-y:auto/);
@@ -100,7 +100,7 @@ test("approved Zen Essential planning has native editable controls and a centere
   const planning=readFileSync(new URL("../js/zen-planning.js",import.meta.url),"utf8");
   const overview=readFileSync(new URL("../js/zen-overview.js",import.meta.url),"utf8");
   const assessment=readFileSync(new URL("../js/zen-assessment.js",import.meta.url),"utf8");
-  assert.ok(html.includes("zen-planning.js?v=20261026-03"));
+  assert.ok(html.includes("zen-planning.js?v=20261026-systems01"));
   assert.match(cssRule(css,"#zenPlanningShell"),/height:100dvh/);
   assert.match(cssRule(css,"#zenPlanningShell .zpc-app"),/height:100%/);
   assert.match(cssRule(css,"#zenPlanningShell .zpc-body"),/overflow-y:auto/);
@@ -116,8 +116,8 @@ test("approved Zen Essential planning has native editable controls and a centere
 
 test("Zen Overview refined hierarchy keeps real metrics and deliberate spacing", () => {
   const overview=readFileSync(new URL("../js/zen-overview.js",import.meta.url),"utf8");
-  assert.ok(html.includes("styles.css?v=20261026-03"));
-  assert.ok(html.includes("zen-overview.js?v=20261026-02"));
+  assert.ok(html.includes("styles.css?v=20261026-systems01"));
+  assert.ok(html.includes("zen-overview.js?v=20261026-systems01"));
   for(const id of ["zenFuelLabel","zenFuel","zenFuelUnit","zenTime","zenTimeUnit","zenReview","zenDetails","zenCaveat"]){
     assert.ok(overview.includes(id),id);
   }
@@ -147,8 +147,35 @@ test("Planning Zen Essential refined lower section follows approved layout", () 
   assert.ok(css.includes('#zenPlanningShell .zpc-technical {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))'));
   assert.ok(css.includes('#zenPlanningShell .zpc-tech strong.warning {color:var(--red)}'));
   assert.ok(css.includes('@media (max-width:760px)'));
-  assert.ok(html.includes("styles.css?v=20261026-03"));
-  assert.ok(html.includes("zen-planning.js?v=20261026-03"));
+  assert.ok(html.includes("styles.css?v=20261026-systems01"));
+  assert.ok(html.includes("zen-planning.js?v=20261026-systems01"));
+});
+
+test("Zen Systems integrates native W&B and O2 without duplicating calculator logic", () => {
+  const adapter=readFileSync(new URL("../js/zen-systems.js",import.meta.url),"utf8");
+  assert.ok(html.includes("zen-systems.js?v=20261026-systems01"));
+  assert.match(cssRule(css,"#zenSystemsShell"),/height:100dvh/);
+  assert.match(cssRule(css,"#zenSystemsShell .zws-app"),/height:100%/);
+  assert.match(cssRule(css,"#zenSystemsShell .zws-body"),/overflow-y:auto/);
+  assert.match(cssRule(css,"#zenSystemsShell .zws-modalshade"),/justify-content:center/);
+  for(const id of ["wbTakeoffCg","wbLandingCg","wbGrossWeight","wbCgTravel","wbMargins","wbEnvelopeLegend",
+    "cgChart","wbStationRows","wbStatus","oxygenBottle","oxygenBottleCount","oxygenAltitude",
+    "oxygenEndurance","oxygenRequired","oxygenInstalled","oxygenStatus","oxygenRecommendation",
+    "oxygenWeight","applyOxygenRecommendation","data-oxygen-seat","data-wb-key"]){
+    assert.ok(adapter.includes(id),id);
+  }
+  assert.ok(adapter.includes('role="alertdialog"'));
+  assert.ok(adapter.includes('z("#zwsModalShade").hidden=false'));
+  assert.ok(adapter.includes('dispatch(u.el,"input")'));
+  assert.ok(adapter.includes('dispatch(bottle,"change")'));
+  assert.ok(adapter.includes('dispatch(el,"change")'));
+  assert.ok(adapter.includes('kind.includes("unavailable")'));
+  assert.ok(adapter.includes('$("#cgChart")?.innerHTML'));
+  assert.ok(adapter.includes('$("#wbStationRows")?.innerHTML'));
+  assert.ok(css.includes('#zenSystemsShell .zws-textbutton {')&&css.includes('margin-top:35px'));
+  assert.ok(css.includes('#zenSystemsShell .zws-primary {')&&css.includes('max-width:355px'));
+  assert.ok(css.includes('@media (max-width:760px)'));
+  assert.ok(css.includes("scrollbar-width: none !important"));
 });
 
 test("removed visual variables have no JavaScript writer", () => {
@@ -176,5 +203,5 @@ test("mission adjustment uses body typography instead of KPI display typography"
   assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
   assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
   assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261026-03/);
+  assert.match(html, /styles\.css\?v=20261026-systems01/);
 });
