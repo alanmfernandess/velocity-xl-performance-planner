@@ -91,3 +91,15 @@ Ponto de restauração adicional: `backup/pre-mobile-nav-flow-20261027`, que con
 O ensaio adicional `npm run audit:mobile:engines` executou **56 estados em WebKit 26.0 e Chromium**, sem erros, em retrato/paisagem e nas alturas reduzidas. Evidências em `review/foco/mobile-navigation/`. O WebKit é usado como verificação de motor, sem alegar teste físico em Safari/iPhone. O auditor CSS registra 939 regras e 2820 declarações, sem problemas.
 
 A verificação pública adicionou uma proteção geométrica para orientação horizontal com altura até 600 px. Assim, a barra continua acompanhando conteúdo curto mesmo quando a detecção do ponteiro não identifica o dispositivo como touch.
+
+## Regra vigente: boas-vindas e rodapé fixo
+
+Por solicitação posterior do usuário, a navegação **Plan / Route / In flight permanece fixa no rodapé em todas as telas**, substituindo o comportamento de fluxo descrito no histórico acima. Foram removidas as exceções móveis que usavam `sticky`.
+
+A tela do Pilot ID / Alias agora centraliza o conjunto campo + botão, horizontal e verticalmente, na área entre cabeçalho e rodapé. A instrução redundante sobre importar um OFP não ocupa mais uma linha da tela. Ao reabrir a importação com um plano já carregado, a composição anterior fica temporariamente oculta; seus dados e controles não são descartados.
+
+O layout mede as alturas reais do cabeçalho e da navegação por `ResizeObserver`, reservando esse espaço e respeitando safe areas, escala de fontes e visual viewport. Campos e botões mantêm suas dimensões do Design System; o rodapé não encobre a última ação das telas longas.
+
+Validação desta regra: 240 testes, 665 estados de Chromium e 64 estados adicionais em WebKit/Chromium, sem erros. O ensaio de boas-vindas verifica erro de centralização menor que 1 px e ausência de rolagem artificial, inclusive em paisagem e viewport reduzido. Evidências: `review/foco/390-no-ofp.png` e `review/foco/mobile-navigation/*-welcome.png`. Não houve alteração de cálculos, calibração ou armazenamento de usuário.
+
+Ponto de restauração antes desta mudança: `backup/pre-welcome-navigation-20261027` (publicação `9f1d5e7`).
