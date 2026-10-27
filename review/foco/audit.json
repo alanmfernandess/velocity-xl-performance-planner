@@ -2,7 +2,7 @@
   "illustrative": true,
   "states": [
     {
-      "label": "no OFP",
+      "label": "no OFP centered welcome",
       "width": 390,
       "scrollWidth": 390,
       "controls": [
@@ -59511,7 +59511,7 @@
     "1024 metrics and level selection geometry stable",
     "1440 metrics and level selection geometry stable",
     "1920 metrics and level selection geometry stable",
-    "Mobile navigation follows short content and stays reachable on long pages, iPhone 14 Plus, landscape touch and keyboard-height viewport",
+    "Navigation fixed to footer on every screen, iPhone 14 Plus, landscape touch and keyboard-height viewport",
     "Phase timeline uses solved TOC/TOD",
     "Full alternative comparison and MANUAL power retained",
     "All five Resilience views retained",
