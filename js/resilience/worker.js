@@ -1,9 +1,9 @@
-import { stressTest } from "./stress.js?v=20261025-01";
-import { causalAnalysis } from "./sensitivity.js?v=20261025-01";
-import { decisionCorridor } from "./corridor.js?v=20261025-01";
-import { dynamicOptimize } from "./dynamic.js?v=20261025-01";
-import { analyzeEnsemble } from "./ensemble.js?v=20261025-01";
-import { workerData, ensembleViewData } from "./transfer.js?v=20261025-01";
+import { stressTest } from "./stress.js?v=20261027-01";
+import { causalAnalysis } from "./sensitivity.js?v=20261027-01";
+import { decisionCorridor } from "./corridor.js?v=20261027-01";
+import { dynamicOptimize } from "./dynamic.js?v=20261027-01";
+import { analyzeEnsemble } from "./ensemble.js?v=20261027-01";
+import { workerData, ensembleViewData } from "./transfer.js?v=20261027-01";
 let context=null,revision=0;
 self.onmessage=({data})=>{
   if(data.type==='context'){context=data.context;revision=data.revision;return;}

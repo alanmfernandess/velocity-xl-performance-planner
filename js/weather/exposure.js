@@ -1,6 +1,6 @@
-import { PERFORMANCE } from "../config.js?v=20261025-01";
-import { calculateIcingRisk, calculateTurbulenceRisk } from "../engine.js?v=20261025-01";
-import { weatherAt } from "./fusion.js?v=20261025-01";
+import { PERFORMANCE } from "../config.js?v=20261027-01";
+import { calculateIcingRisk, calculateTurbulenceRisk } from "../engine.js?v=20261027-01";
+import { weatherAt } from "./fusion.js?v=20261027-01";
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const phaseMinutes = () => ({ climb: 0, cruise: 0, descent: 0 });

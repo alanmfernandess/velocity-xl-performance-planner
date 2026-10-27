@@ -1,8 +1,8 @@
-import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "../config.js?v=20261025-01";
-import { oxygenSystemWeightLb, calculateWeightBalance, calculateOxygenPlan, calculateAlternateDiversion } from "../engine.js?v=20261025-01";
-import { assessIceTrajectory, assessRideTrajectory } from "../weather/exposure.js?v=20261025-01";
-import { solveScenario } from "./core.js?v=20261025-01";
-import { advanceState, finishRoute, routePosition } from "./transitions.js?v=20261025-01";
+import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "../config.js?v=20261027-01";
+import { oxygenSystemWeightLb, calculateWeightBalance, calculateOxygenPlan, calculateAlternateDiversion } from "../engine.js?v=20261027-01";
+import { assessIceTrajectory, assessRideTrajectory } from "../weather/exposure.js?v=20261027-01";
+import { solveScenario } from "./core.js?v=20261027-01";
+import { advanceState, finishRoute, routePosition } from "./transitions.js?v=20261027-01";
 
 export function paretoFront(items,objectives=[x=>x.tripFuelGal,x=>x.eteSec,x=>x.weatherExposure,x=>-x.fuelMarginGal]) {
   return items.filter((item,i)=>!items.some((other,j)=>i!==j&&objectives.every(f=>f(other)<=f(item)+1e-8)&&objectives.some(f=>f(other)<f(item)-1e-8)));

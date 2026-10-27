@@ -15,8 +15,8 @@ test("one stylesheet owns visual tokens and component dimensions", () => {
     ["--ui-caption", "calc(12px * var(--ui-scale))"],
     ["--ui-body", "calc(14px * var(--ui-scale))"],
     ["--ui-title", "calc(16px * var(--ui-scale))"],
-    ["--ui-display", "calc(24px * var(--ui-scale))"],
-    ["--control-height", "44px"],
+    ["--ui-display", "calc(32px * var(--ui-scale))"],
+    ["--control-height", "48px"],
   ]) assertDeclaration(css, ":root", name, value);
   assertDeclaration(css, ".ui-button", "min-height", "var(--control-height)");
   assert.match(layout, /\['\.primary-button', 'ui-button ui-button--primary'\]/);
@@ -60,5 +60,5 @@ test("mission score is plain, interactive, and adjacent to the selected level", 
   assert.match(layout,/essentialLevelHost[\s\S]*score-reading[\s\S]*essentialScore/);
   assert.match(cssRule(css,".score-reading > strong"),/font-size: var\(--ui-display\)/);
   assert.match(cssRule(css,".mission-score-dial::after"),/content: none/);
-  assert.match(html,/styles\.css\?v=20261025-01/);
+  assert.match(html,/styles\.css\?v=20261027-01/);
 });

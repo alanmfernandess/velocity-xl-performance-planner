@@ -1,6 +1,6 @@
-import { AIRCRAFT, PERFORMANCE } from "../config.js?v=20261025-01";
-import { solveScenario } from "./core.js?v=20261025-01";
-import { domains } from "./stress.js?v=20261025-01";
+import { AIRCRAFT, PERFORMANCE } from "../config.js?v=20261027-01";
+import { solveScenario } from "./core.js?v=20261027-01";
+import { domains } from "./stress.js?v=20261027-01";
 export const PERTURBATIONS={windKt:10,temperatureC:5,payloadLb:50,departureHours:1};
 const metrics=["tripFuelGal","eteSec","fuelMarginGal"];
 export function finiteDifference(evaluate,x,step,[min,max]) {

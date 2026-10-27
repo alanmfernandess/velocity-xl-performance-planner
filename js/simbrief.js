@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261025-01";
+import { greatCircleNm } from "./engine.js?v=20261027-01";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;

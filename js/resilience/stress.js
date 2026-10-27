@@ -1,5 +1,5 @@
-import { AIRCRAFT, PERFORMANCE } from "../config.js?v=20261025-01";
-import { solveScenario } from "./core.js?v=20261025-01";
+import { AIRCRAFT, PERFORMANCE } from "../config.js?v=20261027-01";
+import { solveScenario } from "./core.js?v=20261027-01";
 
 export const domains = input => ({ windKt:[-40,100], temperatureC:[-20,30],
   payloadLb:[-Math.max(0,Number(input.weightBalance?.baggage)||0),Math.max(0,AIRCRAFT.maxGrossWeightLb-AIRCRAFT.emptyWeightLb-input.payloadLb)],

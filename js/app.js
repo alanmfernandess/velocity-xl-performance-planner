@@ -1,12 +1,12 @@
-import { createQuietCockpit } from "./quiet-cockpit.js?v=20261025-01";
-import { cgCorridorForWeight } from "./quiet-position.js?v=20261025-01";
-import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261025-01";
-import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261025-01";
-import { fetchGfsSnapshot } from "./weather/open-meteo.js?v=20261025-01";
-import { fetchAwcSnapshot } from "./weather/awc.js?v=20261025-01";
-import { createWeatherSnapshot } from "./weather/fusion.js?v=20261025-01";
-import { calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261025-01";
-import { fetchLatestOFP } from "./simbrief.js?v=20261025-01";
+import { createQuietCockpit } from "./quiet-cockpit.js?v=20261027-01";
+import { cgCorridorForWeight } from "./quiet-position.js?v=20261027-01";
+import { AIRCRAFT, PERFORMANCE, ALTITUDES_FT, OXYGEN_CYLINDERS } from "./config.js?v=20261027-01";
+import { evaluateMissionAlternative, optimizeMission } from "./unified-optimization.js?v=20261027-01";
+import { fetchGfsSnapshot } from "./weather/open-meteo.js?v=20261027-01";
+import { fetchAwcSnapshot } from "./weather/awc.js?v=20261027-01";
+import { createWeatherSnapshot } from "./weather/fusion.js?v=20261027-01";
+import { calculateOxygenPlan, calculateRemainingFlightAssessment, calculateStepClimbs, calibrationForMode, clamp, deriveCalibration, migrateCalibration, normalizeWeightBalance, oxygenSystemWeightLb, randomizeWeightBalance, scaleWeightBalanceToPayload, weightBalancePayloadLb } from "./engine.js?v=20261027-01";
+import { fetchLatestOFP } from "./simbrief.js?v=20261027-01";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -18,7 +18,6 @@ const UI_ICON_RULES = [
   ['.toolbar-group[aria-label="Weight unit"]',"scale","group"],
   ['.toolbar-group[aria-label="Fuel unit"]',"fuel","group"],
   [".language-switch","languages","group"],
-  ["#planTimestamp","route","inline"],
   ["#importLatest","cloud-download","button"],
   [".kpi-grid .kpi:nth-child(1)","navigation","card"],
   [".kpi-grid .kpi:nth-child(2)","fuel","card"],
@@ -87,7 +86,7 @@ const UI_ICON_RULES = [
 ];
 
 function ensureUiIcon(element,name,mode="inline") {
-  if(!element) return;
+  if(!element||element.closest("label.ui-field")) return;
   const current=element.querySelector(":scope > .ui-icon");
   if(current?.dataset.uiIcon===name) return;
   current?.remove();
@@ -248,7 +247,7 @@ const formatWeight=(lb,digits=0)=>`${number(weightValue(lb),digits)} ${weightLab
 const formatFuel=(gal,digits=1)=>`${number(fuelValue(gal),digits)} ${fuelLabel()}`;
 const financialPriceKey=(plan=state.plan,currency=state.financial.currency)=>`${plan?.origin?.icao||"----"}:${currency}`;
 const fuelPricePerLiter=()=>Number(state.financial.prices?.[financialPriceKey()])||0;
-const currencySymbol=()=>state.financial.currency==="USD"?"US$":"R$";
+const currencySymbol=()=>({BRL:"R$",USD:"US$",EUR:"€"})[state.financial.currency]||state.financial.currency;
 const formatMoney=(value,digits=2)=>Number(value).toLocaleString(state.language,{style:"currency",currency:state.financial.currency,minimumFractionDigits:digits,maximumFractionDigits:digits});
 const currentOxygenWeightLb=()=>oxygenSystemWeightLb(state.oxygen);
 const operationallyAvailable=(result)=>result.feasibility.status!=="unavailable"&&result.icing.status!=="avoid"&&!result.turbulence.blocking&&result.oxygen.status!=="insufficient"&&result.weightBalance?.status!=="unavailable";
@@ -258,7 +257,7 @@ state.payloadLb=weightBalancePayloadLb(state.weightBalance);
 state.oxygen.seats=[state.weightBalance.pilot,state.weightBalance.copilot,state.weightBalance.rearLeft,state.weightBalance.rearCenter,state.weightBalance.rearRight].map((value,index)=>index===0||value>0);
 state.oxygen.bottleModel=OXYGEN_CYLINDERS[state.oxygen.bottleModel]?state.oxygen.bottleModel:"SK-12-24";
 state.oxygen.bottles=clamp(Math.round(Number(state.oxygen.bottles)||0),0,4);
-state.financial={currency:["BRL","USD"].includes(state.financial?.currency)?state.financial.currency:"BRL",prices:state.financial?.prices&&typeof state.financial.prices==="object"?state.financial.prices:{}};
+state.financial={currency:["BRL","USD","EUR"].includes(state.financial?.currency)?state.financial.currency:"BRL",prices:state.financial?.prices&&typeof state.financial.prices==="object"?state.financial.prices:{}};
 const legacyCalibration=storedJson("velocityxl.calibration",null);
 if(legacyCalibration && ["ECON","NORMAL","FAST"].some((mode)=>legacyCalibration[mode]) && !localStorage.getItem("velocityxl.calibration.legacy")){
   localStorage.setItem("velocityxl.calibration.legacy",JSON.stringify(legacyCalibration));
@@ -345,15 +344,9 @@ function invalidateDecision(clearApplied=false) {
   if(clearApplied){state.appliedChoice=null;localStorage.removeItem("velocityxl.appliedMission");}
 }
 
-const trophySvg=(place)=>`<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M10 5h12v8a6 6 0 0 1-12 0V5Zm0 2H5v3a5 5 0 0 0 5 5m12-8h5v3a5 5 0 0 1-5 5M16 19v5m-6 3h12m-9-3h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${place}º</span>`;
 function decisionCard(candidate,place,marginal=false){
-  const ice=candidate.result.icing.compatibility==="UNKNOWN"?"—":`${number(candidate.result.icing.riskScore)}/100`;
-  const ride=candidate.result.turbulence.riskScore===null?"—":`${number(candidate.result.turbulence.riskScore)}/100`;
-  const score=candidate.score.partial?"—":`${candidate.score.score}/100`;
-  const label=missionStatusLabel(candidate.status);
-  return `<button class="top-level-card ${marginal?"marginal":""}" type="button" data-decision-fl="${candidate.altitudeFt}" data-decision-mode="${candidate.mode}">
-    ${marginal?"":`<span class="trophy trophy-${place}">${trophySvg(place)}</span>`}<span class="top-level-identity"><strong>FL${candidate.altitudeFt/100}</strong><small>${candidate.mode}</small></span><span class="top-level-status ${candidate.status}">${label}</span>
-    <span class="top-level-metrics"><span><b>Score</b><strong>${score}</strong></span><span><b>ICE</b><strong>${ice}</strong></span><span><b>RIDE</b><strong>${ride}</strong></span><span><b>${state.language==="pt-BR"?"Combustível":"Fuel"}</b><strong>${formatFuel(candidate.result.fuelRequiredGal,1)}</strong></span><span><b>${state.language==="pt-BR"?"Tempo":"Time"}</b><strong>${formatTime(candidate.result.tripTimeHr)}</strong></span></span></button>`;
+  const score=candidate.score.partial?"—":String(candidate.score.score),selected=state.appliedChoice?.altitudeFt===candidate.altitudeFt&&state.appliedChoice?.mode===candidate.mode;
+  return `<button class="top-level-card ${marginal?"marginal":""}" type="button" data-decision-fl="${candidate.altitudeFt}" data-decision-mode="${candidate.mode}" aria-pressed="${selected}" aria-label="FL${candidate.altitudeFt/100} · ${candidate.mode} · ${missionStatusLabel(candidate.status)}"><span class="top-level-identity"><strong>FL${candidate.altitudeFt/100}</strong></span><small class="foco-level-fuel">${formatFuel(candidate.result.fuelRequiredGal,1)}</small><strong class="foco-level-score">${score}</strong></button>`;
 }
 function renderDecisionPanel(){
   const panel=$("#pilotDecisionPanel");
@@ -404,6 +397,7 @@ function renderDecisionPanel(){
 }
 
 function showToast(message, error=false) {
+  if(!error)return;
   const toast=$("#toast"); toast.textContent=message; toast.classList.toggle("error",error); toast.classList.add("show");
   clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>toast.classList.remove("show"),3000);
 }
@@ -430,7 +424,7 @@ function icingLabel(icing) {
 
 function iceBlue(score, minimum=.08, maximum=.82) {
   const ratio=clamp((Number(score)||0)/100,0,1);
-  return `rgba(37,129,217,${(minimum+(maximum-minimum)*ratio).toFixed(3)})`;
+  return `rgba(25,25,25,${(minimum+(maximum-minimum)*ratio).toFixed(3)})`;
 }
 
 function weatherMissingLabel(reason,pt) {
@@ -549,7 +543,7 @@ function renderIceModule(plan,analysis,selected) {
 }
 
 function renderFuel(result) {
-  const pieces=[{label:t("trip"),value:result.tripFuelGal,color:"#1976d2",icon:"route"},{label:t("reserve"),value:result.reserveFuelGal,color:"#52a964",icon:"shield-check"},{label:t("contingency"),value:result.contingencyFuelGal,color:"#d98b34",icon:"plus-circle"},{label:t("taxi"),value:PERFORMANCE.taxiFuelGal,color:"#8a72d9",icon:"plane"}],total=pieces.reduce((sum,p)=>sum+p.value,0);
+  const pieces=[{label:t("trip"),value:result.tripFuelGal,color:"#191919",icon:"route"},{label:t("reserve"),value:result.reserveFuelGal,color:"#686868",icon:"shield-check"},{label:t("contingency"),value:result.contingencyFuelGal,color:"#999999",icon:"plus-circle"},{label:t("taxi"),value:PERFORMANCE.taxiFuelGal,color:"#bcbcbc",icon:"plane"}],total=pieces.reduce((sum,p)=>sum+p.value,0);
   $("#fuelBar").innerHTML=pieces.map((p)=>`<span style="width:${p.value/total*100}%;background:${p.color}"></span>`).join("");
   $("#fuelLegend").innerHTML=pieces.map((p)=>`<div>${iconMarkup(p.icon,"fuel-legend-icon")}<span>${p.label}</span><b>${formatFuel(p.value,1)}</b></div>`).join("");
 }
@@ -994,6 +988,7 @@ function renderFinancialCard(financial) {
 function render() {
   applyTranslations();
   const hasPlan=Boolean(state.plan);
+  document.body.dataset.hasPlan=String(hasPlan);
   $("#plannerContent").hidden=!hasPlan;
   document.querySelector('.no-plan-state').hidden=hasPlan;
   $("#feasibilityBadge").hidden=!hasPlan;
@@ -1034,8 +1029,9 @@ function render() {
   $("#kpiAltitude").textContent=state.appliedChoice||["viable","marginal"].includes(activeStatus)?`FL${selected.fl}`:"—"; $("#kpiLevelMeta").textContent=state.appliedChoice?t("appliedConfiguration"):hasSolution?t("recommendedLevel"):optimizedMission.status==="unknown"?(state.language==="pt-BR"?"NÃO AVALIADO":"NOT ASSESSED"):(state.language==="pt-BR"?"SEM SOLUÇÃO":"NO SOLUTION"); $("#kpiFuel").innerHTML=`${number(fuelValue(selected.fuelRequiredGal),1)} <small>${state.fuelUnit==="l"?"L":"GAL"}</small>`; $("#kpiFuelDelta").textContent=`${signed(fuelValue(selected.feasibility.fuelMarginGal),` ${fuelLabel()}`)} ${t("margin")}`; $("#kpiTime").textContent=formatTime(selected.tripTimeHr); $("#kpiGs").textContent=`${Math.round(selected.gsKt)} kt GS`; $("#kpiRange").innerHTML=`${number(selected.maxRangeNm)} <small>NM</small>`; $("#kpiSpecificRange").textContent=`${number(state.fuelUnit==="l"?selected.specificRangeNmGal/3.785411784:selected.specificRangeNmGal,1)} NM/${state.fuelUnit==="l"?"L":"gal"}`;
   renderIceModule(plan,analysis,selected); renderFinancialCard(financial); renderFuel(selected); renderFlightTools(plan,navigation,stepPlan,selected,activeCandidate); renderAlternateAdvisor(plan,alternateAdvice); renderGlideCorridor(plan,glide); renderMissionStrip(selected,missionScore); renderMissionScore(selected,missionScore,optimizedMission,activeCandidate); renderOxygenPlanner(analysis); renderWeightBalance(optimizedMission.currentWeightBalance); renderRideOptimizer(optimizedMission,selected); renderDecisionPanel();
   $("#fuelRequiredSide").textContent=formatFuel(selected.fuelRequiredGal,1);
+  if(document.activeElement!==$("#fuelInput"))$("#fuelInput").value=String(fuelValue(state.fuelOnboardGal));$("#fuelInput").max=String(fuelValue(AIRCRAFT.usableFuelGal));document.querySelector("[data-foco-fuel-label]").textContent=`${state.language==="pt-BR"?"A bordo":"On board"} · ${fuelLabel()}`;
   $("#payloadOutput").textContent=formatWeight(state.payloadLb); $("#fuelOutput").textContent=formatFuel(state.fuelOnboardGal,0);
-  const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight,currentWb=optimizedMission.currentWeightBalance; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"#dc5661":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(currentWb.takeoff.cgIn,2)}→${number(currentWb.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||currentWb.status==="unavailable"?"var(--red)":"";
+  const weight=AIRCRAFT.emptyWeightLb+state.payloadLb+state.fuelOnboardGal*AIRCRAFT.fuelDensityLbGal+oxygenWeightLb,delta=AIRCRAFT.maxGrossWeightLb-weight,currentWb=optimizedMission.currentWeightBalance; $("#weightValue").textContent=formatWeight(weight); $("#weightBar").style.width=`${Math.min(100,weight/AIRCRAFT.maxGrossWeightLb*100)}%`; $("#weightBar").style.background=delta<0?"var(--red)":"linear-gradient(90deg,var(--blue),var(--green))"; $("#weightNote").textContent=`${formatWeight(Math.abs(delta))} ${t(delta>=0?"belowMax":"aboveMax")} · CG ${number(currentWb.takeoff.cgIn,2)}→${number(currentWb.landing.cgIn,2)} in`; $("#weightNote").style.color=delta<0||currentWb.status==="unavailable"?"var(--red)":"";
   quiet.update({plan,mission:optimizedMission,candidate:activeCandidate,input:decisionInput(),score:missionScore,weatherSnapshot:state.weatherSnapshot,language:state.language,fuelUnit:state.fuelUnit,weightUnit:state.weightUnit,capacityGal:AIRCRAFT.usableFuelGal});
   refreshUiIcons();
 }
@@ -1051,7 +1047,7 @@ const toolHintKeys={etp:"toolHintEtp",alternate:"toolHintAlternate",wb:"toolHint
 const initialTools={};
 function setOpenTool(key){const area=["wb","oxygen","cost"].includes(key)?"plan":"route";window.VelocityLayout.activate(area,key);}
 toolCardPanels.forEach(panel=>{panel.hidden=false;panel.classList.add("active");});
-$("#payloadInput").addEventListener("input",(event)=>{invalidateDecision(true);setPayloadAndScaleStations(Number(event.target.value));render();}); $("#fuelInput").addEventListener("input",(event)=>{invalidateDecision(true);state.fuelOnboardGal=Number(event.target.value);render();}); $("#reserveInput").addEventListener("change",(event)=>{invalidateDecision(true);state.reserveMinutes=Number(event.target.value);render();});
+$("#payloadInput").addEventListener("input",(event)=>{invalidateDecision(true);setPayloadAndScaleStations(Number(event.target.value));render();}); $("#fuelInput").addEventListener("input",(event)=>{if(!event.target.value||!event.target.validity.valid)return;invalidateDecision(true);state.fuelOnboardGal=fuelFromDisplay(Number(event.target.value));render();}); $("#reserveInput").addEventListener("change",(event)=>{invalidateDecision(true);state.reserveMinutes=Number(event.target.value);render();});
 $("#diversionWaypoint").addEventListener("change",(event)=>{state.diversionWaypointIndex=Number(event.target.value);render();});
 $("#fuelPriceCurrency").addEventListener("change",(event)=>{invalidateDecision(false);state.financial.currency=event.target.value;localStorage.setItem("velocityxl.financial",JSON.stringify(state.financial));render();});
 $("#fuelPricePerLiter").addEventListener("input",(event)=>{invalidateDecision(false);const value=Math.max(0,Number(event.target.value)||0);if(value>0)state.financial.prices[financialPriceKey()]=value;else delete state.financial.prices[financialPriceKey()];localStorage.setItem("velocityxl.financial",JSON.stringify(state.financial));render();});
@@ -1215,7 +1211,7 @@ $("#simbriefImportForm").addEventListener("submit",async(event)=>{
     let plan;
     try{plan=await fetchLatestOFP(identifier,"userid");}catch(firstError){plan=await fetchLatestOFP(identifier,"username");}
     localStorage.setItem("velocityxl.simbriefIdentifier",identifier);
-    activatePlan(plan);
+    activatePlan(plan);document.body.classList.remove("foco-import");window.VelocityLayout.activate("plan","overview");
   }catch(error){showToast(error.message||t("importError"),true);}
   finally{button.disabled=false;button.removeAttribute("aria-busy");button.textContent=t("importLatest");refreshUiIcons();}
 });

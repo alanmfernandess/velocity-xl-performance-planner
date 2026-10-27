@@ -1,7 +1,7 @@
-import { fetchEnsemble } from "./resilience/ensemble.js?v=20261025-01";
-import { dynamicProfileScenario } from "./resilience/dynamic.js?v=20261025-01";
-import { domains } from "./resilience/stress.js?v=20261025-01";
-import { resilienceAdvisor } from "./resilience/advisor.js?v=20261025-01";
+import { fetchEnsemble } from "./resilience/ensemble.js?v=20261027-01";
+import { dynamicProfileScenario } from "./resilience/dynamic.js?v=20261027-01";
+import { domains } from "./resilience/stress.js?v=20261027-01";
+import { resilienceAdvisor } from "./resilience/advisor.js?v=20261027-01";
 
 const names={stress:['Stress Test','Stress Test'],ensemble:['Ensemble','Ensemble'],corridor:['Corredor 4D','4D Corridor'],causal:['Causal','Causal'],dynamic:['Otimizador dinâmico','Dynamic optimizer']};
 const title={stress:'Mission Stress Test',ensemble:'Atmospheric Ensemble',corridor:'4D Decision Corridor',causal:'Causal Engineering',dynamic:'Dynamic Flight Optimizer'};
@@ -25,7 +25,7 @@ export function createResiliencePresenter({profilePresenter}) {
   const empty=reason=>`<div class="rl-alert" role="status">${status('UNKNOWN')}<strong data-ui-role="secondary">${escape((reason||w('OFP NÃO IMPORTADO','NO OFP')).replaceAll('_',' '))}</strong></div>`;
   function ensureWorker(){
     if(worker)return;
-    worker=new Worker(new URL('./resilience/worker.js?v=20261025-01',import.meta.url),{type:'module'});
+    worker=new Worker(new URL('./resilience/worker.js?v=20261027-01',import.meta.url),{type:'module'});
     worker.onmessage=({data})=>{
       const waiter=pending.get(data.id);pending.delete(data.id);
       if(data.revision!==revision){waiter?.reject(new Error('STALE_RESULT'));return;}

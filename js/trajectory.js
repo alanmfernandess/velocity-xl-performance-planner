@@ -1,5 +1,5 @@
-import { greatCircleNm } from "./engine.js?v=20261025-01";
-import { PERFORMANCE } from "./config.js?v=20261025-01";
+import { greatCircleNm } from "./engine.js?v=20261027-01";
+import { PERFORMANCE } from "./config.js?v=20261027-01";
 
 function routePoints(plan) {
   const raw = [plan.origin, ...(plan.waypoints || []), plan.destination]

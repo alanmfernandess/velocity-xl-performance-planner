@@ -1,7 +1,7 @@
-import { PERFORMANCE } from "../config.js?v=20261025-01";
-import { calculateRemainingFlightAssessment, oxygenSystemWeightLb } from "../engine.js?v=20261025-01";
-import { solveScenario } from "./core.js?v=20261025-01";
-import { finishRoute, directDecisionRoute } from "./transitions.js?v=20261025-01";
+import { PERFORMANCE } from "../config.js?v=20261027-01";
+import { calculateRemainingFlightAssessment, oxygenSystemWeightLb } from "../engine.js?v=20261027-01";
+import { solveScenario } from "./core.js?v=20261027-01";
+import { finishRoute, directDecisionRoute } from "./transitions.js?v=20261027-01";
 const fuelState=margin=>!Number.isFinite(margin)?"UNKNOWN":margin<0?"INCOMPATIBLE":margin<PERFORMANCE.diversion.marginalFuelMarginGal?"MARGINAL":"FUEL_FEASIBLE";
 export function decisionCorridor(context) {
   const scenario=solveScenario(context);

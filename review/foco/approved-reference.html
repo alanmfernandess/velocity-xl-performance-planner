@@ -1,0 +1,190 @@
+<div id="vx-foco-refined">
+  <p class="mono-caption">FOCO · PRÉVIA COM DADOS ILUSTRATIVOS</p>
+  <div class="mono-stage viz-dotted-background"><div class="mono-app" data-style="focus" aria-label="Foco revisado"></div></div>
+</div>
+<style>
+#vx-foco-refined{--mo-paper:light-dark(#fff,#141414);--mo-ink:light-dark(#191919,#ededed);--mo-muted:light-dark(#707070,#a3a3a3);--mo-line:light-dark(#dedede,#383838);--mo-soft:light-dark(#f4f4f4,#242424);--mo-inverse:light-dark(#fff,#141414);--mo-ticket-muted:light-dark(#c3c3c3,#515151);--mo-label:12px;--mo-body:14px;--mo-control-text:16px;--mo-space:24px;--mo-gutter:var(--mo-space);--mo-form-gap:var(--mo-space);--mo-label-band:calc(var(--mo-label)*1.45 + 8px);--mo-control-pad:16px;--mo-title:16px;--mo-number:32px;--mo-radius:12px;--mo-touch:48px;font:400 var(--mo-body)/1.45 Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--mo-ink);color-scheme:light dark}
+#vx-foco-refined *{box-sizing:border-box}
+#vx-foco-refined [hidden]{display:none!important}
+#vx-foco-refined .mono-caption{margin:0 0 16px;color:var(--mo-muted);font-size:var(--mo-label);text-align:center;letter-spacing:.06em}
+#vx-foco-refined .mono-stage{padding:8px 0 16px}
+#vx-foco-refined .mono-app{width:100%;max-width:390px;margin:auto;background:var(--mo-paper);border:1px solid var(--mo-line);border-radius:24px;overflow:clip;container-type:inline-size;min-width:0}
+#vx-foco-refined button,#vx-foco-refined input,#vx-foco-refined select{font:inherit;color:inherit}
+#vx-foco-refined button{min-height:var(--mo-touch);border:0;background:transparent;padding:12px 16px;border-radius:var(--mo-radius);font-size:var(--mo-control-text);font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+#vx-foco-refined button:disabled{opacity:.4;cursor:not-allowed}
+#vx-foco-refined button:focus-visible,#vx-foco-refined summary:focus-visible,#vx-foco-refined input:focus-visible,#vx-foco-refined select:focus-visible{outline:2px solid var(--mo-ink);outline-offset:3px}
+#vx-foco-refined .mi{width:18px;height:18px;flex-shrink:0}
+#vx-foco-refined h1,#vx-foco-refined h2,#vx-foco-refined p{margin:0}
+#vx-foco-refined h1,#vx-foco-refined h2{font-size:var(--mo-title);font-weight:500;line-height:1.35}
+#vx-foco-refined strong{font-weight:500}
+#vx-foco-refined small{font-size:var(--mo-label);color:var(--mo-muted)}
+#vx-foco-refined .mo-header{height:72px;display:flex;justify-content:space-between;align-items:center;padding:12px var(--mo-gutter)}
+#vx-foco-refined .mo-header .mo-wordmark{width:auto;padding:12px 0;white-space:nowrap;font-weight:500;letter-spacing:.12em;font-size:var(--mo-label)}
+#vx-foco-refined .mo-header button{width:48px;padding:12px}
+#vx-foco-refined .mo-main{padding:0 var(--mo-gutter) var(--mo-space);min-width:0}
+#vx-foco-refined .mo-route{display:flex;align-items:center;gap:12px;font-size:var(--mo-title);font-weight:500}
+#vx-foco-refined .mo-route>span{color:var(--mo-muted)}
+#vx-foco-refined .mo-route-meta{display:block;margin-top:4px}
+#vx-foco-refined .mo-topline{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:24px}
+#vx-foco-refined .mo-status{display:inline-flex;gap:6px;align-items:center;font-size:var(--mo-label);font-weight:500;white-space:nowrap}
+#vx-foco-refined .mo-headline{display:flex;justify-content:space-between;gap:16px;align-items:start;margin:28px 0}
+#vx-foco-refined form .mo-headline{margin:0}
+#vx-foco-refined .mo-headline>div,#vx-foco-refined .mo-score{display:grid;gap:4px;min-width:0}
+#vx-foco-refined .mo-headline strong{font-size:var(--mo-number);font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums}
+#vx-foco-refined .mo-score{padding:0;text-align:right;justify-items:end;min-width:64px;border-radius:0}
+#vx-foco-refined .mo-metrics{display:grid;grid-template-rows:auto auto;row-gap:8px;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--mo-space);margin:24px 0}
+#vx-foco-refined .mo-metrics>div{display:grid;grid-template-rows:subgrid;grid-row:span 2;justify-items:center;text-align:center;gap:8px;min-width:0}
+#vx-foco-refined .mo-metrics strong{font-size:var(--mo-title);font-variant-numeric:tabular-nums;white-space:nowrap}
+#vx-foco-refined .mo-primary{width:100%;font-size:var(--mo-control-text);background:var(--mo-ink);color:var(--mo-inverse)}
+#vx-foco-refined .mo-secondary{display:flex;justify-content:space-between;gap:8px;margin:8px 0 var(--mo-space)}
+#vx-foco-refined .mo-secondary button{padding-inline:8px;font-size:var(--mo-body)}
+#vx-foco-refined .mo-tool-dock{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--mo-space);padding-top:0;border-top:0}
+#vx-foco-refined .mo-tool-dock button{display:grid;justify-items:center;gap:8px;font-size:var(--mo-label);padding:8px 0;min-height:64px}
+#vx-foco-refined .mo-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:0;padding:8px;background:var(--mo-paper)}
+#vx-foco-refined .mo-nav button{display:grid;justify-items:center;gap:4px;font-size:var(--mo-label);color:var(--mo-muted);padding:8px 0;min-width:0}
+#vx-foco-refined .mo-nav [aria-current]{color:var(--mo-ink);background:var(--mo-soft)}
+#vx-foco-refined .mo-note{font-size:var(--mo-label);color:var(--mo-muted);margin:12px 0}
+#vx-foco-refined .mo-warning{font-size:var(--mo-label);padding:12px 0;border-top:0;margin-bottom:16px;display:flex;gap:8px;align-items:start}
+#vx-foco-refined .mo-warning .mi{margin-top:1px}
+#vx-foco-refined .mo-back{display:flex;gap:8px;align-items:center;margin:0 0 16px}
+#vx-foco-refined .mo-back button{padding-left:0}
+#vx-foco-refined .mo-stack{display:grid;gap:var(--mo-space)}
+#vx-foco-refined form.mo-stack{gap:var(--mo-form-gap)}
+#vx-foco-refined .mo-inline-field{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:var(--mo-touch);padding:0 var(--mo-control-pad);border:1px solid var(--mo-line);border-radius:var(--mo-radius);font-size:var(--mo-control-text);background:var(--mo-paper)}
+#vx-foco-refined .mo-inline-field input{min-width:0;width:100%;height:46px;padding:0;border:0;outline-offset:0;background:transparent;text-align:right;font-size:var(--mo-control-text);color:var(--mo-ink);font-variant-numeric:tabular-nums}
+#vx-foco-refined .mo-inline-field:focus-within{outline:2px solid var(--mo-ink);outline-offset:3px}
+#vx-foco-refined .mo-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;border-bottom:0}
+#vx-foco-refined form .mo-row:not(button){min-height:0;padding:0;line-height:1.45}
+#vx-foco-refined button.mo-row{width:100%;border-radius:0;padding:12px 0;text-align:left}
+#vx-foco-refined .mo-row>span{flex:1}
+#vx-foco-refined .mo-row>strong{font-variant-numeric:tabular-nums}
+#vx-foco-refined .mo-field{display:grid;gap:8px;font-size:var(--mo-label);color:var(--mo-muted);min-width:0}
+#vx-foco-refined .mo-field input,#vx-foco-refined .mo-field select{min-height:48px;height:48px;line-height:1.25;width:100%;min-width:0;font-size:var(--mo-control-text);border:1px solid var(--mo-line);border-radius:var(--mo-radius);background:var(--mo-paper);padding:12px var(--mo-control-pad);color:var(--mo-ink)}
+#vx-foco-refined .mo-field input[type="range"]{padding:0;border:0;accent-color:var(--mo-ink)}
+#vx-foco-refined .mo-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--mo-form-gap)}
+#vx-foco-refined .mo-choice{display:grid;grid-template-columns:minmax(0,1fr) 6ch 2ch;font-variant-numeric:tabular-nums;align-items:center;gap:16px;min-height:64px;width:100%;text-align:left;border-radius:0;border-bottom:0;padding:12px 12px}
+#vx-foco-refined .mo-choice>small,#vx-foco-refined .mo-choice>strong{text-align:right}
+#vx-foco-refined .mo-choice[aria-pressed="true"]{background:var(--mo-soft);border-radius:8px}
+#vx-foco-refined details{border-bottom:0}
+#vx-foco-refined summary{display:flex;align-items:center;justify-content:space-between;min-height:52px;font-weight:500}
+#vx-foco-refined details>div{padding:0 0 16px}
+#vx-foco-refined .mo-segment{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--mo-space);margin:16px 0}
+#vx-foco-refined .mo-segment button{padding:8px 0;font-size:var(--mo-body);border-radius:8px;min-width:0}
+#vx-foco-refined .mo-segment [aria-pressed="true"]{background:var(--mo-ink);color:var(--mo-inverse)}
+#vx-foco-refined .mo-rail{height:8px;background:var(--mo-soft);border-radius:8px;position:relative;margin:20px 6px}
+#vx-foco-refined .mo-rail::before{content:'';position:absolute;left:12%;right:12%;height:8px;background:var(--mo-line);border-radius:8px}
+#vx-foco-refined .mo-dot{position:absolute;left:60%;top:-4px;width:16px;height:16px;background:var(--mo-ink);border:3px solid var(--mo-paper);border-radius:50%;box-shadow:0 0 0 1px var(--mo-ink)}
+#vx-foco-refined .mo-number{font-size:var(--mo-number);font-weight:500;font-variant-numeric:tabular-nums}
+#vx-foco-refined .mo-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#vx-foco-refined .mo-index-summary{margin:20px 0 24px}
+#vx-foco-refined .mo-index-number{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:20px;border-bottom:0}
+#vx-foco-refined .mo-index-number>strong{font-size:var(--mo-number);line-height:1.2}
+#vx-foco-refined .mo-index-number>button{padding:0}
+#vx-foco-refined .mo-number{line-height:1.2}
+#vx-foco-refined .mo-index-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;border-top:0;padding:12px 0;margin-top:16px}
+#vx-foco-refined .mo-index-tools button{font-size:var(--mo-label);padding:8px 0}
+#vx-foco-refined .mo-ticket{border:1px solid var(--mo-line);border-radius:16px;overflow:clip;margin:8px 0 20px}
+#vx-foco-refined .mo-ticket-top{background:var(--mo-ink);color:var(--mo-inverse);padding:20px}
+#vx-foco-refined .mo-ticket-top small{color:var(--mo-ticket-muted)}
+#vx-foco-refined .mo-ticket .mo-headline{margin:20px 0 0}
+#vx-foco-refined .mo-ticket-body{padding:0 20px 20px}
+#vx-foco-refined .mo-ticket-body .mo-metrics{gap:12px}
+#vx-foco-refined .mo-ticket-bottom{display:flex;justify-content:space-between;align-items:center;border-top:0;padding:12px var(--mo-gutter)}
+#vx-foco-refined .mo-ticket-bottom button{font-size:var(--mo-label);padding:4px 8px}
+#vx-foco-refined .mo-pass-links{display:flex;justify-content:space-around;gap:4px}
+#vx-foco-refined .mo-pass-links button{font-size:var(--mo-label);padding:8px}
+#vx-foco-refined .mono-app[data-style="index"] .mo-main{padding-inline:20px}
+#vx-foco-refined .mono-app[data-style="index"] .mo-topline{margin-bottom:16px}
+#vx-foco-refined .mono-app[data-style="index"] .mo-nav [aria-current]{background:transparent;text-decoration:underline;text-underline-offset:6px}
+#vx-foco-refined .mono-app[data-style="pass"] .mo-nav{border-top:0}
+#vx-foco-refined .mo-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--mo-form-gap)}
+#vx-foco-refined .mo-form>.mo-primary{grid-column:1/-1;margin:0}
+/* External label bands are included for all forms, not only Preferences. */
+#vx-foco-refined form>.mo-field+.mo-primary,#vx-foco-refined form>.mo-fields+.mo-primary,#vx-foco-refined .mo-form>.mo-primary{margin-top:var(--mo-label-band)}
+#vx-foco-refined .mo-select{position:relative;display:grid;min-width:0}
+#vx-foco-refined .mo-select select{appearance:none;-webkit-appearance:none;padding-right:48px}
+#vx-foco-refined .mo-select>.mi{position:absolute;right:var(--mo-control-pad);top:50%;transform:translateY(-50%);pointer-events:none}
+#vx-foco-refined .mo-row>strong{font-size:var(--mo-body);text-align:right;white-space:nowrap}
+#vx-foco-refined .mo-flight-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--mo-space);margin:28px 0}
+#vx-foco-refined .mo-flight-metrics>div{display:grid;gap:8px}
+#vx-foco-refined .mo-flight-metrics>div:last-child{text-align:right}
+#vx-foco-refined .mo-flight-metrics strong{font-size:var(--mo-number);line-height:1.2;font-variant-numeric:tabular-nums}
+#vx-foco-refined .mo-timeline{display:grid;gap:12px;margin:24px 0}
+#vx-foco-refined .mo-timeline-cells{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#vx-foco-refined .mo-timeline-cells button{display:grid;grid-template-columns:1fr;gap:8px;padding:8px 0;min-width:0;text-align:center;font-size:var(--mo-body);background:transparent;color:var(--mo-muted)}
+#vx-foco-refined .mo-timeline-cells [aria-pressed="true"]{background:transparent;color:var(--mo-ink)}
+#vx-foco-refined .mo-timeline-cells [aria-pressed="true"] small{color:var(--mo-ink)}
+#vx-foco-refined .mo-timeline-track{display:grid;gap:8px;height:6px}
+#vx-foco-refined .mo-timeline-track span{background:var(--mo-line);border-radius:4px}
+#vx-foco-refined .mo-timeline-track [data-current="true"]{background:var(--mo-ink)}
+#vx-foco-refined .mo-timeline-endpoints{display:flex;justify-content:space-between;gap:16px;font-size:var(--mo-label);color:var(--mo-muted);font-variant-numeric:tabular-nums}
+#vx-foco-refined .mo-back h1{font-size:var(--mo-title)}
+@container(max-width:340px){
+ #vx-foco-refined .mono-app{--mo-gutter:16px}
+ #vx-foco-refined .mo-ticket-body{padding-inline:16px}
+ #vx-foco-refined .mo-ticket-top{padding-inline:16px}
+ #vx-foco-refined .mo-ticket-body .mo-metrics strong{font-size:var(--mo-body)}
+}
+@media(prefers-reduced-motion:reduce){#vx-foco-refined button{transition:none}}
+</style>
+<script>
+(()=>{
+const root=document.getElementById('vx-foco-refined');
+const i=n=>`<i data-lucide="${n}" class="mi" aria-hidden="true"></i>`;
+const names={focus:'Foco',index:'Índice',pass:'Passe'};
+const options=[{fl:160,score:91,time:'01:01',fuel:'18,9',margin:'7,1'},{fl:140,score:89,time:'01:03',fuel:'17,6',margin:'8,4'},{fl:180,score:87,time:'01:00',fuel:'20,1',margin:'5,9'}];
+const conditions={assessed:['Viável','check',null],marginal:['Marginal','triangle-alert','Margem de combustível reduzida.'],unknown:['Não avaliado','circle-help','ICE sem cobertura suficiente.'],blocked:['Inviável','circle-x','O₂ insuficiente.']};
+const titles={compare:'Níveis',adjust:'Ajustes',score:'Score',fuel:'Combustível',wb:'W&B',oxygen:'O₂',cost:'Custo',resilience:'Resilience',ice:'ICE',ride:'RIDE',meteo:'METEO',etp:'ETP / PNR',alternate:'Alternado',glide:'GLIDE',steps:'Step Climb',update:'Checkpoint',calibration:'Calibração',history:'Histórico',settings:'Preferências',import:'OFP'};
+const metric=(a,b)=>`<div><small>${a}</small><strong>${b}</strong></div>`;
+const link=(key,value='')=>`<button class="mo-row" type="button" data-page="${key}"><span>${titles[key]}</span>${value?`<small>${value}</small>`:''}${i('chevron-right')}</button>`;
+const field=(a,b,name='')=>`<label class="mo-field">${a}<input type="number" value="${b}" min="0" step="0.1" ${name?`name="${name}"`:''} required/></label>`;
+const inlineField=(label,unit,name)=>`<label class="mo-inline-field"><span>${label}</span><input type="number" name="${name}" min="0" step="0.1" inputmode="decimal" aria-label="${label} · ${unit}" required/><small>${unit}</small></label>`;
+const selected=window.openai?.widgetState?.modelContent?.monochrome;
+for(const app of root.querySelectorAll('.mono-app')){
+ const style=app.dataset.style,s={area:'plan',page:'compare',choice:0,applied:false,condition:'assessed',position:89.2,layer:'ICE',phase:'CRZ',running:false,history:[],dirty:false};
+ if(selected?.style===names[style]&&['plan','route','flight'].includes(selected.area))s.area=selected.area;
+ if(s.page==='calibration')s.area='flight';
+ const save=()=>window.openai?.setWidgetState?.({modelContent:{monochrome:{style:names[style],area:s.area,page:s.page,condition:s.condition}},privateContent:null})?.catch(()=>{});
+ const state=()=>`<span class="mo-status">${i(conditions[s.condition][1])}${s.dirty?'Não calculado':conditions[s.condition][0]}</span>`;
+ const action=()=>`<button type="button" class="mo-primary" data-do="apply" ${s.applied||s.dirty||['unknown','blocked'].includes(s.condition)?'disabled':''}>${s.applied?'Aplicado':s.condition==='marginal'?'Revisar':'Aplicar'}</button>`;
+ const warning=()=>conditions[s.condition][2]?`<p class="mo-warning">${i(conditions[s.condition][1])}<span>${conditions[s.condition][2]}</span></p>`:'';
+ function numbers(){const c=options[s.choice];return `<div class="mo-metrics">${metric('ETE',s.dirty?'—':c.time)}${metric('TRIP · gal',s.dirty?'—':c.fuel)}${metric('MARGEM · gal',s.dirty?'—':s.condition==='marginal'?'3,2':c.margin)}</div>`;}
+ function headline(){return `<div class="mo-headline"><div><small>${s.applied?'SELECIONADO':'RECOMENDADO'}</small><strong>FL${options[s.choice].fl}</strong><small>ECON</small></div><button type="button" class="mo-score" data-page="score"><small>SCORE</small><strong>${s.dirty||s.condition==='unknown'?'—':s.condition==='marginal'?'74':s.condition==='blocked'?'52':options[s.choice].score}</strong></button></div>`;}
+ function dock(){return `<div class="mo-tool-dock">${[['wb','scale','W&B'],['oxygen','heart-pulse','O₂'],['fuel','fuel','Fuel'],['cost','dollar-sign','Custo']].map(([k,n,t])=>`<button type="button" data-page="${k}">${i(n)}${t}</button>`).join('')}</div>`;}
+ const routeTitle=()=>`<div><div class="mo-route">SBSP <span>→</span> SBGL</div><small class="mo-route-meta">246 NM · 12:00Z</small></div>`;
+ function plan(){
+  if(style==='focus')return `<div class="mo-topline">${routeTitle()}${state()}</div>${headline()}${warning()}${numbers()}${action()}<div class="mo-secondary"><button type="button" data-page="compare">Comparar</button><button type="button" data-page="adjust">Ajustar ${i('sliders-horizontal')}</button></div>${dock()}`;
+  if(style==='index')return `<div class="mo-topline">${routeTitle()}${state()}</div><div class="mo-index-summary"><div class="mo-index-number"><strong>FL${options[s.choice].fl}</strong><button type="button" data-page="score"><strong class="mo-number">${s.condition==='unknown'||s.dirty?'—':s.condition==='marginal'?'74':s.condition==='blocked'?'52':options[s.choice].score}</strong><small>Score</small></button></div><div class="mo-row"><span>ETE</span><strong>${s.dirty?'—':options[s.choice].time}</strong></div><div class="mo-row"><span>Trip</span><strong>${s.dirty?'—':options[s.choice].fuel+' gal'}</strong></div><div class="mo-row"><span>Margem</span><strong>${s.dirty?'—':s.condition==='marginal'?'3,2 gal':options[s.choice].margin+' gal'}</strong></div></div>${warning()}<div class="mo-actions"><button type="button" data-page="compare">Comparar ${i('arrow-up-down')}</button>${action()}</div><div class="mo-index-tools">${['fuel','wb','oxygen','cost','adjust','resilience'].map(k=>`<button type="button" data-page="${k}">${titles[k]}</button>`).join('')}</div>`;
+  return `<div class="mo-ticket"><div class="mo-ticket-top"><div class="mo-topline" style="margin-bottom:0">${routeTitle()}${state()}</div>${headline()}</div><div class="mo-ticket-body">${numbers()}${warning()}${action()}</div><div class="mo-ticket-bottom"><button type="button" data-page="compare">Comparar ${i('arrow-up-right')}</button><button type="button" data-page="adjust">Ajustar ${i('sliders-horizontal')}</button></div></div><div class="mo-pass-links">${['wb','oxygen','cost','fuel'].map(k=>`<button type="button" data-page="${k}">${titles[k]}</button>`).join('')}</div><button type="button" class="mo-row" data-page="resilience"><span>Resilience</span>${i('chevron-right')}</button>`;
+ }
+ function timeline(){const total=options[s.choice].time.split(':').reduce((h,m,index)=>index? h+Number(m):Number(m)*60,0),phases=[['CLB',12],['CRZ',total-24],['DSC',12]];return `<section class="mo-timeline" aria-label="Linha do tempo ilustrativa do voo"><div class="mo-timeline-cells" style="grid-template-columns:12fr ${total-24}fr 12fr">${phases.map(([phase,min])=>`<button type="button" data-phase="${phase}" aria-pressed="${s.phase===phase}"><span>${phase}</span><small>${min} min</small></button>`).join('')}</div><div class="mo-timeline-track" style="grid-template-columns:12fr ${total-24}fr 12fr" aria-hidden="true">${phases.map(([phase])=>`<span data-current="${s.phase===phase}"></span>`).join('')}</div><div class="mo-timeline-endpoints"><span>00:00</span><span>${options[s.choice].time}</span></div></section>`;}
+ function route(){const ice=s.phase==='CLB'?'32/100':s.phase==='DSC'?'24/100':'18/100';return `<div class="mo-topline">${routeTitle()}<small>FL${options[s.choice].fl}</small></div>${timeline()}<div class="mo-segment">${['METEO','ICE','RIDE','FUEL'].map(k=>`<button type="button" data-layer="${k}" aria-pressed="${s.layer===k}">${k}</button>`).join('')}</div><div class="mo-row"><span>${s.layer} <small>· ${s.phase}</small></span><strong>${s.layer==='ICE'?s.condition==='unknown'?'Não avaliado':ice:s.layer==='RIDE'?'Leve':s.layer==='FUEL'?'26,8 gal':'Ilustrativo'}</strong></div><details><summary>Trechos ${i('plus')}</summary><div>${['meteo','ice','ride'].map(k=>link(k)).join('')}</div></details><details><summary>Decisões ${i('plus')}</summary><div>${['etp','alternate','glide','steps'].map(k=>link(k)).join('')}</div></details>`;}
+ function flight(){return `<div class="mo-topline">${routeTitle()}<button type="button" data-do="tracker" aria-label="${s.running?'Pausar':'Iniciar'} tracker" aria-pressed="${s.running}">${i(s.running?'pause':'play')}</button></div><div class="mo-flight-metrics"><div><small>POSIÇÃO · NM</small><strong>${s.position.toLocaleString('pt-BR',{maximumFractionDigits:1})}</strong></div><div><small>ETE</small><strong>00:42</strong></div></div><div class="mo-row"><span>Fuel</span><strong>26,8 gal</strong></div><div style="margin:24px 0"><button class="mo-primary" type="button" data-page="update">Checkpoint ${i('plus')}</button></div>${link('calibration')}${link('history',String(s.history.length))}`;}
+ function detail(k){
+  if(k==='compare')return `<div class="mo-stack">${options.map((c,n)=>`<button type="button" class="mo-choice" data-choice="${n}" aria-pressed="${s.choice===n}"><span>FL${c.fl}</span><small>${c.fuel} gal</small><strong>${c.score}</strong></button>`).join('')}</div>`;
+  if(k==='adjust')return `<div class="mo-stack"><div class="mo-segment">${['ECON','NORMAL','FAST','MANUAL'].map((m,n)=>`<button type="button" data-mode="${m}" aria-pressed="${n===0}">${m}</button>`).join('')}</div><div data-power hidden class="mo-fields">${field('MAP · inHg',24)}${field('RPM',2450)}</div>${['fuel','wb','oxygen','cost','resilience'].map(j=>link(j)).join('')}</div>`;
+  if(k==='score')return `<div class="mo-stack"><div class="mo-topline"><h2>FL${options[s.choice].fl}</h2>${state()}</div>${warning()}${[['Fuel','Margem disponível'],['W&B','Dentro do envelope'],['ICE',s.condition==='unknown'?'Não avaliado':'18/100'],['RIDE','Leve'],['O₂',s.condition==='blocked'?'Insuficiente':'Adequado']].map(([a,b])=>`<div class="mo-row"><span>${a}</span><strong>${b}</strong></div>`).join('')}</div>`;
+  if(k==='fuel')return `<form class="mo-stack" data-form="settings">${field('A bordo · gal',38.5)}<label class="mo-field">Reserva<select><option>45 min</option><option>30 min</option><option>60 min</option></select></label><div class="mo-row"><span>Requerido</span><strong>30,1 gal</strong></div><button type="button" class="mo-primary" data-submit>Guardar</button></form>`;
+  if(k==='wb')return `<form class="mo-stack" data-form="settings"><div class="mo-fields">${[['Piloto · lb',190],['Copiloto · lb',170],['Traseiro E · lb',55],['Traseiro C · lb',50],['Traseiro D · lb',55],['Bagagem · lb',0]].map(([a,b])=>field(a,b)).join('')}</div><div><div class="mo-row"><span>TO</span><strong>131,20 in · 2.651 lb</strong></div><div class="mo-rail"><i class="mo-dot"></i></div><div class="mo-row"><span>LD</span><strong>131,14 in · 2.545 lb</strong></div><div class="mo-rail"><i class="mo-dot" style="left:59%"></i></div></div><button type="button" class="mo-primary" data-submit>Guardar</button></form>`;
+  if(k==='oxygen')return `<form class="mo-stack" data-form="settings"><div class="mo-row"><span>Autonomia</span><strong>${s.condition==='blocked'?'00:40':'02:10'}</strong></div><div class="mo-fields"><label class="mo-field">Garrafa<select><option>SK-12-24</option><option>SK-24-48</option></select></label>${field('Quantidade',2)}</div><button type="button" class="mo-primary" data-submit>Guardar</button></form>`;
+  if(k==='cost')return `<form class="mo-stack" data-form="settings"><div class="mo-headline"><div><small>ESTIMATIVA</small><strong data-cost-total>R$ 653</strong></div></div><div class="mo-fields"><label class="mo-field">Moeda<select data-currency><option>BRL</option><option>USD</option><option>EUR</option></select></label>${field('Por litro',9.8)}</div><div class="mo-row"><span>Alternado</span><strong data-cost-alternate>+ R$ 118</strong></div><button type="button" class="mo-primary" data-submit>Guardar</button></form>`;
+  if(k==='update')return `<form class="mo-stack" data-form="checkpoint"><div class="mo-topline"><span>Posição · NM</span><strong data-read>${s.position.toLocaleString('pt-BR',{maximumFractionDigits:1})}</strong></div><label class="mo-field">OFP<input type="range" data-slider min="0" max="246" step="0.1" value="${s.position}"/></label><div class="mo-actions"><button type="button" data-point="48">OPALA</button><button type="button" data-point="112">UDALO</button></div>${field('Fuel observado · gal',26.8,'fuel')}<button type="button" class="mo-primary" data-submit>Salvar checkpoint</button></form>`;
+  if(k==='calibration')return `<form class="mo-stack" data-form="calibration"><small>FL${options[s.choice].fl} · ECON</small>${inlineField('TAS','kt','tas')}${inlineField('Fuel Flow','gal/h','flow')}<button type="button" class="mo-primary" data-submit>Registrar</button></form>`;
+  if(k==='history')return s.history.length?s.history.map(r=>`<div class="mo-row"><span>${r.nm} NM</span><strong>${r.fuel} gal</strong></div>`).join(''):'<p class="mo-note">Sem checkpoints.</p>';
+  if(k==='resilience')return ['Stress Test','Ensemble','Corredor 4D','Causal','Dynamic Optimizer'].map(v=>`<details><summary>${v} ${i('plus')}</summary><div><div class="mo-row"><span>Estado</span><strong>Não calculado</strong></div></div></details>`).join('');
+  if(k==='settings')return `<form class="mo-form" data-form="preferences"><label class="mo-field">Peso<select><option>LB</option><option>KG</option></select></label><label class="mo-field">Fuel<select><option>GAL</option><option>L</option></select></label><label class="mo-field">Texto<select><option>A</option><option>A−</option><option>A+</option></select></label><label class="mo-field">Idioma<select><option>PT</option><option>EN</option></select></label><button type="button" class="mo-primary" data-submit>Guardar</button></form>`;
+  if(k==='import')return `<form class="mo-stack" data-form="import"><label class="mo-field">Pilot ID / Alias<input type="text" required/></label><button type="button" class="mo-primary" data-submit>Importar OFP</button></form>`;
+  const data={ice:[['Índice',s.condition==='unknown'?'Não avaliado':'18/100'],['Exposição','6 min']],ride:[['Conforto','Leve'],['Trecho','OPALA → UDALO']],meteo:[['Fonte','SimBrief / GFS / AWC'],['Cobertura','Ilustrativa']],etp:[['ETP','124 NM'],['PNR','201 NM']],alternate:[['Alternado','SBRJ'],['Fuel adicional','3,2 gal']],glide:[['Alcance','28 NM'],['Altitude','14.000 ft']],steps:[['Atual','FL160'],['Proposto','FL180']]};
+  return `${(data[k]||[]).map(([a,b])=>`<div class="mo-row"><span>${a}</span><strong>${b}</strong></div>`).join('')}${k==='glide'?'<p class="mo-warning">Terreno e local seguro de pouso não avaliados.</p>':''}<details><summary>Detalhes ${i('plus')}</summary><div><small>Não calculado</small></div></details>`;
+ }
+ function render(){app.innerHTML=`<header class="mo-header"><button type="button" data-page="import" class="mo-wordmark" aria-label="Velocity XL · importar OFP">VX / XL</button><button type="button" data-page="settings" aria-label="Preferências">${i('sliders-horizontal')}</button></header><main class="mo-main">${s.page?`<div class="mo-back"><button type="button" data-do="back" aria-label="Voltar">${i('arrow-left')}</button><h1>${titles[s.page]}</h1></div>${detail(s.page)}`:s.area==='plan'?plan():s.area==='route'?route():flight()}</main><nav class="mo-nav" aria-label="Áreas principais">${[['plan','Plano','sliders-horizontal'],['route','Rota','route'],['flight','Em voo','navigation']].map(([a,n,g])=>`<button type="button" data-area="${a}" ${s.area===a?'aria-current="page"':''}>${i(g)}${n}</button>`).join('')}</nav>`;adoptSelects();globalThis.lucide?.createIcons({attrs:{width:18,height:18}});}
+ function adoptSelects(){for(const select of app.querySelectorAll('select')){const wrap=document.createElement('span');wrap.className='mo-select';select.before(wrap);wrap.append(select);wrap.insertAdjacentHTML('beforeend',i('chevron-down'));}}
+ app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-submit')){const f=b.closest('form');if(!f.reportValidity())return;if(f.dataset.form==='checkpoint'){s.history.unshift({nm:s.position.toLocaleString('pt-BR',{maximumFractionDigits:1}),fuel:new FormData(f).get('fuel')});}else if(['settings','calibration'].includes(f.dataset.form)){s.dirty=true;s.applied=false;}save();return;}if(b.dataset.area){s.area=b.dataset.area;s.page=null;}else if(b.dataset.page)s.page=b.dataset.page;else if(b.dataset.choice!==undefined){s.choice=Number(b.dataset.choice);s.applied=false;s.dirty=false;s.page=null;}else if(b.dataset.point){s.position=Number(b.dataset.point);}else if(b.dataset.layer)s.layer=b.dataset.layer;else if(b.dataset.phase)s.phase=b.dataset.phase;else if(b.dataset.mode){app.querySelectorAll('[data-mode]').forEach(v=>v.setAttribute('aria-pressed',String(v===b)));app.querySelector('[data-power]').hidden=b.dataset.mode!=='MANUAL';return;}else if(b.dataset.do==='back')s.page=null;else if(b.dataset.do==='tracker')s.running=!s.running;else if(b.dataset.do==='apply'){s.applied=true;}else return;render();save();});
+ app.addEventListener('input',e=>{if(e.target.matches('[data-slider]')){s.position=Number(e.target.value);app.querySelector('[data-read]').textContent=s.position.toLocaleString('pt-BR',{maximumFractionDigits:1});}});
+ app.addEventListener('change',e=>{if(e.target.matches('[data-currency]')){const symbol={BRL:'R$',USD:'US$',EUR:'€'}[e.target.value];app.querySelector('[data-cost-total]').textContent=symbol+' 653';app.querySelector('[data-cost-alternate]').textContent='+ '+symbol+' 118';}});
+ app.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input:not([type=range])')){e.preventDefault();e.target.closest('form')?.querySelector('[data-submit]')?.click();}});
+ render();app._mono=s;
+ if(globalThis.Tweak){const t=new Tweak({container:app,onChange:()=>{s.applied=false;render();}});t.addSelect(s,'condition',{label:'Estado ilustrativo',options:[{label:'Viável',value:'assessed'},{label:'Marginal',value:'marginal'},{label:'Não avaliado',value:'unknown'},{label:'Inviável',value:'blocked'}]});}
+}
+})();
+</script>

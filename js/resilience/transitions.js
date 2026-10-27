@@ -1,7 +1,7 @@
-import { AIRCRAFT, PERFORMANCE } from "../config.js?v=20261025-01";
-import { bearingDeg, greatCircleNm, calculateFlightTransition, cruiseSnapshot, solveWindTriangle } from "../engine.js?v=20261025-01";
-import { sampleGfs, gfsSampleStatus } from "../weather/open-meteo.js?v=20261025-01";
-import { validCoordinates } from "../mission-profile.js?v=20261025-01";
+import { AIRCRAFT, PERFORMANCE } from "../config.js?v=20261027-01";
+import { bearingDeg, greatCircleNm, calculateFlightTransition, cruiseSnapshot, solveWindTriangle } from "../engine.js?v=20261027-01";
+import { sampleGfs, gfsSampleStatus } from "../weather/open-meteo.js?v=20261027-01";
+import { validCoordinates } from "../mission-profile.js?v=20261027-01";
 
 /** Geometry follows real waypoint positions. Cumulative route distance is
  * retained; geographic interpolation is local, never uniform waypoint spacing. */
