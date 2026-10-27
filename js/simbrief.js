@@ -1,4 +1,4 @@
-import { greatCircleNm } from "./engine.js?v=20261021-unified";
+import { greatCircleNm } from "./engine.js?v=20261027-01";
 
 const number = (value, fallback = 0) => {
   if (value === null || value === undefined || String(value).trim() === "") return fallback;
@@ -156,6 +156,58 @@ function windForAltitude(fix, altitudeFt, levels) {
   return fix;
 }
 
+// JSON v2 durations may be HH:MM:SS. Bare text numbers are left unknown:
+// their unit cannot be inferred safely from an isolated navlog field.
+export function parseNavlogElapsedSeconds(value) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+  if (typeof value !== "string") return null;
+  const match = value.trim().match(/^(\d{1,3}):([0-5]\d):([0-5]\d)$/);
+  return match ? Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3]) : null;
+}
+
+function operationalMarker(fix) {
+  const ident = String(fix?.ident || "").trim().toUpperCase();
+  const type = String(fix?.type || "").trim().toUpperCase();
+  const stage = String(fix?.stage || "").trim().toUpperCase();
+  if (/^(TOC|T\/O\/C|TOP OF CLIMB)$/.test(ident) || type === "TOC" || stage === "TOC") return "TOP_OF_CLIMB";
+  if (/^(TOD|T\/O\/D|TOP OF DESCENT)$/.test(ident) || type === "TOD" || stage === "TOD") return "TOP_OF_DESCENT";
+  return null;
+}
+
+export function normalizeOfpTocTod(rawFixes, totalDistanceNm) {
+  const result = { toc: null, tod: null, diagnostics: [] };
+  for (const fix of rawFixes) {
+    const kind = operationalMarker(fix);
+    if (!kind) continue;
+    const key = kind === "TOP_OF_CLIMB" ? "toc" : "tod";
+    if (result[key]) { result.diagnostics.push(key.toUpperCase() + "_DUPLICATE"); continue; }
+    const rawDistance = fix.cum_distance;
+    const distanceNm = rawDistance === "" || rawDistance == null ? null : Number(rawDistance);
+    const timeSec = parseNavlogElapsedSeconds(fix.time_total);
+    const lat = number(first(fix.pos_lat, fix.latitude), NaN);
+    const lon = number(first(fix.pos_long, fix.longitude), NaN);
+    const altitudeFt = number(first(fix.altitude_feet, fix.altitude), NaN);
+    const validDistance = Number.isFinite(distanceNm) && distanceNm >= 0
+      && (!Number.isFinite(totalDistanceNm) || distanceNm <= totalDistanceNm + 1);
+    const validCoords = Number.isFinite(lat) && Number.isFinite(lon);
+    const event = { kind, source: "SIMBRIEF", ident: String(fix.ident || kind),
+      distanceNm: validDistance ? distanceNm : null, timeSec,
+      altitudeFt: Number.isFinite(altitudeFt) ? altitudeFt : null,
+      lat: validCoords ? lat : null, lon: validCoords ? lon : null,
+      quality: validDistance && validCoords && timeSec !== null && Number.isFinite(altitudeFt) ? "COMPLETE"
+        : validDistance || validCoords || timeSec !== null || Number.isFinite(altitudeFt) ? "PARTIAL" : "UNKNOWN" };
+    if (!validDistance) result.diagnostics.push(key.toUpperCase() + "_DISTANCE_UNKNOWN");
+    if (fix.time_total != null && timeSec === null) result.diagnostics.push(key.toUpperCase() + "_TIME_AMBIGUOUS");
+    result[key] = event;
+  }
+  if (result.toc && result.tod && result.toc.distanceNm !== null && result.tod.distanceNm !== null
+    && result.tod.distanceNm < result.toc.distanceNm) {
+    result.diagnostics.push("TOD_BEFORE_TOC");
+    result.tod = null;
+  }
+  return result;
+}
+
 export function parseSimBrief(data) {
   const status = data?.fetch?.status;
   if (status && !String(status).toLowerCase().includes("success")) throw new Error(String(status).replace(/^Error:\s*/i, ""));
@@ -184,14 +236,25 @@ export function parseSimBrief(data) {
   const originWeatherText = weatherText(originMetar, originTaf, data.origin?.weather);
   const destinationWeatherText = weatherText(destinationMetar, destinationTaf, data.destination?.weather);
   const rawFixes = arrayOf(data.navlog);
+  // Preserve the full OFP navlog for inspection. The operational waypoint array
+  // below retains its existing filtering so performance calculations do not change.
+  const ofpWaypoints = rawFixes.map((fix, index) => ({
+    index, ident: first(fix.ident, null),
+    lat: number(first(fix.pos_lat, fix.latitude), NaN), lon: number(first(fix.pos_long, fix.longitude), NaN),
+    distanceNm: number(fix.cum_distance, NaN),
+    elapsedSec: parseNavlogElapsedSeconds(fix.time_total),
+    altitudeFt: number(first(fix.altitude_feet, fix.altitude), NaN),
+    distanceSource: fix.cum_distance == null || fix.cum_distance === "" ? "MISSING" : "OFP_CUMULATIVE",
+  }));
   const route = rawFixes.map((fix) => ({ lat: number(fix.pos_lat, NaN), lon: number(fix.pos_long, NaN) }))
     .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
   if (route.length < 2) route.push(origin, destination);
   const flightStart = Date.parse(first(data.times?.sched_off, data.times?.est_off, data.times?.sched_out, data.times?.est_out));
   const flightEnd = Date.parse(first(data.times?.sched_on, data.times?.est_on, data.times?.sched_in, data.times?.est_in));
   const advisoryMap = new Map();
-  [data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.sigmets,
-    data.weather?.airmet, data.weather?.airmets, data.airmets].flatMap(advisoryItems)
+  const allAdvisorySources = [data.weather?.enroute, data.weather?.sigmet, data.weather?.sigmets, data.sigmets,
+    data.weather?.airmet, data.weather?.airmets, data.airmets].flatMap(advisoryItems);
+  allAdvisorySources
     .filter((advisory) => advisoryApplies(advisory, route, flightStart, flightEnd))
     .forEach((advisory) => {
       const text = bulletinText(advisory);
@@ -245,6 +308,7 @@ export function parseSimBrief(data) {
   );
 
   const distanceNm = number(first(data.general?.route_distance, data.general?.air_distance, cumulativeNm), cumulativeNm);
+  const ofpTocTod = normalizeOfpTocTod(rawFixes, distanceNm);
   const rawGenerated = first(data.params?.time_generated, data.times?.sched_out);
   const generatedDate = rawGenerated && Number.isNaN(Number(rawGenerated)) ? new Date(rawGenerated) : new Date(number(rawGenerated) * 1000);
   const rawAlternates = Array.isArray(data.alternate) ? data.alternate : data.alternate ? [data.alternate] : [];
@@ -254,6 +318,7 @@ export function parseSimBrief(data) {
     lat: number(first(alternate?.pos_lat, alternate?.latitude, alternate?.lat), NaN),
     lon: number(first(alternate?.pos_long, alternate?.longitude, alternate?.lon), NaN),
     distanceNm: number(first(alternate?.route_distance, alternate?.distance), NaN),
+    elevationFt: number(first(alternate?.elevation, alternate?.elevation_ft), NaN),
   }));
   const alternate = alternates[0];
   const rawAlternateFixes = arrayOf(data.alternate_navlog);
@@ -303,10 +368,27 @@ export function parseSimBrief(data) {
       enrouteText: enrouteWeatherText,
       enrouteBulletins,
       enrouteAdvisories,
+      advisorySources: allAdvisorySources,
     },
     waypoints,
+    ofpWaypoints,
+    ofpTocTod,
     alternateWaypoints,
   };
+}
+
+/** Re-evaluate OFP advisory validity for a comparison, without editing the OFP. */
+export function retimeSimBriefPlan(plan, scheduledOffMs, scheduledOnMs) {
+  const sources = plan.meteorology?.advisorySources;
+  if (!Number.isFinite(scheduledOffMs)) throw new RangeError("SCENARIO_DEPARTURE_UNKNOWN");
+  const next = { ...plan, scheduledOffMs, scheduledOnMs };
+  if (!Array.isArray(sources)) return next;
+  const route = (plan.waypoints || []).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
+  const advisories = sources.filter((source) => advisoryApplies(source, route, scheduledOffMs, scheduledOnMs))
+    .map((source) => ({ text: bulletinText(source), legCoverage: advisoryLegCoverage(source, route, scheduledOffMs, scheduledOnMs) }))
+    .filter((item) => item.legCoverage.some((coverage) => coverage > 0));
+  return { ...next, meteorology: { ...plan.meteorology, enrouteAdvisories: advisories,
+    enrouteBulletins: advisories.map((item) => item.text), enrouteText: advisories.map((item) => item.text).join("\n") } };
 }
 
 export async function fetchLatestOFP(identifier, type = "userid") {

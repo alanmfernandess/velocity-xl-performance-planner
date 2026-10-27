@@ -4,7 +4,7 @@ import postcss from 'postcss';
 
 const rootDir = path.resolve(import.meta.dirname, '..');
 const css = fs.readFileSync(path.join(rootDir, 'styles.css'), 'utf8');
-const sourceFiles = ['index.html', ...fs.readdirSync(path.join(rootDir, 'js')).filter(name => name.endsWith('.js')).map(name => `js/${name}`)];
+const sourceFiles = ['index.html', ...fs.readdirSync(path.join(rootDir, 'js'), { recursive: true }).filter(name => name.endsWith('.js')).map(name => `js/${name}`)];
 const runtimeSources = sourceFiles.map(name => fs.readFileSync(path.join(rootDir, name), 'utf8')).join('\n');
 const root = postcss.parse(css, { from: 'styles.css' });
 const errors = [];

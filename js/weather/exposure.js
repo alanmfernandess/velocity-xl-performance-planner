@@ -1,6 +1,6 @@
-import { PERFORMANCE } from "../config.js?v=20261021-unified";
-import { calculateIcingRisk, calculateTurbulenceRisk } from "../engine.js?v=20261021-unified";
-import { weatherAt } from "./fusion.js";
+import { PERFORMANCE } from "../config.js?v=20261027-01";
+import { calculateIcingRisk, calculateTurbulenceRisk } from "../engine.js?v=20261027-01";
+import { weatherAt } from "./fusion.js?v=20261027-01";
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const phaseMinutes = () => ({ climb: 0, cruise: 0, descent: 0 });
@@ -13,7 +13,8 @@ function groupSegments(samples, assessments) {
   samples.forEach((sample, index) => {
     const key = `${sample.from || "—"} → ${sample.to || "—"}`;
     const record = groups.get(key) || { from: sample.from, to: sample.to, startNm: sample.distanceNm,
-      endNm: sample.distanceNm, minutes: 0, riskScore: 0, oatC: null, evidenceAvailable: false, temperatureRelevant: false };
+      endNm: sample.distanceNm, minutes: 0, riskScore: 0, oatC: null, evidenceAvailable: false,
+      coveredSamples: 0, totalSamples: 0, temperatureRelevant: false };
     const assessment = assessments[index];
     record.startNm = Math.min(record.startNm, sample.distanceNm);
     record.endNm = Math.max(record.endNm, sample.distanceNm);
@@ -21,10 +22,21 @@ function groupSegments(samples, assessments) {
     record.riskScore = Math.max(record.riskScore, assessment.score || 0);
     if (Number.isFinite(assessment.oatC)) record.oatC = assessment.oatC;
     record.evidenceAvailable ||= assessment.covered;
+    record.totalSamples += 1;
+    if (assessment.covered) record.coveredSamples += 1;
     record.temperatureRelevant ||= assessment.temperatureRelevant;
     groups.set(key, record);
   });
   return [...groups.values()].map((segment) => ({ ...segment, riskScore: Math.round(segment.riskScore) }));
+}
+
+// Read-only projection of assessments already performed above. Consumers may
+// show their actual sampling resolution without reconstructing a risk index.
+function profileSamples(samples, assessments) {
+  return samples.map((point, index) => ({ distanceNm: point.distanceNm, timestampMs: point.timestampMs,
+    altitudeFt: point.altitudeFt, phase: point.phase, minutes: point.minutes, from: point.from, to: point.to,
+    evidenceAvailable: assessments[index].covered, riskScore: assessments[index].score,
+    evidenceIds: (assessments[index].evidence || []).map((item) => item.id).filter(Boolean) }));
 }
 
 /** Exposure estimates are conditional model indicators, not icing probability. */
@@ -108,6 +120,7 @@ export function assessIceTrajectory({ plan, result, trajectory, weatherSnapshot 
     descentExposureMinutes: Math.max(baseline.descentExposureMinutes || 0, byPhase.descent),
     temperatureExposureMinutes: Math.max(baseline.temperatureExposureMinutes || 0, temperatureMinutes),
     segments: modelAvailable ? groupSegments(trajectory.samples, assessments) : baseline.segments,
+    profileSamples: profileSamples(trajectory.samples, assessments),
     alternate: alternateAirport ? { ...(baseline.alternate || {}), ident: alternateAirport.icao || baseline.alternate?.ident || "—",
       status: alternateBlocking ? "avoid" : alternateCoverageInsufficient ? "unknown"
         : alternateRisk >= PERFORMANCE.icing.cautionScore ? "caution" : alternateRisk >= PERFORMANCE.icing.watchScore ? "watch" : "low",
@@ -195,6 +208,7 @@ export function assessRideTrajectory({ plan, result, trajectory, weatherSnapshot
     segments: covered ? groupSegments(trajectory.samples, assessments).map((segment) => ({ ...segment,
       exposureMinutes: segment.riskScore >= PERFORMANCE.turbulence.lightScore ? segment.minutes : 0,
       status: segment.riskScore >= 75 ? "severe" : segment.riskScore >= 45 ? "moderate" : segment.riskScore >= 20 ? "light" : "smooth" })) : baseline.segments,
+    profileSamples: profileSamples(trajectory.samples, assessments),
     alternate: alternateAssessments.length ? { riskScore: Math.max(...alternateAssessments.map((item) => item.score)),
       coverage: alternateAssessments.filter((item) => item.covered).length / alternateAssessments.length,
       exposureMinutes: alternateAssessments.reduce((sum, item) => sum + (item.score >= PERFORMANCE.turbulence.lightScore ? item.minutes : 0), 0),

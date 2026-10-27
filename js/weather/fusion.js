@@ -1,6 +1,6 @@
-import { sampleGfs, gfsSampleStatus } from "./open-meteo.js";
-import { awcEvidenceAt } from "./awc.js";
-import { weatherAtAltitude, isaTemperatureC } from "../engine.js?v=20261021-unified";
+import { sampleGfs, gfsSampleStatus } from "./open-meteo.js?v=20261027-01";
+import { awcEvidenceAt } from "./awc.js?v=20261027-01";
+import { weatherAtAltitude, isaTemperatureC } from "../engine.js?v=20261027-01";
 
 const nearestFix = (plan, point) => (plan.waypoints || [])
   .filter((fix) => Number.isFinite(fix.lat) && Number.isFinite(fix.lon))

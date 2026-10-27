@@ -8,7 +8,7 @@ const css=readFileSync(new URL("../styles.css",import.meta.url),"utf8");
 const html=readFileSync(new URL("../index.html",import.meta.url),"utf8");
 
 test("weight and balance renders a separate responsive CG band for each flight phase",()=>{
-  assert.match(app,/key:"zfw",label:t\("zeroFuel"\),point:weightBalance\.zeroFuel/);
+  assert.match(app,/cgCorridorForWeight\(env,point\.weightLb\)/);
   assert.match(app,/key:"takeoff",label:t\("takeoff"\),point:weightBalance\.takeoff/);
   assert.match(app,/key:"landing",label:t\("landing"\),point:weightBalance\.landing/);
   assert.match(app,/class="cg-phase-list"/);

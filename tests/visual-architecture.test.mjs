@@ -15,22 +15,20 @@ test("one stylesheet owns visual tokens and component dimensions", () => {
     ["--ui-caption", "calc(12px * var(--ui-scale))"],
     ["--ui-body", "calc(14px * var(--ui-scale))"],
     ["--ui-title", "calc(16px * var(--ui-scale))"],
-    ["--ui-display", "calc(24px * var(--ui-scale))"],
-    ["--control-height", "44px"],
+    ["--ui-display", "calc(32px * var(--ui-scale))"],
+    ["--control-height", "48px"],
   ]) assertDeclaration(css, ":root", name, value);
   assertDeclaration(css, ".ui-button", "min-height", "var(--control-height)");
   assert.match(layout, /\['\.primary-button', 'ui-button ui-button--primary'\]/);
   assert.match(layout, /\['\.text-button', 'ui-button ui-button--outline'\]/);
-  assertDeclaration(css, ".module-nav button", "min-height", "var(--control-height)");
+  assert.match(cssRule(css, ".area-nav button,\n.mobile-area-nav button"), /min-height: var\(--control-height\)/);
 });
 
 test("cards size to content and hidden modules stay hidden", () => {
-  assertDeclaration(css, ".summary-grid > .panel", "min-height", "0");
-  assertDeclaration(css, ".planning-live-summary", "min-height", "0");
-  assert.doesNotMatch(cssRule(css, ".flight-update-form"), /min-height:/);
-  assertDeclaration(css, '.app-module[data-module-panel="flight:update"] > #manualFlightPanel', "padding", "var(--space-4)");
-  assert.match(cssRule(css, "[hidden]"), /display:\s*none\s*!important/);
-  assert.match(layout, /flight: 'update'/);
+  assert.doesNotMatch(cssRule(css,".essential-mission"),/min-height:/);
+  assert.match(cssRule(css,"[hidden]"),/display:\s*none\s*!important/);
+  assert.match(layout,/state=\{area:'plan'/);
+  assert.match(layout,/panelMap/);
 });
 
 test("responsive rules are grouped and iOS zoom remains available", () => {
@@ -53,19 +51,14 @@ test("editable fields and visual cards use shared component contracts", () => {
     assert.match(cssRule(css, selector), /[a-z-]+:/);
   for (const id of ["manualWaypoint", "manualAltitude", "manualFuel", "observedTas", "observedFuelFlow", "fuelPriceCurrency", "fuelPricePerLiter"])
     assert.match(html, new RegExp(`<label class="ui-field[^"]*"[^>]*>[\\s\\S]*?id="${id}"`));
-  assert.match(layout, /const componentKinds = \[/);
+  assert.match(layout, /const componentKinds=\[/);
   assert.doesNotMatch(css, /grid-template-rows:\s*auto\s+38px|\.cost-price-row\s+\.ui-unit-input\s*\{|\.wb-inputs input\s*\{/);
   assertDeclaration(css, ".ui-field > select", "appearance", "none");
 });
 
-test("mission adjustment uses body typography instead of KPI display typography", () => {
-  const secondaryRole = layout.match(/secondary:\s*'([^']+)'/)?.[1] || "";
-  const primaryRole = layout.match(/primary:\s*'([^']+)'/)?.[1] || "";
-  assert.match(secondaryRole, /#missionScoreAction/);
-  assert.doesNotMatch(primaryRole, /#missionScoreAction/);
-  assertDeclaration(css, '.app-module [data-ui-role="secondary"]', "font-size", "var(--ui-body)");
-  assertDeclaration(css, '.app-module [data-ui-role="primary"]', "font-size", "var(--ui-display)");
-  assert.match(html, /js\/layout\.js\?v=20261022-pde3/);
-  assertDeclaration(css, '.recommendation-card .mission-score-action > #missionScoreAction', 'font-size', 'var(--ui-body)');
-  assert.match(html, /styles\.css\?v=20261022-pde3/);
+test("mission score is plain, interactive, and adjacent to the selected level", () => {
+  assert.match(layout,/essentialLevelHost[\s\S]*score-reading[\s\S]*essentialScore/);
+  assert.match(cssRule(css,".score-reading > strong"),/font-size: var\(--ui-display\)/);
+  assert.match(cssRule(css,".mission-score-dial::after"),/content: none/);
+  assert.match(html,/styles\.css\?v=20261027-01/);
 });

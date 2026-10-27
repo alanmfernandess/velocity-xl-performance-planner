@@ -29,7 +29,7 @@ jobs:
         run: npm run validate:missions
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Browser audit 2.0
+      - name: Foco responsive and functional audit
         run: npm run audit:browser:v2
       - name: Save browser audit evidence
         if: always()
@@ -37,7 +37,7 @@ jobs:
         with:
           name: ice-weather-coverage-validation
           path: |
-            review/engine-v2-browser-audit.json
-            review/engine-v2/
+            review/foco/audit.json
+            review/foco/
           retention-days: 7
           if-no-files-found: ignore

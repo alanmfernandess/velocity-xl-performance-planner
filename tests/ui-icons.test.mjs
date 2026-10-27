@@ -43,22 +43,22 @@ test("obsolete comparison and debrief modules are absent from active UI", () => 
   assert.doesNotMatch(layout, /\['history', 'history'\]/);
 });
 
-test("all four areas remain navigable and preserve operational modules", () => {
+test("exactly three areas remain navigable and preserve operational modules", () => {
   assert.match(index, /id="areaNav"/);
-  for (const area of ["mission", "planning", "route", "flight"])
+  for (const area of ["plan", "route", "flight"])
     assert.match(layout, new RegExp(`\\['${area}'`));
   for (const key of ["etp", "alternate", "wb", "glide", "oxygen", "ride", "ice", "cost", "steps"])
     assert.match(index, new RegExp(`data-tool-view="${key}"`));
-  assert.match(layout, /\['flight',[^\n]*\[\['update', 'update'\]\]/);
+  assert.match(layout, /flight.*overview.*update.*calibration.*history/);
 });
 
-test("one in-flight form validates the optional calibration pair before updating", () => {
+test("checkpoint and paired calibration share one validated observation path", () => {
   assert.match(index, /id="manualUpdateForm"/);
   assert.doesNotMatch(index, /id="calibrationForm"/);
   assert.match(index, /id="observedTas"/);
   assert.match(index, /id="observedFuelFlow"/);
-  assert.match(app, /Boolean\(tasValue\)!==Boolean\(flowValue\)/);
-  assert.match(app, /if\(tasValue&&flowValue\)nextCalibration=deriveCalibration/);
+  assert.match(app, /if\(!tasValue\|\|!flowValue/);
+  assert.match(app, /nextCalibration=deriveCalibration/);
   assert.match(engine, /CALIBRATION_ATMOSPHERE_UNAVAILABLE/);
 });
 

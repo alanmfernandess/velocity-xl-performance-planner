@@ -1,14 +1,14 @@
-import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "./config.js?v=20261021-unified";
+import { AIRCRAFT, ALTITUDES_FT, PERFORMANCE } from "./config.js?v=20261027-01";
 import {
   assessFeasibility, calculateAlternateDiversion, calculateAtAltitude,
   calculateEtpPnr, calculateFinancialImpact, calculateGlideCorridor,
   calculateOxygenPlan, calculateWeightBalance, clamp, oxygenSystemWeightLb,
-} from "./engine.js?v=20261021-unified";
-import { buildTrajectory } from "./trajectory.js";
-import { sampleGfs } from "./weather/open-meteo.js";
-import { createWeatherSnapshot } from "./weather/fusion.js";
-import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261022-01";
-import { scoreMissionV2 } from "./mission-score-v2.js";
+} from "./engine.js?v=20261027-01";
+import { buildTrajectory } from "./trajectory.js?v=20261027-01";
+import { sampleGfs } from "./weather/open-meteo.js?v=20261027-01";
+import { createWeatherSnapshot } from "./weather/fusion.js?v=20261027-01";
+import { assessIceTrajectory, assessRideTrajectory } from "./weather/exposure.js?v=20261027-01";
+import { scoreMissionV2 } from "./mission-score-v2.js?v=20261027-01";
 
 const STATUS_RANK = { viable: 0, marginal: 1, unknown: 2, "not-viable": 3 };
 const PRESETS = ["ECON", "NORMAL", "FAST"];
@@ -41,15 +41,15 @@ function planWithForecast(plan, weatherSnapshot) {
   return { ...plan, waypoints };
 }
 
-function evaluateCandidate(input, altitudeFt, weatherSnapshot, performancePlan) {
+function evaluateCandidate(input, altitudeFt, weatherSnapshot, performancePlan, scenario = null) {
   const { plan, mode, payloadLb, fuelOnboardGal, reserveMinutes, calibration, powerSetting, oxygen, weightBalance } = input;
   const oxygenWeightLb = oxygenSystemWeightLb(oxygen);
   const parameters = { plan: performancePlan, altitudeFt, mode, payloadLb, oxygenWeightLb, reserveMinutes, calibration, powerSetting };
   // Solve fuel and weight together. Occupants and baggage stay exactly as entered.
   let recommendedFuelGal = clamp(fuelOnboardGal, 0, AIRCRAFT.usableFuelGal);
   let rawFuelGal = recommendedFuelGal;
-  let converged = false;
-  for (let iteration = 0; iteration < 24; iteration += 1) {
+  let converged = scenario?.fuelPolicy === "FIXED";
+  for (let iteration = 0; !scenario?.fuelPolicy && iteration < 24; iteration += 1) {
     const result = calculateAtAltitude({ ...parameters, fuelOnboardGal: recommendedFuelGal });
     const alternate = calculateAlternateDiversion({ ...parameters, fuelOnboardGal: recommendedFuelGal, result });
     const alternateShortfall = alternate.destination
@@ -187,7 +187,7 @@ function closestPreset(powerSetting) {
 }
 
 /** Evaluate a pilot-selected scenario against the same weather and score basis. */
-export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, mapInHg, rpm }) {
+export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, mapInHg, rpm }, scenario = null) {
   if (!mission?.plan || !ALTITUDES_FT.includes(altitudeFt)) throw new RangeError("INVALID_SCENARIO_ALTITUDE");
   if (mode !== "MANUAL" && !PRESETS.includes(mode)) throw new RangeError("INVALID_SCENARIO_MODE");
   let engineMode = mode, powerSetting = { type: "AUTO" };
@@ -198,10 +198,10 @@ export function evaluateMissionAlternative(mission, input, { altitudeFt, mode, m
     engineMode = closestPreset(powerSetting);
   } else {
     const cached = mission.candidates.find((candidate) => candidate.altitudeFt === altitudeFt && candidate.mode === mode);
-    if (cached) return cached;
+    if (cached && !scenario) return cached;
   }
   const candidate = evaluateCandidate({ ...input, mode: engineMode, powerSetting }, altitudeFt,
-    mission.weatherSnapshot, mission.performancePlan || planWithForecast(input.plan, mission.weatherSnapshot));
+    scenario?.weatherSnapshot || mission.weatherSnapshot, scenario?.performancePlan || mission.performancePlan || planWithForecast(input.plan, mission.weatherSnapshot), scenario);
   if (mode === "MANUAL") candidate.mode = "MANUAL";
   scoreCandidates([candidate], input, mission.candidates);
   return candidate;

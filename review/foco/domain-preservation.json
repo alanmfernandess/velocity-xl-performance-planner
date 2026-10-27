@@ -1,0 +1,31 @@
+{
+  "baseline": "backup/pre-foco-local-20261027",
+  "domainFilesCompared": [
+    "js/unified-optimization.js",
+    "js/trajectory.js",
+    "js/virtual-flight.js",
+    "js/mission-score-v2.js",
+    "js/mission-time.js",
+    "js/mission-profile.js",
+    "js/config.js",
+    "js/simbrief.js",
+    "js/quiet-position.js",
+    "js/engine.js",
+    "js/mission-events.js",
+    "js/resilience/advisor.js",
+    "js/resilience/sensitivity.js",
+    "js/resilience/core.js",
+    "js/resilience/worker.js",
+    "js/resilience/corridor.js",
+    "js/resilience/transitions.js",
+    "js/resilience/transfer.js",
+    "js/resilience/dynamic.js",
+    "js/resilience/stress.js",
+    "js/resilience/ensemble.js",
+    "js/weather/exposure.js",
+    "js/weather/open-meteo.js",
+    "js/weather/awc.js",
+    "js/weather/fusion.js"
+  ],
+  "result": "identical after normalizing cache query strings"
+}
