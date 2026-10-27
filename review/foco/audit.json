@@ -58528,6 +58528,102 @@
       "issues": []
     },
     {
+      "label": "landscape geometry without touch detection",
+      "width": 926,
+      "scrollWidth": 926,
+      "controls": [
+        {
+          "id": "BUTTON",
+          "height": 48,
+          "left": 854,
+          "right": 902,
+          "scrollable": false
+        },
+        {
+          "id": "plan:score",
+          "height": 67.78125,
+          "left": 659,
+          "right": 723,
+          "scrollable": false
+        },
+        {
+          "id": "essentialApply",
+          "height": 48,
+          "left": 203,
+          "right": 723,
+          "scrollable": false
+        },
+        {
+          "id": "plan:compare",
+          "height": 48,
+          "left": 203,
+          "right": 284.6875,
+          "scrollable": false
+        },
+        {
+          "id": "plan:config",
+          "height": 48,
+          "left": 630.328125,
+          "right": 723,
+          "scrollable": false
+        },
+        {
+          "id": "plan:wb",
+          "height": 64,
+          "left": 203,
+          "right": 315,
+          "scrollable": false
+        },
+        {
+          "id": "plan:oxygen",
+          "height": 64,
+          "left": 339,
+          "right": 451,
+          "scrollable": false
+        },
+        {
+          "id": "plan:fuel",
+          "height": 64,
+          "left": 475,
+          "right": 587,
+          "scrollable": false
+        },
+        {
+          "id": "plan:cost",
+          "height": 64,
+          "left": 611,
+          "right": 723,
+          "scrollable": false
+        },
+        {
+          "id": "plan",
+          "height": 55.390625,
+          "left": 8,
+          "right": 311.328125,
+          "scrollable": false
+        },
+        {
+          "id": "route",
+          "height": 55.390625,
+          "left": 311.328125,
+          "right": 614.65625,
+          "scrollable": false
+        },
+        {
+          "id": "flight",
+          "height": 55.390625,
+          "left": 614.65625,
+          "right": 918,
+          "scrollable": false
+        }
+      ],
+      "primary": [
+        "rgb(25, 25, 25)"
+      ],
+      "invalidSvg": false,
+      "issues": []
+    },
+    {
       "label": "Resilience corridor",
       "width": 390,
       "scrollWidth": 390,
