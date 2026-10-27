@@ -60,5 +60,5 @@ test("mission score is plain, interactive, and adjacent to the selected level", 
   assert.match(layout,/essentialLevelHost[\s\S]*score-reading[\s\S]*essentialScore/);
   assert.match(cssRule(css,".score-reading > strong"),/font-size: var\(--ui-display\)/);
   assert.match(cssRule(css,".mission-score-dial::after"),/content: none/);
-  assert.match(html,/styles\.css\?v=20261027-01/);
+  assert.match(html,/styles\.css\?v=20261027-02/);
 });

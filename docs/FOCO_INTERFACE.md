@@ -77,3 +77,15 @@ A linha do tempo representa as durações e o TOC/TOD já calculados; não intro
 A meteorologia e o OFP dos testes visuais são **fixtures ilustrativas interceptadas apenas no navegador de testes**. Não demonstram um voo real nem uma validação física dos coeficientes estimados. Nenhuma fixture é carregada pelo aplicativo de produção.
 
 Não houve teste em iPhone/iPad/Android físico. Safe areas, teclado por visual viewport e acessibilidade são verificados em navegador; a instalação nativa como PWA ainda depende de avaliação em dispositivo.
+
+## Correção móvel — navegação e conteúdo curto
+
+O espaço amplo entre os últimos controles e a navegação não era uma margem do card: resultava do posicionamento `fixed` no fim de um viewport mais alto que o conteúdo. A correção móvel usa fluxo com `position: sticky; bottom: ...`: em uma página curta o menu fica imediatamente após a composição; em páginas extensas ele permanece acessível na base visível durante a rolagem. Não há alongamento de fontes, campos ou cards para ocupar altura artificialmente.
+
+A regra aplica-se até 760 px e também a dispositivos com toque como entrada principal, cobrindo celulares na horizontal. O espaço inferior reservado à barra fixa foi removido; as safe areas e o deslocamento por teclado foram mantidos, e o scroll padding protege os controles durante a rolagem. Desktop com mouse mantém a composição anterior.
+
+Verificação adicional: 664 estados de Chromium, com todas as telas em 320×568, 375×667, 390×844, 414×896, **428×926 (iPhone 14 Plus)**, 430×932, 480×960 e viewport reduzido 390×400. Foram medidos o vão entre conteúdo e navegação, a visibilidade no início/fim das páginas e a ausência de overflow. Um contexto de toque também verifica a seleção da regra em orientação horizontal. Esses resultados são emulação de navegador, não execução em um aparelho físico.
+
+Ponto de restauração adicional: `backup/pre-mobile-nav-flow-20261027`, que conserva a publicação Foco `71c7d68` antes desta correção.
+
+O ensaio adicional `npm run audit:mobile:engines` executou **56 estados em WebKit 26.0 e Chromium**, sem erros, em retrato/paisagem e nas alturas reduzidas. Evidências em `review/foco/mobile-navigation/`. O WebKit é usado como verificação de motor, sem alegar teste físico em Safari/iPhone. O auditor CSS registra 939 regras e 2820 declarações, sem problemas.
