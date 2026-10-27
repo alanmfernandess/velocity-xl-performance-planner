@@ -1,6 +1,6 @@
 # Foco — interface aprovada
 
-Implementação visual de 2026-10-27, isolada em `feature/foco-approved-interface-20261027`. Nenhum merge na `main` e nenhum deploy faz parte desta entrega.
+Implementação visual de 2026-10-27, validada em `feature/foco-approved-interface-20261027`. A entrega inicial foi isolada da `main`; em 2026-10-27 o usuário autorizou expressamente a publicação. A publicação usa integração normal por pull request e GitHub Pages, preservando as tags abaixo.
 
 ## Base e restauração integral
 
@@ -11,7 +11,7 @@ A atualização dos remotos revelou duas versões diferentes. Ambas foram preser
 | Cópia local Quiet Cockpit, base funcional das prévias | `05eb35ed53ae2ca977b676168d5967cc67668cdf` | `backup/pre-foco-local-20261027` |
 | `origin/main`, restaurada anteriormente | `834227b9378fdccc727bea318e814380a8acff9d` | `backup/pre-foco-main-20261027` |
 
-A branch Foco parte da cópia **local**. Não foi feita atualização da `main`, nem incorporação silenciosa desta interface no site público. Uma integração futura precisa considerar explicitamente essa diferença de bases.
+A branch Foco parte da cópia **local**. A publicação autorizada integra explicitamente essa base do Quiet Cockpit e a interface Foco à `main`, que estava em `834227b`. A diferença de bases foi registrada antes da implementação; ambas continuam integralmente disponíveis nas tags de restauração.
 
 Cópias adicionais fora do repositório, na pasta `work/backups` desta tarefa:
 
